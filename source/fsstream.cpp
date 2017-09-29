@@ -147,7 +147,7 @@ Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcP
 			if (R_FAILED(res))
 			{
 				quit = true;
-				createError(res, "CreateDirectory: " + u16tou8(newdst));
+				createError(res, "Failed to create destination directory.");
 			}
 			else
 			{
@@ -161,7 +161,8 @@ Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcP
 			res = copyFile(srcArch, dstArch, newsrc, newdst);
 			if (R_FAILED(res))
 			{
-				createError(res, "src: " + u16tou8(newsrc) + " to: " + u16tou8(newdst));
+				quit = true;
+				createError(res, "Failed to copy file.");
 			}
 		}
 	}
@@ -236,6 +237,7 @@ bool directoryExist(FS_Archive archive, std::u16string path)
 
 void backup(size_t index)
 {
+	const Mode_t mode = getMode();
 	const size_t cellIndex = getScrollableIndex();
 	const bool isNewFolder = cellIndex == 0;
 	Result res = 0;
@@ -244,7 +246,15 @@ void backup(size_t index)
 	getTitle(title, index);
 	
 	FS_Archive archive;
-	res = getArchiveSave(&archive, title.getMediaType(), title.getLowId(), title.getHighId());
+	if (mode == MODE_SAVE)
+	{
+		res = getArchiveSave(&archive, title.getMediaType(), title.getLowId(), title.getHighId());
+	}
+	else if (mode == MODE_EXTDATA)
+	{
+		res = getArchiveExtdata(&archive, title.getExtdataId());
+	}
+	
 	if (R_SUCCEEDED(res))
 	{
 		std::u16string customPath = isNewFolder ? getPath() : u8tou16(getPathFromCell(cellIndex).c_str());
@@ -254,7 +264,8 @@ void backup(size_t index)
 			return;
 		}
 		
-		std::u16string dstPath = title.getBackupPath() + u8tou16("/") + customPath;
+		std::u16string dstPath = mode == MODE_SAVE ? title.getBackupPath() : title.getExtdataPath();
+		dstPath += u8tou16("/") + customPath;
 		
 		if (!isNewFolder || directoryExist(getArchiveSDMC(), dstPath))
 		{
@@ -280,11 +291,14 @@ void backup(size_t index)
 		res = copyDirectory(archive, getArchiveSDMC(), u8tou16("/"), dstPath);
 		if (R_FAILED(res))
 		{
+			std::string message = mode == MODE_SAVE ? "Failed to backup save." : "Failed to backup extdata.";
 			FSUSER_CloseArchive(archive);
-			createError(res, "Failed to backup save.");
+			createError(res, message);
 			return;
 		}
 		refreshDirectories(index);
+		
+		createInfo("Success!", "Progresses saved to disk in " + u16tou8(customPath) + " correctly.");
 	}
 	else
 	{
@@ -296,6 +310,7 @@ void backup(size_t index)
 
 void restore(size_t index)
 {
+	const Mode_t mode = getMode();
 	const size_t cellIndex = getScrollableIndex();
 	if (cellIndex == 0)
 	{
@@ -308,44 +323,53 @@ void restore(size_t index)
 	getTitle(title, index);
 	
 	FS_Archive archive;
-	res = getArchiveSave(&archive, title.getMediaType(), title.getLowId(), title.getHighId());
+	if (mode == MODE_SAVE)
+	{
+		res = getArchiveSave(&archive, title.getMediaType(), title.getLowId(), title.getHighId());
+	}
+	else if (mode == MODE_EXTDATA)
+	{
+		res = getArchiveExtdata(&archive, title.getExtdataId());
+	}
+	
 	if (R_SUCCEEDED(res))
 	{
-		std::u16string srcPath = title.getBackupPath() + u8tou16("/") + u8tou16(getPathFromCell(cellIndex).c_str()) + u8tou16("/");
+		std::u16string srcPath = mode == MODE_SAVE ? title.getBackupPath() : title.getExtdataPath();
+		srcPath += u8tou16("/") + u8tou16(getPathFromCell(cellIndex).c_str()) + u8tou16("/");
 		std::u16string dstPath = u8tou16("/");
 		
 		res = FSUSER_DeleteDirectoryRecursively(archive, fsMakePath(PATH_UTF16, dstPath.data()));
-		if (R_FAILED(res))
-		{
-			FSUSER_CloseArchive(archive);
-			createError(res, "Failed to delete the save directory recursively.");
-			return;
-		}
-		
 		res = copyDirectory(getArchiveSDMC(), archive, srcPath, dstPath);
 		if (R_FAILED(res))
 		{
+			std::string message = mode == MODE_SAVE ? "Failed to restore save." : "Failed to restore extdata.";
 			FSUSER_CloseArchive(archive);
-			createError(res, "Failed to restore save.");
+			createError(res, message);
 			return;
 		}
 		
-		res = FSUSER_ControlArchive(archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
-		if (R_FAILED(res))
+		if (mode == MODE_SAVE)
 		{
-			FSUSER_CloseArchive(archive);
-			createError(res, "Failed to commit save data.");
-			return;			
+			res = FSUSER_ControlArchive(archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+			if (R_FAILED(res))
+			{
+				FSUSER_CloseArchive(archive);
+				createError(res, "Failed to commit save data.");
+				return;			
+			}
+			
+			u8 out;
+			u64 secureValue = ((u64)SECUREVALUE_SLOT_SD << 32) | (title.getUniqueId() << 8);
+			res = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &secureValue, 8, &out, 1);
+			if (R_FAILED(res))
+			{
+				FSUSER_CloseArchive(archive);
+				createError(res, "Failed to fix secure value.");
+				return;			
+			}
 		}
 		
-		u64 secureValue = ((u64)SECUREVALUE_SLOT_SD << 32) | (title.getUniqueId() << 8);
-		res = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &secureValue, 8, NULL, 1);
-		if (R_FAILED(res))
-		{
-			FSUSER_CloseArchive(archive);
-			createError(res, "Failed to fix secure value.");
-			return;			
-		}
+		createInfo("Success!", getPathFromCell(cellIndex) + " has been restored successfully.");
 	}
 	else
 	{

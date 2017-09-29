@@ -21,9 +21,18 @@
 
 #include "common.h"
 
+typedef enum {
+	MODE_SAVE,
+	MODE_EXTDATA
+} Mode_t;
+
+Mode_t getMode(void);
+void setMode(Mode_t newmode);
+
 Result archiveInit(void);
 void archiveExit(void);
 FS_Archive getArchiveSDMC(void);
 Result getArchiveSave(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);
+Result getArchiveExtdata(FS_Archive* archive, u32 extdata);
 
 #endif

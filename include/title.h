@@ -30,13 +30,16 @@ public:
 	std::string getLongDescription(void);
 	
 	std::u16string getBackupPath(void);
+	std::u16string getExtdataPath(void);
 	std::vector<std::u16string> getDirectories(void);
+	std::vector<std::u16string> getExtdatas(void);
 	
 	void refreshDirectories(void);
 	u32 getHighId(void);
 	u32 getLowId(void);
 	u32 getUniqueId(void);
 	u64 getId(void);
+	u32 getExtdataId(void);
 	FS_MediaType getMediaType(void);
 	size_t getTextureId(void);
 	
@@ -44,8 +47,10 @@ private:
 	std::u16string shortDescription;
 	std::u16string longDescription;
 	std::u16string backupPath;
+	std::u16string extdataPath;
 	
 	std::vector<std::u16string> directories;
+	std::vector<std::u16string> extdatas;
 	u64 id;
 	FS_MediaType media;
 	size_t textureId;

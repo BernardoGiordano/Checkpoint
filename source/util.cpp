@@ -31,7 +31,7 @@ void copyFilter(void)
 	fread(buf, size, 1, fptr);
 	fclose(fptr);
 	
-	FILE *file = fopen("sdmc:/3ds/Checkpoint/filter.txt", "wb");
+	FILE *file = fopen("sdmc:/Checkpoint/filter.txt", "wb");
 	fwrite(buf, 1, size, file);
 	fclose(file);
 }
@@ -64,9 +64,9 @@ void servicesInit(void)
 		createError(res, "SDMC archive init failed.");
 	}
 	
-	mkdir("sdmc:/3ds", 777);
-	mkdir("sdmc:/3ds/Checkpoint", 777);
-	mkdir("sdmc:/3ds/Checkpoint/saves", 777);
+	mkdir("sdmc:/Checkpoint", 777);
+	mkdir("sdmc:/Checkpoint/saves", 777);
+	mkdir("sdmc:/Checkpoint/extdata", 777);
 	
 	pp2d_set_screen_color(GFX_TOP, COLOR_BACKGROUND);
 	pp2d_set_screen_color(GFX_BOTTOM, COLOR_BACKGROUND);

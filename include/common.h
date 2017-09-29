@@ -37,6 +37,7 @@
 #include "gui.h"
 #include "hid.h"
 #include "http.h"
+#include "info.h"
 #include "../source/pp2d/pp2d/pp2d.h"
 #include "scrollable.h"
 #include "smdh.h"
@@ -46,8 +47,9 @@
 #include "title.h"
 #include "util.h"
 
-#define PATH_FILTER "/3ds/Checkpoint/filter.txt"
+#define PATH_FILTER "/Checkpoint/filter.txt"
 
+void createInfo(std::string title, std::string message);
 void createError(Result res, std::string message);
 
 #endif

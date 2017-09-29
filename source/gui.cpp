@@ -19,6 +19,7 @@
 #include "gui.h"
 #include "error.h"
 
+static Info info;
 static Error error;
 static Clickable* buttonBackup;
 static Clickable* buttonRestore;
@@ -34,14 +35,22 @@ Gui::Gui(void)
 	index = 0;
 	page = 0;
 	bottomScrollEnabled = false;
+	info.init("", "", 0);
 	error.init(0, "");
 	buttonBackup = new Clickable(204, 102, 110, 54, WHITE, bottomScrollEnabled ? BLACK : GREYISH, "Backup \uE008", true);
 	buttonRestore = new Clickable(204, 158, 110, 54, WHITE, bottomScrollEnabled ? BLACK : GREYISH, "Restore \uE007", true);
 	directoryList = new Scrollable(6, 102, 196, 110, 5);
 }
 
+void Gui::createInfo(std::string title, std::string message)
+{
+	error.resetTtl();
+	info.init(title, message, 500);
+}
+
 void Gui::createError(Result res, std::string message)
 {
+	info.resetTtl();
 	error.init(res, message);
 }
 
@@ -124,6 +133,8 @@ void Gui::draw(void)
 	float versionLen = pp2d_get_text_width(version, 0.45f, 0.45f);
 	float smLen = pp2d_get_text_width("checkpoint", 0.50f, 0.50f);
 	
+	const Mode_t mode = getMode();
+	
 	pp2d_begin_draw(GFX_TOP);
 		pp2d_draw_rectangle(0, 0, 400, 19, COLOR_BARS);
 		pp2d_draw_rectangle(0, 221, 400, 19, COLOR_BARS);
@@ -142,8 +153,15 @@ void Gui::draw(void)
 			drawSelector();
 		}
 		
-		pp2d_draw_text_center(GFX_TOP, 224, 0.46f, 0.46f, WHITE, "Click \uE000 to operate. Move between the titles with \uE006.");
+		static const float p1width = pp2d_get_text_width("\uE000 to enter target. \uE002 to toggle ", 0.47f, 0.47f);
+		static const float p2width = pp2d_get_text_width("extdata", 0.47f, 0.47f);
+		static const float p3width = pp2d_get_text_width(". \uE006 to move.", 0.47f, 0.47f);
+		static const float border = (TOP_WIDTH - p1width - p2width - p3width) / 2;
+		pp2d_draw_text(border, 224, 0.47f, 0.47f, WHITE, "\uE000 to enter target. \uE002 to toggle ");
+		pp2d_draw_text(border + p1width, 224, 0.47f, 0.47f, getMode() == MODE_SAVE ? WHITE : RED, "extdata");
+		pp2d_draw_text(border + p1width + p2width, 224, 0.47f, 0.47f, WHITE, ". \uE006 to move.");
 		
+		info.draw();
 		error.draw();
 		
 		pp2d_draw_on(GFX_BOTTOM);
@@ -156,7 +174,7 @@ void Gui::draw(void)
 			getTitle(title, index + page*entries);
 			
 			directoryList->flush();
-			std::vector<std::u16string> dirs = title.getDirectories();
+			std::vector<std::u16string> dirs = mode == MODE_SAVE ? title.getDirectories() : title.getExtdatas();
 			std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
 			
 			for (size_t i = 0; i < dirs.size(); i++)

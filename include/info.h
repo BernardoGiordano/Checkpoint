@@ -16,20 +16,20 @@
 >   See LICENSE for information.
 */
 
-#ifndef ERROR_H
-#define ERROR_H
+#ifndef INFO_H
+#define INFO_H
 
 #include "common.h"
 
-class Error
+class Info
 {
 public:
-	void init(Result res, std::string message);
+	void init(std::string title, std::string message, int ttl);
 	void resetTtl(void);
 	void draw(void);
 
 private:
-	Result res;
+	std::string title;
 	std::string message;
 	size_t width;
 	size_t height;

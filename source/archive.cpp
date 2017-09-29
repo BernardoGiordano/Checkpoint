@@ -19,6 +19,17 @@
 #include "archive.h"
 
 static FS_Archive archiveSDMC;
+static Mode_t mode = MODE_SAVE;
+
+Mode_t getMode(void)
+{
+	return mode;
+}
+
+void setMode(Mode_t newmode)
+{
+	mode = newmode;
+}
 
 Result archiveInit(void)
 {
@@ -43,4 +54,14 @@ Result getArchiveSave(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u3
 		highid
 	};
 	return FSUSER_OpenArchive(archive, ARCHIVE_USER_SAVEDATA, {PATH_BINARY, 12, path});
+}
+
+Result getArchiveExtdata(FS_Archive* archive, u32 extdata)
+{
+	const u32 path[3] = {
+		MEDIATYPE_SD,
+		extdata,
+		0
+	};
+	return FSUSER_OpenArchive(archive, ARCHIVE_EXTDATA, {PATH_BINARY, 12, path});
 }

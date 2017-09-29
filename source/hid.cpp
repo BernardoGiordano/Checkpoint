@@ -55,11 +55,11 @@ static void page_back(int& page, int maxpages)
 
 static void page_forward(int& page, int maxpages)
 {
-	if ((size_t)page < maxpages - 1)
+	if (page < maxpages - 1)
 	{
 		page++;
 	}
-	else if ((size_t)page == maxpages - 1)
+	else if (page == maxpages - 1)
 	{		
 		page = 0;
 	}

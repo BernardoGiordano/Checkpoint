@@ -38,7 +38,8 @@ bool Title::load(u64 _id, FS_MediaType _media)
 	
 	shortDescription = removeForbiddenCharacters((char16_t*)smdh->applicationTitles[1].shortDescription);
 	longDescription = (char16_t*)smdh->applicationTitles[1].longDescription;
-	backupPath = u8tou16("/3ds/Checkpoint/saves/") + shortDescription;
+	backupPath = u8tou16("/Checkpoint/saves/") + shortDescription;
+	extdataPath = u8tou16("/Checkpoint/extdata/") + shortDescription;
 
 	loadTextureIcon(smdh, index);
 	textureId = index;
@@ -47,6 +48,15 @@ bool Title::load(u64 _id, FS_MediaType _media)
 	if (!directoryExist(getArchiveSDMC(), backupPath))
 	{
 		Result res = createDirectory(getArchiveSDMC(), backupPath);
+		if (R_FAILED(res))
+		{
+			createError(res, "Failed to create backup directory.");
+		}
+	}
+	
+	if (!directoryExist(getArchiveSDMC(), extdataPath))
+	{
+		Result res = createDirectory(getArchiveSDMC(), extdataPath);
 		if (R_FAILED(res))
 		{
 			createError(res, "Failed to create backup directory.");
@@ -87,23 +97,35 @@ std::u16string Title::getBackupPath(void)
 	return backupPath;
 }
 
+std::u16string Title::getExtdataPath(void)
+{
+	return extdataPath;
+}
+
 std::vector<std::u16string> Title::getDirectories(void)
 {
 	return directories;
 }
 
+std::vector<std::u16string> Title::getExtdatas(void)
+{
+	return extdatas;
+}
+
 void Title::refreshDirectories(void)
 {
 	directories.clear();
+	extdatas.clear();
 	
-	Directory list(getArchiveSDMC(), backupPath);
-	if (list.getLoaded())
+	// save backups
+	Directory savelist(getArchiveSDMC(), backupPath);
+	if (savelist.getLoaded())
 	{
-		for (size_t i = 0, sz = list.getCount(); i < sz; i++)
+		for (size_t i = 0, sz = savelist.getCount(); i < sz; i++)
 		{
-			if (list.isFolder(i))
+			if (savelist.isFolder(i))
 			{
-				directories.push_back(list.getItem(i));
+				directories.push_back(savelist.getItem(i));
 			}
 		}
 		
@@ -112,7 +134,27 @@ void Title::refreshDirectories(void)
 	}
 	else
 	{
-		createError(list.getError(), "Couldn't retrieve the directory list for the title " + getShortDescription());
+		createError(savelist.getError(), "Couldn't retrieve the directory list for the title " + getShortDescription());
+	}
+	
+	// extdata backups
+	Directory extlist(getArchiveSDMC(), extdataPath);
+	if (extlist.getLoaded())
+	{
+		for (size_t i = 0, sz = extlist.getCount(); i < sz; i++)
+		{
+			if (extlist.isFolder(i))
+			{
+				extdatas.push_back(extlist.getItem(i));
+			}
+		}
+		
+		std::sort(extdatas.begin(), extdatas.end());
+		extdatas.insert(extdatas.begin(), u8tou16("New..."));
+	}
+	else
+	{
+		createError(extlist.getError(), "Couldn't retrieve the extdata list for the title " + getShortDescription());
 	}
 }
 
@@ -134,6 +176,19 @@ u32 Title::getUniqueId(void)
 u64 Title::getId(void)
 {
 	return id;
+}
+
+u32 Title::getExtdataId(void)
+{
+	u32 low = getLowId();
+	switch(low)
+	{
+		case 0x00055E00: return 0x0000055D; // Pokémon Y
+		case 0x0011C400: return 0x000011C5; // Pokémon Omega Ruby
+		case 0x00175E00: return 0x00001648; // Pokémon Moon
+	}
+	
+	return low >> 8;
 }
 
 FS_MediaType Title::getMediaType(void)

@@ -20,6 +20,11 @@
 
 static Gui* menu;
 
+void createInfo(std::string title, std::string message)
+{
+	menu->createInfo(title, message);
+}
+
 void createError(Result res, std::string message)
 {
 	menu->createError(res, message);
@@ -48,6 +53,11 @@ int main() {
 			menu->setBottomScroll(false);
 			menu->updateButtonsColor();
 			setEntryType(TITLES);
+		}
+		
+		if (hidKeysDown() & KEY_X)
+		{
+			setMode(getMode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
 		}
 		
 		if (menu->isBackupReleased())
