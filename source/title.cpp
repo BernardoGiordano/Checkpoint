@@ -26,6 +26,7 @@ static std::vector<Title> titleExtdatas;
 
 bool Title::load(u64 _id, FS_MediaType _media)
 {
+	bool loadTitle = false;
 	static size_t index = 1;
 	id = _id;
 	media = _media;
@@ -41,32 +42,56 @@ bool Title::load(u64 _id, FS_MediaType _media)
 	backupPath = u8tou16("/Checkpoint/saves/") + shortDescription;
 	extdataPath = u8tou16("/Checkpoint/extdata/") + shortDescription;
 
-	loadTextureIcon(smdh, index);
-	textureId = index;
-	index++;
+	accessibleSave = isSaveAccessible(getMediaType(), getLowId(), getHighId());
+	accessibleExtdata = isExtdataAccessible(getExtdataId());
+	
+	if (accessibleSave)
+	{
+		loadTitle = true;
+		if (!directoryExist(getArchiveSDMC(), backupPath))
+		{
+			Result res = createDirectory(getArchiveSDMC(), backupPath);
+			if (R_FAILED(res))
+			{
+				createError(res, "Failed to create backup directory.");
+			}
+		}		
+	}
 
-	if (!directoryExist(getArchiveSDMC(), backupPath))
+	if (accessibleExtdata)
 	{
-		Result res = createDirectory(getArchiveSDMC(), backupPath);
-		if (R_FAILED(res))
+		loadTitle = true;
+		if (!directoryExist(getArchiveSDMC(), extdataPath))
 		{
-			createError(res, "Failed to create backup directory.");
+			Result res = createDirectory(getArchiveSDMC(), extdataPath);
+			if (R_FAILED(res))
+			{
+				createError(res, "Failed to create backup directory.");
+			}
 		}
 	}
-	
-	if (!directoryExist(getArchiveSDMC(), extdataPath))
-	{
-		Result res = createDirectory(getArchiveSDMC(), extdataPath);
-		if (R_FAILED(res))
-		{
-			createError(res, "Failed to create backup directory.");
-		}
-	}
-	
+
 	refreshDirectories();
 	
+	if (loadTitle)
+	{
+		loadTextureIcon(smdh, index);
+		textureId = index;
+		index++;
+	}
+	
 	delete smdh;
-	return true;
+	return loadTitle;
+}
+
+bool Title::getAccessibleSave(void)
+{
+	return accessibleSave;
+}
+
+bool Title::getAccessibleExtdata(void)
+{
+	return accessibleExtdata;
 }
 
 std::string Title::getMediatypeString(void)
@@ -117,44 +142,50 @@ void Title::refreshDirectories(void)
 	directories.clear();
 	extdatas.clear();
 	
-	// save backups
-	Directory savelist(getArchiveSDMC(), backupPath);
-	if (savelist.getLoaded())
+	if (getAccessibleSave())
 	{
-		for (size_t i = 0, sz = savelist.getCount(); i < sz; i++)
+		// save backups
+		Directory savelist(getArchiveSDMC(), backupPath);
+		if (savelist.getLoaded())
 		{
-			if (savelist.isFolder(i))
+			for (size_t i = 0, sz = savelist.getCount(); i < sz; i++)
 			{
-				directories.push_back(savelist.getItem(i));
+				if (savelist.isFolder(i))
+				{
+					directories.push_back(savelist.getItem(i));
+				}
 			}
+			
+			std::sort(directories.begin(), directories.end());
+			directories.insert(directories.begin(), u8tou16("New..."));
 		}
-		
-		std::sort(directories.begin(), directories.end());
-		directories.insert(directories.begin(), u8tou16("New..."));
-	}
-	else
-	{
-		createError(savelist.getError(), "Couldn't retrieve the directory list for the title " + getShortDescription());
+		else
+		{
+			createError(savelist.getError(), "Couldn't retrieve the directory list for the title " + getShortDescription());
+		}
 	}
 	
-	// extdata backups
-	Directory extlist(getArchiveSDMC(), extdataPath);
-	if (extlist.getLoaded())
+	if (getAccessibleExtdata())
 	{
-		for (size_t i = 0, sz = extlist.getCount(); i < sz; i++)
+		// extdata backups
+		Directory extlist(getArchiveSDMC(), extdataPath);
+		if (extlist.getLoaded())
 		{
-			if (extlist.isFolder(i))
+			for (size_t i = 0, sz = extlist.getCount(); i < sz; i++)
 			{
-				extdatas.push_back(extlist.getItem(i));
+				if (extlist.isFolder(i))
+				{
+					extdatas.push_back(extlist.getItem(i));
+				}
 			}
+			
+			std::sort(extdatas.begin(), extdatas.end());
+			extdatas.insert(extdatas.begin(), u8tou16("New..."));
 		}
-		
-		std::sort(extdatas.begin(), extdatas.end());
-		extdatas.insert(extdatas.begin(), u8tou16("New..."));
-	}
-	else
-	{
-		createError(extlist.getError(), "Couldn't retrieve the extdata list for the title " + getShortDescription());
+		else
+		{
+			createError(extlist.getError(), "Couldn't retrieve the extdata list for the title " + getShortDescription());
+		}
 	}
 }
 
@@ -224,7 +255,7 @@ void loadTitles(void)
 			Title title;
 			if (title.load(ids[i], MEDIATYPE_SD))
 			{
-				if (isSaveAccessible(title.getMediaType(), title.getLowId(), title.getHighId()))
+				if (title.getAccessibleSave())
 				{
 					titleSaves.push_back(title);
 					std::sort(titleSaves.begin(), titleSaves.end(), [](Title l, Title r) {
@@ -232,7 +263,7 @@ void loadTitles(void)
 					});
 				}
 				
-				if (isExtdataAccessible(title.getExtdataId()))
+				if (title.getAccessibleExtdata())
 				{
 					titleExtdatas.push_back(title);
 					std::sort(titleExtdatas.begin(), titleExtdatas.end(), [](Title l, Title r) {
@@ -252,12 +283,12 @@ void loadTitles(void)
 			Title title;
 			if (title.load(ids[0], MEDIATYPE_GAME_CARD))
 			{
-				if (isSaveAccessible(title.getMediaType(), title.getLowId(), title.getHighId()))
+				if (title.getAccessibleSave())
 				{
 					titleSaves.insert(titleSaves.begin(), title);
 				}
 				
-				if (isExtdataAccessible(title.getExtdataId()))
+				if (title.getAccessibleExtdata())
 				{
 					titleExtdatas.insert(titleExtdatas.begin(), title);
 				}
@@ -324,9 +355,3 @@ void refreshDirectories(size_t i)
 		titleExtdatas.at(i).refreshDirectories();
 	}
 }
-
-
-
-
-
-

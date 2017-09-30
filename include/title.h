@@ -25,6 +25,9 @@ class Title
 {
 public:
 	bool load(u64 id, FS_MediaType mediaType);
+	bool getAccessibleSave(void);
+	bool getAccessibleExtdata(void);
+	
 	std::string getMediatypeString(void);
 	std::string getShortDescription(void);
 	std::string getLongDescription(void);
@@ -44,6 +47,8 @@ public:
 	size_t getTextureId(void);
 	
 private:
+	bool accessibleSave;
+	bool accessibleExtdata;
 	std::u16string shortDescription;
 	std::u16string longDescription;
 	std::u16string backupPath;
