@@ -35,4 +35,7 @@ FS_Archive getArchiveSDMC(void);
 Result getArchiveSave(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);
 Result getArchiveExtdata(FS_Archive* archive, u32 extdata);
 
+bool isSaveAccessible(FS_MediaType mediatype, u32 lowid, u32 highid);
+bool isExtdataAccessible(u32 extdata);
+
 #endif

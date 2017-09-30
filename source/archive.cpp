@@ -65,3 +65,29 @@ Result getArchiveExtdata(FS_Archive* archive, u32 extdata)
 	};
 	return FSUSER_OpenArchive(archive, ARCHIVE_EXTDATA, {PATH_BINARY, 12, path});
 }
+
+bool isSaveAccessible(FS_MediaType mediatype, u32 lowid, u32 highid)
+{
+	FS_Archive archive;
+	Result res = getArchiveSave(&archive, mediatype, lowid, highid);
+	if (R_SUCCEEDED(res))
+	{
+		FSUSER_CloseArchive(archive);
+		return true;
+	}
+	
+	return false;
+}
+
+bool isExtdataAccessible(u32 extdata)
+{
+	FS_Archive archive;
+	Result res = getArchiveExtdata(&archive, extdata);
+	if (R_SUCCEEDED(res))
+	{
+		FSUSER_CloseArchive(archive);
+		return true;
+	}
+	
+	return false;
+}

@@ -45,6 +45,7 @@ public:
 	void setBottomScroll(bool enable);
 	void updateButtonsColor(void);
 	void updateSelector(void);
+	void resetIndex(void);
 	
 	void draw(void);
 

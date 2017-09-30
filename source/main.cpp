@@ -36,7 +36,6 @@ int main() {
 	menu = new Gui();
 	
 	createThread((ThreadFunc)threadLoadTitles);
-	createThread((ThreadFunc)threadDownloadFilter);
 
 	while (aptMainLoop() && !(hidKeysDown() & KEY_START)) {
 		hidScanInput();
@@ -57,6 +56,7 @@ int main() {
 		
 		if (hidKeysDown() & KEY_X)
 		{
+			menu->resetIndex();
 			setMode(getMode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
 		}
 		

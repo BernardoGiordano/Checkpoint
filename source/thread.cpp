@@ -37,57 +37,7 @@ void destroyThreads(void)
 	}
 }
 
-void threadDownloadFilter(void)
-{
-	std::string json;
-	Result res = callTitleDB(json);
-	if (R_FAILED(res))
-	{
-		createError(res, "Filter update failed. Please check your internet connection...");
-	}
-	else
-	{	
-		const char* cstr = json.c_str();
-		std::string tofile = "";
-		
-		for (size_t oldpos = 0, size = json.size(); oldpos < size;)
-		{
-			const size_t off = json.find("0004", oldpos);
-			if (off != std::string::npos)
-			{
-				char titleid[17] = {0};
-				memcpy(titleid, cstr + off, 16);
-				titleid[16] = '\0';
-				std::string titlestring(titleid);
-				
-				if (tofile.find(titlestring, 0) == std::string::npos)
-				{
-					tofile += titlestring;
-				}
-				
-				oldpos = off + 16;				
-			}
-			else
-			{
-				break;
-			}
-		}
-		
-		res = writeFile(getArchiveSDMC(), (u8*)tofile.c_str(), u8tou16(PATH_FILTER), tofile.size());
-		if (R_FAILED(res))
-		{
-			createError(res, "Filter update failed. Couldn't write the new version to disk.");
-		}
-	}
-}
-
 void threadLoadTitles(void)
 {
-	if (!fileExist(getArchiveSDMC(), u8tou16(PATH_FILTER)))
-	{
-		copyFilter();
-	}
-	
-	loadFilter();
 	loadTitles();
 }

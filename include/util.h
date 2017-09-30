@@ -21,7 +21,6 @@
 
 #include "common.h"
 
-void copyFilter(void);
 void servicesExit(void);
 void servicesInit(void);
 

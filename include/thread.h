@@ -23,7 +23,6 @@
 
 void createThread(ThreadFunc entrypoint);
 void destroyThreads(void);
-void threadDownloadFilter(void);
 void threadLoadTitles(void);
 
 #endif

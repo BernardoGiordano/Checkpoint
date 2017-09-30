@@ -21,8 +21,8 @@
 static bool checkHigh(u64 id);
 static void loadTextureIcon(smdh_s *smdh, size_t i);
 
-static std::vector<Title> titles;
-static std::vector<u32> filter;
+static std::vector<Title> titleSaves;
+static std::vector<Title> titleExtdatas;
 
 bool Title::load(u64 _id, FS_MediaType _media)
 {
@@ -207,71 +207,38 @@ static bool checkHigh(u64 id)
 	return (high == 0x00040000 || high == 0x00040002);
 }
 
-void loadFilter(void)
-{
-	Result res;
-	u64 size = getFileSize(getArchiveSDMC(), u8tou16(PATH_FILTER));
-	if (size == 0 || size % 16 != 0)
-	{
-		return;
-	}
-	
-	FSStream stream(getArchiveSDMC(), u8tou16(PATH_FILTER), FS_OPEN_READ);
-	if (stream.getLoaded())
-	{
-		u8 buf[size];
-		res = stream.read(buf);
-		if (R_SUCCEEDED(res))
-		{
-			filter.reserve(size/16);
-			for (u32 i = 0, sz = size/16; i < sz; i++)
-			{
-				char tmp[9];
-				memcpy(tmp, buf + i*16 + 8, 8);
-				tmp[8] = '\0';
-				
-				std::string titleId(tmp);
-				u32 id = std::stoul(titleId, nullptr, 16);
-				filter.push_back(id);
-			}
-		}
-	}
-	stream.close();
-}
-
-static bool checkFilter(u32 low)
-{
-	for (u32 i = 0; i < filter.size(); i++)
-	{
-		if (low == filter.at(i))
-		{
-			return true;
-		}
-	}
-	
-	return false;
-}
-
 void loadTitles(void)
 {
 	u32 count;
 	AM_GetTitleCount(MEDIATYPE_SD, &count);
-	titles.reserve(count);
+	titleSaves.reserve(count);
+	titleExtdatas.reserve(count);
 
 	u64 ids[count];
 	AM_GetTitleList(NULL, MEDIATYPE_SD, count, ids);
 
 	for (u32 i = 0; i < count; i++)
 	{
-		if (checkHigh(ids[i]) && !checkFilter((u32)ids[i]))
+		if (checkHigh(ids[i]))
 		{
 			Title title;
 			if (title.load(ids[i], MEDIATYPE_SD))
 			{
-				titles.push_back(title);
-				std::sort(titles.begin(), titles.end(), [](Title l, Title r) {
-					return l.getShortDescription() < r.getShortDescription();
-				});
+				if (isSaveAccessible(title.getMediaType(), title.getLowId(), title.getHighId()))
+				{
+					titleSaves.push_back(title);
+					std::sort(titleSaves.begin(), titleSaves.end(), [](Title l, Title r) {
+						return l.getShortDescription() < r.getShortDescription();
+					});
+				}
+				
+				if (isExtdataAccessible(title.getExtdataId()))
+				{
+					titleExtdatas.push_back(title);
+					std::sort(titleExtdatas.begin(), titleExtdatas.end(), [](Title l, Title r) {
+						return l.getShortDescription() < r.getShortDescription();
+					});
+				}
 			}
 		}
 	}
@@ -285,7 +252,15 @@ void loadTitles(void)
 			Title title;
 			if (title.load(ids[0], MEDIATYPE_GAME_CARD))
 			{
-				titles.insert(titles.begin(), title);
+				if (isSaveAccessible(title.getMediaType(), title.getLowId(), title.getHighId()))
+				{
+					titleSaves.insert(titleSaves.begin(), title);
+				}
+				
+				if (isExtdataAccessible(title.getExtdataId()))
+				{
+					titleExtdatas.insert(titleExtdatas.begin(), title);
+				}
 			}
 		}
 	}
@@ -293,18 +268,23 @@ void loadTitles(void)
 
 void getTitle(Title &dst, int i)
 {
+	const Mode_t mode = getMode();
 	if (i < getTitlesCount())
-		dst = titles.at(i);
+	{
+		dst = mode == MODE_SAVE ? titleSaves.at(i) : titleExtdatas.at(i);
+	}	
 }
 
 int getTitlesCount(void)
 {
-	return titles.size();
+	const Mode_t mode = getMode();
+	return mode == MODE_SAVE ? titleSaves.size() : titleExtdatas.size();
 }
 
 size_t getTextureId(int i)
 {
-	return titles.at(i).getTextureId();
+	const Mode_t mode = getMode();
+	return mode == MODE_SAVE ? titleSaves.at(i).getTextureId() : titleExtdatas.at(i).getTextureId();
 }
 
 static void loadTextureIcon(smdh_s *smdh, size_t i) {
@@ -334,5 +314,19 @@ static void loadTextureIcon(smdh_s *smdh, size_t i) {
 
 void refreshDirectories(size_t i)
 {
-	titles.at(i).refreshDirectories();
+	const Mode_t mode = getMode();
+	if (mode == MODE_SAVE)
+	{
+		titleSaves.at(i).refreshDirectories();
+	}
+	else
+	{
+		titleExtdatas.at(i).refreshDirectories();
+	}
 }
+
+
+
+
+
+

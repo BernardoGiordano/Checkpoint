@@ -221,3 +221,9 @@ bool Gui::isRestoreReleased(void)
 {
 	return buttonRestore->isReleased() && bottomScrollEnabled;
 }
+
+void Gui::resetIndex(void)
+{
+	index = 0;
+	page = 0;
+}

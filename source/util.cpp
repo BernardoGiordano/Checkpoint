@@ -18,24 +18,6 @@
 
 #include "util.h"
 
-void copyFilter(void)
-{
-	FILE *fptr = fopen("romfs:/filter.txt", "rt");
-	if (fptr == NULL)
-		return;
-	fseek(fptr, 0, SEEK_END);
-	u32 size = ftell(fptr);
-	u8* buf = (u8*)malloc(size);
-	memset(buf, 0, size);
-	rewind(fptr);
-	fread(buf, size, 1, fptr);
-	fclose(fptr);
-	
-	FILE *file = fopen("sdmc:/Checkpoint/filter.txt", "wb");
-	fwrite(buf, 1, size, file);
-	fclose(file);
-}
-
 void servicesExit(void)
 {
 	archiveExit();
