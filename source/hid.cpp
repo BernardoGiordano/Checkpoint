@@ -132,16 +132,19 @@ void calculateIndex(size_t &currentEntry, int &page, size_t maxpages, size_t max
 		
 		if (hidKeysDown() & KEY_DOWN)
 		{
-			if (currentEntry <= maxentries - columns)
+			if ((int)(maxentries - columns) >= 0)
 			{
-				currentEntry += columns;
-			}
-			else if (currentEntry >= maxentries - columns + 1)
-			{
-				page_forward(page, maxpages);
-				if (currentEntry > refreshMaxEntries(page, entries))
+				if (currentEntry <= maxentries - columns)
 				{
-					currentEntry = refreshMaxEntries(page, entries);
+					currentEntry += columns;
+				}
+				else if (currentEntry >= maxentries - columns + 1)
+				{
+					page_forward(page, maxpages);
+					if (currentEntry > refreshMaxEntries(page, entries))
+					{
+						currentEntry = refreshMaxEntries(page, entries);
+					}
 				}
 			}
 		}

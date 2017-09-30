@@ -240,10 +240,10 @@ static bool checkHigh(u64 id)
 
 void loadTitles(void)
 {
-	u32 count;
+	u32 count = 0;
 	AM_GetTitleCount(MEDIATYPE_SD, &count);
-	titleSaves.reserve(count);
-	titleExtdatas.reserve(count);
+	titleSaves.reserve(count + 1);
+	titleExtdatas.reserve(count + 1);
 
 	u64 ids[count];
 	AM_GetTitleList(NULL, MEDIATYPE_SD, count, ids);

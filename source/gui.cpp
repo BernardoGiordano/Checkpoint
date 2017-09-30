@@ -92,6 +92,11 @@ void Gui::updateSelector(void)
 		const size_t maxpages = getTitlesCount() / entries + 1;
 		calculateIndex(index, page, maxpages, maxentries, entries, collen);
 		
+		char buf[30] = {0};
+		sprintf(buf, "page: %d index: %d maxentries %d", page, index, maxentries);
+		std::string str(buf);
+		createError(1, str);
+		
 		directoryList->resetIndex();
 	}
 	else
