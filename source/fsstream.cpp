@@ -286,16 +286,20 @@ void backup(size_t index)
 			return;
 		}
 		
-		dstPath += u8tou16("/");
+		std::u16string copyPath = dstPath + u8tou16("/");
 		
-		res = copyDirectory(archive, getArchiveSDMC(), u8tou16("/"), dstPath);
+		res = copyDirectory(archive, getArchiveSDMC(), u8tou16("/"), copyPath.data());
 		if (R_FAILED(res))
 		{
 			std::string message = mode == MODE_SAVE ? "Failed to backup save." : "Failed to backup extdata.";
 			FSUSER_CloseArchive(archive);
 			createError(res, message);
+			
+			FSUSER_DeleteDirectoryRecursively(getArchiveSDMC(), fsMakePath(PATH_UTF16, dstPath.data()));
+			refreshDirectories(index);
 			return;
 		}
+		
 		refreshDirectories(index);
 		
 		createInfo("Success!", "Progresses saved to disk in " + u16tou8(customPath) + " correctly.");
