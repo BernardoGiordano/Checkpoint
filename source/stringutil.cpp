@@ -34,7 +34,7 @@ std::string u16tou8(std::u16string src)
 
 std::u16string removeForbiddenCharacters(std::u16string src)
 {
-	static const std::u16string illegalChars = u8tou16("\\/:?\"<>|");
+	static const std::u16string illegalChars = u8tou16(".,\\/:?!\"<>|*");
 	for (size_t i = 0; i < src.length(); i++)
 	{
 		if (illegalChars.find(src[i]) != std::string::npos)

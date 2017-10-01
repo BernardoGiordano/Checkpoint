@@ -44,9 +44,10 @@ void servicesInit(void)
 		createError(res, "SDMC archive init failed.");
 	}
 	
-	mkdir("sdmc:/Checkpoint", 777);
-	mkdir("sdmc:/Checkpoint/saves", 777);
-	mkdir("sdmc:/Checkpoint/extdata", 777);
+	mkdir("sdmc:/3ds", 777);
+	mkdir("sdmc:/3ds/Checkpoint", 777);
+	mkdir("sdmc:/3ds/Checkpoint/saves", 777);
+	mkdir("sdmc:/3ds/Checkpoint/extdata", 777);
 	
 	pp2d_set_screen_color(GFX_TOP, COLOR_BACKGROUND);
 	pp2d_set_screen_color(GFX_BOTTOM, COLOR_BACKGROUND);

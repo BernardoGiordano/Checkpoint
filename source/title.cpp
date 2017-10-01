@@ -39,8 +39,8 @@ bool Title::load(u64 _id, FS_MediaType _media)
 	
 	shortDescription = removeForbiddenCharacters((char16_t*)smdh->applicationTitles[1].shortDescription);
 	longDescription = (char16_t*)smdh->applicationTitles[1].longDescription;
-	backupPath = u8tou16("/Checkpoint/saves/") + shortDescription;
-	extdataPath = u8tou16("/Checkpoint/extdata/") + shortDescription;
+	backupPath = u8tou16("/3ds/Checkpoint/saves/") + shortDescription;
+	extdataPath = u8tou16("/3ds/Checkpoint/extdata/") + shortDescription;
 
 	accessibleSave = isSaveAccessible(getMediaType(), getLowId(), getHighId());
 	accessibleExtdata = isExtdataAccessible(getExtdataId());
@@ -70,8 +70,6 @@ bool Title::load(u64 _id, FS_MediaType _media)
 			}
 		}
 	}
-
-	refreshDirectories();
 	
 	if (loadTitle)
 	{
@@ -81,6 +79,9 @@ bool Title::load(u64 _id, FS_MediaType _media)
 	}
 	
 	delete smdh;
+	
+	refreshDirectories();
+	
 	return loadTitle;
 }
 
