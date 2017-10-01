@@ -25,7 +25,6 @@ void servicesExit(void)
 	srvExit();
 	hidExit();
 	pp2d_exit();
-	romfsExit();
 	sdmcExit();
 }
 
@@ -34,7 +33,6 @@ void servicesInit(void)
 	Result res = 0;
 	
 	sdmcInit();
-	romfsInit();
 	pp2d_init();
 	hidInit();
 	srvInit();
