@@ -259,21 +259,23 @@ void loadTitles(void)
 				if (title.getAccessibleSave())
 				{
 					titleSaves.push_back(title);
-					std::sort(titleSaves.begin(), titleSaves.end(), [](Title l, Title r) {
-						return l.getShortDescription() < r.getShortDescription();
-					});
 				}
 				
 				if (title.getAccessibleExtdata())
 				{
 					titleExtdatas.push_back(title);
-					std::sort(titleExtdatas.begin(), titleExtdatas.end(), [](Title l, Title r) {
-						return l.getShortDescription() < r.getShortDescription();
-					});
 				}
 			}
 		}
 	}
+	
+	std::sort(titleSaves.begin(), titleSaves.end(), [](Title l, Title r) {
+		return l.getShortDescription() < r.getShortDescription();
+	});
+	
+	std::sort(titleExtdatas.begin(), titleExtdatas.end(), [](Title l, Title r) {
+		return l.getShortDescription() < r.getShortDescription();
+	});
 	
 	AM_GetTitleCount(MEDIATYPE_GAME_CARD, &count);
 	if (count > 0)
