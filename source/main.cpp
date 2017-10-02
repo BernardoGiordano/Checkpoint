@@ -42,9 +42,9 @@ int main() {
 		
 		if (hidKeysDown() & KEY_A)
 		{
-			menu->setBottomScroll(!menu->getBottomScroll());
+			menu->setBottomScroll(true);
 			menu->updateButtonsColor();
-			setEntryType(getEntryType() == TITLES ? CELLS : TITLES);
+			setEntryType(CELLS);
 		}
 		
 		if (hidKeysDown() & KEY_B)
