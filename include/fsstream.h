@@ -21,12 +21,9 @@
 
 #include "common.h"
 
-u64 getFileSize(FS_Archive archive, std::u16string path);
 bool fileExist(FS_Archive archive, std::u16string path);
 
-Result copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath);
-Result readFile(FS_Archive archive, u8* buf, std::u16string path);
-Result writeFile(FS_Archive archive, u8* buf, std::u16string path, u64 size);
+void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath);
 
 Result createDirectory(FS_Archive archive, std::u16string path);
 bool directoryExist(FS_Archive archive, std::u16string path);

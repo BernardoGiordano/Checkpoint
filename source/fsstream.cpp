@@ -82,18 +82,6 @@ Result FSStream::write(void *buf)
 	return FSFILE_Write(handle, NULL, 0, buf, size, FS_WRITE_FLUSH);
 }
 
-u64 getFileSize(FS_Archive archive, std::u16string path)
-{
-	u64 size = 0;
-	FSStream stream(archive, path, FS_OPEN_READ);
-	if (stream.getLoaded())
-	{
-		size = stream.getSize();
-	}
-	stream.close();
-	return size;
-}
-
 bool fileExist(FS_Archive archive, std::u16string path)
 {
 	FSStream stream(archive, path, FS_OPEN_READ);
@@ -102,26 +90,26 @@ bool fileExist(FS_Archive archive, std::u16string path)
 	return exist;
 }
 
-Result copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath)
+void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath)
 {
-	Result res;
-	u64 size = getFileSize(srcArch, srcPath);
-	if (size == 0)
+	u64 size = 0;
+	FSStream input(srcArch, srcPath, FS_OPEN_READ);
+	if (input.getLoaded())
 	{
-		return -1;
+		size = input.getSize();
 	}
 	
-	u8 *buf = new u8[size];
-	res = readFile(srcArch, buf, srcPath);
-	if (R_FAILED(res))
+	FSStream output(dstArch, dstPath, FS_OPEN_WRITE, size);
+	if (output.getLoaded())
 	{
-		return res;
+		u8* buf = new u8[input.getSize()];
+		input.read(buf);
+		output.write(buf);
+		delete[] buf;		
 	}
-	
-	res = writeFile(dstArch, buf, dstPath, size);
-	
-	delete[] buf;
-	return res;
+
+	input.close();
+	output.close();
 }
 
 Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath)
@@ -147,7 +135,6 @@ Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcP
 			if (R_FAILED(res))
 			{
 				quit = true;
-				createError(res, "Failed to create destination directory.");
 			}
 			else
 			{
@@ -158,58 +145,10 @@ Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcP
 		}
 		else
 		{
-			res = copyFile(srcArch, dstArch, newsrc, newdst);
-			if (R_FAILED(res))
-			{
-				quit = true;
-				createError(res, "Failed to copy file.");
-			}
+			copyFile(srcArch, dstArch, newsrc, newdst);
 		}
 	}
 	
-	return res;
-}
-
-Result readFile(FS_Archive archive, u8* buf, std::u16string path)
-{
-	Result res;
-	FSStream stream(archive, path, FS_OPEN_READ);
-	if (stream.getLoaded())
-	{
-		res = stream.read(buf);
-	}
-	else
-	{
-		res = stream.getResult();
-	}
-	
-	stream.close();
-	return res;	
-}
-
-Result writeFile(FS_Archive archive, u8* buf, std::u16string path, u64 size)
-{
-	Result res;
-	if (fileExist(archive, path))
-	{
-		res = FSUSER_DeleteFile(archive, fsMakePath(PATH_UTF16, path.data()));
-		if (R_FAILED(res))
-		{
-			return res;
-		}
-	}
-	
-	FSStream stream(archive, path, FS_OPEN_WRITE, size);
-	if (stream.getLoaded())
-	{
-		res = stream.write(buf);
-	}
-	else
-	{
-		res = stream.getResult();
-	}
-	
-	stream.close();
 	return res;
 }
 
@@ -296,13 +235,12 @@ void backup(size_t index)
 			createError(res, message);
 			
 			FSUSER_DeleteDirectoryRecursively(getArchiveSDMC(), fsMakePath(PATH_UTF16, dstPath.data()));
-			refreshDirectories(index);
 			return;
 		}
 		
 		refreshDirectories(index);
 		
-		createInfo("Success!", "Progresses saved to disk in " + u16tou8(customPath) + " correctly.");
+		createInfo("Success!", "Progress saved to disk in " + u16tou8(customPath) + " correctly.");
 	}
 	else
 	{
