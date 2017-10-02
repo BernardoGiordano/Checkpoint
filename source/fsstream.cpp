@@ -98,11 +98,15 @@ void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, st
 	{
 		size = input.getSize();
 	}
+	else
+	{
+		return;
+	}
 	
 	FSStream output(dstArch, dstPath, FS_OPEN_WRITE, size);
 	if (output.getLoaded())
 	{
-		u8* buf = new u8[input.getSize()];
+		u8* buf = new u8[size];
 		input.read(buf);
 		output.write(buf);
 		delete[] buf;		
@@ -227,7 +231,7 @@ void backup(size_t index)
 		
 		std::u16string copyPath = dstPath + u8tou16("/");
 		
-		res = copyDirectory(archive, getArchiveSDMC(), u8tou16("/"), copyPath.data());
+		res = copyDirectory(archive, getArchiveSDMC(), u8tou16("/"), copyPath);
 		if (R_FAILED(res))
 		{
 			std::string message = mode == MODE_SAVE ? "Failed to backup save." : "Failed to backup extdata.";
