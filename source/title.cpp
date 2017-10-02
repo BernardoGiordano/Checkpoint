@@ -37,10 +37,13 @@ bool Title::load(u64 _id, FS_MediaType _media)
 		return false;
 	}
 	
+	char unique[12] = {0};
+	sprintf(unique, "0x%05X ", (unsigned int)getUniqueId());
+	
 	shortDescription = removeForbiddenCharacters((char16_t*)smdh->applicationTitles[1].shortDescription);
 	longDescription = (char16_t*)smdh->applicationTitles[1].longDescription;
-	backupPath = u8tou16("/3ds/Checkpoint/saves/") + shortDescription;
-	extdataPath = u8tou16("/3ds/Checkpoint/extdata/") + shortDescription;
+	backupPath = u8tou16("/3ds/Checkpoint/saves/") + u8tou16(unique) + shortDescription;
+	extdataPath = u8tou16("/3ds/Checkpoint/extdata/") + u8tou16(unique) + shortDescription;
 
 	accessibleSave = isSaveAccessible(getMediaType(), getLowId(), getHighId());
 	accessibleExtdata = isExtdataAccessible(getExtdataId());
