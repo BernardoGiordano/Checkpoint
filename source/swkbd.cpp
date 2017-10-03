@@ -18,7 +18,7 @@
 
 #include "swkbd.h"
 
-std::u16string getPath(void)
+std::u16string getPath(std::string suggestion)
 {
     static SwkbdState swkbd;
     SwkbdButton button = SWKBD_BUTTON_NONE;
@@ -26,7 +26,7 @@ std::u16string getPath(void)
     
     swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, CUSTOM_PATH_LEN - 1); 
 	swkbdSetHintText(&swkbd, "Choose a name for your backup.");
-	swkbdSetInitialText(&swkbd, getPathDateTime().c_str());
+	swkbdSetInitialText(&swkbd, suggestion.c_str());
 	
     button = swkbdInputText(&swkbd, buf, CUSTOM_PATH_LEN);
     buf[CUSTOM_PATH_LEN - 1] = '\0';

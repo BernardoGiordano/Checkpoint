@@ -52,6 +52,7 @@ int main() {
 			menu->setBottomScroll(false);
 			menu->updateButtonsColor();
 			setEntryType(TITLES);
+			clearSelectedEntries();
 		}
 		
 		if (hidKeysDown() & KEY_X)
@@ -60,9 +61,27 @@ int main() {
 			setMode(getMode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
 		}
 		
+		if (hidKeysDown() & KEY_Y)
+		{
+			addSelectedEntry(menu->getNormalizedIndex());
+		}
+		
 		if (menu->isBackupReleased())
 		{
-			backup(menu->getNormalizedIndex());
+			if (multipleSelectionEnabled())
+			{
+				resetDirectoryListIndex();
+				std::vector<size_t> list = getSelectedEntries();
+				for (size_t i = 0, sz = list.size(); i < sz; i++)
+				{
+					backup(list.at(i));
+				}
+				clearSelectedEntries();
+			}
+			else
+			{
+				backup(menu->getNormalizedIndex());
+			}
 		}
 		
 		if (menu->isRestoreReleased())

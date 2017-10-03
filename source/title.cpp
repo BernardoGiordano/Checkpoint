@@ -27,7 +27,7 @@ static std::vector<Title> titleExtdatas;
 bool Title::load(u64 _id, FS_MediaType _media)
 {
 	bool loadTitle = false;
-	static size_t index = 1;
+	static size_t index = 3;
 	id = _id;
 	media = _media;
 

@@ -23,6 +23,6 @@
 
 #define CUSTOM_PATH_LEN 40
 
-std::u16string getPath(void);
+std::u16string getPath(std::string suggestion);
 
 #endif

@@ -200,7 +200,8 @@ void backup(size_t index)
 	
 	if (R_SUCCEEDED(res))
 	{
-		std::u16string customPath = isNewFolder ? getPath() : u8tou16(getPathFromCell(cellIndex).c_str());
+		std::string suggestion = multipleSelectionEnabled() ? title.getShortDescription() + " - Autobackup" : getPathDateTime();
+		std::u16string customPath = isNewFolder ? getPath(suggestion) : u8tou16(getPathFromCell(cellIndex).c_str());
 		if (!customPath.compare(u8tou16(" ")))
 		{
 			FSUSER_CloseArchive(archive);

@@ -26,12 +26,13 @@ void servicesExit(void)
 	hidExit();
 	pp2d_exit();
 	sdmcExit();
+	romfsExit();
 }
 
 void servicesInit(void)
 {
 	Result res = 0;
-	
+	romfsInit();
 	sdmcInit();
 	pp2d_init();
 	hidInit();
@@ -51,4 +52,6 @@ void servicesInit(void)
 	
 	pp2d_set_screen_color(GFX_TOP, COLOR_BACKGROUND);
 	pp2d_set_screen_color(GFX_BOTTOM, COLOR_BACKGROUND);
+	pp2d_load_texture_png(TEXTURE_CHECKBOX, "romfs:/checkbox.png");
+	pp2d_load_texture_png(TEXTURE_CHECKPOINT, "romfs:/checkpoint.png");
 }

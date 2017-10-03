@@ -25,6 +25,53 @@ static Clickable* buttonBackup;
 static Clickable* buttonRestore;
 static Scrollable* directoryList;
 
+/// Multi selection
+
+static std::vector<size_t> selectedEntries;
+
+std::vector<size_t> getSelectedEntries(void)
+{
+	return selectedEntries;
+}
+
+bool multipleSelectionEnabled(void)
+{
+	return !selectedEntries.empty();
+}
+
+void clearSelectedEntries(void)
+{
+	selectedEntries.clear();
+}
+
+void addSelectedEntry(size_t index)
+{
+	int existing = -1;
+	for (size_t i = 0, sz = selectedEntries.size(); i < sz && existing == -1; i++)
+	{
+		if (selectedEntries.at(i) == index)
+		{
+			existing = (int)i;
+		}
+	}
+	
+	if (existing == -1)
+	{
+		selectedEntries.push_back(index);
+	}
+	else
+	{
+		selectedEntries.erase(selectedEntries.begin() + existing);
+	}
+}
+
+/// Gui implementation
+
+void resetDirectoryListIndex(void)
+{
+	directoryList->resetIndex();
+}
+
 size_t getScrollableIndex(void)
 {
 	return directoryList->getIndex();
@@ -141,11 +188,17 @@ void Gui::draw(void)
 		
 		pp2d_draw_text(4, 3, 0.45f, 0.45f, GREYISH, getTime().c_str());
 		pp2d_draw_text(TOP_WIDTH - 4 - versionLen, 3, 0.45f, 0.45f, GREYISH, version);
-		pp2d_draw_text(TOP_WIDTH - 6 - versionLen - smLen, 2, 0.50f, 0.50f, WHITE, "checkpoint");
+		pp2d_draw_texture(TEXTURE_CHECKPOINT, TOP_WIDTH - 5 - versionLen - 19, 0);
+		pp2d_draw_text(TOP_WIDTH - 6 - versionLen - smLen - 19, 2, 0.50f, 0.50f, WHITE, "checkpoint");
 		
 		for (size_t k = page*entries; k < page*entries + max; k++)
 		{
-			pp2d_draw_texture(getTextureId(k), getSelectorX(k) + 1, getSelectorY(k) + 1);			
+			pp2d_draw_texture(getTextureId(k), getSelectorX(k) + 1, getSelectorY(k) + 1);
+			if (!selectedEntries.empty() && std::find(selectedEntries.begin(), selectedEntries.end(), k) != selectedEntries.end())
+			{
+				pp2d_draw_rectangle(getSelectorX(k) + 28, getSelectorY(k) + 28, 16, 16, WHITE);
+				pp2d_draw_texture_blend(TEXTURE_CHECKBOX, getSelectorX(k) + 24, getSelectorY(k) + 24, RGBA8(51, 51, 51, 255));
+			}
 		}
 		
 		if (getTitlesCount() > 0)
@@ -200,12 +253,13 @@ void Gui::draw(void)
 			
 			pp2d_draw_rectangle(4, 100, 312, 114, GREYISH);
 			pp2d_draw_rectangle(6, 102, 308, 110, COLOR_BARS);
-			pp2d_draw_rectangle(202, 102, 2, 110, GREYISH);
-			pp2d_draw_rectangle(204, 156, 110, 2, GREYISH);
 
 			directoryList->draw();
 			buttonBackup->draw();
 			buttonRestore->draw();
+			
+			pp2d_draw_rectangle(202, 102, 2, 110, GREYISH);
+			pp2d_draw_rectangle(204, 156, 110, 2, GREYISH);
 		}
 		
 		pp2d_draw_text_center(GFX_BOTTOM, 224, 0.46f, 0.46f, WHITE, "Press \uE073 to exit.");

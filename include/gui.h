@@ -21,6 +21,9 @@
 
 #include "common.h"
 
+#define TEXTURE_CHECKPOINT 1
+#define TEXTURE_CHECKBOX 2
+
 #define COLOR_BACKGROUND ABGR8(255, 51, 51, 51)
 #define COLOR_BARS RGBA8(150, 150, 150, 255)
 #define WHITE RGBA8(255, 255, 255, 255)
@@ -31,6 +34,12 @@
 #define GREEN RGBA8(0, 255, 0, 255)
 
 size_t getScrollableIndex(void);
+
+std::vector<size_t> getSelectedEntries(void);
+bool multipleSelectionEnabled(void);
+void clearSelectedEntries(void);
+void addSelectedEntry(size_t index);
+void resetDirectoryListIndex(void);
 
 class Gui
 {
