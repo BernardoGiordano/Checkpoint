@@ -20,7 +20,7 @@
 
 std::string getDate(void)
 {
-	char buf[80];
+	char buf[80] = {0};
 	time_t unixTime = time(NULL);
 	struct tm* timeStruct = gmtime((const time_t*)&unixTime);
 	
@@ -32,7 +32,7 @@ std::string getDate(void)
 
 std::string getTime(void)
 {
-	char buf[80];
+	char buf[80] = {0};
 	time_t unixTime = time(NULL);
 	struct tm* timeStruct = gmtime((const time_t*)&unixTime);
 	
@@ -49,11 +49,11 @@ std::string getDateTime(void)
 
 std::string getPathDateTime(void)
 {
-	char buf[80];
+	char buf[80] = {0};
 	time_t unixTime = time(NULL);
 	struct tm* timeStruct = gmtime((const time_t*)&unixTime);
 	
-	sprintf(buf, "%02i%02i%02i-%02i%02i%02i", timeStruct->tm_mday, timeStruct->tm_mon + 1, timeStruct->tm_year + 1900, timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
+	sprintf(buf, "%02i-%02i-%02i_%02i-%02i-%02i", timeStruct->tm_mday, timeStruct->tm_mon + 1, timeStruct->tm_year + 1900, timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
 	
 	std::string ret(buf);
 	return ret;	
