@@ -33,6 +33,7 @@ void createError(Result res, std::string message)
 int main() {
 	servicesInit();
 	
+	int selectionTimer = 0;
 	menu = new Gui();
 	
 	createThread((ThreadFunc)threadLoadTitles);
@@ -59,11 +60,31 @@ int main() {
 		{
 			menu->resetIndex();
 			setMode(getMode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
+			clearSelectedEntries();
 		}
 		
 		if (hidKeysDown() & KEY_Y)
 		{
 			addSelectedEntry(menu->getNormalizedIndex());
+		}
+		
+		if (hidKeysHeld() & KEY_Y)
+		{
+			selectionTimer++;
+		}
+		else
+		{
+			selectionTimer = 0;
+		}
+		
+		if (selectionTimer > 90)
+		{
+			clearSelectedEntries();
+			for (size_t i = 0, sz = getTitlesCount(); i < sz; i++)
+			{
+				addSelectedEntry(i);
+			}
+			selectionTimer = 0;
 		}
 		
 		if (menu->isBackupReleased())
@@ -86,7 +107,14 @@ int main() {
 		
 		if (menu->isRestoreReleased())
 		{
-			restore(menu->getNormalizedIndex());
+			if (multipleSelectionEnabled())
+			{
+				clearSelectedEntries();
+			}
+			else
+			{
+				restore(menu->getNormalizedIndex());
+			}
 		}
 		
 		menu->updateSelector();
