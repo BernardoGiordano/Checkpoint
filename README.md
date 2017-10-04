@@ -1,6 +1,6 @@
 # Checkpoint
 
-A fast and simple save manager for cfw/rosalina written in C++.
+A fast and simple save manager for cfw/Rosalina-based Homebrew Launchers written in C++.
 
 ![](https://i.imgur.com/dl6ihmC.png)
 
@@ -8,25 +8,27 @@ A fast and simple save manager for cfw/rosalina written in C++.
 
 Checkpoint is created with the idea of simplicity and efficiency. The UI has been designed to condense more option as possible but keeping it simple to do operations with.
 
-Moreover, Checkpoint is really lightweight and it's built using very few (and up-to-date) libraries. It also doesn't have any assets in it, while being packaged with a nice graphic user interface.
+Moreover, Checkpoint is really lightweight and it's built using very few (and up-to-date) libraries. It also does only have a minimum amount of assets in it, while being packaged with a nice graphic user interface.
 
-Checkpoint supports normal titles and demos. It also automatically checks and filters homebrew titles which may not have any save archive to backup or restore: this is done without the need of external lists of titles to filter needing to be updated periodically with new titles. For this reason, Checkpoint doesn't need the user maintenance to always be fully functional.
+Checkpoint supports DS cartridges, normal titles and demos. It also automatically checks and filters homebrew titles which may not have any save archive to backup or restore: this is done without the need of external lists of titles to filter needing to be updated periodically with new titles. For this reason, Checkpoint doesn't need the user maintenance to always be fully functional.
 
 ## Working path
 
 Checkpoint uses the following folders to store the files it generates. Note that all the working directories are automatically generated on first launch (or when Checkpoint finds a new title that doesn't have a working directory yet).
 
-* **`sdmc:/Checkpoint`**: root path
-* **`sdmc:/Checkpoint/saves/<game title>`**: root path for all the save backups for a generic game
-* **`sdmc:/CHeckpoint/extdata/<game title>`**: root path for all the extdata backups for a generic game
+* **`sdmc:/3ds/Checkpoint`**: root path
+* **`sdmc:/3ds/Checkpoint/saves/<unique id> <game title>`**: root path for all the save backups for a generic game
+* **`sdmc:/3ds/Checkpoint/extdata/<unique id> <game title>`**: root path for all the extdata backups for a generic game
 
 ## Usage
 
-You can use Checkpoint with both cfw and rosalina-based Homebrew Launcher. *hax-based Homebrew Launcher entrypoint is not supported by Checkpoint.
+You can use Checkpoint with both cfw and Rosalina-based Homebrew Launcher. *hax-based Homebrew Launchers are not supported by Checkpoint.
 
 The first launch will take a long amount of time (usually 2-3 minutes depending on how many titles you have installed), due to the working directories being created. The next time you launch Checkpoint it will be significatively faster.
 
 You can scroll between the title list with the DPAD/LR and target a title with A when the selector is on it. Now, you can use the DPAD or the touchscreen to select a target backup to restore/overwrite.
+
+If you want to have DS cartridge recognition with Rosalina-based Homebrew Launchers: inject the Homebrew Launcher in a title with has access to DS saves.
 
 ## Issues
 
@@ -43,3 +45,5 @@ This project is licensed under the GNU GPLv3. See [LICENSE.md](https://github.co
 ## Credits
 
 Even though this is the result of independent research and work, this couldn't be possible without J-D-K's [JKSM](https://github.com/J-D-K/JKSM), which is an incredible piece of software and you all should be using it. Best regards JK, hope you're fine.
+
+TuxSH for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which the code has been ripped.

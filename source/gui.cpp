@@ -196,8 +196,8 @@ void Gui::draw(void)
 			pp2d_draw_texture(getTextureId(k), getSelectorX(k) + 1, getSelectorY(k) + 1);
 			if (!selectedEntries.empty() && std::find(selectedEntries.begin(), selectedEntries.end(), k) != selectedEntries.end())
 			{
-				pp2d_draw_rectangle(getSelectorX(k) + 28, getSelectorY(k) + 28, 16, 16, WHITE);
-				pp2d_draw_texture_blend(TEXTURE_CHECKBOX, getSelectorX(k) + 24, getSelectorY(k) + 24, RGBA8(51, 51, 51, 255));
+				pp2d_draw_rectangle(getSelectorX(k) + 31, getSelectorY(k) + 31, 16, 16, WHITE);
+				pp2d_draw_texture_blend(TEXTURE_CHECKBOX, getSelectorX(k) + 27, getSelectorY(k) + 27, RGBA8(51, 51, 51, 255));
 			}
 		}
 		
@@ -206,13 +206,13 @@ void Gui::draw(void)
 			drawSelector();
 		}
 		
-		static const float p1width = pp2d_get_text_width("\uE000 to enter target. \uE002 to toggle ", 0.47f, 0.47f);
+		static const float p1width = pp2d_get_text_width("\uE000 to enter target. \uE002 to ", 0.47f, 0.47f);
 		static const float p2width = pp2d_get_text_width("extdata", 0.47f, 0.47f);
-		static const float p3width = pp2d_get_text_width(". \uE006 to move.", 0.47f, 0.47f);
+		static const float p3width = pp2d_get_text_width(". \uE006 to move. \uE003 to multiselect.", 0.47f, 0.47f);
 		static const float border = (TOP_WIDTH - p1width - p2width - p3width) / 2;
-		pp2d_draw_text(border, 224, 0.47f, 0.47f, WHITE, "\uE000 to enter target. \uE002 to toggle ");
+		pp2d_draw_text(border, 224, 0.47f, 0.47f, WHITE, "\uE000 to enter target. \uE002 to ");
 		pp2d_draw_text(border + p1width, 224, 0.47f, 0.47f, getMode() == MODE_SAVE ? WHITE : RED, "extdata");
-		pp2d_draw_text(border + p1width + p2width, 224, 0.47f, 0.47f, WHITE, ". \uE006 to move.");
+		pp2d_draw_text(border + p1width + p2width, 224, 0.47f, 0.47f, WHITE, ". \uE006 to move. \uE003 to multiselect.");
 		
 		info.draw();
 		error.draw();
