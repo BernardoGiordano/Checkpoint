@@ -20,6 +20,7 @@
 
 void servicesExit(void)
 {
+	pxiDevExit();
 	archiveExit();
 	amExit();
 	srvExit();
@@ -38,6 +39,7 @@ void servicesInit(void)
 	hidInit();
 	srvInit();
 	amInit();
+	pxiDevInit();
 	
 	res = archiveInit();
 	if (R_FAILED(res))
@@ -54,4 +56,5 @@ void servicesInit(void)
 	pp2d_set_screen_color(GFX_BOTTOM, COLOR_BACKGROUND);
 	pp2d_load_texture_png(TEXTURE_CHECKBOX, "romfs:/checkbox.png");
 	pp2d_load_texture_png(TEXTURE_CHECKPOINT, "romfs:/checkpoint.png");
+	pp2d_load_texture_png(TEXTURE_TWLCARD, "romfs:/twlcart.png");
 }

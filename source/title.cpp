@@ -24,32 +24,103 @@ static void loadTextureIcon(smdh_s *smdh, size_t i);
 static std::vector<Title> titleSaves;
 static std::vector<Title> titleExtdatas;
 
-bool Title::load(u64 _id, FS_MediaType _media)
+bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 {
 	bool loadTitle = false;
-	static size_t index = 3;
+	static size_t index = TEXTURE_FIRST_FREE_INDEX;
 	id = _id;
 	media = _media;
+	card = _card;
 
-	smdh_s *smdh = loadSMDH(getLowId(), getHighId(), media);
-	if (smdh == NULL)
+	if (card == CARD_CTR)
 	{
-		return false;
+		smdh_s *smdh = loadSMDH(getLowId(), getHighId(), media);
+		if (smdh == NULL)
+		{
+			return false;
+		}
+		
+		char unique[12] = {0};
+		sprintf(unique, "0x%05X ", (unsigned int)getUniqueId());
+		
+		shortDescription = removeForbiddenCharacters((char16_t*)smdh->applicationTitles[1].shortDescription);
+		longDescription = (char16_t*)smdh->applicationTitles[1].longDescription;
+		backupPath = u8tou16("/3ds/Checkpoint/saves/") + u8tou16(unique) + shortDescription;
+		extdataPath = u8tou16("/3ds/Checkpoint/extdata/") + u8tou16(unique) + shortDescription;
+
+		accessibleSave = isSaveAccessible(getMediaType(), getLowId(), getHighId());
+		accessibleExtdata = isExtdataAccessible(getExtdataId());
+		
+		if (accessibleSave)
+		{
+			loadTitle = true;
+			if (!directoryExist(getArchiveSDMC(), backupPath))
+			{
+				Result res = createDirectory(getArchiveSDMC(), backupPath);
+				if (R_FAILED(res))
+				{
+					createError(res, "Failed to create backup directory.");
+				}
+			}		
+		}
+
+		if (accessibleExtdata)
+		{
+			loadTitle = true;
+			if (!directoryExist(getArchiveSDMC(), extdataPath))
+			{
+				Result res = createDirectory(getArchiveSDMC(), extdataPath);
+				if (R_FAILED(res))
+				{
+					createError(res, "Failed to create backup directory.");
+				}
+			}
+		}
+		
+		if (loadTitle)
+		{
+			loadTextureIcon(smdh, index);
+			textureId = index;
+			index++;
+		}
+		
+		delete smdh;		
 	}
-	
-	char unique[12] = {0};
-	sprintf(unique, "0x%05X ", (unsigned int)getUniqueId());
-	
-	shortDescription = removeForbiddenCharacters((char16_t*)smdh->applicationTitles[1].shortDescription);
-	longDescription = (char16_t*)smdh->applicationTitles[1].longDescription;
-	backupPath = u8tou16("/3ds/Checkpoint/saves/") + u8tou16(unique) + shortDescription;
-	extdataPath = u8tou16("/3ds/Checkpoint/extdata/") + u8tou16(unique) + shortDescription;
-
-	accessibleSave = isSaveAccessible(getMediaType(), getLowId(), getHighId());
-	accessibleExtdata = isExtdataAccessible(getExtdataId());
-	
-	if (accessibleSave)
+	else
 	{
+		u8* headerData = new u8[0x3B4];
+		Result res = FSUSER_GetLegacyRomHeader(media, 0LL, headerData);
+		if (R_FAILED(res))
+		{
+			delete[] headerData;
+			return false;
+		}
+		
+		char _cardTitle[14] = {0};
+		char _gameCode[6] = {0};
+		
+		std::copy(headerData, headerData + 12, _cardTitle);
+		std::copy(headerData + 12, headerData + 16, _gameCode);
+		_cardTitle[13] = '\0';
+		_gameCode[5] = '\0';
+		
+		res = SPIGetCardType(&cardType, (_gameCode[0] == 'I') ? 1 : 0);
+		if (R_FAILED(res))
+		{
+			delete[] headerData;
+			return false;
+		}
+		
+		delete[] headerData;
+		
+		shortDescription = removeForbiddenCharacters(u8tou16(_cardTitle));
+		longDescription = shortDescription;
+		backupPath = u8tou16("/3ds/Checkpoint/saves/") + u8tou16(_gameCode) + u8tou16(" ") + shortDescription;
+		extdataPath = backupPath;
+		
+		accessibleSave = true;
+		accessibleExtdata = false;
+		
 		loadTitle = true;
 		if (!directoryExist(getArchiveSDMC(), backupPath))
 		{
@@ -58,30 +129,10 @@ bool Title::load(u64 _id, FS_MediaType _media)
 			{
 				createError(res, "Failed to create backup directory.");
 			}
-		}		
-	}
-
-	if (accessibleExtdata)
-	{
-		loadTitle = true;
-		if (!directoryExist(getArchiveSDMC(), extdataPath))
-		{
-			Result res = createDirectory(getArchiveSDMC(), extdataPath);
-			if (R_FAILED(res))
-			{
-				createError(res, "Failed to create backup directory.");
-			}
 		}
+		
+		textureId = TEXTURE_TWLCARD;
 	}
-	
-	if (loadTitle)
-	{
-		loadTextureIcon(smdh, index);
-		textureId = index;
-		index++;
-	}
-	
-	delete smdh;
 	
 	refreshDirectories();
 	
@@ -231,6 +282,16 @@ FS_MediaType Title::getMediaType(void)
 	return media;
 }
 
+FS_CardType Title::getCardType(void)
+{
+	return card;
+}
+
+CardType Title::getSPICardType(void)
+{
+	return cardType;
+}
+
 size_t Title::getTextureId(void)
 {
 	return textureId;
@@ -257,7 +318,7 @@ void loadTitles(void)
 		if (checkHigh(ids[i]))
 		{
 			Title title;
-			if (title.load(ids[i], MEDIATYPE_SD))
+			if (title.load(ids[i], MEDIATYPE_SD, CARD_CTR))
 			{
 				if (title.getAccessibleSave())
 				{
@@ -280,27 +341,46 @@ void loadTitles(void)
 		return l.getShortDescription() < r.getShortDescription();
 	});
 	
-	AM_GetTitleCount(MEDIATYPE_GAME_CARD, &count);
-	if (count > 0)
+	FS_CardType cardType;
+	Result res = FSUSER_GetCardType(&cardType);
+	if (R_FAILED(res))
 	{
-		AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, ids);	
-		if (checkHigh(ids[0]))
+		return;
+	}
+	
+	if (cardType == CARD_CTR)
+	{
+		AM_GetTitleCount(MEDIATYPE_GAME_CARD, &count);
+		if (count > 0)
 		{
-			Title title;
-			if (title.load(ids[0], MEDIATYPE_GAME_CARD))
+			AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, ids);	
+			if (checkHigh(ids[0]))
 			{
-				if (title.getAccessibleSave())
+				Title title;
+				if (title.load(ids[0], MEDIATYPE_GAME_CARD, cardType))
 				{
-					titleSaves.insert(titleSaves.begin(), title);
-				}
-				
-				if (title.getAccessibleExtdata())
-				{
-					titleExtdatas.insert(titleExtdatas.begin(), title);
+					if (title.getAccessibleSave())
+					{
+						titleSaves.insert(titleSaves.begin(), title);
+					}
+					
+					if (title.getAccessibleExtdata())
+					{
+						titleExtdatas.insert(titleExtdatas.begin(), title);
+					}
 				}
 			}
 		}
 	}
+	else
+	{
+		Title title;
+		if (title.load(0, MEDIATYPE_GAME_CARD, cardType))
+		{
+			titleSaves.insert(titleSaves.begin(), title);
+		}
+	}
+
 }
 
 void getTitle(Title &dst, int i)

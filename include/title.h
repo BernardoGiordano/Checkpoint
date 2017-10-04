@@ -19,12 +19,13 @@
 #ifndef TITLE_H
 #define TITLE_H
 
+#include "spi.h"
 #include "common.h"
 
 class Title
 {
 public:
-	bool load(u64 id, FS_MediaType mediaType);
+	bool load(u64 id, FS_MediaType mediaType, FS_CardType cardType);
 	bool getAccessibleSave(void);
 	bool getAccessibleExtdata(void);
 	
@@ -44,6 +45,8 @@ public:
 	u64 getId(void);
 	u32 getExtdataId(void);
 	FS_MediaType getMediaType(void);
+	FS_CardType getCardType(void);
+	CardType getSPICardType(void);
 	size_t getTextureId(void);
 	
 private:
@@ -58,6 +61,8 @@ private:
 	std::vector<std::u16string> extdatas;
 	u64 id;
 	FS_MediaType media;
+	FS_CardType card;
+	CardType cardType;
 	size_t textureId;
 };
 

@@ -40,6 +40,7 @@
 #include "../source/pp2d/pp2d/pp2d.h"
 #include "scrollable.h"
 #include "smdh.h"
+#include "spi.h"
 #include "stringutil.h"
 #include "swkbd.h"
 #include "thread.h"
