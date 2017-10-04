@@ -42,5 +42,10 @@ std::u16string removeForbiddenCharacters(std::u16string src)
 			src[i] = ' ';
 		}
 	}
+	
+	size_t i;
+	for (i = src.length() - 1; i > 0 && src[i] == L' '; i--);
+	src.erase(i + 1, src.length() - i);
+
 	return src;
 }
