@@ -202,7 +202,7 @@ void backup(size_t index)
 		
 		if (R_SUCCEEDED(res))
 		{
-			std::string suggestion = multipleSelectionEnabled() ? title.getShortDescription() + " - Autobackup" : getPathDateTime();
+			std::string suggestion = multipleSelectionEnabled() ? title.getShortDescription() + " - Autobackup " + getCleanDateTime() : getPathDateTime();
 			
 			std::u16string customPath;
 			if (multipleSelectionEnabled())

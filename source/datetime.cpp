@@ -18,18 +18,6 @@
 
 #include "datetime.h"
 
-std::string getDate(void)
-{
-	char buf[80] = {0};
-	time_t unixTime = time(NULL);
-	struct tm* timeStruct = gmtime((const time_t*)&unixTime);
-	
-	sprintf(buf, "%i-%i-%i", timeStruct->tm_mday, timeStruct->tm_mon + 1, timeStruct->tm_year + 1900);
-	
-	std::string ret(buf);
-	return ret;
-}
-
 std::string getTime(void)
 {
 	char buf[80] = {0};
@@ -42,9 +30,16 @@ std::string getTime(void)
 	return ret;
 }
 
-std::string getDateTime(void)
+std::string getCleanDateTime(void)
 {
-	return getDate() + " " + getTime();
+	char buf[80] = {0};
+	time_t unixTime = time(NULL);
+	struct tm* timeStruct = gmtime((const time_t*)&unixTime);
+	
+	sprintf(buf, "%02i%02i%02i_%02i%02i%02i", timeStruct->tm_mday, timeStruct->tm_mon + 1, timeStruct->tm_year + 1900, timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
+	
+	std::string ret(buf);
+	return ret;	
 }
 
 std::string getPathDateTime(void)
