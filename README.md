@@ -2,7 +2,7 @@
 
 A fast and simple save manager for cfw/Rosalina-based Homebrew Launchers written in C++.
 
-![](https://i.imgur.com/dl6ihmC.png)
+![](https://i.imgur.com/Nttk8hX.png)
 
 ## Why using Checkpoint?
 
@@ -46,4 +46,4 @@ This project is licensed under the GNU GPLv3. See [LICENSE.md](https://github.co
 
 Even though this is the result of independent research and work, this couldn't be possible without J-D-K's [JKSM](https://github.com/J-D-K/JKSM), which is an incredible piece of software and you all should be using it. Best regards JK, hope you're fine.
 
-TuxSH for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which the code has been ripped.
+TuxSH for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which SPI code has been taken.
