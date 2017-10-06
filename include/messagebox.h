@@ -16,39 +16,23 @@
 >   See LICENSE for information.
 */
 
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef MESSAGEBOX_H
+#define MESSAGEBOX_H
 
-#include <3ds.h>
-#include <algorithm>
-#include <codecvt>
-#include <locale>
-#include <sstream>
-#include <stdlib.h>
-#include <string>
-#include <sys/stat.h>
-#include <vector>
-#include "archive.h"
-#include "clickable.h"
-#include "datetime.h"
-#include "directory.h"
-#include "error.h"
-#include "fsstream.h"
-#include "gui.h"
-#include "hid.h"
-#include "info.h"
-#include "messagebox.h"
-#include "../source/pp2d/pp2d/pp2d.h"
-#include "scrollable.h"
-#include "smdh.h"
-#include "spi.h"
-#include "stringutil.h"
-#include "swkbd.h"
-#include "thread.h"
-#include "title.h"
-#include "util.h"
+#include "common.h"
 
-void createInfo(std::string title, std::string message);
-void createError(Result res, std::string message);
+class MessageBox
+{
+public:
+	MessageBox(u32 colorbg, u32 colormessage, gfxScreen_t screen);
+	void push_message(std::string);
+	void draw(void);
+
+private:
+	std::vector<std::string> messageList;
+	u32 colorbg;
+	u32 colormessage;
+	gfxScreen_t screen;
+};
 
 #endif

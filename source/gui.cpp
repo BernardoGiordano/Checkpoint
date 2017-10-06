@@ -23,6 +23,7 @@ static Info info;
 static Error error;
 static Clickable* buttonBackup;
 static Clickable* buttonRestore;
+static MessageBox* messageBox;
 static Scrollable* directoryList;
 
 /// Multi selection
@@ -86,7 +87,15 @@ Gui::Gui(void)
 	error.init(0, "");
 	buttonBackup = new Clickable(204, 102, 110, 54, WHITE, bottomScrollEnabled ? BLACK : GREYISH, "Backup \uE008", true);
 	buttonRestore = new Clickable(204, 158, 110, 54, WHITE, bottomScrollEnabled ? BLACK : GREYISH, "Restore \uE007", true);
+	messageBox = new MessageBox(COLOR_BARS, WHITE, GFX_TOP);
 	directoryList = new Scrollable(6, 102, 196, 110, 5);
+	
+	messageBox->push_message("Press \uE000 to enter target.");
+	messageBox->push_message("Press \uE001 to exit target or deselect all titles.");
+	messageBox->push_message("Press \uE003 to multiselect a title.");
+	messageBox->push_message("Hold \uE003 to multiselect all titles.");
+	messageBox->push_message("Press \uE006 to move between titles.");
+	messageBox->push_message("Press \uE004\uE005 to switch page.");
 }
 
 void Gui::createInfo(std::string title, std::string message)
@@ -206,16 +215,21 @@ void Gui::draw(void)
 			drawSelector();
 		}
 		
-		static const float p1width = pp2d_get_text_width("\uE000 to enter target. \uE002 to ", 0.47f, 0.47f);
+		static const float p1width = pp2d_get_text_width("Hold SELECT to see commands. Press \uE002 to ", 0.47f, 0.47f);
 		static const float p2width = pp2d_get_text_width("extdata", 0.47f, 0.47f);
-		static const float p3width = pp2d_get_text_width(". \uE006 to move. \uE003 to multiselect.", 0.47f, 0.47f);
+		static const float p3width = pp2d_get_text_width(".", 0.47f, 0.47f);
 		static const float border = (TOP_WIDTH - p1width - p2width - p3width) / 2;
-		pp2d_draw_text(border, 224, 0.47f, 0.47f, WHITE, "\uE000 to enter target. \uE002 to ");
+		pp2d_draw_text(border, 224, 0.47f, 0.47f, WHITE, "Hold SELECT to see commands. Press \uE002 to ");
 		pp2d_draw_text(border + p1width, 224, 0.47f, 0.47f, getMode() == MODE_SAVE ? WHITE : RED, "extdata");
-		pp2d_draw_text(border + p1width + p2width, 224, 0.47f, 0.47f, WHITE, ". \uE006 to move. \uE003 to multiselect.");
+		pp2d_draw_text(border + p1width + p2width, 224, 0.47f, 0.47f, WHITE, ".");
 		
 		info.draw();
 		error.draw();
+		
+		if (hidKeysHeld() & KEY_SELECT)
+		{
+			messageBox->draw();
+		}
 		
 		pp2d_draw_on(GFX_BOTTOM);
 		pp2d_draw_rectangle(0, 0, 320, 19, COLOR_BARS);
