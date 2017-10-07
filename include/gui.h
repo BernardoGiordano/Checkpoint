@@ -43,6 +43,8 @@ void clearSelectedEntries(void);
 void addSelectedEntry(size_t index);
 void resetDirectoryListIndex(void);
 
+void drawCopy(std::u16string src);
+
 class Gui
 {
 public:

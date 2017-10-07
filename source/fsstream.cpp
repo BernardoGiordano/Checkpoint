@@ -149,6 +149,7 @@ Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcP
 		}
 		else
 		{
+			drawCopy(items.getItem(i));
 			copyFile(srcArch, dstArch, newsrc, newdst);
 		}
 	}
@@ -256,8 +257,6 @@ void backup(size_t index)
 			}
 			
 			refreshDirectories(index);
-			
-			createInfo("Success!", "Progress saved to disk in " + u16tou8(customPath) + " correctly.");
 		}
 		else
 		{
@@ -346,8 +345,9 @@ void backup(size_t index)
 		delete[] saveFile;
 		stream.close();
 		refreshDirectories(index);
-		createInfo("Success!", "Progress saved to disk in " + u16tou8(customPath) + " correctly.");
 	}
+	
+	createInfo("Success!", "Progress correctly saved to disk.");
 }
 
 void restore(size_t index)

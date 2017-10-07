@@ -31,6 +31,16 @@ void MessageBox::push_message(std::string newmessage)
 	messageList.push_back(newmessage);
 }
 
+void MessageBox::clear(void)
+{
+	messageList.clear();
+}
+
+bool MessageBox::isEmpty(void)
+{
+	return messageList.empty();
+}
+
 void MessageBox::draw(void)
 {
 	static const float size = 0.6f;

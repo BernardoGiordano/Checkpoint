@@ -24,6 +24,7 @@ static Error error;
 static Clickable* buttonBackup;
 static Clickable* buttonRestore;
 static MessageBox* messageBox;
+static MessageBox* copyList;
 static Scrollable* directoryList;
 
 /// Multi selection
@@ -66,6 +67,17 @@ void addSelectedEntry(size_t index)
 	}
 }
 
+void drawCopy(std::u16string src)
+{
+	copyList->clear();
+	copyList->push_message("Copying " + u16tou8(src));
+	
+	pp2d_begin_draw(GFX_TOP);
+	copyList->draw();
+	pp2d_draw_on(GFX_BOTTOM);
+	pp2d_end_draw();
+}
+
 /// Gui implementation
 
 void resetDirectoryListIndex(void)
@@ -88,6 +100,7 @@ Gui::Gui(void)
 	buttonBackup = new Clickable(204, 102, 110, 54, WHITE, bottomScrollEnabled ? BLACK : GREYISH, "Backup \uE008", true);
 	buttonRestore = new Clickable(204, 158, 110, 54, WHITE, bottomScrollEnabled ? BLACK : GREYISH, "Restore \uE007", true);
 	messageBox = new MessageBox(COLOR_BARS, WHITE, GFX_TOP);
+	copyList = new MessageBox(COLOR_BARS, WHITE, GFX_TOP);
 	directoryList = new Scrollable(6, 102, 196, 110, 5);
 	
 	messageBox->push_message("Press \uE000 to enter target.");
@@ -215,11 +228,11 @@ void Gui::draw(void)
 			drawSelector();
 		}
 		
-		static const float p1width = pp2d_get_text_width("Hold SELECT to see commands. Press \uE002 to ", 0.47f, 0.47f);
+		static const float p1width = pp2d_get_text_width("Hold SELECT to see commands. Press \uE002 for ", 0.47f, 0.47f);
 		static const float p2width = pp2d_get_text_width("extdata", 0.47f, 0.47f);
 		static const float p3width = pp2d_get_text_width(".", 0.47f, 0.47f);
 		static const float border = (TOP_WIDTH - p1width - p2width - p3width) / 2;
-		pp2d_draw_text(border, 224, 0.47f, 0.47f, WHITE, "Hold SELECT to see commands. Press \uE002 to ");
+		pp2d_draw_text(border, 224, 0.47f, 0.47f, WHITE, "Hold SELECT to see commands. Press \uE002 for ");
 		pp2d_draw_text(border + p1width, 224, 0.47f, 0.47f, getMode() == MODE_SAVE ? WHITE : RED, "extdata");
 		pp2d_draw_text(border + p1width + p2width, 224, 0.47f, 0.47f, WHITE, ".");
 		

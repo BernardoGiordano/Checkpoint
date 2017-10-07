@@ -26,6 +26,8 @@ class MessageBox
 public:
 	MessageBox(u32 colorbg, u32 colormessage, gfxScreen_t screen);
 	void push_message(std::string);
+	bool isEmpty(void);
+	void clear(void);
 	void draw(void);
 
 private:
