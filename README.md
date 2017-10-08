@@ -8,7 +8,7 @@ A fast and simple save manager for cfw/Rosalina-based Homebrew Launchers written
 
 Checkpoint is created with the ideas of simplicity and efficiency. The UI has been designed to condense as many options as possible, while keeping it simple to work with.
 
-Moreover, Checkpoint is extremely lightweight and it's built using very few (and up-to-date) libraries. It contains minimal assets, while being packaged with a nice graphic user interface.
+Moreover, Checkpoint is extremely lightweight and is built using very few (and up-to-date) libraries. It contains minimal assets, while being packaged with a nice graphic user interface.
 
 Checkpoint supports DS cartridges, normal titles, and demos. It also automatically checks and filters homebrew titles which may not have a save archive to backup or restore, which is done without an external title list and filters. For this reason, Checkpoint doesn't need constant user maintenance to retain full functionality.
 
