@@ -105,8 +105,13 @@ bool fileExist(FS_Archive archive, std::u16string path)
 
 void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath)
 {
+	u32 size = 0;
 	FSStream input(srcArch, srcPath, FS_OPEN_READ);
-	if (!input.getLoaded())
+	if (input.getLoaded())
+	{
+		size = input.getSize() > BUFFER_SIZE ? BUFFER_SIZE : input.getSize();
+	}
+	else
 	{
 		return;
 	}
@@ -114,9 +119,9 @@ void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, st
 	FSStream output(dstArch, dstPath, FS_OPEN_WRITE, input.getSize());
 	if (output.getLoaded())
 	{
-		u8* buf = new u8[BUFFER_SIZE];
+		u8* buf = new u8[size];
 		do {
-			u32 rd = input.read(buf, BUFFER_SIZE);
+			u32 rd = input.read(buf, size);
 			output.write(buf, rd);
 		} while(input.isEndOfFile());
 
