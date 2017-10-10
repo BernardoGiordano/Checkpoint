@@ -21,6 +21,8 @@
 
 #include "common.h"
 
+#define BUFFER_SIZE 0x100000
+
 bool fileExist(FS_Archive archive, std::u16string path);
 
 void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath);
@@ -36,19 +38,22 @@ class FSStream
 {
 public:
 	FSStream(FS_Archive archive, std::u16string path, u32 flags);
-	FSStream(FS_Archive archive, std::u16string path, u32 flags, u64 size);
+	FSStream(FS_Archive archive, std::u16string path, u32 flags, u32 size);
 	
 	Result close(void);
 	bool getLoaded(void);
 	Result getResult(void);
 	u32 getSize(void);
 	
-	Result read(void *buf);
-	Result write(void *buf);
+	u32 read(void *buf, u32 size);
+	u32 write(void *buf, u32 size);
+	
+	bool isEndOfFile(void);
 
 private:
 	Handle handle;
-	u64 size;
+	u32 size;
+	u32 offset;
 	Result res;
 	bool loaded;
 };
