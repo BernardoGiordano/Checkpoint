@@ -92,7 +92,7 @@ u32 FSStream::write(void *buf, u32 sz)
 
 bool FSStream::isEndOfFile(void)
 {
-	return size > offset;
+	return offset > size;
 }
 
 bool fileExist(FS_Archive archive, std::u16string path)
@@ -326,6 +326,8 @@ void backup(size_t index)
 		
 		std::u16string copyPath = dstPath + u8tou16("/") + u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav");
 		
+		drawCopy(u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav"));
+		
 		u8* saveFile = new u8[saveSize];
 		for (u32 i = 0; i < saveSize/sectorSize; ++i)
 		{
@@ -447,6 +449,8 @@ void restore(size_t index)
 
 		u8* saveFile = new u8[saveSize];
 		FSStream stream(getArchiveSDMC(), srcPath, FS_OPEN_READ);
+		
+		drawCopy(u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav"));
 		
 		if (stream.getLoaded())
 		{
