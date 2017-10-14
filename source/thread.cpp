@@ -20,6 +20,8 @@
 
 static std::vector<Thread> threads;
 
+static volatile bool isLoadingTitles = false;
+
 void createThread(ThreadFunc entrypoint)
 {
 	s32 prio = 0;
@@ -39,5 +41,13 @@ void destroyThreads(void)
 
 void threadLoadTitles(void)
 {
+	// don't load titles while they're loading
+	if (isLoadingTitles)
+	{
+		return;
+	}
+
+	isLoadingTitles = true;
 	loadTitles();
+	isLoadingTitles = false;
 }
