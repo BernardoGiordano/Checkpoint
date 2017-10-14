@@ -34,6 +34,7 @@ int main() {
 	servicesInit();
 	
 	int selectionTimer = 0;
+	int refreshTimer = 0;
 	menu = new Gui();
 	
 	createThread((ThreadFunc)threadLoadTitles);
@@ -85,6 +86,21 @@ int main() {
 				addSelectedEntry(i);
 			}
 			selectionTimer = 0;
+		}
+
+		if (hidKeysHeld() & KEY_B)
+		{
+			refreshTimer++;
+		}
+		else
+		{
+			refreshTimer = 0;
+		}
+
+		if (refreshTimer > 90)
+		{
+			createThread((ThreadFunc)threadLoadTitles);
+			refreshTimer = 0;
 		}
 		
 		if (menu->isBackupReleased())

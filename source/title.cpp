@@ -305,6 +305,10 @@ static bool checkHigh(u64 id)
 
 void loadTitles(void)
 {
+	// on refreshing
+	titleSaves.clear();
+	titleExtdatas.clear();
+
 	u32 count = 0;
 	AM_GetTitleCount(MEDIATYPE_SD, &count);
 	titleSaves.reserve(count + 1);
