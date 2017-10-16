@@ -339,7 +339,7 @@ Result SPIGetCardType(CardType* type, int infrared) {
 	u32 tries = 0;
 	CardType t = (infrared == 1) ? FLASH_INFRARED_DUMMY : FLASH_STD_DUMMY;
 	Result res; 
-	u32 jedecOrderedList[] = { 0x204012, 0x621600, 0x204013, 0x621100, 0x204014, 0x202017};
+	u32 jedecOrderedList[] = {0x204012, 0x621600, 0x204013, 0x621100, 0x204014, 0x202017};
 	
 	u32 maxTries = (infrared == -1) ? 2 : 1; // note: infrared = -1 fails 1/3 of the time
 	while(tries < maxTries){ 

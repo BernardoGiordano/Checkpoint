@@ -30,6 +30,8 @@ You can scroll between the title list with the DPAD/LR and target a title with A
 
 If you want to have DS cartridge recognition with Rosalina-based Homebrew Launchers: inject the Homebrew Launcher in a title which has access to DS saves.
 
+**Notice**: You mustn't have a flashcard inserted when launching Checkpoint, due to possible incompatibilities that could cause some threads to not end, possibly causing crashes.
+
 ## Issues
 
 Checkpoint displays error codes when something weird happens or operations fail. If you have any issues, please ensure they haven't already been addressed, and report the error code and a summary of your operations to reproduce it.

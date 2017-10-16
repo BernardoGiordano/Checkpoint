@@ -219,7 +219,7 @@ void backup(size_t index)
 		
 		if (R_SUCCEEDED(res))
 		{
-			std::string suggestion = multipleSelectionEnabled() ? "Autobackup " + getCleanDateTime() : getPathDateTime();
+			std::string suggestion = getPathDateTime();
 			
 			std::u16string customPath;
 			if (multipleSelectionEnabled())
@@ -287,7 +287,7 @@ void backup(size_t index)
 		u32 saveSize = SPIGetCapacity(cardType);
 		u32 sectorSize = (saveSize < 0x10000) ? saveSize : 0x10000;
 		
-		std::string suggestion = multipleSelectionEnabled() ? title.getShortDescription() + " - Autobackup" : getPathDateTime();
+		std::string suggestion = getPathDateTime();
 		
 		std::u16string customPath;
 		if (multipleSelectionEnabled())

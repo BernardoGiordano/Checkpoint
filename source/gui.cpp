@@ -109,7 +109,7 @@ Gui::Gui(void)
 	messageBox->push_message("Hold \uE003 to multiselect all titles.");
 	messageBox->push_message("Press \uE006 to move between titles.");
 	messageBox->push_message("Press \uE004\uE005 to switch page.");
-	messageBox->push_message("Hold \uE001 to refresh titles");
+	messageBox->push_message("Hold \uE001 to refresh titles.");
 }
 
 void Gui::createInfo(std::string title, std::string message)

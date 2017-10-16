@@ -22,7 +22,6 @@
 #include "common.h"
 
 std::string getTime(void);
-std::string getCleanDateTime(void);
 std::string getPathDateTime(void);
 
 #endif
