@@ -38,7 +38,7 @@ Checkpoint displays error codes when something weird happens or operations fail.
 
 ## Building
 
-Checkpoint uses [latest libctru](https://github.com/smealum/ctrulib), [latest citro3d](https://github.com/fincs/citro3d) and [latest pp2d](https://github.com/BernardoGiordano/pp2d).
+Checkpoint uses [latest libctru](https://github.com/smealum/ctrulib), [latest citro3d](https://github.com/fincs/citro3d) and [latest pp2d](https://github.com/BernardoGiordano/Checkpoint/tree/master/source/pp2d).
 
 ## License
 

@@ -21,7 +21,7 @@
 
 #include <3ds.h>
 #include <cstring>
-#include "../source/pp2d/pp2d/pp2d.h"
+#include "../source/pp2d/pp2d.h"
 
 #ifdef __cplusplus
 extern "C" {

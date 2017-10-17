@@ -38,7 +38,7 @@
 #include "hid.h"
 #include "info.h"
 #include "messagebox.h"
-#include "../source/pp2d/pp2d/pp2d.h"
+#include "../source/pp2d/pp2d.h"
 #include "scrollable.h"
 #include "smdh.h"
 #include "spi.h"

@@ -17,7 +17,7 @@ APP_AUTHOR          :=	Bernardo Giordano
 TARGET              :=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR              :=	output
 BUILD               :=	build
-SOURCES             :=	source/pp2d/pp2d source
+SOURCES             :=	source/pp2d source
 INCLUDES            :=	include
 ROMFS               :=	assets/romfs
 
