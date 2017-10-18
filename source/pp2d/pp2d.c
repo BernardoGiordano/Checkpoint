@@ -597,7 +597,15 @@ void pp2d_set_3D(int enable)
 
 void pp2d_set_screen_color(gfxScreen_t target, u32 color)
 {
-	C3D_RenderTargetSetClear(target == GFX_TOP ? topLeft : bot, C3D_CLEAR_ALL, color, 0);
+	if (target == GFX_TOP)
+	{
+		C3D_RenderTargetSetClear(topLeft, C3D_CLEAR_ALL, color, 0);
+		C3D_RenderTargetSetClear(topRight, C3D_CLEAR_ALL, color, 0);
+	}
+	else
+	{
+		C3D_RenderTargetSetClear(bot, C3D_CLEAR_ALL, color, 0);
+	}
 }
 
 static void pp2d_set_text_color(u32 color)

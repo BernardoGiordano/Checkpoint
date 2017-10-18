@@ -1,6 +1,6 @@
-# pp2d
+# [pp2d](https://discord.gg/zqXWgsH)
 
-Plug & Play 2D (unofficial) wrapper for Citro3D.
+Plug & Play 2D (unofficial) wrapper for Citro3D. 
 
 ## License
 
