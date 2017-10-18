@@ -30,19 +30,12 @@
  * @date 17 October 2017
  * @brief pp2d header
  */
- 
-/**
- * Other contributions:
- * depth parameter - Ryuzaki-MrL
- * standalone pp2d_free_texture - LiquidFenrir
- * 3d support - Robz8
- * load png from memory - ErmanSayin
- */
 
 #ifndef PP2D_H
 #define PP2D_H
 
 #include "lodepng.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

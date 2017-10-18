@@ -4,4 +4,11 @@ Plug & Play 2D (unofficial) wrapper for Citro3D.
 
 ## License
 
-pp2d is licensed under the [MIT License](https://github.com/BernardoGiordano/pp2d/blob/master/LICENSE).
+pp2d is licensed under the MIT License.
+
+## Changes
+
+* depth parameter (Ryuzaki-MrL)
+* standalone pp2d_free_texture (LiquidFenrir)
+* 3d support (Robz8)
+* load png from memory (ErmanSayin)
