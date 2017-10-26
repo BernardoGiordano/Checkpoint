@@ -27,7 +27,7 @@
  * Plug & Play 2D
  * @file pp2d.c
  * @author Bernardo Giordano
- * @date 17 October 2017
+ * @date 26 October 2017
  * @brief pp2d implementation
  */
 
@@ -45,6 +45,11 @@ static int textVtxArrayPos;
 static C3D_RenderTarget* topLeft;
 static C3D_RenderTarget* topRight;
 static C3D_RenderTarget* bot;
+
+static struct {
+	GPU_TEXTURE_FILTER_PARAM magFilter;
+	GPU_TEXTURE_FILTER_PARAM minFilter;
+} textureFilters;
 
 static struct {
 	size_t id;
@@ -340,6 +345,8 @@ Result pp2d_init(void)
 	res = fontEnsureMapped();
 	if (R_FAILED(res))
 		return res;
+	
+	pp2d_set_texture_filter(GPU_NEAREST, GPU_NEAREST);
 
 #ifdef BUILDTOOLS
 	vshader_dvlb = DVLB_ParseFile((u32*)vshader_shbin, vshader_shbin_len);
@@ -503,7 +510,7 @@ void pp2d_load_texture_memory(size_t id, void* buf, u32 width, u32 height)
 	u32 h_pow2 = pp2d_get_next_pow2(height);
 	
 	C3D_TexInit(&textures[id].tex, (u16)w_pow2, (u16)h_pow2, GPU_RGBA8);
-	C3D_TexSetFilter(&textures[id].tex, GPU_NEAREST, GPU_NEAREST);
+	C3D_TexSetFilter(&textures[id].tex, textureFilters.magFilter, textureFilters.minFilter);
 	
 	textures[id].allocated = true;
 	textures[id].width = width;
@@ -606,6 +613,12 @@ void pp2d_set_screen_color(gfxScreen_t target, u32 color)
 	{
 		C3D_RenderTargetSetClear(bot, C3D_CLEAR_ALL, color, 0);
 	}
+}
+
+void pp2d_set_texture_filter(GPU_TEXTURE_FILTER_PARAM magFilter, GPU_TEXTURE_FILTER_PARAM minFilter)
+{
+	textureFilters.magFilter = magFilter;
+	textureFilters.minFilter = minFilter;
 }
 
 static void pp2d_set_text_color(u32 color)
