@@ -24,12 +24,11 @@
 #define BUFFER_SIZE 0x100000
 
 bool fileExist(FS_Archive archive, std::u16string path);
-
-void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath);
-
 Result createDirectory(FS_Archive archive, std::u16string path);
 bool directoryExist(FS_Archive archive, std::u16string path);
+void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath);
 Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath);
+Result deleteFilesRecursively(FS_Archive arch, std::u16string path);
 
 void backup(size_t index);
 void restore(size_t index);

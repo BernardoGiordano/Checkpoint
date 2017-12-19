@@ -50,7 +50,7 @@ FSStream::FSStream(FS_Archive archive, std::u16string path, u32 flags, u32 _size
 				loaded = true;
 			}
 		}
-	}	
+	}
 }
 
 Result FSStream::close(void)
@@ -124,7 +124,6 @@ void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, st
 			u32 rd = input.read(buf, size);
 			output.write(buf, rd);
 		} while(input.isEndOfFile());
-
 		delete[] buf;		
 	}
 
@@ -151,22 +150,49 @@ Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcP
 		if (items.isFolder(i))
 		{
 			res = createDirectory(dstArch, newdst);
-			
-			if (R_FAILED(res))
-			{
-				quit = true;
-			}
-			else
+			if (R_SUCCEEDED(res) || (u32)res == 0xC82044B9)
 			{
 				newsrc += u8tou16("/");
 				newdst += u8tou16("/");
 				res = copyDirectory(srcArch, dstArch, newsrc, newdst);
+			}
+			else
+			{
+				quit = true;
 			}
 		}
 		else
 		{
 			drawCopy(items.getItem(i));
 			copyFile(srcArch, dstArch, newsrc, newdst);
+		}
+	}
+	
+	return res;
+}
+
+Result deleteFilesRecursively(FS_Archive arch, std::u16string path)
+{
+	Result res = 0;
+	Directory items(arch, path);
+	
+	if (!items.getLoaded())
+	{
+		return items.getError();
+	}
+	
+	for (size_t i = 0, sz = items.getCount(); i < sz; i++)
+	{
+		std::u16string newpath = path + items.getItem(i);
+		
+		if (items.isFolder(i))
+		{
+			newpath += u8tou16("/");
+			res = deleteFilesRecursively(arch, newpath);
+		}
+		else
+		{
+			res = FSUSER_DeleteFile(arch, fsMakePath(PATH_UTF16, newpath.data()));
 		}
 	}
 	
@@ -400,7 +426,15 @@ void restore(size_t index)
 			srcPath += u8tou16("/") + u8tou16(getPathFromCell(cellIndex).c_str()) + u8tou16("/");
 			std::u16string dstPath = u8tou16("/");
 			
-			res = FSUSER_DeleteDirectoryRecursively(archive, fsMakePath(PATH_UTF16, dstPath.data()));
+			if (mode != MODE_EXTDATA)
+			{
+				res = FSUSER_DeleteDirectoryRecursively(archive, fsMakePath(PATH_UTF16, dstPath.data()));
+			}
+			else
+			{
+				res = deleteFilesRecursively(archive, dstPath);
+			}
+			
 			res = copyDirectory(getArchiveSDMC(), archive, srcPath, dstPath);
 			if (R_FAILED(res))
 			{
