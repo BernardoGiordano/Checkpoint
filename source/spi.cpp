@@ -46,7 +46,7 @@ Result SPIWaitWriteEnd(CardType type)
 		cnt++;
 		res = SPIWriteRead(type, &cmd, 1, &statusReg, 1, 0, 0);
 		if (res) return res;
-	} while(statusReg & SPI_FLG_WIP && cnt < 1000);
+	} while (statusReg & SPI_FLG_WIP && cnt < 1000);
 	
 	return cnt >= 1000 ? 1 : 0;
 }

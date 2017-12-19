@@ -17,10 +17,8 @@
 */
 
 #include "gui.h"
-#include "error.h"
 
 static Info info;
-static Error error;
 static Clickable* buttonBackup;
 static Clickable* buttonRestore;
 static MessageBox* messageBox;
@@ -95,8 +93,7 @@ Gui::Gui(void)
 	index = 0;
 	page = 0;
 	bottomScrollEnabled = false;
-	info.init("", "", 0);
-	error.init(0, "");
+	info.init("", "", 0, TYPE_INFO);
 	buttonBackup = new Clickable(204, 102, 110, 54, WHITE, bottomScrollEnabled ? BLACK : GREYISH, "Backup \uE008", true);
 	buttonRestore = new Clickable(204, 158, 110, 54, WHITE, bottomScrollEnabled ? BLACK : GREYISH, "Restore \uE007", true);
 	messageBox = new MessageBox(COLOR_BARS, WHITE, GFX_TOP);
@@ -114,14 +111,12 @@ Gui::Gui(void)
 
 void Gui::createInfo(std::string title, std::string message)
 {
-	error.resetTtl();
-	info.init(title, message, 500);
+	info.init(title, message, 500, TYPE_INFO);
 }
 
 void Gui::createError(Result res, std::string message)
 {
-	info.resetTtl();
-	error.init(res, message);
+	info.init(res, message, 500, TYPE_ERROR);
 }
 
 bool Gui::getBottomScroll(void)
@@ -180,7 +175,6 @@ void Gui::drawSelector(void)
 	pp2d_draw_rectangle(         x,      y + w,  w, 50 - 2*w, RED); //left
 	pp2d_draw_rectangle(x + 50 - w,      y + w,  w, 50 - 2*w, RED); //right
 	pp2d_draw_rectangle(         x, y + 50 - w, 50,        w, RED); //bottom
-	
 }
 
 int Gui::getSelectorX(size_t index)
@@ -238,7 +232,6 @@ void Gui::draw(void)
 		pp2d_draw_text(border + p1width + p2width, 224, 0.47f, 0.47f, WHITE, ".");
 		
 		info.draw();
-		error.draw();
 		
 		if (hidKeysHeld() & KEY_SELECT)
 		{

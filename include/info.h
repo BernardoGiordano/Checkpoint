@@ -21,11 +21,17 @@
 
 #include "common.h"
 
+typedef enum {
+	TYPE_INFO,
+	TYPE_ERROR
+} Info_t;
+
 class Info
 {
 public:
-	void init(std::string title, std::string message, int ttl);
-	void resetTtl(void);
+	void init(std::string title, std::string message, int ttl, Info_t type);
+	void init(Result res, std::string message, int ttl, Info_t type);
+	void resetTTL(void);
 	void draw(void);
 
 private:
@@ -36,6 +42,8 @@ private:
 	int x;
 	int y;
 	int ttl;
+	Result res;
+	Info_t type;
 };
 
 #endif

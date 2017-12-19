@@ -15,7 +15,7 @@ APP_DESCRIPTION     :=	Fast and simple save manager
 APP_AUTHOR          :=	Bernardo Giordano
 
 TARGET              :=	$(subst $e ,_,$(notdir $(APP_TITLE)))
-OUTDIR              :=	output
+OUTDIR              :=	out
 BUILD               :=	build
 SOURCES             :=	source/pp2d source
 INCLUDES            :=	include

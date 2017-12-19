@@ -32,7 +32,6 @@
 #include "clickable.h"
 #include "datetime.h"
 #include "directory.h"
-#include "error.h"
 #include "fsstream.h"
 #include "gui.h"
 #include "hid.h"
