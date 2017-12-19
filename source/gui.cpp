@@ -265,7 +265,11 @@ void Gui::draw(void)
 			
 			float longDescrHeight = pp2d_get_text_height_wrap(title.getLongDescription().c_str(), 0.55f, 0.55f, 240);
 			pp2d_draw_text(4, 31 + longDescrHeight, 0.5f, 0.5f, GREYISH, "ID:");
-			pp2d_draw_textf(25, 31 + longDescrHeight, 0.5f, 0.5f, WHITE, "%08X", title.getLowId());
+			
+			char lowid[9];
+			snprintf(lowid, 9, "%08X", (int)title.getLowId());
+			pp2d_draw_text(25, 31 + longDescrHeight, 0.5f, 0.5f, WHITE, lowid);
+			pp2d_draw_textf(30 + pp2d_get_text_width(lowid, 0.5f, 0.5f), 32 + longDescrHeight, 0.42f, 0.42f, GREYISH, "(%s)", title.productCode);
 			pp2d_draw_text(4, 47 + longDescrHeight, 0.5f, 0.5f, GREYISH, "Mediatype:");
 			pp2d_draw_textf(75, 47 + longDescrHeight, 0.5f, 0.5f, WHITE, "%s", title.getMediatypeString().c_str());
 			
