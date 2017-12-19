@@ -430,10 +430,6 @@ void restore(size_t index)
 			{
 				res = FSUSER_DeleteDirectoryRecursively(archive, fsMakePath(PATH_UTF16, dstPath.data()));
 			}
-			else
-			{
-				res = deleteFilesRecursively(archive, dstPath);
-			}
 			
 			res = copyDirectory(getArchiveSDMC(), archive, srcPath, dstPath);
 			if (R_FAILED(res))

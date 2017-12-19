@@ -272,6 +272,13 @@ u32 Title::getExtdataId(void)
 		case 0x00055E00: return 0x0000055D; // Pokémon Y
 		case 0x0011C400: return 0x000011C5; // Pokémon Omega Ruby
 		case 0x00175E00: return 0x00001648; // Pokémon Moon
+		case 0x00179600:
+		case 0x00179800: return 0x00001794; // Fire Emblem Conquest SE NA
+		case 0x00179700:
+		case 0x0017A800: return 0x00001795; // Fire Emblem Conquest SE EU
+		case 0x0012DD00:
+		case 0x0012DE00: return 0x000012DC; // Fire Emblem If JP
+		case 0x001B5100: return 0x001B5000; // Pokémon Ultramoon
 	}
 	
 	return low >> 8;
