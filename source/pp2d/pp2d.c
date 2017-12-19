@@ -32,8 +32,6 @@
  */
 
 #include "pp2d.h"
-
-#define LOADBMP_IMPLEMENTATION
 #include "loadbmp.h"
 
 static DVLB_s* vshader_dvlb;
