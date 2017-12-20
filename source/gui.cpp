@@ -71,8 +71,12 @@ void drawCopy(std::u16string src)
 	copyList->push_message("Copying " + u16tou8(src));
 	
 	pp2d_begin_draw(GFX_TOP, GFX_LEFT);
+		pp2d_draw_rectangle(0, 0, 400, 19, COLOR_BARS);
+		pp2d_draw_rectangle(0, 221, 400, 19, COLOR_BARS);
 		copyList->draw();
 		pp2d_draw_on(GFX_BOTTOM, GFX_LEFT);
+		pp2d_draw_rectangle(0, 0, 320, 19, COLOR_BARS);
+		pp2d_draw_rectangle(0, 221, 320, 19, COLOR_BARS);
 	pp2d_end_draw();
 }
 
