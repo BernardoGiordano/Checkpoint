@@ -58,3 +58,38 @@ void servicesInit(void)
 	pp2d_load_texture_png(TEXTURE_CHECKPOINT, "romfs:/checkpoint.png");
 	pp2d_load_texture_png(TEXTURE_TWLCARD, "romfs:/twlcart.png");
 }
+
+bool askForConfirmation(std::string text)
+{
+	Clickable buttonYes(40, 90, 100, 60, WHITE, BLACK, "   \uE000 Yes", true);
+	Clickable buttonNo(200, 90, 100, 60, WHITE, BLACK, "   \uE001 No", true);
+	MessageBox message(COLOR_BARS, WHITE, GFX_TOP);
+	message.push_message(text);
+	
+	while(aptMainLoop() && !(buttonNo.isReleased() || hidKeysDown() & KEY_B))
+	{
+		hidScanInput();
+		if (buttonYes.isReleased() || hidKeysDown() & KEY_A)
+		{
+			return true;
+		}
+		
+		pp2d_begin_draw(GFX_TOP, GFX_LEFT);
+			pp2d_draw_rectangle(0, 0, 400, 19, COLOR_BARS);
+			pp2d_draw_rectangle(0, 221, 400, 19, COLOR_BARS);
+			
+			message.draw();
+			
+			pp2d_draw_on(GFX_BOTTOM, GFX_LEFT);
+			pp2d_draw_rectangle(0, 0, 320, 19, COLOR_BARS);
+			pp2d_draw_rectangle(0, 221, 320, 19, COLOR_BARS);
+			
+			pp2d_draw_rectangle(38, 88, 104, 64, GREYISH);
+			pp2d_draw_rectangle(198, 88, 104, 64, GREYISH);
+			buttonYes.draw();
+			buttonNo.draw();
+		pp2d_end_draw();
+	}
+	
+	return false;
+}

@@ -199,6 +199,11 @@ bool directoryExist(FS_Archive archive, std::u16string path)
 
 void backup(size_t index)
 {
+	if (!askForConfirmation("Backup selected save?"))
+	{
+		return;
+	}
+	
 	const Mode_t mode = getMode();
 	const size_t cellIndex = getScrollableIndex();
 	const bool isNewFolder = cellIndex == 0;
@@ -374,7 +379,7 @@ void restore(size_t index)
 {
 	const Mode_t mode = getMode();
 	const size_t cellIndex = getScrollableIndex();
-	if (cellIndex == 0)
+	if (cellIndex == 0 || !askForConfirmation("Restore selected save?"))
 	{
 		return;
 	}
