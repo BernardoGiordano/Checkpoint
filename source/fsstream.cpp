@@ -199,11 +199,15 @@ bool directoryExist(FS_Archive archive, std::u16string path)
 
 void backup(size_t index)
 {
-	if (!askForConfirmation("Backup selected save?"))
+	// check if multiple selection is enabled and don't ask for confirmation if that's the case
+	if (!multipleSelectionEnabled())
 	{
-		return;
+		if (!askForConfirmation("Backup selected save?"))
+		{
+			return;
+		}
 	}
-	
+
 	const Mode_t mode = getMode();
 	const size_t cellIndex = getScrollableIndex();
 	const bool isNewFolder = cellIndex == 0;
