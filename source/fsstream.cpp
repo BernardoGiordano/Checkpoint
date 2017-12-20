@@ -41,7 +41,7 @@ FSStream::FSStream(FS_Archive archive, std::u16string path, u32 flags, u32 _size
 	res = FSUSER_OpenFile(&handle, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
 	if (R_FAILED(res))
 	{
-		res = FSUSER_CreateFile(archive, fsMakePath(PATH_UTF16, path.data()), flags, size);
+		res = FSUSER_CreateFile(archive, fsMakePath(PATH_UTF16, path.data()), 0, size);
 		if (R_SUCCEEDED(res))
 		{
 			res = FSUSER_OpenFile(&handle, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
@@ -50,6 +50,10 @@ FSStream::FSStream(FS_Archive archive, std::u16string path, u32 flags, u32 _size
 				loaded = true;
 			}
 		}
+	}
+	else
+	{
+		loaded = true;
 	}
 }
 
@@ -165,34 +169,6 @@ Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcP
 		{
 			drawCopy(items.getItem(i));
 			copyFile(srcArch, dstArch, newsrc, newdst);
-		}
-	}
-	
-	return res;
-}
-
-Result deleteFilesRecursively(FS_Archive arch, std::u16string path)
-{
-	Result res = 0;
-	Directory items(arch, path);
-	
-	if (!items.getLoaded())
-	{
-		return items.getError();
-	}
-	
-	for (size_t i = 0, sz = items.getCount(); i < sz; i++)
-	{
-		std::u16string newpath = path + items.getItem(i);
-		
-		if (items.isFolder(i))
-		{
-			newpath += u8tou16("/");
-			res = deleteFilesRecursively(arch, newpath);
-		}
-		else
-		{
-			res = FSUSER_DeleteFile(arch, fsMakePath(PATH_UTF16, newpath.data()));
 		}
 	}
 	
