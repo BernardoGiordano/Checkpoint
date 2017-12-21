@@ -17,10 +17,8 @@
 */
 
 #include "gui.h"
-#include "error.h"
 
 static Info info;
-static Error error;
 static Clickable* buttonBackup;
 static Clickable* buttonRestore;
 static MessageBox* messageBox;
@@ -73,8 +71,12 @@ void drawCopy(std::u16string src)
 	copyList->push_message("Copying " + u16tou8(src));
 	
 	pp2d_begin_draw(GFX_TOP, GFX_LEFT);
+		pp2d_draw_rectangle(0, 0, 400, 19, COLOR_BARS);
+		pp2d_draw_rectangle(0, 221, 400, 19, COLOR_BARS);
 		copyList->draw();
 		pp2d_draw_on(GFX_BOTTOM, GFX_LEFT);
+		pp2d_draw_rectangle(0, 0, 320, 19, COLOR_BARS);
+		pp2d_draw_rectangle(0, 221, 320, 19, COLOR_BARS);
 	pp2d_end_draw();
 }
 
@@ -95,8 +97,7 @@ Gui::Gui(void)
 	index = 0;
 	page = 0;
 	bottomScrollEnabled = false;
-	info.init("", "", 0);
-	error.init(0, "");
+	info.init("", "", 0, TYPE_INFO);
 	buttonBackup = new Clickable(204, 102, 110, 54, WHITE, bottomScrollEnabled ? BLACK : GREYISH, "Backup \uE008", true);
 	buttonRestore = new Clickable(204, 158, 110, 54, WHITE, bottomScrollEnabled ? BLACK : GREYISH, "Restore \uE007", true);
 	messageBox = new MessageBox(COLOR_BARS, WHITE, GFX_TOP);
@@ -114,14 +115,12 @@ Gui::Gui(void)
 
 void Gui::createInfo(std::string title, std::string message)
 {
-	error.resetTtl();
-	info.init(title, message, 500);
+	info.init(title, message, 500, TYPE_INFO);
 }
 
 void Gui::createError(Result res, std::string message)
 {
-	info.resetTtl();
-	error.init(res, message);
+	info.init(res, message, 500, TYPE_ERROR);
 }
 
 bool Gui::getBottomScroll(void)
@@ -180,7 +179,6 @@ void Gui::drawSelector(void)
 	pp2d_draw_rectangle(         x,      y + w,  w, 50 - 2*w, RED); //left
 	pp2d_draw_rectangle(x + 50 - w,      y + w,  w, 50 - 2*w, RED); //right
 	pp2d_draw_rectangle(         x, y + 50 - w, 50,        w, RED); //bottom
-	
 }
 
 int Gui::getSelectorX(size_t index)
@@ -238,7 +236,6 @@ void Gui::draw(void)
 		pp2d_draw_text(border + p1width + p2width, 224, 0.47f, 0.47f, WHITE, ".");
 		
 		info.draw();
-		error.draw();
 		
 		if (hidKeysHeld() & KEY_SELECT)
 		{
@@ -272,7 +269,11 @@ void Gui::draw(void)
 			
 			float longDescrHeight = pp2d_get_text_height_wrap(title.getLongDescription().c_str(), 0.55f, 0.55f, 240);
 			pp2d_draw_text(4, 31 + longDescrHeight, 0.5f, 0.5f, GREYISH, "ID:");
-			pp2d_draw_textf(25, 31 + longDescrHeight, 0.5f, 0.5f, WHITE, "%08X", title.getLowId());
+			
+			char lowid[9];
+			snprintf(lowid, 9, "%08X", (int)title.getLowId());
+			pp2d_draw_text(25, 31 + longDescrHeight, 0.5f, 0.5f, WHITE, lowid);
+			pp2d_draw_textf(30 + pp2d_get_text_width(lowid, 0.5f, 0.5f), 32 + longDescrHeight, 0.42f, 0.42f, GREYISH, "(%s)", title.productCode);
 			pp2d_draw_text(4, 47 + longDescrHeight, 0.5f, 0.5f, GREYISH, "Mediatype:");
 			pp2d_draw_textf(75, 47 + longDescrHeight, 0.5f, 0.5f, WHITE, "%s", title.getMediatypeString().c_str());
 			

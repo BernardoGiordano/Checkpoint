@@ -62,7 +62,7 @@ void MessageBox::draw(void)
 	
 	const int x = (screenw - w) / 2;
 	const int y = (SCREEN_HEIGHT - h) / 2;
-	
+
 	pp2d_draw_rectangle(x - 2, y - 2, w + 4, h + 4, BLACK);
 	pp2d_draw_rectangle(x, y, w, h, colorbg);
 	

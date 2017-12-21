@@ -20,14 +20,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *
- * https://discord.gg/zqXWgsH
+ * https://discord.gg/bGKEyfY
  */
 
 /**
  * Plug & Play 2D
  * @file pp2d.h
  * @author Bernardo Giordano
- * @date 26 October 2017
+ * @date 19 December 2017
  * @brief pp2d header
  */
 
@@ -364,6 +364,13 @@ float pp2d_get_wtext_width(const wchar_t* text, float scaleX, float scaleY);
  * @param id of the texture to free
  */
 void pp2d_free_texture(size_t id);
+
+/**
+ * @brief Loads a texture from a bmp file
+ * @param id of the texture
+ * @param path where the bmp file is located
+ */
+void pp2d_load_texture_bmp(size_t id, const char* path);
 
 /**
  * @brief Loads a texture from a a buffer in memory

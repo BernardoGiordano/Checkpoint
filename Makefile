@@ -15,7 +15,7 @@ APP_DESCRIPTION     :=	Fast and simple save manager
 APP_AUTHOR          :=	Bernardo Giordano
 
 TARGET              :=	$(subst $e ,_,$(notdir $(APP_TITLE)))
-OUTDIR              :=	output
+OUTDIR              :=	out
 BUILD               :=	build
 SOURCES             :=	source/pp2d source
 INCLUDES            :=	include
@@ -31,7 +31,7 @@ BANNER_IMAGE        :=	assets/banner.png
 RSF_PATH            :=	assets/app.rsf
 
 # If left blank, makerom will use the default Homebrew logo
-LOGO                :=	
+LOGO                :=	assets/splash.bin
 
 
 # If left blank, makerom will use default values (0xff3ff and CTR-P-CTAP, respectively)

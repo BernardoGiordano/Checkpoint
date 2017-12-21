@@ -49,6 +49,8 @@ public:
 	CardType getSPICardType(void);
 	size_t getTextureId(void);
 	
+	char productCode[16];
+	
 private:
 	bool accessibleSave;
 	bool accessibleExtdata;

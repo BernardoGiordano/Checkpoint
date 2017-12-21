@@ -41,7 +41,7 @@ FSStream::FSStream(FS_Archive archive, std::u16string path, u32 flags, u32 _size
 	res = FSUSER_OpenFile(&handle, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
 	if (R_FAILED(res))
 	{
-		res = FSUSER_CreateFile(archive, fsMakePath(PATH_UTF16, path.data()), flags, size);
+		res = FSUSER_CreateFile(archive, fsMakePath(PATH_UTF16, path.data()), 0, size);
 		if (R_SUCCEEDED(res))
 		{
 			res = FSUSER_OpenFile(&handle, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
@@ -50,7 +50,11 @@ FSStream::FSStream(FS_Archive archive, std::u16string path, u32 flags, u32 _size
 				loaded = true;
 			}
 		}
-	}	
+	}
+	else
+	{
+		loaded = true;
+	}
 }
 
 Result FSStream::close(void)
@@ -92,7 +96,7 @@ u32 FSStream::write(void *buf, u32 sz)
 
 bool FSStream::isEndOfFile(void)
 {
-	return offset > size;
+	return offset >= size;
 }
 
 bool fileExist(FS_Archive archive, std::u16string path)
@@ -123,8 +127,7 @@ void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, st
 		do {
 			u32 rd = input.read(buf, size);
 			output.write(buf, rd);
-		} while(input.isEndOfFile());
-
+		} while(!input.isEndOfFile());
 		delete[] buf;		
 	}
 
@@ -151,16 +154,15 @@ Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcP
 		if (items.isFolder(i))
 		{
 			res = createDirectory(dstArch, newdst);
-			
-			if (R_FAILED(res))
-			{
-				quit = true;
-			}
-			else
+			if (R_SUCCEEDED(res) || (u32)res == 0xC82044B9)
 			{
 				newsrc += u8tou16("/");
 				newdst += u8tou16("/");
 				res = copyDirectory(srcArch, dstArch, newsrc, newdst);
+			}
+			else
+			{
+				quit = true;
 			}
 		}
 		else
@@ -197,6 +199,15 @@ bool directoryExist(FS_Archive archive, std::u16string path)
 
 void backup(size_t index)
 {
+	// check if multiple selection is enabled and don't ask for confirmation if that's the case
+	if (!multipleSelectionEnabled())
+	{
+		if (!askForConfirmation("Backup selected save?"))
+		{
+			return;
+		}
+	}
+
 	const Mode_t mode = getMode();
 	const size_t cellIndex = getScrollableIndex();
 	const bool isNewFolder = cellIndex == 0;
@@ -372,7 +383,7 @@ void restore(size_t index)
 {
 	const Mode_t mode = getMode();
 	const size_t cellIndex = getScrollableIndex();
-	if (cellIndex == 0)
+	if (cellIndex == 0 || !askForConfirmation("Restore selected save?"))
 	{
 		return;
 	}
@@ -400,7 +411,11 @@ void restore(size_t index)
 			srcPath += u8tou16("/") + u8tou16(getPathFromCell(cellIndex).c_str()) + u8tou16("/");
 			std::u16string dstPath = u8tou16("/");
 			
-			res = FSUSER_DeleteDirectoryRecursively(archive, fsMakePath(PATH_UTF16, dstPath.data()));
+			if (mode != MODE_EXTDATA)
+			{
+				res = FSUSER_DeleteDirectoryRecursively(archive, fsMakePath(PATH_UTF16, dstPath.data()));
+			}
+			
 			res = copyDirectory(getArchiveSDMC(), archive, srcPath, dstPath);
 			if (R_FAILED(res))
 			{

@@ -47,7 +47,8 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 		longDescription = (char16_t*)smdh->applicationTitles[1].longDescription;
 		backupPath = u8tou16("/3ds/Checkpoint/saves/") + u8tou16(unique) + shortDescription;
 		extdataPath = u8tou16("/3ds/Checkpoint/extdata/") + u8tou16(unique) + shortDescription;
-
+		AM_GetTitleProductCode(media, id, productCode);
+		
 		accessibleSave = isSaveAccessible(getMediaType(), getLowId(), getHighId());
 		accessibleExtdata = isExtdataAccessible(getExtdataId());
 		
@@ -117,6 +118,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 		longDescription = shortDescription;
 		backupPath = u8tou16("/3ds/Checkpoint/saves/") + u8tou16(_gameCode) + u8tou16(" ") + shortDescription;
 		extdataPath = backupPath;
+		memset(productCode, 0, 16);
 		
 		accessibleSave = true;
 		accessibleExtdata = false;
@@ -272,6 +274,13 @@ u32 Title::getExtdataId(void)
 		case 0x00055E00: return 0x0000055D; // Pokémon Y
 		case 0x0011C400: return 0x000011C5; // Pokémon Omega Ruby
 		case 0x00175E00: return 0x00001648; // Pokémon Moon
+		case 0x00179600:
+		case 0x00179800: return 0x00001794; // Fire Emblem Conquest SE NA
+		case 0x00179700:
+		case 0x0017A800: return 0x00001795; // Fire Emblem Conquest SE EU
+		case 0x0012DD00:
+		case 0x0012DE00: return 0x000012DC; // Fire Emblem If JP
+		case 0x001B5100: return 0x001B5000; // Pokémon Ultramoon
 	}
 	
 	return low >> 8;
