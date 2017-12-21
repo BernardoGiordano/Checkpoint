@@ -62,7 +62,7 @@ void servicesInit(void)
 bool askForConfirmation(std::string text)
 {
 	Clickable buttonYes(40, 90, 100, 60, WHITE, BLACK, "   \uE000 Yes", true);
-	Clickable buttonNo(200, 90, 100, 60, WHITE, BLACK, "   \uE001 No", true);
+	Clickable buttonNo(180, 90, 100, 60, WHITE, BLACK, "   \uE001 No", true);
 	MessageBox message(COLOR_BARS, WHITE, GFX_TOP);
 	message.push_message(text);
 	
@@ -85,7 +85,7 @@ bool askForConfirmation(std::string text)
 			pp2d_draw_rectangle(0, 221, 320, 19, COLOR_BARS);
 			
 			pp2d_draw_rectangle(38, 88, 104, 64, GREYISH);
-			pp2d_draw_rectangle(198, 88, 104, 64, GREYISH);
+			pp2d_draw_rectangle(178, 88, 104, 64, GREYISH);
 			buttonYes.draw();
 			buttonNo.draw();
 		pp2d_end_draw();
