@@ -96,7 +96,7 @@ u32 FSStream::write(void *buf, u32 sz)
 
 bool FSStream::isEndOfFile(void)
 {
-	return offset > size;
+	return offset >= size;
 }
 
 bool fileExist(FS_Archive archive, std::u16string path)
@@ -127,7 +127,7 @@ void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, st
 		do {
 			u32 rd = input.read(buf, size);
 			output.write(buf, rd);
-		} while(input.isEndOfFile());
+		} while(!input.isEndOfFile());
 		delete[] buf;		
 	}
 
