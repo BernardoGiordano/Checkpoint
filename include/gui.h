@@ -35,6 +35,8 @@
 #define RED RGBA8(255, 0, 0, 255)
 #define GREEN RGBA8(0, 255, 0, 255)
 
+bool askForConfirmation(std::string text);
+
 size_t getScrollableIndex(void);
 
 std::vector<size_t> getSelectedEntries(void);
@@ -43,7 +45,7 @@ void clearSelectedEntries(void);
 void addSelectedEntry(size_t index);
 void resetDirectoryListIndex(void);
 
-void drawCopy(std::u16string src);
+void drawCopy(std::u16string src, u32 offset, u32 size);
 
 class Gui
 {

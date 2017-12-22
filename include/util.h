@@ -23,6 +23,5 @@
 
 void servicesExit(void);
 void servicesInit(void);
-bool askForConfirmation(std::string text);
 
 #endif

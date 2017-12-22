@@ -25,6 +25,8 @@ static MessageBox* messageBox;
 static MessageBox* copyList;
 static Scrollable* directoryList;
 
+static void drawBasicInterface(gfxScreen_t screen);
+
 /// Multi selection
 
 static std::vector<size_t> selectedEntries;
@@ -65,22 +67,88 @@ void addSelectedEntry(size_t index)
 	}
 }
 
-void drawCopy(std::u16string src)
+/// Gui implementation
+
+static void drawBasicInterface(gfxScreen_t screen)
+{
+	if (screen == GFX_TOP)
+	{
+		pp2d_draw_rectangle(0, 0, 400, 19, COLOR_BARS);
+		pp2d_draw_rectangle(0, 221, 400, 19, COLOR_BARS);
+		
+		char version[10];
+		sprintf(version, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+		static float versionLen = pp2d_get_text_width(version, 0.45f, 0.45f);
+		static float checkpointLen = pp2d_get_text_width("checkpoint", 0.50f, 0.50f);
+
+		pp2d_draw_text(4, 3, 0.45f, 0.45f, GREYISH, getTime().c_str());
+		pp2d_draw_text(TOP_WIDTH - 4 - versionLen, 3, 0.45f, 0.45f, GREYISH, version);
+		pp2d_draw_texture(TEXTURE_CHECKPOINT, TOP_WIDTH - 5 - versionLen - 19, 0);
+		pp2d_draw_text(TOP_WIDTH - 6 - versionLen - checkpointLen - 19, 2, 0.50f, 0.50f, WHITE, "checkpoint");		
+	}
+	else
+	{
+		pp2d_draw_rectangle(0, 0, 320, 19, COLOR_BARS);
+		pp2d_draw_rectangle(0, 221, 320, 19, COLOR_BARS);		
+	}
+}
+
+void drawCopy(std::u16string src, u32 offset, u32 size)
 {
 	copyList->clear();
 	copyList->push_message("Copying " + u16tou8(src));
 	
 	pp2d_begin_draw(GFX_TOP, GFX_LEFT);
-		pp2d_draw_rectangle(0, 0, 400, 19, COLOR_BARS);
-		pp2d_draw_rectangle(0, 221, 400, 19, COLOR_BARS);
+		drawBasicInterface(GFX_TOP);
 		copyList->draw();
+		
 		pp2d_draw_on(GFX_BOTTOM, GFX_LEFT);
-		pp2d_draw_rectangle(0, 0, 320, 19, COLOR_BARS);
-		pp2d_draw_rectangle(0, 221, 320, 19, COLOR_BARS);
+		drawBasicInterface(GFX_BOTTOM);
+		
+		static const int barHeight = 19;
+		static const int progressBarHeight = 50;
+		static const int spacingFromSides = 20;
+		static const int spacingFromBars = (240 - barHeight * 2 - progressBarHeight) / 2;
+		static const int width = 320 - spacingFromSides * 2;
+		
+		pp2d_draw_rectangle(spacingFromSides - 2, barHeight + spacingFromBars - 2, width + 4, progressBarHeight + 4, GREYISH);
+		pp2d_draw_rectangle(spacingFromSides, barHeight + spacingFromBars, width, progressBarHeight, WHITE);
+		pp2d_draw_rectangle(spacingFromSides, barHeight + spacingFromBars, (float)offset / (float)size * width, progressBarHeight, RGBA8(116, 222, 126, 255));
+		
+		std::string sizeString = getSizeString(offset) + " of " + getSizeString(size);
+		pp2d_draw_text_center(GFX_BOTTOM, 112, 0.5f, 0.5f, BLACK, sizeString.c_str());
 	pp2d_end_draw();
 }
 
-/// Gui implementation
+bool askForConfirmation(std::string text)
+{
+	Clickable buttonYes(40, 90, 100, 60, WHITE, BLACK, "   \uE000 Yes", true);
+	Clickable buttonNo(180, 90, 100, 60, WHITE, BLACK, "   \uE001 No", true);
+	MessageBox message(COLOR_BARS, WHITE, GFX_TOP);
+	message.push_message(text);
+	
+	while(aptMainLoop() && !(buttonNo.isReleased() || hidKeysDown() & KEY_B))
+	{
+		hidScanInput();
+		if (buttonYes.isReleased() || hidKeysDown() & KEY_A)
+		{
+			return true;
+		}
+		
+		pp2d_begin_draw(GFX_TOP, GFX_LEFT);
+			drawBasicInterface(GFX_TOP);
+			message.draw();
+			pp2d_draw_on(GFX_BOTTOM, GFX_LEFT);
+			drawBasicInterface(GFX_BOTTOM);
+			pp2d_draw_rectangle(38, 88, 104, 64, GREYISH);
+			pp2d_draw_rectangle(178, 88, 104, 64, GREYISH);
+			buttonYes.draw();
+			buttonNo.draw();
+		pp2d_end_draw();
+	}
+	
+	return false;
+}
 
 void resetDirectoryListIndex(void)
 {
@@ -195,22 +263,10 @@ void Gui::draw(void)
 {
 	const size_t entries = rowlen * collen;
 	const size_t max = (getTitlesCount() - page*entries) > entries ? entries : getTitlesCount() - page*entries;
-	
-	char version[10];
-	sprintf(version, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
-	float versionLen = pp2d_get_text_width(version, 0.45f, 0.45f);
-	float smLen = pp2d_get_text_width("checkpoint", 0.50f, 0.50f);
-	
 	const Mode_t mode = getMode();
 	
 	pp2d_begin_draw(GFX_TOP, GFX_LEFT);
-		pp2d_draw_rectangle(0, 0, 400, 19, COLOR_BARS);
-		pp2d_draw_rectangle(0, 221, 400, 19, COLOR_BARS);
-		
-		pp2d_draw_text(4, 3, 0.45f, 0.45f, GREYISH, getTime().c_str());
-		pp2d_draw_text(TOP_WIDTH - 4 - versionLen, 3, 0.45f, 0.45f, GREYISH, version);
-		pp2d_draw_texture(TEXTURE_CHECKPOINT, TOP_WIDTH - 5 - versionLen - 19, 0);
-		pp2d_draw_text(TOP_WIDTH - 6 - versionLen - smLen - 19, 2, 0.50f, 0.50f, WHITE, "checkpoint");
+		drawBasicInterface(GFX_TOP);
 		
 		for (size_t k = page*entries; k < page*entries + max; k++)
 		{
@@ -243,8 +299,7 @@ void Gui::draw(void)
 		}
 		
 		pp2d_draw_on(GFX_BOTTOM, GFX_LEFT);
-		pp2d_draw_rectangle(0, 0, 320, 19, COLOR_BARS);
-		pp2d_draw_rectangle(0, 221, 320, 19, COLOR_BARS);
+		drawBasicInterface(GFX_BOTTOM);
 		
 		if (getTitlesCount() > 0)
 		{

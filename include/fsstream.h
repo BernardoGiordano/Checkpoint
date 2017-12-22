@@ -21,7 +21,7 @@
 
 #include "common.h"
 
-#define BUFFER_SIZE 0x100000
+#define BUFFER_SIZE 0x50000
 
 bool fileExist(FS_Archive archive, std::u16string path);
 Result createDirectory(FS_Archive archive, std::u16string path);
@@ -42,6 +42,7 @@ public:
 	bool getLoaded(void);
 	Result getResult(void);
 	u32 getSize(void);
+	u32 getOffset(void);
 	
 	u32 read(void *buf, u32 size);
 	u32 write(void *buf, u32 size);

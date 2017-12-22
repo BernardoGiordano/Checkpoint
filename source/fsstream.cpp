@@ -99,6 +99,11 @@ bool FSStream::isEndOfFile(void)
 	return offset >= size;
 }
 
+u32 FSStream::getOffset(void)
+{
+	return offset;
+}
+
 bool fileExist(FS_Archive archive, std::u16string path)
 {
 	FSStream stream(archive, path, FS_OPEN_READ);
@@ -127,6 +132,8 @@ void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, st
 		do {
 			u32 rd = input.read(buf, size);
 			output.write(buf, rd);
+			size_t slashpos = srcPath.rfind(u8tou16("/"));
+			drawCopy(srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1), input.getOffset(), input.getSize());
 		} while(!input.isEndOfFile());
 		delete[] buf;		
 	}
@@ -167,7 +174,6 @@ Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcP
 		}
 		else
 		{
-			drawCopy(items.getItem(i));
 			copyFile(srcArch, dstArch, newsrc, newdst);
 		}
 	}
@@ -337,8 +343,6 @@ void backup(size_t index)
 		
 		std::u16string copyPath = dstPath + u8tou16("/") + u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav");
 		
-		drawCopy(u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav"));
-		
 		u8* saveFile = new u8[saveSize];
 		for (u32 i = 0; i < saveSize/sectorSize; ++i)
 		{
@@ -347,6 +351,7 @@ void backup(size_t index)
 			{
 				break;
 			}
+			drawCopy(u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav"), sectorSize*(i+1), saveSize);
 		}
 		
 		if (R_FAILED(res))
@@ -465,8 +470,6 @@ void restore(size_t index)
 		u8* saveFile = new u8[saveSize];
 		FSStream stream(getArchiveSDMC(), srcPath, FS_OPEN_READ);
 		
-		drawCopy(u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav"));
-		
 		if (stream.getLoaded())
 		{
 			stream.read(saveFile, saveSize);
@@ -488,6 +491,7 @@ void restore(size_t index)
 			{
 				break;
 			}
+			drawCopy(u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav"), pageSize*(i+1), saveSize);
 		}
 
 		if (R_FAILED(res))

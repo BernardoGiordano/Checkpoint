@@ -23,7 +23,9 @@
 #include <algorithm>
 #include <codecvt>
 #include <locale>
+#include <memory>
 #include <sstream>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string>
 #include <sys/stat.h>
