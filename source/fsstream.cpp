@@ -506,3 +506,12 @@ void restore(size_t index)
 	
 	createInfo("Success!", getPathFromCell(cellIndex) + " has been restored successfully.");
 }
+
+void deleteBackupFolder(std::u16string path)
+{
+	Result res = FSUSER_DeleteDirectoryRecursively(getArchiveSDMC(), fsMakePath(PATH_UTF16, path.data()));
+	if (R_FAILED(res))
+	{
+		createError(res, "Failed to delete backup folder.");
+	}
+}

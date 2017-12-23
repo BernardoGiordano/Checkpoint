@@ -158,7 +158,12 @@ void resetDirectoryListIndex(void)
 size_t getScrollableIndex(void)
 {
 	return directoryList->getIndex();
-} 
+}
+
+void setScrollableIndex(size_t index)
+{
+	directoryList->setIndex(index);
+}
 
 Gui::Gui(void)
 {
@@ -174,6 +179,7 @@ Gui::Gui(void)
 	
 	messageBox->push_message("Press \uE000 to enter target.");
 	messageBox->push_message("Press \uE001 to exit target or deselect all titles.");
+	messageBox->push_message("Press \uE002 to delete a backup.");
 	messageBox->push_message("Press \uE003 to multiselect a title.");
 	messageBox->push_message("Hold \uE003 to multiselect all titles.");
 	messageBox->push_message("Press \uE006 to move between titles.");

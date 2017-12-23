@@ -35,6 +35,7 @@ public:
 	void invertCellColors(size_t index);
 	void resetIndex(void);
 	void updateSelection(void);
+	void setIndex(size_t i);
 
 	void draw(void);
 

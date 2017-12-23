@@ -59,9 +59,28 @@ int main() {
 		
 		if (hidKeysDown() & KEY_X)
 		{
-			menu->resetIndex();
-			setMode(getMode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
-			clearSelectedEntries();
+			if (menu->getBottomScroll())
+			{
+				bool isSaveMode = getMode() == MODE_SAVE;
+				size_t index = getScrollableIndex();
+				// avoid actions if X is pressed on "New..."
+				if (index > 0)
+				{
+					Title title;
+					getTitle(title, menu->getNormalizedIndex());
+					std::vector<std::u16string> list = isSaveMode ? title.getDirectories() : title.getExtdatas();
+					std::u16string basepath = isSaveMode ? title.getBackupPath() : title.getExtdataPath();
+					deleteBackupFolder(basepath + u8tou16("/") + list.at(index));
+					refreshDirectories(title.getId());	
+					setScrollableIndex(index - 1);					
+				}
+			}
+			else
+			{
+				menu->resetIndex();
+				setMode(getMode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
+				clearSelectedEntries();
+			}
 		}
 		
 		if (hidKeysDown() & KEY_Y)

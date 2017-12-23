@@ -44,6 +44,7 @@ bool multipleSelectionEnabled(void);
 void clearSelectedEntries(void);
 void addSelectedEntry(size_t index);
 void resetDirectoryListIndex(void);
+void setScrollableIndex(size_t index);
 
 void drawCopy(std::u16string src, u32 offset, u32 size);
 

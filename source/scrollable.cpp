@@ -72,6 +72,12 @@ void Scrollable::resetIndex(void)
 	page = 0;
 }
 
+void Scrollable::setIndex(size_t i)
+{
+	page = i / visibleEntries;
+	index = i - page * visibleEntries;
+}
+
 void Scrollable::updateSelection(void)
 {
 	touchPosition touch;
@@ -85,7 +91,7 @@ void Scrollable::updateSelection(void)
 	{
 		index = (size_t)((touch.py - y)*visibleEntries/h);
 	}
-
+	
 	calculateIndex(index, page, maxpages, maxentries, visibleEntries, 1);
 }
 
