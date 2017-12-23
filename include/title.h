@@ -74,6 +74,6 @@ size_t getTextureId(int i);
 
 void loadFilter(void);
 void loadTitles(void);
-void refreshDirectories(size_t index);
+void refreshDirectories(u64 id);
 
 #endif

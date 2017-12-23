@@ -289,7 +289,7 @@ void backup(size_t index)
 				return;
 			}
 			
-			refreshDirectories(index);
+			refreshDirectories(title.getId());
 		}
 		else
 		{
@@ -378,7 +378,7 @@ void backup(size_t index)
 		
 		delete[] saveFile;
 		stream.close();
-		refreshDirectories(index);
+		refreshDirectories(title.getId());
 	}
 	
 	createInfo("Success!", "Progress correctly saved to disk.");

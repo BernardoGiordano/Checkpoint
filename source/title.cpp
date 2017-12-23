@@ -442,15 +442,27 @@ static void loadTextureIcon(smdh_s *smdh, size_t i) {
 	free(image);
 }
 
-void refreshDirectories(size_t i)
+void refreshDirectories(u64 id)
 {
 	const Mode_t mode = getMode();
 	if (mode == MODE_SAVE)
 	{
-		titleSaves.at(i).refreshDirectories();
+		for (size_t i = 0; i < titleSaves.size(); i++)
+		{
+			if (titleSaves.at(i).getId() == id)
+			{
+				titleSaves.at(i).refreshDirectories();
+			}
+		}
 	}
 	else
 	{
-		titleExtdatas.at(i).refreshDirectories();
+		for (size_t i = 0; i < titleExtdatas.size(); i++)
+		{
+			if (titleExtdatas.at(i).getId() == id)
+			{
+				titleExtdatas.at(i).refreshDirectories();
+			}
+		}
 	}
 }
