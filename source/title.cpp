@@ -318,6 +318,47 @@ void loadTitles(void)
 	titleSaves.clear();
 	titleExtdatas.clear();
 
+	
+	/*u8 hash[SHA256_BLOCK_SIZE];
+	calculateTitleDBHash(hash);
+
+	std::u16string titlesHashPath = u8tou16("/3ds/Checkpoint/titles.sha");
+	if (!fileExist(getArchiveSDMC(), titlesHashPath))
+	{
+		// create title list sha256 hash file if it doesn't exist in the working directory
+		FSStream output(getArchiveSDMC(), titlesHashPath, FS_OPEN_WRITE, SHA256_BLOCK_SIZE);
+		output.write(hash, SHA256_BLOCK_SIZE);
+		output.close();
+		createError(1, "Hash doesn't exist");
+	}
+	else
+	{
+		// compare current hash with the previous hash
+		FSStream input(getArchiveSDMC(), titlesHashPath, FS_OPEN_READ);
+		if (input.getLoaded() && input.getSize() == SHA256_BLOCK_SIZE)
+		{
+			u8* buf = new u8[input.getSize()];
+			input.read(buf, input.getSize());
+			input.close();
+			
+			if (memcmp(hash, buf, SHA256_BLOCK_SIZE) == 0)
+			{
+				// hash matches
+				optimizedLoad = true;
+				createError(1, "Hash matches");
+			}
+			else
+			{
+				FSStream output(getArchiveSDMC(), titlesHashPath, FS_OPEN_WRITE, SHA256_BLOCK_SIZE);
+				output.write(hash, SHA256_BLOCK_SIZE);
+				output.close();
+				createError(1, "Hash doesn't match");
+			}
+			
+			delete[] buf;
+		}
+	}*/
+	
 	u32 count = 0;
 	AM_GetTitleCount(MEDIATYPE_SD, &count);
 	titleSaves.reserve(count + 1);
@@ -393,7 +434,6 @@ void loadTitles(void)
 			titleSaves.insert(titleSaves.begin(), title);
 		}
 	}
-
 }
 
 void getTitle(Title &dst, int i)

@@ -22,6 +22,7 @@
 #include <3ds.h>
 #include <algorithm>
 #include <codecvt>
+#include <fstream>
 #include <locale>
 #include <memory>
 #include <sstream>
@@ -48,6 +49,16 @@
 #include "thread.h"
 #include "title.h"
 #include "util.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "sha256.h"
+
+#ifdef __cplusplus
+}
+#endif
 
 void createInfo(std::string title, std::string message);
 void createError(Result res, std::string message);

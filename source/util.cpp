@@ -58,3 +58,13 @@ void servicesInit(void)
 	pp2d_load_texture_png(TEXTURE_CHECKPOINT, "romfs:/checkpoint.png");
 	pp2d_load_texture_png(TEXTURE_TWLCARD, "romfs:/twlcart.png");
 }
+
+void calculateTitleDBHash(u8* hash)
+{
+	u32 titleCount, titlesRead;
+	AM_GetTitleCount(MEDIATYPE_SD, &titleCount);
+	u64* buf = new u64[titleCount];
+	AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, buf);
+	sha256(hash, (u8*)buf, titleCount * sizeof(u64));
+	delete[] buf;
+}
