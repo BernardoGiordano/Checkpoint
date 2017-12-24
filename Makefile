@@ -43,8 +43,6 @@ VERSION_MAJOR := 2
 VERSION_MINOR := 0
 VERSION_MICRO := 2
 
-ROSALINA := 0
-
 # Don't really need to change this
 ICON_FLAGS          :=	nosavebackups,visible
 
@@ -53,7 +51,7 @@ ICON_FLAGS          :=	nosavebackups,visible
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 
-CFLAGS	:=	-g -Wall -Wextra -O2 -mword-relocations \
+CFLAGS	:=	-g -Wall -Wextra -Wno-psabi -O2 -mword-relocations \
 			-fomit-frame-pointer -ffunction-sections \
 			$(ARCH) \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
@@ -62,7 +60,7 @@ CFLAGS	:=	-g -Wall -Wextra -O2 -mword-relocations \
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -D_GNU_SOURCE
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
+CXXFLAGS	:= $(CFLAGS) -fexceptions -std=gnu++11
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
