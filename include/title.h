@@ -25,6 +25,7 @@
 class Title
 {
 public:
+	void load(void);
 	bool load(u64 id, FS_MediaType mediaType, FS_CardType cardType);
 	bool getAccessibleSave(void);
 	bool getAccessibleExtdata(void);
@@ -73,7 +74,7 @@ int getTitlesCount(void);
 size_t getTextureId(int i);
 
 void loadFilter(void);
-void loadTitles(void);
+void loadTitles(bool forceRefresh);
 void refreshDirectories(u64 id);
 
 #endif
