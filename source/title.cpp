@@ -334,6 +334,9 @@ static bool checkHigh(u64 id)
 
 void loadTitles(bool forceRefresh)
 {
+	std::u16string savecachePath = u8tou16("/3ds/Checkpoint/savecache");
+	std::u16string extdatacachePath = u8tou16("/3ds/Checkpoint/extdatacache");
+	
 	// on refreshing
 	titleSaves.clear();
 	titleExtdatas.clear();
@@ -344,7 +347,7 @@ void loadTitles(bool forceRefresh)
 	calculateTitleDBHash(hash);
 
 	std::u16string titlesHashPath = u8tou16("/3ds/Checkpoint/titles.sha");
-	if (!fileExist(getArchiveSDMC(), titlesHashPath))
+	if (!fileExist(getArchiveSDMC(), titlesHashPath) || !fileExist(getArchiveSDMC(), savecachePath) || !fileExist(getArchiveSDMC(), extdatacachePath))
 	{
 		// create title list sha256 hash file if it doesn't exist in the working directory
 		FSStream output(getArchiveSDMC(), titlesHashPath, FS_OPEN_WRITE, SHA256_BLOCK_SIZE);
@@ -462,8 +465,8 @@ void loadTitles(bool forceRefresh)
 	}
 	
 	// serialize data
-	exportTitleListCache(titleSaves, u8tou16("/3ds/Checkpoint/savecache"));
-	exportTitleListCache(titleExtdatas, u8tou16("/3ds/Checkpoint/extdatacache"));
+	exportTitleListCache(titleSaves, savecachePath);
+	exportTitleListCache(titleExtdatas, extdatacachePath);
 }
 
 void getTitle(Title &dst, int i)
