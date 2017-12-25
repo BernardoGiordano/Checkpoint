@@ -74,7 +74,7 @@ int getTitlesCount(void);
 size_t getTextureId(int i);
 
 void loadFilter(void);
-void loadTitles(void);
+void loadTitles(bool forceRefresh);
 void refreshDirectories(u64 id);
 
 #endif

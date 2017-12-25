@@ -29,14 +29,14 @@ static void importTitleListCache(void);
 
 void Title::load(void)
 {
-	id = 0;
+	id = 0xFFFFFFFFFFFFFFFF;
 	media = MEDIATYPE_SD;
 	card = CARD_CTR;
 	memset(productCode, 0, 16);
 	shortDescription = u8tou16(" ");
 	longDescription = u8tou16(" ");
-	backupPath = u8tou16("/");
-	extdataPath = u8tou16("/");
+	backupPath = u8tou16(" ");
+	extdataPath = u8tou16(" ");
 	textureId = TEXTURE_NOICON;
 	accessibleSave = false;
 	accessibleExtdata = false;
@@ -332,7 +332,7 @@ static bool checkHigh(u64 id)
 	return (high == 0x00040000 || high == 0x00040002);
 }
 
-void loadTitles(void)
+void loadTitles(bool forceRefresh)
 {
 	// on refreshing
 	titleSaves.clear();
@@ -378,7 +378,7 @@ void loadTitles(void)
 		}
 	}
 	
-	if (optimizedLoad)
+	if (optimizedLoad && !forceRefresh)
 	{
 		importTitleListCache();
 	}
@@ -459,11 +459,11 @@ void loadTitles(void)
 				titleSaves.insert(titleSaves.begin(), title);
 			}
 		}
-
-		// serialize data
-		exportTitleListCache(titleSaves, u8tou16("/3ds/Checkpoint/savecache"));
-		exportTitleListCache(titleExtdatas, u8tou16("/3ds/Checkpoint/extdatacache"));
 	}
+	
+	// serialize data
+	exportTitleListCache(titleSaves, u8tou16("/3ds/Checkpoint/savecache"));
+	exportTitleListCache(titleExtdatas, u8tou16("/3ds/Checkpoint/extdatacache"));
 }
 
 void getTitle(Title &dst, int i)
@@ -570,19 +570,19 @@ static void importTitleListCache(void)
 	inputextdatas.read(cacheextdatas, inputextdatas.getSize());
 	inputextdatas.close();
 	
-	// fill the lists with blank titles first
-	for (size_t i = 0; i < sizesaves; i++)
+	// fill the lists with blank titles firsts
+	for (size_t i = 0, sz = std::max(sizesaves, sizeextdatas); i < sz; i++)
 	{
 		Title title;
 		title.load();
-		titleSaves.push_back(title);
-	}
-	
-	for (size_t i = 0; i < sizeextdatas; i++)
-	{
-		Title title;
-		title.load();
-		titleExtdatas.push_back(title);
+		if (i < sizesaves)
+		{
+			titleSaves.push_back(title);
+		}
+		if (i < sizeextdatas)
+		{
+			titleExtdatas.push_back(title);
+		}
 	}
 	
 	// store already loaded ids
@@ -599,7 +599,6 @@ static void importTitleListCache(void)
 		Title title;
 		title.load(id, media, card);
 		titleSaves.at(i) = title;
-		
 		alreadystored.push_back(id);
 	}
 	
@@ -620,7 +619,18 @@ static void importTitleListCache(void)
 		}
 		else
 		{
-			titleExtdatas.at(i) = titleSaves.at(it - alreadystored.begin());
+			auto pos = it - alreadystored.begin();
+			
+			// avoid to copy a cartridge title into the extdata list twice
+			if (i != 0 && pos == 0)
+			{
+				auto newpos = find(alreadystored.rbegin(), alreadystored.rend(), id);
+				titleExtdatas.at(i) = titleSaves.at(alreadystored.rend() - newpos);
+			}
+			else
+			{
+				titleExtdatas.at(i) = titleSaves.at(pos);
+			}
 		}
 	}
 	

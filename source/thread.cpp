@@ -20,6 +20,7 @@
 
 static std::vector<Thread> threads;
 
+static bool forceRefresh = false;
 static volatile bool isLoadingTitles = false;
 
 void createThread(ThreadFunc entrypoint)
@@ -48,6 +49,7 @@ void threadLoadTitles(void)
 	}
 
 	isLoadingTitles = true;
-	loadTitles();
+	loadTitles(forceRefresh);
+	forceRefresh = true;
 	isLoadingTitles = false;
 }
