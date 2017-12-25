@@ -280,7 +280,7 @@ void Gui::draw(void)
 			if (!selectedEntries.empty() && std::find(selectedEntries.begin(), selectedEntries.end(), k) != selectedEntries.end())
 			{
 				pp2d_draw_rectangle(getSelectorX(k) + 31, getSelectorY(k) + 31, 16, 16, WHITE);
-				pp2d_draw_texture_blend(TEXTURE_CHECKBOX, getSelectorX(k) + 27, getSelectorY(k) + 27, RGBA8(51, 51, 51, 255));
+				pp2d_draw_texture_blend(TEXTURE_CHECKBOX, getSelectorX(k) + 27, getSelectorY(k) + 27, COLOR_BARS);
 			}
 		}
 		
