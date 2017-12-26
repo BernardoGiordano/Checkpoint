@@ -383,6 +383,7 @@ void loadTitles(bool forceRefresh)
 	
 	if (optimizedLoad && !forceRefresh)
 	{
+		// deserialize data
 		importTitleListCache();
 	}
 	else
@@ -425,41 +426,39 @@ void loadTitles(bool forceRefresh)
 		
 		FS_CardType cardType;
 		Result res = FSUSER_GetCardType(&cardType);
-		if (R_FAILED(res))
+		if (R_SUCCEEDED(res))
 		{
-			return;
-		}
-		
-		if (cardType == CARD_CTR)
-		{
-			AM_GetTitleCount(MEDIATYPE_GAME_CARD, &count);
-			if (count > 0)
+			if (cardType == CARD_CTR)
 			{
-				AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, ids);	
-				if (checkHigh(ids[0]))
+				AM_GetTitleCount(MEDIATYPE_GAME_CARD, &count);
+				if (count > 0)
 				{
-					Title title;
-					if (title.load(ids[0], MEDIATYPE_GAME_CARD, cardType))
+					AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, ids);	
+					if (checkHigh(ids[0]))
 					{
-						if (title.getAccessibleSave())
+						Title title;
+						if (title.load(ids[0], MEDIATYPE_GAME_CARD, cardType))
 						{
-							titleSaves.insert(titleSaves.begin(), title);
-						}
-						
-						if (title.getAccessibleExtdata())
-						{
-							titleExtdatas.insert(titleExtdatas.begin(), title);
+							if (title.getAccessibleSave())
+							{
+								titleSaves.insert(titleSaves.begin(), title);
+							}
+							
+							if (title.getAccessibleExtdata())
+							{
+								titleExtdatas.insert(titleExtdatas.begin(), title);
+							}
 						}
 					}
 				}
 			}
-		}
-		else
-		{
-			Title title;
-			if (title.load(0, MEDIATYPE_GAME_CARD, cardType))
+			else
 			{
-				titleSaves.insert(titleSaves.begin(), title);
+				Title title;
+				if (title.load(0, MEDIATYPE_GAME_CARD, cardType))
+				{
+					titleSaves.insert(titleSaves.begin(), title);
+				}
 			}
 		}
 	}
