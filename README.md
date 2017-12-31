@@ -1,6 +1,6 @@
 # Checkpoint
 
-A fast and simple save manager for cfw/Rosalina-based Homebrew Launchers written in C++.
+A fast and simple save manager for cfw/rosalina-based Homebrew Launchers written in C++.
 
 ![](https://i.imgur.com/Nttk8hX.png)
 
@@ -24,13 +24,9 @@ Checkpoint uses the following folders to store the files it generates. Note that
 
 You can use Checkpoint with both cfw and Rosalina-based Homebrew Launcher. *hax-based Homebrew Launchers are not supported by Checkpoint.
 
-The first launch will take considerably longer than usual (usually 2-3 minutes depending on how many titles you have installed), due to the working directories being created - Checkpoint will be significatively faster upon launch from then on.
+The first launch will take considerably longer than usual (usually 1-2 minutes depending on how many titles you have installed), due to the working directories being created - Checkpoint will be significatively faster upon launch from then on.
 
 You can scroll between the title list with the DPAD/LR and target a title with A when the selector is on it. Now, you can use the DPAD or the touchscreen to select a target backup to restore/overwrite.
-
-If you want to have DS cartridge recognition with Rosalina-based Homebrew Launchers: inject the Homebrew Launcher in a title which has access to DS saves.
-
-**Notice**: You mustn't have a flashcard inserted when launching Checkpoint, due to possible incompatibilities that could cause some threads to not end, possibly causing crashes.
 
 ## Issues
 

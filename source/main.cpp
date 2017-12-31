@@ -66,13 +66,16 @@ int main() {
 				// avoid actions if X is pressed on "New..."
 				if (index > 0)
 				{
-					Title title;
-					getTitle(title, menu->getNormalizedIndex());
-					std::vector<std::u16string> list = isSaveMode ? title.getDirectories() : title.getExtdatas();
-					std::u16string basepath = isSaveMode ? title.getBackupPath() : title.getExtdataPath();
-					deleteBackupFolder(basepath + u8tou16("/") + list.at(index));
-					refreshDirectories(title.getId());	
-					setScrollableIndex(index - 1);					
+					if (askForConfirmation("Delete selected backup?"))
+					{
+						Title title;
+						getTitle(title, menu->getNormalizedIndex());
+						std::vector<std::u16string> list = isSaveMode ? title.getDirectories() : title.getExtdatas();
+						std::u16string basepath = isSaveMode ? title.getBackupPath() : title.getExtdataPath();
+						deleteBackupFolder(basepath + u8tou16("/") + list.at(index));
+						refreshDirectories(title.getId());
+						setScrollableIndex(index - 1);
+					}			
 				}
 			}
 			else

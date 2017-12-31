@@ -39,9 +39,9 @@ LOGO                :=	assets/splash.bin
 UNIQUE_ID           :=	0xBCFFF
 PRODUCT_CODE        :=	CTR-HB-CKPT
 
-VERSION_MAJOR := 2
+VERSION_MAJOR := 3
 VERSION_MINOR := 0
-VERSION_MICRO := 2
+VERSION_MICRO := 0
 
 # Don't really need to change this
 ICON_FLAGS          :=	nosavebackups,visible

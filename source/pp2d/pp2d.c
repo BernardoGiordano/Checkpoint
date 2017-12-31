@@ -27,7 +27,7 @@
  * Plug & Play 2D
  * @file pp2d.c
  * @author Bernardo Giordano
- * @date 19 December 2017
+ * @date 31 December 2017
  * @brief pp2d implementation
  */
 
@@ -430,46 +430,50 @@ void pp2d_get_text_size(float* width, float* height, float scaleX, float scaleY,
 
 static void pp2d_get_text_size_internal(float* width, float* height, float scaleX, float scaleY, int wrapX, const char* text)
 {
-	float w = 0.0f;
-	float h = 0.0f;
-	
-	ssize_t  units;
-	uint32_t code;
-	float x = 0;
-	float firstX = x;
-	const uint8_t* p = (const uint8_t*)text;
-	
-	do
-	{
-		if (!*p) break;
-		units = decode_utf8(&code, p);
-		if (units == -1)
-			break;
-		p += units;
-		if (code == '\n' || (wrapX != -1 && x + scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth >= firstX + wrapX))
-		{
-			x = firstX;
-			h += scaleY*fontGetInfo()->lineFeed;
-			p -= code == '\n' ? 0 : 1;
-		}
-		else if (code > 0)
-		{
-			float len = (scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth);
-			w += len;
-			x += len;
-		}
-	} while (code > 0);
-	
-	if (width)
-	{
-		*width = w;
-	}
-	
-	if (height)
-	{
-		h += scaleY*fontGetInfo()->lineFeed;
-		*height = h;
-	}
+    float maxW = 0.0f;
+    float w = 0.0f;
+    float h = 0.0f;
+    
+    ssize_t  units;
+    uint32_t code;
+    float x = 0;
+    float firstX = x;
+    const uint8_t* p = (const uint8_t*)text;
+    
+    do
+    {
+        if (!*p) break;
+        units = decode_utf8(&code, p);
+        if (units == -1)
+            break;
+        p += units;
+        if (code == '\n' || (wrapX != -1 && x + scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth >= firstX + wrapX))
+        {
+            x = firstX;
+            h += scaleY*fontGetInfo()->lineFeed;
+            p -= code == '\n' ? 0 : 1;
+            if (w > maxW)
+                maxW = w;
+            w = 0.f;
+        }
+        else if (code > 0)
+        {
+            float len = (scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth);
+            w += len;
+            x += len;
+        }
+    } while (code > 0);
+    
+    if (width)
+    {
+        *width = w > maxW ? w : maxW;
+    }
+    
+    if (height)
+    {
+        h += scaleY*fontGetInfo()->lineFeed;
+        *height = h;
+    }
 }
 
 float pp2d_get_text_width(const char* text, float scaleX, float scaleY)
@@ -512,25 +516,7 @@ void pp2d_load_texture_bmp(size_t id, const char* path)
 	
 	u8* image = NULL;
 	unsigned int width = 0, height = 0;
-
-	loadbmp_decode_file(path, &image, &width, &height, LOADBMP_RGBA);
-	for (u32 i = 0; i < width; i++) 
-	{
-		for (u32 j = 0; j < height; j++) 
-		{
-			u32 p = (i + j*width) * 4;
-
-			u8 r = *(u8*)(image + p);
-			u8 g = *(u8*)(image + p + 1);
-			u8 b = *(u8*)(image + p + 2);
-			u8 a = *(u8*)(image + p + 3);
-
-			*(image + p) = a;
-			*(image + p + 1) = b;
-			*(image + p + 2) = g;
-			*(image + p + 3) = r;
-		}
-	}
+	loadbmp_decode_file(path, &image, &width, &height);
 	
 	pp2d_load_texture_memory(id, image, width, height);
 	free(image);

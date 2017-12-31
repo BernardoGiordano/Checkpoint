@@ -27,7 +27,7 @@
  * Plug & Play 2D
  * @file pp2d.h
  * @author Bernardo Giordano
- * @date 19 December 2017
+ * @date 31 December 2017
  * @brief pp2d header
  */
 

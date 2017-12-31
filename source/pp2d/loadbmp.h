@@ -37,18 +37,10 @@
 #define LOADBMP_INVALID_SIGNATURE 5
 #define LOADBMP_INVALID_BITS_PER_PIXEL 6
 
-// Components
-#define LOADBMP_RGB  3
-#define LOADBMP_RGBA 4
-
 # define LOADBMP_API
 
-// LoadBMP uses raw buffers and support RGB and RGBA formats.
-// The order is RGBRGBRGB... or RGBARGBARGBA..., from top left
-// to bottom right, without any padding.
-
 LOADBMP_API unsigned int loadbmp_decode_file(
-	const char *filename, unsigned char **imageData, unsigned int *width, unsigned int *height, unsigned int components);
+	const char *filename, unsigned char **imageData, unsigned int *width, unsigned int *height);
 
 // Disable Microsoft Visual C++ compiler security warnings for fopen, strcpy, etc being unsafe
 #if defined(_MSC_VER) && (_MSC_VER >= 1310)
@@ -60,7 +52,7 @@ LOADBMP_API unsigned int loadbmp_decode_file(
 #include <stdio.h> /* fopen(), fwrite(), fread(), fclose() */
 
 LOADBMP_API unsigned int loadbmp_decode_file(
-	const char *filename, unsigned char **imageData, unsigned int *width, unsigned int *height, unsigned int components)
+	const char *filename, unsigned char **imageData, unsigned int *width, unsigned int *height)
 {
 	FILE *f = fopen(filename, "rb");
 
@@ -108,7 +100,7 @@ LOADBMP_API unsigned int loadbmp_decode_file(
 	
 	if ((w > 0) && (h > 0))
 	{
-		data = (unsigned char*)malloc(w * h * components);
+		data = (unsigned char*)malloc(w * h * 4);
 
 		if (!data)
 		{
@@ -120,7 +112,7 @@ LOADBMP_API unsigned int loadbmp_decode_file(
 		{
 			for (x = 0; x < w; x++)
 			{
-				i = (x + y * w) * components;
+				i = (x + y * w) * 4;
 
 				if (fread(data + i, 3, 1, f) == 0)
 				{
@@ -129,10 +121,10 @@ LOADBMP_API unsigned int loadbmp_decode_file(
 					return LOADBMP_INVALID_FILE_FORMAT;
 				}
 
-				data[i] ^= data[i + 2] ^= data[i] ^= data[i + 2]; // BGR -> RGB
-
-				if (components == LOADBMP_RGBA)
-					data[i + 3] = 255;
+				data[i + 3] = data[i + 2];
+				data[i + 2] = data[i + 1];
+				data[i + 1] = data[i];
+				data[i] = 255;
 			}
 
 			padding = ((4 - (w * 3) % 4) % 4);
