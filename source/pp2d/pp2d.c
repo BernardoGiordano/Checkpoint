@@ -41,6 +41,7 @@ static C3D_Mtx projectionTopLeft;
 static C3D_Mtx projectionTopRight;
 static C3D_Mtx projectionBot;
 static C3D_Tex* glyphSheets;
+static float s_textScale;
 static textVertex_s* textVtxArray;
 static int textVtxArrayPos;
 static C3D_RenderTarget* topLeft;
@@ -158,6 +159,9 @@ void pp2d_draw_text_wrap(float x, float y, float scaleX, float scaleY, u32 color
 	const uint8_t* p = (const uint8_t*)text;
 	float firstX = x;
 	int lastSheet = -1;
+	
+	scaleX *= s_textScale;
+	scaleY *= s_textScale;
 	
 	do
 	{
@@ -389,6 +393,9 @@ Result pp2d_init(void)
 		tex->lodParam = 0;
 	}
 	
+	charWidthInfo_s* cwi = fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(0x3042));
+	s_textScale = 20.0f / (cwi->glyphWidth); // 20 is glyphWidth in J machines
+	
 	textVtxArray = (textVertex_s*)linearAlloc(sizeof(textVertex_s)*TEXT_VTX_ARRAY_COUNT);
 	C3D_BufInfo* bufInfo = C3D_GetBufInfo();
 	BufInfo_Init(bufInfo);
@@ -439,6 +446,9 @@ static void pp2d_get_text_size_internal(float* width, float* height, float scale
     float x = 0;
     float firstX = x;
     const uint8_t* p = (const uint8_t*)text;
+	
+	scaleX *= s_textScale;
+	scaleY *= s_textScale;
     
     do
     {
