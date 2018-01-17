@@ -1,5 +1,5 @@
 /*  This file is part of Checkpoint
->	Copyright (C) 2017 Bernardo Giordano
+>	Copyright (C) 2017/2018 Bernardo Giordano
 >
 >   This program is free software: you can redistribute it and/or modify
 >   it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ bool Clickable::isReleased(void)
 {
 	touchPosition touch;
 	hidTouchRead(&touch);	
-	bool on = touch.px > x && touch.px < x+w && touch.py > y && touch.py < y+h;
+	const bool on = touch.px > x && touch.px < x+w && touch.py > y && touch.py < y+h;
 	
 	if (on)
 	{

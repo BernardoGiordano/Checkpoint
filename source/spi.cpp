@@ -41,14 +41,14 @@ Result SPIWaitWriteEnd(CardType type)
 {
 	u8 cmd = SPI_CMD_RDSR, statusReg = 0;
 	Result res = 0;
-	int cnt = 0;
+	int panic = 0;
 	do {
-		cnt++;
+		panic++;
 		res = SPIWriteRead(type, &cmd, 1, &statusReg, 1, 0, 0);
 		if (res) return res;
-	} while (statusReg & SPI_FLG_WIP && cnt < 1000);
+	} while (statusReg & SPI_FLG_WIP && panic < 1000);
 	
-	return cnt >= 1000 ? 1 : 0;
+	return panic >= 1000 ? 1 : 0;
 }
 
 Result SPIEnableWriting(CardType type)
@@ -274,7 +274,7 @@ Result SPIEraseSector(CardType type, u32 offset)
 	
 	Result res = SPIWaitWriteEnd(type);
 	
-	if(type >= FLASH_256KB_1)
+	if (type >= FLASH_256KB_1)
 	{
 		if ( (res = SPIEnableWriting(type)) ) return res;
 		if ( (res = SPIWriteRead(type, cmd, 4, NULL, 0, NULL, 0)) ) return res;
@@ -394,10 +394,8 @@ Result SPIGetCardType(CardType* type, int infrared)
 	{
 		if (infrared == 1) *type = NO_CHIP; // did anything go wrong?
 		if (jedec == 0x204017) { *type = FLASH_8MB; return 0; } // 8MB. savegame-manager: which one? (more work is required to unlock this save chip!)
-		
-		int i;
-		
-		for (i = 0; i < 6; ++i)
+
+		for (int i = 0; i < 6; ++i)
 		{
 			if(jedec == jedecOrderedList[i]) { *type = (CardType)((int) FLASH_256KB_1 + i); return 0; }  
 		}

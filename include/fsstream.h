@@ -1,5 +1,5 @@
 /*  This file is part of Checkpoint
->	Copyright (C) 2017 Bernardo Giordano
+>	Copyright (C) 2017/2018 Bernardo Giordano
 >
 >   This program is free software: you can redistribute it and/or modify
 >   it under the terms of the GNU General Public License as published by
@@ -22,16 +22,6 @@
 #include "common.h"
 
 #define BUFFER_SIZE 0x50000
-
-bool fileExist(FS_Archive archive, std::u16string path);
-Result createDirectory(FS_Archive archive, std::u16string path);
-bool directoryExist(FS_Archive archive, std::u16string path);
-void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath);
-Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath);
-void deleteBackupFolder(std::u16string path);
-
-void backup(size_t index);
-void restore(size_t index);
 
 class FSStream
 {

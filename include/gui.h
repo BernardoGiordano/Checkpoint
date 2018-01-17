@@ -1,5 +1,5 @@
 /*  This file is part of Checkpoint
->	Copyright (C) 2017 Bernardo Giordano
+>	Copyright (C) 2017/2018 Bernardo Giordano
 >
 >   This program is free software: you can redistribute it and/or modify
 >   it under the terms of the GNU General Public License as published by
@@ -28,15 +28,18 @@
 #define TEXTURE_FIRST_FREE_INDEX 5
 
 #define COLOR_BACKGROUND ABGR8(255, 51, 51, 51)
-#define COLOR_BARS RGBA8(150, 150, 150, 255)
+#define COLOR_BARS RGBA8(88, 88, 88, 255)
 #define WHITE RGBA8(255, 255, 255, 255)
-#define GREYISH RGBA8(200, 200, 200, 255)
+#define GREYISH RGBA8(157, 157, 157, 255)
 #define BLACK RGBA8(0, 0, 0, 255)
 #define BLUE RGBA8(0, 0, 255, 255)
 #define RED RGBA8(255, 0, 0, 255)
 #define GREEN RGBA8(0, 255, 0, 255)
 
 bool askForConfirmation(std::string text);
+void drawCopy(std::u16string src, u32 offset, u32 size);
+void createInfo(std::string title, std::string message);
+void createError(Result res, std::string message);
 
 size_t getScrollableIndex(void);
 
@@ -47,16 +50,12 @@ void addSelectedEntry(size_t index);
 void resetDirectoryListIndex(void);
 void setScrollableIndex(size_t index);
 
-void drawCopy(std::u16string src, u32 offset, u32 size);
-
 class Gui
 {
 public:
 	Gui(void);
-	void createInfo(std::string title, std::string message);
-	void createError(Result res, std::string message);
 	bool getBottomScroll(void);
-	size_t getNormalizedIndex(void);
+	size_t getFullIndex(void);
 	bool isBackupReleased(void);
 	bool isRestoreReleased(void);
 	void setBottomScroll(bool enable);

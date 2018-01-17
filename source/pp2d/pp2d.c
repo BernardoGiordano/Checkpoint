@@ -27,7 +27,7 @@
  * Plug & Play 2D
  * @file pp2d.c
  * @author Bernardo Giordano
- * @date 31 December 2017
+ * @date 17 January 2018
  * @brief pp2d implementation
  */
 
@@ -77,7 +77,7 @@ static struct {
 } textures[MAX_TEXTURES];
 
 static void pp2d_add_text_vertex(float vx, float vy, float vz, float tx, float ty);
-static bool pp2d_fast_draw_vbo(int x, int y, int height, int width, float left, float right, float top, float bottom, float depth);
+static bool pp2d_add_quad(int x, int y, int height, int width, float left, float right, float top, float bottom, float depth);
 static u32 pp2d_get_next_pow2(u32 n);
 static void pp2d_get_text_size_internal(float* width, float* height, float scaleX, float scaleY, int wrapX, const char* text);
 static void pp2d_set_text_color(u32 color);
@@ -115,10 +115,10 @@ void pp2d_draw_rectangle(int x, int y, int width, int height, u32 color)
 	C3D_TexEnv* env = C3D_GetTexEnv(0);
 	C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, GPU_CONSTANT, 0);
 	C3D_TexEnvOp(env, C3D_Both, 0, 0, 0);
-	C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
+	C3D_TexEnvFunc(env, C3D_RGB, GPU_INTERPOLATE);
 	C3D_TexEnvColor(env, color);
 	
-	if (pp2d_fast_draw_vbo(x, y, height, width, 0, 0, 0, 0, DEFAULT_DEPTH))
+	if (pp2d_add_quad(x, y, height, width, 0, 0, 0, 0, DEFAULT_DEPTH))
 	{
 		C3D_DrawArrays(GPU_TRIANGLE_STRIP, textVtxArrayPos - 4, 4);
 	}
@@ -297,7 +297,7 @@ void pp2d_exit(void)
 	gfxExit();
 }
 
-static bool pp2d_fast_draw_vbo(int x, int y, int height, int width, float left, float right, float top, float bottom, float depth)
+static bool pp2d_add_quad(int x, int y, int height, int width, float left, float right, float top, float bottom, float depth)
 {
 	if ((textVtxArrayPos+4) >= TEXT_VTX_ARRAY_COUNT)
 		return false;

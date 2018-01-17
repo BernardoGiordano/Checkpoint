@@ -1,5 +1,5 @@
 /*  This file is part of Checkpoint
->	Copyright (C) 2017 Bernardo Giordano
+>	Copyright (C) 2017/2018 Bernardo Giordano
 >
 >   This program is free software: you can redistribute it and/or modify
 >   it under the terms of the GNU General Public License as published by
@@ -48,21 +48,13 @@ FS_Archive getArchiveSDMC(void)
 
 Result getArchiveSave(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid)
 {
-	const u32 path[3] = {
-		mediatype,
-		lowid,
-		highid
-	};
+	const u32 path[3] = { mediatype, lowid, highid };
 	return FSUSER_OpenArchive(archive, ARCHIVE_USER_SAVEDATA, {PATH_BINARY, 12, path});
 }
 
 Result getArchiveExtdata(FS_Archive* archive, u32 extdata)
 {
-	const u32 path[3] = {
-		MEDIATYPE_SD,
-		extdata,
-		0
-	};
+	const u32 path[3] = { MEDIATYPE_SD, extdata, 0 };
 	return FSUSER_OpenArchive(archive, ARCHIVE_EXTDATA, {PATH_BINARY, 12, path});
 }
 
@@ -75,7 +67,6 @@ bool isSaveAccessible(FS_MediaType mediatype, u32 lowid, u32 highid)
 		FSUSER_CloseArchive(archive);
 		return true;
 	}
-	
 	return false;
 }
 

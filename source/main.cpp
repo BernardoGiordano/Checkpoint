@@ -1,5 +1,5 @@
 /*  This file is part of Checkpoint
->	Copyright (C) 2017 Bernardo Giordano
+>	Copyright (C) 2017/2018 Bernardo Giordano
 >
 >   This program is free software: you can redistribute it and/or modify
 >   it under the terms of the GNU General Public License as published by
@@ -20,23 +20,12 @@
 
 static Gui* menu;
 
-void createInfo(std::string title, std::string message)
-{
-	menu->createInfo(title, message);
-}
-
-void createError(Result res, std::string message)
-{
-	menu->createError(res, message);
-}
-
 int main() {
 	servicesInit();
 	
 	int selectionTimer = 0;
 	int refreshTimer = 0;
 	menu = new Gui();
-	
 	createThread((ThreadFunc)threadLoadTitles);
 
 	while (aptMainLoop() && !(hidKeysDown() & KEY_START)) {
@@ -69,7 +58,7 @@ int main() {
 					if (askForConfirmation("Delete selected backup?"))
 					{
 						Title title;
-						getTitle(title, menu->getNormalizedIndex());
+						getTitle(title, menu->getFullIndex());
 						std::vector<std::u16string> list = isSaveMode ? title.getDirectories() : title.getExtdatas();
 						std::u16string basepath = isSaveMode ? title.getBackupPath() : title.getExtdataPath();
 						deleteBackupFolder(basepath + u8tou16("/") + list.at(index));
@@ -88,7 +77,7 @@ int main() {
 		
 		if (hidKeysDown() & KEY_Y)
 		{
-			addSelectedEntry(menu->getNormalizedIndex());
+			addSelectedEntry(menu->getFullIndex());
 		}
 		
 		if (hidKeysHeld() & KEY_Y)
@@ -139,7 +128,7 @@ int main() {
 			}
 			else
 			{
-				backup(menu->getNormalizedIndex());
+				backup(menu->getFullIndex());
 			}
 		}
 		
@@ -151,7 +140,7 @@ int main() {
 			}
 			else
 			{
-				restore(menu->getNormalizedIndex());
+				restore(menu->getFullIndex());
 			}
 		}
 		
@@ -160,7 +149,6 @@ int main() {
 	}
 	
 	delete menu;
-	
 	destroyThreads();
 	servicesExit();
 }

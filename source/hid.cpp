@@ -1,5 +1,5 @@
 /*  This file is part of Checkpoint
->	Copyright (C) 2017 Bernardo Giordano
+>	Copyright (C) 2017/2018 Bernardo Giordano
 >
 >   This program is free software: you can redistribute it and/or modify
 >   it under the terms of the GNU General Public License as published by
@@ -37,7 +37,6 @@ static size_t refreshMaxEntries(int page, size_t entries)
 		case TITLES: return (getTitlesCount() - page*entries) > entries ? entries - 1 : getTitlesCount() - page*entries - 1;
 		case CELLS: return (getCellsCount() - page*entries) > entries ? entries - 1 : getCellsCount() - page*entries - 1;
 	}
-	
 	return 0;
 }
 

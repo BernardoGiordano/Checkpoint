@@ -16,49 +16,19 @@
 >   See LICENSE for information.
 */
 
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef IO_H
+#define IO_H
 
-#include <3ds.h>
-#include <algorithm>
-#include <codecvt>
-#include <fstream>
-#include <locale>
-#include <memory>
-#include <sstream>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string>
-#include <sys/stat.h>
-#include <vector>
-#include "archive.h"
-#include "clickable.h"
-#include "datetime.h"
-#include "directory.h"
-#include "fsstream.h"
-#include "gui.h"
-#include "hid.h"
-#include "info.h"
-#include "io.h"
-#include "messagebox.h"
-#include "../source/pp2d/pp2d.h"
-#include "scrollable.h"
-#include "smdh.h"
-#include "spi.h"
-#include "stringutil.h"
-#include "swkbd.h"
-#include "thread.h"
-#include "title.h"
-#include "util.h"
+#include "common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+bool fileExist(FS_Archive archive, std::u16string path);
+Result createDirectory(FS_Archive archive, std::u16string path);
+bool directoryExist(FS_Archive archive, std::u16string path);
+void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath);
+Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, std::u16string dstPath);
+void deleteBackupFolder(std::u16string path);
 
-#include "sha256.h"
-
-#ifdef __cplusplus
-}
-#endif
+void backup(size_t index);
+void restore(size_t index);
 
 #endif

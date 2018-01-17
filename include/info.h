@@ -1,5 +1,5 @@
 /*  This file is part of Checkpoint
->	Copyright (C) 2017 Bernardo Giordano
+>	Copyright (C) 2017/2018 Bernardo Giordano
 >
 >   This program is free software: you can redistribute it and/or modify
 >   it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@ class Info
 public:
 	void init(std::string title, std::string message, int ttl, Info_t type);
 	void init(Result res, std::string message, int ttl, Info_t type);
-	void resetTTL(void);
 	void draw(void);
 
 private:

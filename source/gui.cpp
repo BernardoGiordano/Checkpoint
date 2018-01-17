@@ -1,5 +1,5 @@
 /*  This file is part of Checkpoint
->	Copyright (C) 2017 Bernardo Giordano
+>	Copyright (C) 2017/2018 Bernardo Giordano
 >
 >   This program is free software: you can redistribute it and/or modify
 >   it under the terms of the GNU General Public License as published by
@@ -150,6 +150,16 @@ bool askForConfirmation(std::string text)
 	return false;
 }
 
+void createInfo(std::string title, std::string message)
+{
+	info.init(title, message, 500, TYPE_INFO);
+}
+
+void createError(Result res, std::string message)
+{
+	info.init(res, message, 500, TYPE_ERROR);
+}
+
 void resetDirectoryListIndex(void)
 {
 	directoryList->resetIndex();
@@ -187,22 +197,12 @@ Gui::Gui(void)
 	messageBox->push_message("Hold \uE001 to refresh titles.");
 }
 
-void Gui::createInfo(std::string title, std::string message)
-{
-	info.init(title, message, 500, TYPE_INFO);
-}
-
-void Gui::createError(Result res, std::string message)
-{
-	info.init(res, message, 500, TYPE_ERROR);
-}
-
 bool Gui::getBottomScroll(void)
 {
 	return bottomScrollEnabled;
 }
 
-size_t Gui::getNormalizedIndex(void)
+size_t Gui::getFullIndex(void)
 {
 	return index + page*rowlen*collen;
 }
@@ -249,10 +249,10 @@ void Gui::drawSelector(void)
 	const int x = getSelectorX(index);
 	const int y = getSelectorY(index);
 	pp2d_draw_rectangle(         x,          y, 50,       50, RGBA8(255, 255, 255, 200)); 
-	pp2d_draw_rectangle(         x,          y, 50,    w + 1, RED); //top
-	pp2d_draw_rectangle(         x,      y + w,  w, 50 - 2*w, RED); //left
-	pp2d_draw_rectangle(x + 50 - w,      y + w,  w, 50 - 2*w, RED); //right
-	pp2d_draw_rectangle(         x, y + 50 - w, 50,        w, RED); //bottom
+	pp2d_draw_rectangle(         x,          y, 50,    w + 1, RED); // top
+	pp2d_draw_rectangle(         x,      y + w,  w, 50 - 2*w, RED); // left
+	pp2d_draw_rectangle(x + 50 - w,      y + w,  w, 50 - 2*w, RED); // right
+	pp2d_draw_rectangle(         x, y + 50 - w, 50,        w, RED); // bottom
 }
 
 int Gui::getSelectorX(size_t index)
