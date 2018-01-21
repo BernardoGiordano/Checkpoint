@@ -25,33 +25,42 @@ static MessageBox* messageBox;
 static MessageBox* copyList;
 static Scrollable* directoryList;
 
-static void drawBasicInterface(gfxScreen_t screen);
+static size_t idx;
+static int page;
+static const size_t rowlen = 4;
+static const size_t collen = 8;
+static bool bottomScrollEnabled;
+
+static void GUI_drawBasicInterface(gfxScreen_t screen);
+static void GUI_drawSelector(void);
+static int GUI_getSelectorX(size_t i);
+static int GUI_getSelectorY(size_t i);
 
 /// Multi selection
 
 static std::vector<size_t> selectedEntries;
 
-std::vector<size_t> getSelectedEntries(void)
+std::vector<size_t> GUI_getSelectedEntries(void)
 {
 	return selectedEntries;
 }
 
-bool multipleSelectionEnabled(void)
+bool GUI_multipleSelectionEnabled(void)
 {
 	return !selectedEntries.empty();
 }
 
-void clearSelectedEntries(void)
+void GUI_clearSelectedEntries(void)
 {
 	selectedEntries.clear();
 }
 
-void addSelectedEntry(size_t index)
+void GUI_addSelectedEntry(size_t idx)
 {
 	int existing = -1;
 	for (size_t i = 0, sz = selectedEntries.size(); i < sz && existing == -1; i++)
 	{
-		if (selectedEntries.at(i) == index)
+		if (selectedEntries.at(i) == idx)
 		{
 			existing = (int)i;
 		}
@@ -59,7 +68,7 @@ void addSelectedEntry(size_t index)
 	
 	if (existing == -1)
 	{
-		selectedEntries.push_back(index);
+		selectedEntries.push_back(idx);
 	}
 	else
 	{
@@ -69,7 +78,7 @@ void addSelectedEntry(size_t index)
 
 /// Gui implementation
 
-static void drawBasicInterface(gfxScreen_t screen)
+static void GUI_drawBasicInterface(gfxScreen_t screen)
 {
 	if (screen == GFX_TOP)
 	{
@@ -93,17 +102,17 @@ static void drawBasicInterface(gfxScreen_t screen)
 	}
 }
 
-void drawCopy(std::u16string src, u32 offset, u32 size)
+void GUI_drawCopy(std::u16string src, u32 offset, u32 size)
 {
 	copyList->clear();
 	copyList->push_message("Copying " + u16tou8(src));
 	
 	pp2d_begin_draw(GFX_TOP, GFX_LEFT);
-		drawBasicInterface(GFX_TOP);
+		GUI_drawBasicInterface(GFX_TOP);
 		copyList->draw();
 		
 		pp2d_draw_on(GFX_BOTTOM, GFX_LEFT);
-		drawBasicInterface(GFX_BOTTOM);
+		GUI_drawBasicInterface(GFX_BOTTOM);
 		
 		static const int barHeight = 19;
 		static const int progressBarHeight = 50;
@@ -120,7 +129,7 @@ void drawCopy(std::u16string src, u32 offset, u32 size)
 	pp2d_end_draw();
 }
 
-bool askForConfirmation(std::string text)
+bool GUI_askForConfirmation(std::string text)
 {
 	Clickable buttonYes(40, 90, 100, 60, WHITE, BLACK, "   \uE000 Yes", true);
 	Clickable buttonNo(180, 90, 100, 60, WHITE, BLACK, "   \uE001 No", true);
@@ -136,10 +145,10 @@ bool askForConfirmation(std::string text)
 		}
 		
 		pp2d_begin_draw(GFX_TOP, GFX_LEFT);
-			drawBasicInterface(GFX_TOP);
+			GUI_drawBasicInterface(GFX_TOP);
 			message.draw();
 			pp2d_draw_on(GFX_BOTTOM, GFX_LEFT);
-			drawBasicInterface(GFX_BOTTOM);
+			GUI_drawBasicInterface(GFX_BOTTOM);
 			pp2d_draw_rectangle(38, 88, 104, 64, GREYISH);
 			pp2d_draw_rectangle(178, 88, 104, 64, GREYISH);
 			buttonYes.draw();
@@ -160,24 +169,24 @@ void createError(Result res, std::string message)
 	info.init(res, message, 500, TYPE_ERROR);
 }
 
-void resetDirectoryListIndex(void)
+void GUI_resetDirectoryListIndex(void)
 {
 	directoryList->resetIndex();
 }
 
-size_t getScrollableIndex(void)
+size_t GUI_getScrollableIndex(void)
 {
 	return directoryList->getIndex();
 }
 
-void setScrollableIndex(size_t index)
+void GUI_setScrollableIndex(size_t idx)
 {
-	directoryList->setIndex(index);
+	directoryList->setIndex(idx);
 }
 
-Gui::Gui(void)
+void GUI_init(void)
 {
-	index = 0;
+	idx = 0;
 	page = 0;
 	bottomScrollEnabled = false;
 	info.init("", "", 0, TYPE_INFO);
@@ -197,22 +206,22 @@ Gui::Gui(void)
 	messageBox->push_message("Hold \uE001 to refresh titles.");
 }
 
-bool Gui::getBottomScroll(void)
+bool GUI_getBottomScroll(void)
 {
 	return bottomScrollEnabled;
 }
 
-size_t Gui::getFullIndex(void)
+size_t GUI_getFullIndex(void)
 {
-	return index + page*rowlen*collen;
+	return idx + page*rowlen*collen;
 }
 
-void Gui::setBottomScroll(bool enable)
+void GUI_setBottomScroll(bool enable)
 {
 	bottomScrollEnabled = enable;
 }
 
-void Gui::updateButtonsColor(void)
+void GUI_updateButtonsColor(void)
 {
 	if (bottomScrollEnabled)
 	{
@@ -226,14 +235,14 @@ void Gui::updateButtonsColor(void)
 	}
 }
 
-void Gui::updateSelector(void)
+void GUI_updateSelector(void)
 {
-	if (!getBottomScroll())
+	if (!bottomScrollEnabled)
 	{
 		const size_t entries = rowlen * collen;
 		const size_t maxentries = (getTitlesCount() - page*entries) > entries ? entries : getTitlesCount() - page*entries;
 		const size_t maxpages = getTitlesCount() / entries + 1;
-		calculateIndex(index, page, maxpages, maxentries, entries, collen);
+		calculateIndex(idx, page, maxpages, maxentries, entries, collen);
 
 		directoryList->resetIndex();
 	}
@@ -243,50 +252,50 @@ void Gui::updateSelector(void)
 	}
 }
 
-void Gui::drawSelector(void)
+static void GUI_drawSelector(void)
 {
 	static const int w = 2;
-	const int x = getSelectorX(index);
-	const int y = getSelectorY(index);
+	const int x = GUI_getSelectorX(idx);
+	const int y = GUI_getSelectorY(idx);
 	pp2d_draw_rectangle(         x,          y, 50,       50, RGBA8(255, 255, 255, 200)); 
-	pp2d_draw_rectangle(         x,          y, 50,    w + 1, RED); // top
+	pp2d_draw_rectangle(         x,          y, 50,        w, RED); // top
 	pp2d_draw_rectangle(         x,      y + w,  w, 50 - 2*w, RED); // left
 	pp2d_draw_rectangle(x + 50 - w,      y + w,  w, 50 - 2*w, RED); // right
 	pp2d_draw_rectangle(         x, y + 50 - w, 50,        w, RED); // bottom
 }
 
-int Gui::getSelectorX(size_t index)
+static int GUI_getSelectorX(size_t i)
 {
-	return 50*((index % (rowlen*collen)) % collen);
+	return 50*((i % (rowlen*collen)) % collen);
 }
 
-int Gui::getSelectorY(size_t index)
+static int GUI_getSelectorY(size_t i)
 {
-	return 20 + 50*((index % (rowlen*collen)) / collen);
+	return 20 + 50*((i % (rowlen*collen)) / collen);
 }
 
-void Gui::draw(void)
+void GUI_draw(void)
 {
 	const size_t entries = rowlen * collen;
 	const size_t max = (getTitlesCount() - page*entries) > entries ? entries : getTitlesCount() - page*entries;
 	const Mode_t mode = getMode();
 	
 	pp2d_begin_draw(GFX_TOP, GFX_LEFT);
-		drawBasicInterface(GFX_TOP);
+		GUI_drawBasicInterface(GFX_TOP);
 		
 		for (size_t k = page*entries; k < page*entries + max; k++)
 		{
-			pp2d_draw_texture(getTextureId(k), getSelectorX(k) + 1, getSelectorY(k) + 1);
+			pp2d_draw_texture(getTextureId(k), GUI_getSelectorX(k) + 1, GUI_getSelectorY(k) + 1);
 			if (!selectedEntries.empty() && std::find(selectedEntries.begin(), selectedEntries.end(), k) != selectedEntries.end())
 			{
-				pp2d_draw_rectangle(getSelectorX(k) + 31, getSelectorY(k) + 31, 16, 16, WHITE);
-				pp2d_draw_texture_blend(TEXTURE_CHECKBOX, getSelectorX(k) + 27, getSelectorY(k) + 27, COLOR_BARS);
+				pp2d_draw_rectangle(GUI_getSelectorX(k) + 31, GUI_getSelectorY(k) + 31, 16, 16, WHITE);
+				pp2d_draw_texture_blend(TEXTURE_CHECKBOX, GUI_getSelectorX(k) + 27, GUI_getSelectorY(k) + 27, COLOR_BARS);
 			}
 		}
 		
 		if (getTitlesCount() > 0)
 		{
-			drawSelector();
+			GUI_drawSelector();
 		}
 		
 		static const float p1width = pp2d_get_text_width("Hold SELECT to see commands. Press \uE002 for ", 0.47f, 0.47f);
@@ -305,12 +314,12 @@ void Gui::draw(void)
 		}
 		
 		pp2d_draw_on(GFX_BOTTOM, GFX_LEFT);
-		drawBasicInterface(GFX_BOTTOM);
+		GUI_drawBasicInterface(GFX_BOTTOM);
 		
 		if (getTitlesCount() > 0)
 		{
 			Title title;
-			getTitle(title, index + page*entries);
+			getTitle(title, idx + page*entries);
 			
 			directoryList->flush();
 			std::vector<std::u16string> dirs = mode == MODE_SAVE ? title.getDirectories() : title.getExtdatas();
@@ -356,18 +365,18 @@ void Gui::draw(void)
 	pp2d_end_draw();
 }
 
-bool Gui::isBackupReleased(void)
+bool GUI_isBackupReleased(void)
 {
 	return buttonBackup->isReleased() && bottomScrollEnabled;
 }
 
-bool Gui::isRestoreReleased(void)
+bool GUI_isRestoreReleased(void)
 {
 	return buttonRestore->isReleased() && bottomScrollEnabled;
 }
 
-void Gui::resetIndex(void)
+void GUI_resetIndex(void)
 {
-	index = 0;
+	idx = 0;
 	page = 0;
 }

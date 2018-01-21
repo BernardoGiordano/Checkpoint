@@ -36,46 +36,28 @@
 #define RED RGBA8(255, 0, 0, 255)
 #define GREEN RGBA8(0, 255, 0, 255)
 
-bool askForConfirmation(std::string text);
-void drawCopy(std::u16string src, u32 offset, u32 size);
+void GUI_init(void);
+bool GUI_getBottomScroll(void);
+size_t GUI_getFullIndex(void);
+bool GUI_isBackupReleased(void);
+bool GUI_isRestoreReleased(void);
+void GUI_setBottomScroll(bool enable);
+void GUI_updateButtonsColor(void);
+void GUI_updateSelector(void);
+void GUI_resetIndex(void);
+void GUI_draw(void);
+
+bool GUI_askForConfirmation(std::string text);
+void GUI_drawCopy(std::u16string src, u32 offset, u32 size);
 void createInfo(std::string title, std::string message);
 void createError(Result res, std::string message);
 
-size_t getScrollableIndex(void);
-
-std::vector<size_t> getSelectedEntries(void);
-bool multipleSelectionEnabled(void);
-void clearSelectedEntries(void);
-void addSelectedEntry(size_t index);
-void resetDirectoryListIndex(void);
-void setScrollableIndex(size_t index);
-
-class Gui
-{
-public:
-	Gui(void);
-	bool getBottomScroll(void);
-	size_t getFullIndex(void);
-	bool isBackupReleased(void);
-	bool isRestoreReleased(void);
-	void setBottomScroll(bool enable);
-	void updateButtonsColor(void);
-	void updateSelector(void);
-	void resetIndex(void);
-	
-	void draw(void);
-
-private:
-	void drawSelector(void);
-	int getSelectorX(size_t index);
-	int getSelectorY(size_t index);
-	
-	size_t index;
-	int page;
-	const size_t rowlen = 4;
-	const size_t collen = 8;
-	
-	bool bottomScrollEnabled;
-};
+size_t GUI_getScrollableIndex(void);
+std::vector<size_t> GUI_getSelectedEntries(void);
+bool GUI_multipleSelectionEnabled(void);
+void GUI_clearSelectedEntries(void);
+void GUI_addSelectedEntry(size_t index);
+void GUI_resetDirectoryListIndex(void);
+void GUI_setScrollableIndex(size_t index);
 
 #endif

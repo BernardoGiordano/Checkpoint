@@ -47,7 +47,7 @@ void copyFile(FS_Archive srcArch, FS_Archive dstArch, std::u16string srcPath, st
 			u32 rd = input.read(buf, size);
 			output.write(buf, rd);
 			size_t slashpos = srcPath.rfind(u8tou16("/"));
-			drawCopy(srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1), input.getOffset(), input.getSize());
+			GUI_drawCopy(srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1), input.getOffset(), input.getSize());
 		} while(!input.isEndOfFile());
 		delete[] buf;		
 	}
@@ -120,16 +120,16 @@ bool directoryExist(FS_Archive archive, std::u16string path)
 void backup(size_t index)
 {
 	// check if multiple selection is enabled and don't ask for confirmation if that's the case
-	if (!multipleSelectionEnabled())
+	if (!GUI_multipleSelectionEnabled())
 	{
-		if (!askForConfirmation("Backup selected save?"))
+		if (!GUI_askForConfirmation("Backup selected save?"))
 		{
 			return;
 		}
 	}
 
 	const Mode_t mode = getMode();
-	const size_t cellIndex = getScrollableIndex();
+	const size_t cellIndex = GUI_getScrollableIndex();
 	const bool isNewFolder = cellIndex == 0;
 	Result res = 0;
 	
@@ -153,7 +153,7 @@ void backup(size_t index)
 			std::string suggestion = getPathDateTime();
 			
 			std::u16string customPath;
-			if (multipleSelectionEnabled())
+			if (GUI_multipleSelectionEnabled())
 			{
 				customPath = isNewFolder ? u8tou16(suggestion.c_str()) : u8tou16(getPathFromCell(cellIndex).c_str());
 			}
@@ -221,7 +221,7 @@ void backup(size_t index)
 		std::string suggestion = getPathDateTime();
 		
 		std::u16string customPath;
-		if (multipleSelectionEnabled())
+		if (GUI_multipleSelectionEnabled())
 		{
 			customPath = isNewFolder ? u8tou16(suggestion.c_str()) : u8tou16(getPathFromCell(cellIndex).c_str());
 		}
@@ -265,7 +265,7 @@ void backup(size_t index)
 			{
 				break;
 			}
-			drawCopy(u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav"), sectorSize*(i+1), saveSize);
+			GUI_drawCopy(u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav"), sectorSize*(i+1), saveSize);
 		}
 		
 		if (R_FAILED(res))
@@ -301,8 +301,8 @@ void backup(size_t index)
 void restore(size_t index)
 {
 	const Mode_t mode = getMode();
-	const size_t cellIndex = getScrollableIndex();
-	if (cellIndex == 0 || !askForConfirmation("Restore selected save?"))
+	const size_t cellIndex = GUI_getScrollableIndex();
+	if (cellIndex == 0 || !GUI_askForConfirmation("Restore selected save?"))
 	{
 		return;
 	}
@@ -405,7 +405,7 @@ void restore(size_t index)
 			{
 				break;
 			}
-			drawCopy(u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav"), pageSize*(i+1), saveSize);
+			GUI_drawCopy(u8tou16(title.getShortDescription().c_str()) + u8tou16(".sav"), pageSize*(i+1), saveSize);
 		}
 
 		if (R_FAILED(res))

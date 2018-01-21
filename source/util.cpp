@@ -58,6 +58,8 @@ void servicesInit(void)
 	pp2d_load_texture_png(TEXTURE_CHECKPOINT, "romfs:/checkpoint.png");
 	pp2d_load_texture_png(TEXTURE_TWLCARD, "romfs:/twlcart.png");
 	pp2d_load_texture_png(TEXTURE_NOICON, "romfs:/noicon.png");
+	
+	GUI_init();
 }
 
 void calculateTitleDBHash(u8* hash)

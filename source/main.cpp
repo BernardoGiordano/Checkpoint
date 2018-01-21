@@ -18,14 +18,11 @@
 
 #include "common.h"
 
-static Gui* menu;
-
 int main() {
 	servicesInit();
 	
 	int selectionTimer = 0;
 	int refreshTimer = 0;
-	menu = new Gui();
 	createThread((ThreadFunc)threadLoadTitles);
 
 	while (aptMainLoop() && !(hidKeysDown() & KEY_START)) {
@@ -33,51 +30,51 @@ int main() {
 		
 		if (hidKeysDown() & KEY_A)
 		{
-			menu->setBottomScroll(true);
-			menu->updateButtonsColor();
+			GUI_setBottomScroll(true);
+			GUI_updateButtonsColor();
 			setEntryType(CELLS);
 		}
 		
 		if (hidKeysDown() & KEY_B)
 		{
-			menu->setBottomScroll(false);
-			menu->updateButtonsColor();
+			GUI_setBottomScroll(false);
+			GUI_updateButtonsColor();
 			setEntryType(TITLES);
-			clearSelectedEntries();
+			GUI_clearSelectedEntries();
 		}
 		
 		if (hidKeysDown() & KEY_X)
 		{
-			if (menu->getBottomScroll())
+			if (GUI_getBottomScroll())
 			{
 				bool isSaveMode = getMode() == MODE_SAVE;
-				size_t index = getScrollableIndex();
+				size_t index = GUI_getScrollableIndex();
 				// avoid actions if X is pressed on "New..."
 				if (index > 0)
 				{
-					if (askForConfirmation("Delete selected backup?"))
+					if (GUI_askForConfirmation("Delete selected backup?"))
 					{
 						Title title;
-						getTitle(title, menu->getFullIndex());
+						getTitle(title, GUI_getFullIndex());
 						std::vector<std::u16string> list = isSaveMode ? title.getDirectories() : title.getExtdatas();
 						std::u16string basepath = isSaveMode ? title.getBackupPath() : title.getExtdataPath();
 						deleteBackupFolder(basepath + u8tou16("/") + list.at(index));
 						refreshDirectories(title.getId());
-						setScrollableIndex(index - 1);
+						GUI_setScrollableIndex(index - 1);
 					}			
 				}
 			}
 			else
 			{
-				menu->resetIndex();
+				GUI_resetIndex();
 				setMode(getMode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
-				clearSelectedEntries();
+				GUI_clearSelectedEntries();
 			}
 		}
 		
 		if (hidKeysDown() & KEY_Y)
 		{
-			addSelectedEntry(menu->getFullIndex());
+			GUI_addSelectedEntry(GUI_getFullIndex());
 		}
 		
 		if (hidKeysHeld() & KEY_Y)
@@ -91,10 +88,10 @@ int main() {
 		
 		if (selectionTimer > 90)
 		{
-			clearSelectedEntries();
+			GUI_clearSelectedEntries();
 			for (size_t i = 0, sz = getTitlesCount(); i < sz; i++)
 			{
-				addSelectedEntry(i);
+				GUI_addSelectedEntry(i);
 			}
 			selectionTimer = 0;
 		}
@@ -114,41 +111,40 @@ int main() {
 			refreshTimer = 0;
 		}
 		
-		if (menu->isBackupReleased())
+		if (GUI_isBackupReleased())
 		{
-			if (multipleSelectionEnabled())
+			if (GUI_multipleSelectionEnabled())
 			{
-				resetDirectoryListIndex();
-				std::vector<size_t> list = getSelectedEntries();
+				GUI_resetDirectoryListIndex();
+				std::vector<size_t> list = GUI_getSelectedEntries();
 				for (size_t i = 0, sz = list.size(); i < sz; i++)
 				{
 					backup(list.at(i));
 				}
-				clearSelectedEntries();
+				GUI_clearSelectedEntries();
 			}
 			else
 			{
-				backup(menu->getFullIndex());
+				backup(GUI_getFullIndex());
 			}
 		}
 		
-		if (menu->isRestoreReleased())
+		if (GUI_isRestoreReleased())
 		{
-			if (multipleSelectionEnabled())
+			if (GUI_multipleSelectionEnabled())
 			{
-				clearSelectedEntries();
+				GUI_clearSelectedEntries();
 			}
 			else
 			{
-				restore(menu->getFullIndex());
+				restore(GUI_getFullIndex());
 			}
 		}
 		
-		menu->updateSelector();
-		menu->draw();
+		GUI_updateSelector();
+		GUI_draw();
 	}
 	
-	delete menu;
 	destroyThreads();
 	servicesExit();
 }
