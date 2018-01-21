@@ -233,7 +233,7 @@ void Title::refreshDirectories(void)
 				}
 			}
 			
-			std::sort(directories.begin(), directories.end());
+			std::sort(directories.rbegin(), directories.rend());
 			directories.insert(directories.begin(), u8tou16("New..."));
 		}
 		else
