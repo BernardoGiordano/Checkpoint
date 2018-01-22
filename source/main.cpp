@@ -50,18 +50,15 @@ int main() {
 				bool isSaveMode = getMode() == MODE_SAVE;
 				size_t index = GUI_getScrollableIndex();
 				// avoid actions if X is pressed on "New..."
-				if (index > 0)
+				if (index > 0 && GUI_askForConfirmation("Delete selected backup?"))
 				{
-					if (GUI_askForConfirmation("Delete selected backup?"))
-					{
-						Title title;
-						getTitle(title, GUI_getFullIndex());
-						std::vector<std::u16string> list = isSaveMode ? title.getDirectories() : title.getExtdatas();
-						std::u16string basepath = isSaveMode ? title.getBackupPath() : title.getExtdataPath();
-						deleteBackupFolder(basepath + u8tou16("/") + list.at(index));
-						refreshDirectories(title.getId());
-						GUI_setScrollableIndex(index - 1);
-					}			
+					Title title;
+					getTitle(title, GUI_getFullIndex());
+					std::vector<std::u16string> list = isSaveMode ? title.getDirectories() : title.getExtdatas();
+					std::u16string basepath = isSaveMode ? title.getBackupPath() : title.getExtdataPath();
+					deleteBackupFolder(basepath + u8tou16("/") + list.at(index));
+					refreshDirectories(title.getId());
+					GUI_setScrollableIndex(index - 1);
 				}
 			}
 			else
