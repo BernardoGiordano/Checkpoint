@@ -4,7 +4,7 @@ A fast and simple save manager for cfw/rosalina-based Homebrew Launchers written
 
 ![](https://i.imgur.com/Nttk8hX.png)
 
-## Why using Checkpoint?
+## Why use Checkpoint?
 
 Checkpoint is created with the ideas of simplicity and efficiency. The UI has been designed to condense as many options as possible, while keeping it simple to work with.
 
