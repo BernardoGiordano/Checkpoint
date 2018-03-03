@@ -559,6 +559,33 @@ void pp2d_load_texture_memory(size_t id, void* buf, u32 width, u32 height)
 	C3D_TexFlush(&textures[id].tex);	
 }
 
+void pp2d_load_texture_memory_RGBA5551(size_t id, void* buf, u32 width, u32 height)
+{
+	u32 w_pow2 = pp2d_get_next_pow2(width);
+	u32 h_pow2 = pp2d_get_next_pow2(height);
+	
+	C3D_TexInit(&textures[id].tex, (u16)w_pow2, (u16)h_pow2, GPU_RGBA5551);
+	C3D_TexSetFilter(&textures[id].tex, textureFilters.magFilter, textureFilters.minFilter);
+	
+	textures[id].allocated = true;
+	textures[id].width = width;
+	textures[id].height = height;
+
+	memset(textures[id].tex.data, 0, textures[id].tex.size);
+	for (u32 i = 0; i < width; i++) 
+	{
+		for (u32 j = 0; j < height; j++) 
+		{
+			u32 dst = ((((j >> 3) * (w_pow2 >> 3) + (i >> 3)) << 6) + ((i & 1) | ((j & 1) << 1) | ((i & 2) << 1) | ((j & 2) << 2) | ((i & 4) << 2) | ((j & 4) << 3))) * 2;
+			u32 src = (j * width + i) * 2;
+
+			memcpy(textures[id].tex.data + dst, buf + src, 2);
+		}
+	}
+
+	C3D_TexFlush(&textures[id].tex);	
+}
+
 void pp2d_load_texture_png(size_t id, const char* path)
 {
 	if (id >= MAX_TEXTURES)

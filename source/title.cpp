@@ -17,6 +17,7 @@
 */
 
 #include "title.h"
+#include "ndsheaderbanner.h"
 
 static bool checkHigh(u64 id);
 static void loadTextureIcon(smdh_s *smdh, size_t i);
@@ -153,7 +154,14 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 			}
 		}
 		
-		textureId = TEXTURE_TWLCARD;
+		// Get the banner.
+		sNDSBanner ndsBanner;
+		if (R_FAILED(FSUSER_GetLegacyBannerData(media, 0, (u8*)&ndsBanner))) {
+			// Unable to obtain the banner.
+			textureId = TEXTURE_TWLCARD;
+		} else {
+			pp2d_load_texture_memory_RGBA5551(textureId, grabIcon(&ndsBanner), 64, 64);
+		}
 	}
 	
 	refreshDirectories();
