@@ -61,6 +61,9 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
     delete[] buf;
     fclose(src);
     fclose(dst);
+
+    // commit each file to the save
+    fsdevCommitDevice("save");
 }
 
 Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath)
