@@ -109,7 +109,7 @@ int main(int argc, char** argv)
             selectionTimer = 0;
         }
 
-        if (Gui::isBackupReleased())
+        if (Gui::isBackupReleased() || (kdown & KEY_L && Gui::backupScroll()))
         {
             if (Gui::multipleSelectionEnabled())
             {
@@ -127,7 +127,7 @@ int main(int argc, char** argv)
             }
         }
         
-        if (Gui::isRestoreReleased())
+        if (Gui::isRestoreReleased() || (kdown & KEY_R && Gui::backupScroll()))
         {
             if (Gui::multipleSelectionEnabled())
             {

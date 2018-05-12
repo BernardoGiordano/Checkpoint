@@ -238,11 +238,13 @@ void Gui::init(void)
     messageBox = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);        
     messageBox->push_message("Press A to enter target.");
     messageBox->push_message("Press B to exit target or deselect all titles.");
+    messageBox->push_message("Press L to backup target.");
+    messageBox->push_message("Press R to restore target.");
     messageBox->push_message("Press X to delete a backup.");
     messageBox->push_message("Press Y to multiselect a title.");
     messageBox->push_message("Hold Y to multiselect all titles.");
     messageBox->push_message("Press the arrows to move between titles.");
-    messageBox->push_message("Press L/R to switch page.");
+    messageBox->push_message("Press ZL/ZR to switch page.");
 }
 
 void Gui::exit(void)
