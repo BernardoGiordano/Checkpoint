@@ -63,7 +63,10 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
     fclose(dst);
 
     // commit each file to the save
-    fsdevCommitDevice("save");
+    if (dstPath.rfind("save:/", 0) == 0)
+    {
+        fsdevCommitDevice("save");
+    }
 }
 
 Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath)
