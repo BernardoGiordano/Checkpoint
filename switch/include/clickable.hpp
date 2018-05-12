@@ -46,7 +46,7 @@ public:
     std::string text(void);
     void        text(const std::string& v);
 
-private:
+protected:
     u32         mx;
     u32         my;
     u16         mw;

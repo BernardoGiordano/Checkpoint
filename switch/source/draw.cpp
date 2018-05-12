@@ -237,9 +237,20 @@ void DrawImage(int x, int y, int width, int height, const u8 *image, ImageMode m
     }
 }
 
+void rectangled(u32 x, u32 y, u32 w, u32 h, color_t color)
+{
+    for (u32 j = y; j < y + h; j++)
+    {
+        for (u32 i = x; i < x + w; i++)
+        {
+            DrawPixel(i, j, color);
+        }
+    }
+}
+
 void rectangle(u32 x, u32 y, u32 w, u32 h, color_t color)
 {
-    for (u32 j = y; j < y+h; j++)
+    for (u32 j = y; j < y + h; j++)
     {
         for (u32 i = x; i < x + w; i+=4)
         {

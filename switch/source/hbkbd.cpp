@@ -35,7 +35,13 @@ static const u32 marginlr = 54;
 static const u32 starty = 720 - 356 + margintb;
 
 static const std::string letters = "1234567890@qwertyuiop+asdfghjkl_:zxcvbnm,.-/";
-static std::vector<Clickable*> buttons;
+static std::vector<HbkbdButton*> buttons;
+static size_t prevSelectedButtonIndex;
+
+size_t hbkbd::count(void)
+{
+    return buttons.size();
+}
 
 void hbkbd::init(void)
 {
@@ -46,7 +52,7 @@ void hbkbd::init(void)
     {
         for (size_t j = 0; j < 11; j++)
         {
-            Clickable* button = new Clickable(
+            HbkbdButton* button = new HbkbdButton(
                 marginlr + (buttonSpacing + normalWidth) * j, 
                 starty + (buttonSpacing + height) * i,
                 normalWidth,
@@ -60,7 +66,7 @@ void hbkbd::init(void)
         }
     }
 
-    Clickable* backspace = new Clickable(
+    HbkbdButton* backspace = new HbkbdButton(
         marginlr + (buttonSpacing + normalWidth) * 11, 
         starty,
         bigWidth,
@@ -72,7 +78,7 @@ void hbkbd::init(void)
     );
     buttons.push_back(backspace);
 
-    Clickable* returnb = new Clickable(
+    HbkbdButton* returnb = new HbkbdButton(
         marginlr + (buttonSpacing + normalWidth) * 11, 
         starty + height + 4,
         bigWidth,
@@ -84,7 +90,7 @@ void hbkbd::init(void)
     );
     buttons.push_back(returnb);
 
-    Clickable* ok = new Clickable(
+    HbkbdButton* ok = new HbkbdButton(
         marginlr + (buttonSpacing + normalWidth) * 11, 
         starty + height*3 + 4*3,
         bigWidth,
@@ -96,7 +102,7 @@ void hbkbd::init(void)
     );
     buttons.push_back(ok);
 
-    Clickable* caps = new Clickable(
+    HbkbdButton* caps = new HbkbdButton(
         marginlr + buttonSpacing + normalWidth, 
         starty + height*4 + 4*4,
         normalWidth,
@@ -108,7 +114,7 @@ void hbkbd::init(void)
     );
     buttons.push_back(caps);
 
-    Clickable* spacebar = new Clickable(
+    HbkbdButton* spacebar = new HbkbdButton(
         marginlr + (buttonSpacing + normalWidth) * 3, 
         starty + height*4 + 4*4,
         normalWidth*8 + buttonSpacing*7,
@@ -119,6 +125,11 @@ void hbkbd::init(void)
         true
     );
     buttons.push_back(spacebar);
+
+    // set first button as selected
+    buttons.at(0)->selected(true);
+    buttons.at(0)->invertColors();
+    prevSelectedButtonIndex = 0;
 }
 
 void hbkbd::exit(void)
@@ -129,12 +140,83 @@ void hbkbd::exit(void)
     }
 }
 
+static bool logic(std::string& str, size_t i)
+{
+    if (buttons.at(i)->text().compare("caps") == 0)
+    {
+        std::locale loc;
+        bool islower = std::islower(buttons.at(11)->text()[0], loc);
+        for (size_t t = 0; t < letters.length(); t++)
+        {
+            std::string l = islower ? std::string(1, std::toupper(letters[t], loc)) : std::string(1, std::tolower(letters[t], loc));
+            buttons.at(t)->text(l);
+        }
+    }
+    else if (buttons.at(i)->text().compare("back") == 0)
+    {
+        if (!str.empty())
+        {
+            str.erase(str.length() - 1);
+        }
+    }
+    else if (buttons.at(i)->text().compare("space") == 0)
+    {
+        if (str.length() < CUSTOM_PATH_LEN)
+        {
+            str.append(" ");
+        }
+    }
+    else if (buttons.at(i)->text().compare("return") == 0)
+    {
+        //str.append("\n");
+    }
+    else if (buttons.at(i)->text().compare("OK") == 0)
+    {
+        return true;
+    }
+    else if (str.length() < CUSTOM_PATH_LEN)
+    {
+        str.append(buttons.at(i)->text());
+    }
+
+    return false;
+}
+
 std::string hbkbd::keyboard(const std::string& suggestion)
 {
+    // set entry type
+    entryType_t old = hid::entryType();
+    hid::entryType(KEYS);
+
+    int page = 0;
+    size_t index;
+
     std::string str;
     while (appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B))
     {
         hidScanInput();
+        index = prevSelectedButtonIndex;
+
+        // handle keys
+        hid::index(index, page, 1, count(), count(), 11);
+        if (index != prevSelectedButtonIndex)
+        {
+            buttons.at(prevSelectedButtonIndex)->selected(false);
+            buttons.at(prevSelectedButtonIndex)->invertColors();
+            prevSelectedButtonIndex = index;
+            buttons.at(index)->selected(true);
+            buttons.at(prevSelectedButtonIndex)->invertColors();          
+        }
+
+        if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A)
+        {
+            bool ret = logic(str, index);
+            if (ret)
+            {
+                hid::entryType(old);
+                return str.empty() ? suggestion : str;
+            }
+        }
 
         framebuf = gfxGetFramebuffer(&framebuf_width, NULL);
         memset(framebuf, 51, gfxGetFramebufferSize());
@@ -155,43 +237,24 @@ std::string hbkbd::keyboard(const std::string& suggestion)
         {
             if (buttons.at(i)->released())
             {
-                if (buttons.at(i)->text().compare("caps") == 0)
+                bool ret = logic(str, i);
+                if (ret)
                 {
-                    std::locale loc;
-                    bool islower = std::islower(buttons.at(11)->text()[0], loc);
-                    for (size_t t = 0; t < letters.length(); t++)
-                    {
-                        std::string l = islower ? std::string(1, std::toupper(letters[t], loc)) : std::string(1, std::tolower(letters[t], loc));
-                        buttons.at(t)->text(l);
-                    }
-                }
-                else if (buttons.at(i)->text().compare("back") == 0)
-                {
-                    if (!str.empty())
-                    {
-                        str.erase(str.length() - 1);
-                    }
-                }
-                else if (buttons.at(i)->text().compare("space") == 0)
-                {
-                    if (str.length() < CUSTOM_PATH_LEN)
-                    {
-                        str.append(" ");
-                    }
-                }
-                else if (buttons.at(i)->text().compare("return") == 0)
-                {
-                    //str.append("\n");
-                }
-                else if (buttons.at(i)->text().compare("OK") == 0)
-                {
+                    hid::entryType(old);
                     return str.empty() ? suggestion : str;
                 }
-                else if (str.length() < CUSTOM_PATH_LEN)
-                {
-                    str.append(buttons.at(i)->text());
-                }
             }
+
+            // selection logic
+            if (buttons.at(i)->held() && i != prevSelectedButtonIndex)
+            {
+                buttons.at(prevSelectedButtonIndex)->selected(false);
+                buttons.at(prevSelectedButtonIndex)->invertColors();
+                prevSelectedButtonIndex = i;
+                buttons.at(i)->selected(true);
+                buttons.at(i)->invertColors();
+            }
+
             buttons.at(i)->draw();
         }
 
@@ -200,5 +263,6 @@ std::string hbkbd::keyboard(const std::string& suggestion)
         gfxWaitForVsync();
     }
 
+    hid::entryType(old);
     return suggestion;
 }

@@ -27,6 +27,7 @@
 #ifndef HID_HPP
 #define HID_HPP
 
+#include "hbkbd.hpp"
 #include "gui.hpp"
 #include "types.hpp"
 

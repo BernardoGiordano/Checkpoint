@@ -71,6 +71,7 @@ static inline void Draw4PixelsRaw(u32 x, u32 y, color_t clr)
 }
 
 void rectangle(u32 x, u32 y, u32 w, u32 h, color_t color);
+void rectangled(u32 x, u32 y, u32 w, u32 h, color_t color);
 void DrawPixel(u32 x, u32 y, color_t clr);
 void DrawText(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text);
 void DrawTextTruncate(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text, u32 max_width, const char* end_text);

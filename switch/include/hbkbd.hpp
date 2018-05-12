@@ -40,11 +40,44 @@
 extern u8* framebuf;
 extern u32 framebuf_width;
 
+class HbkbdButton : public Clickable 
+{
+public:
+    HbkbdButton(u32 x, u32 y, u16 w, u16 h, color_t colorBg, color_t colorText, const std::string& message, bool centered)
+    : Clickable(x, y, w, h, colorBg, colorText, message, centered)
+    {
+        mSelected = false;
+    }
+
+    void selected(bool v)
+    {
+        mSelected = v;
+    }
+
+    void draw(void)
+    {
+        Clickable::draw();
+        // outline
+        if (mSelected)
+        {
+            color_t color = MakeColor(138, 138, 138, 255);
+            static const size_t size = 2;
+            rectangled(mx - size, my - size, mw + 2*size, size, color); // top
+            rectangled(mx - size, my, size, mh, color); // left
+            rectangled(mx + mw, my, size, mh, color); // right
+            rectangled(mx - size, my + mh, mw + 2*size, size, color); // bottom
+        }
+    }
+
+protected:
+    bool mSelected;
+};
+
 namespace hbkbd 
 {
     void        init(void);
     void        exit(void);
-
+    size_t      count(void);
     std::string keyboard(const std::string& suggestion);
 }
 
