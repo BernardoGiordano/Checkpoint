@@ -30,11 +30,6 @@ static entryType_t type;
 
 static size_t refreshMaxEntries(int page, size_t entries)
 {
-    if (type == KEYS)
-    {
-        return hbkbd::count() - 1;
-    }
-
     return (Gui::count(type) - page*entries) > entries ? entries - 1 : Gui::count(type) - page*entries - 1;
 }
 
@@ -83,8 +78,7 @@ void hid::index(size_t& currentEntry, int& page, size_t maxpages, size_t maxentr
             currentEntry = refreshMaxEntries(page, entries);
         }
     }
-    
-    if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_R)
+    else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_R)
     {
         page_forward(page, maxpages);
         if (currentEntry > refreshMaxEntries(page, entries))
@@ -92,8 +86,7 @@ void hid::index(size_t& currentEntry, int& page, size_t maxpages, size_t maxentr
             currentEntry = refreshMaxEntries(page, entries);
         }
     }
-    
-    if (columns > 1)
+    else if (columns > 1)
     {
         if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_LEFT)
         {
@@ -107,8 +100,7 @@ void hid::index(size_t& currentEntry, int& page, size_t maxpages, size_t maxentr
                 currentEntry = refreshMaxEntries(page, entries);
             }
         }
-        
-        if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RIGHT)
+        else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RIGHT)
         {
             if (currentEntry < maxentries)
             {
@@ -120,8 +112,7 @@ void hid::index(size_t& currentEntry, int& page, size_t maxpages, size_t maxentr
                 currentEntry = 0;
             }
         }
-        
-        if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_UP)
+        else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_UP)
         {
             if (currentEntry <= columns - 1)
             {
@@ -136,8 +127,7 @@ void hid::index(size_t& currentEntry, int& page, size_t maxpages, size_t maxentr
                 currentEntry -= columns;
             }
         }
-        
-        if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_DOWN)
+        else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_DOWN)
         {
             if ((int)(maxentries - columns) >= 0)
             {

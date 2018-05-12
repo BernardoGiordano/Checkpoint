@@ -43,6 +43,111 @@ size_t hbkbd::count(void)
     return buttons.size();
 }
 
+void hbkbd::hid(size_t& currentEntry)
+{
+    static const size_t columns = 11;
+
+    if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_LEFT)
+    {
+        switch (currentEntry)
+        {
+            case 0: // 1
+            case columns: // q
+            case columns*2: // a
+            case columns*3: // z
+            case INDEX_CAPS:
+                break;
+            case INDEX_BACK: // back -> @
+                currentEntry = columns-1;
+                break;
+            case INDEX_RETURN: // return -> +
+                currentEntry = columns*2-1;
+                break;
+            case INDEX_OK: // OK -> space
+                currentEntry = INDEX_SPACE;
+                break;
+            case INDEX_SPACE: // space -> caps
+                currentEntry = INDEX_CAPS;
+                break;
+            default:
+                currentEntry--;
+        }
+    }
+    else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RIGHT)
+    {
+        switch (currentEntry)
+        {
+            case 10: // @ -> back
+                currentEntry = INDEX_BACK;
+                break;
+            case 21: // + -> return
+            case 32: // : -> return
+                currentEntry = INDEX_RETURN;
+                break;
+            case 43: // /-> OK
+            case INDEX_SPACE: // space -> OK
+                currentEntry = INDEX_OK;
+                break; 
+            case INDEX_CAPS: // caps -> space
+                currentEntry = INDEX_SPACE;
+                break;
+            case INDEX_BACK:
+            case INDEX_RETURN:
+            case INDEX_OK:
+                break;
+            default:
+                currentEntry++;
+        }
+    }
+    else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_UP)
+    {
+        switch (currentEntry)
+        {
+            case 0 ... 10: // 1 to @
+            case INDEX_BACK:
+                break;
+            case INDEX_CAPS: // caps -> x
+                currentEntry = 34;
+                break;
+            case INDEX_SPACE: // space -> .
+                currentEntry = 41;
+                break;
+            case INDEX_RETURN: // return -> back
+                currentEntry = INDEX_BACK;
+                break;
+            case INDEX_OK: // OK -> return
+                currentEntry = INDEX_RETURN;
+                break;
+            default:
+                currentEntry -= 11;
+        }
+    }
+    else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_DOWN)
+    {
+        switch (currentEntry)
+        {
+            case INDEX_CAPS:
+            case INDEX_SPACE:
+            case INDEX_OK:
+                break;
+            case 33 ... 35: // z x c -> caps
+                currentEntry = INDEX_CAPS;
+                break;
+            case 36 ... 43: // v b n m , . - / -> space 
+                currentEntry = INDEX_SPACE;
+                break;
+            case INDEX_BACK: // back -> return
+                currentEntry = INDEX_RETURN;
+                break;
+            case INDEX_RETURN: // return -> OK
+                currentEntry = INDEX_OK;
+                break;
+            default:
+                currentEntry += 11;
+        }
+    }
+}
+
 void hbkbd::init(void)
 {
     buttons.clear();
@@ -184,21 +289,16 @@ static bool logic(std::string& str, size_t i)
 
 std::string hbkbd::keyboard(const std::string& suggestion)
 {
-    // set entry type
-    entryType_t old = hid::entryType();
-    hid::entryType(KEYS);
-
-    int page = 0;
     size_t index;
-
     std::string str;
+
     while (appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B))
     {
         hidScanInput();
         index = prevSelectedButtonIndex;
 
         // handle keys
-        hid::index(index, page, 1, count(), count(), 11);
+        hid(index);
         if (index != prevSelectedButtonIndex)
         {
             buttons.at(prevSelectedButtonIndex)->selected(false);
@@ -213,7 +313,6 @@ std::string hbkbd::keyboard(const std::string& suggestion)
             bool ret = logic(str, index);
             if (ret)
             {
-                hid::entryType(old);
                 return str.empty() ? suggestion : str;
             }
         }
@@ -240,7 +339,6 @@ std::string hbkbd::keyboard(const std::string& suggestion)
                 bool ret = logic(str, i);
                 if (ret)
                 {
-                    hid::entryType(old);
                     return str.empty() ? suggestion : str;
                 }
             }
@@ -263,6 +361,5 @@ std::string hbkbd::keyboard(const std::string& suggestion)
         gfxWaitForVsync();
     }
 
-    hid::entryType(old);
     return suggestion;
 }

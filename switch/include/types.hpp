@@ -3,8 +3,7 @@
 
 typedef enum {
     TITLES,
-    CELLS,
-    KEYS
+    CELLS
 } entryType_t;
 
 typedef union {

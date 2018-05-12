@@ -73,11 +73,19 @@ protected:
     bool mSelected;
 };
 
+// hardcoded, but it's not going to change often
+#define INDEX_BACK 44
+#define INDEX_RETURN 45
+#define INDEX_OK 46
+#define INDEX_CAPS 47
+#define INDEX_SPACE 48
+
 namespace hbkbd 
 {
     void        init(void);
     void        exit(void);
     size_t      count(void);
+    void        hid(size_t& currentEntry);
     std::string keyboard(const std::string& suggestion);
 }
 
