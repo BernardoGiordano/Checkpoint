@@ -2,6 +2,8 @@
 
 Please fill the fields with all the informations important for the maintainers to get your issue fixed or sorted out.
 
+If you feel it's relevant, please attach screenshots or pictures that could detail the issue more.
+
 * [x] Issue with Checkpoint for 3DS
 * [ ] Issue with Checkpoint for Switch
 * [ ] Feature request
@@ -10,6 +12,7 @@ Please fill the fields with all the informations important for the maintainers t
 
 * Entrypoint:
 * System version:
+* Checkpoint version:
 * Expected behaviour:
 * Encountered behavior:
 * Result code (if available):
