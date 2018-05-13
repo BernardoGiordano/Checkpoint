@@ -70,7 +70,7 @@ void hid::entryType(entryType_t v)
 void hid::index(size_t& currentEntry, int& page, size_t maxpages, size_t maxentries, const size_t entries, const size_t columns) {
     maxentries--;
     
-    if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_L)
+    if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_ZL)
     {
         page_back(page, maxpages);
         if (currentEntry > refreshMaxEntries(page, entries))
@@ -78,7 +78,7 @@ void hid::index(size_t& currentEntry, int& page, size_t maxpages, size_t maxentr
             currentEntry = refreshMaxEntries(page, entries);
         }
     }
-    else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_R)
+    else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_ZR)
     {
         page_forward(page, maxpages);
         if (currentEntry > refreshMaxEntries(page, entries))
