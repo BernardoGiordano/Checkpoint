@@ -40,6 +40,11 @@
 #include "hbkbd.hpp"
 #include "io.hpp"
 
+// debug
+// #include <sys/socket.h>
+// #include <arpa/inet.h>
+// #include <sys/errno.h>
+
 void   servicesExit(void);
 Result servicesInit(void);
 

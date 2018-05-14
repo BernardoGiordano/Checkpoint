@@ -28,6 +28,8 @@
 
 void servicesExit(void)
 {
+    // debug
+    // socketExit();
     nsExit();
     Account::exit();
     hbkbd::exit();
@@ -57,6 +59,32 @@ Result servicesInit(void)
     
     Gui::init();
     hbkbd::init();
+
+    // debug
+    // static int sock = -1;
+    // struct sockaddr_in srv_addr;
+    // int ret = socketInitializeDefault();
+    // if (ret != 0) {
+    //     Gui::createError(ret, "socketInitializeDefault");
+    // } else {
+	//     sock = socket(AF_INET, SOCK_STREAM, 0);
+	//     if (!sock) {
+    //         Gui::createError(-3, "socket");
+    // }
+
+	//     bzero(&srv_addr, sizeof srv_addr);
+    //     srv_addr.sin_family=AF_INET;
+    //     srv_addr.sin_addr = __nxlink_host;
+    //     srv_addr.sin_port=htons(NXLINK_CLIENT_PORT);
+
+	//     ret = connect(sock, (struct sockaddr *) &srv_addr, sizeof(srv_addr));
+    // 	   if (ret != 0) {
+    //         Gui::createError(ret, "connect");
+    // 	   } else {
+	// 	       fflush(stdout);
+	// 	       dup2(sock, STDOUT_FILENO);
+    // 	   }
+    // }
 
     return 0;
 }
