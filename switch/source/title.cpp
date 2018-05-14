@@ -187,7 +187,7 @@ void loadTitles(void)
     free(nsacd);
     fsSaveDataIteratorClose(&iterator);
 
-    std::sort(titles.begin(), titles.end(), [](Title l, Title r) {
+    std::sort(titles.begin(), titles.end(), [](Title& l, Title& r) {
         return l.name() < r.name();
     });
 }
