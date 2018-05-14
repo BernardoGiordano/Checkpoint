@@ -129,15 +129,15 @@ static inline u32 DecodeUTF8(const char** ptr)
     return 0xFFFD;
 }
 
-static void DrawText_(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text, u32 max_width, const char* end_text)
+static void DrawText_(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text, u32 max_width)
 {
     y += font->baseline;
     u32 origX = x;
+
     while (*text)
     {
         if (max_width && x-origX >= max_width) {
-            text = end_text;
-            max_width = 0;
+            break;
         }
 
         glyph_t glyph;
@@ -146,9 +146,7 @@ static void DrawText_(const ffnt_header_t* font, u32 x, u32 y, color_t clr, cons
         if (codepoint == '\n')
         {
             if (max_width) {
-                text = end_text;
-                max_width = 0;
-                continue;
+                break;
             }
 
             x = origX;
@@ -169,12 +167,12 @@ static void DrawText_(const ffnt_header_t* font, u32 x, u32 y, color_t clr, cons
 
 void DrawText(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text)
 {
-    DrawText_(font, x, y, clr, text, 0, NULL);
+    DrawText_(font, x, y, clr, text, 0);
 }
 
-void DrawTextTruncate(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text, u32 max_width, const char* end_text)
+void DrawTextTruncate(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text, u32 max_width)
 {
-    DrawText_(font, x, y, clr, text, max_width, end_text);
+    DrawText_(font, x, y, clr, text, max_width);
 }
 
 void GetTextDimensions(const ffnt_header_t* font, const char* text, u32* width_out, u32* height_out)

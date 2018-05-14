@@ -113,5 +113,5 @@ void Clickable::draw(const ffnt_header_t* font, u32 messageHeight)
     const u32 messageWidth = mCentered ? textw : mw - 8;
     
     rectangle(mx, my, mw, mh, mColorBg);
-    DrawTextTruncate(font, mx + (mw - messageWidth)/2, my + (mh - messageHeight)/2, mColorText, mText.c_str(), mw - 4*2 - 40, NULL);	
+    DrawTextTruncate(font, mx + (mw - messageWidth)/2, my + (mh - messageHeight)/2, mColorText, mText.c_str(), mw - 4*2 - 40);
 }
