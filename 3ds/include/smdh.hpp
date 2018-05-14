@@ -24,31 +24,43 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "smdh.hpp"
+#ifndef SMDH_HPP
+#define SMDH_HPP
 
-smdh_s *loadSMDH(u32 low, u32 high, u8 media)
-{
-    Handle fileHandle;
+#include <3ds.h>
 
-    u32 archPath[] = {low, high, media, 0x0};
-    static const u32 filePath[] = {0x0, 0x0, 0x2, 0x6E6F6369, 0x0};
-    smdh_s *smdh = new smdh_s;
+typedef struct {
+    u32 magic;
+    u16 version;
+    u16 reserved;
+} smdhHeader_s;
 
-    FS_Path binArchPath = {PATH_BINARY, 0x10, archPath};
-    FS_Path binFilePath = {PATH_BINARY, 0x14, filePath};
+typedef struct {
+    u16 shortDescription[0x40];
+    u16 longDescription[0x80];
+    u16 publisher[0x40];
+} smdhTitle_s;
 
-    Result res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SAVEDATA_AND_CONTENT, binArchPath, binFilePath, FS_OPEN_READ, 0);
-    if (R_SUCCEEDED(res))
-    {
-        u32 read;
-        FSFILE_Read(fileHandle, &read, 0, smdh, sizeof(smdh_s));
-    }
-    else
-    {
-        delete smdh;
-        smdh = NULL;
-    }
+typedef struct {
+    u8 gameRatings[0x10];
+    u32 regionLock;
+    u8 matchMakerId[0xC];
+    u32 flags;
+    u16 eulaVersion;
+    u16 reserved;
+    u32 defaultFrame;
+    u32 cecId;
+} smdhSettings_s;
 
-    FSFILE_Close(fileHandle);
-    return smdh;
-}
+typedef struct {
+    smdhHeader_s header;
+    smdhTitle_s applicationTitles[16];
+    smdhSettings_s settings;
+    u8 reserved[0x8];
+    u8 smallIconData[0x480];
+    u16 bigIconData[0x900];
+} smdh_s;
+
+smdh_s* loadSMDH(u32 low, u32 high, u8 media);
+
+#endif

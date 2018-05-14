@@ -24,31 +24,42 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "smdh.hpp"
+#ifndef SCROLLABLE_HPP
+#define SCROLLABLE_HPP
 
-smdh_s *loadSMDH(u32 low, u32 high, u8 media)
+#include <citro2d.h>
+#include <vector>
+#include "clickable.hpp"
+#include "colors.hpp"
+#include "hid.hpp"
+
+class Scrollable
 {
-    Handle fileHandle;
+public:
+    Scrollable(int x, int y, u32 w, u32 h, size_t visibleEntries);
+    ~Scrollable(void);
 
-    u32 archPath[] = {low, high, media, 0x0};
-    static const u32 filePath[] = {0x0, 0x0, 0x2, 0x6E6F6369, 0x0};
-    smdh_s *smdh = new smdh_s;
+    std::string cellName(size_t i);
+    void        draw(void);
+    void        flush(void);
+    size_t      index(void);
+    void        index(size_t i);
+    void        invertCellColors(size_t index);
+    void        push_back(u32 color, u32 colorMessage, const std::string& message);
+    void        resetIndex(void);
+    size_t      size(void);
+    void        updateSelection(void);
 
-    FS_Path binArchPath = {PATH_BINARY, 0x10, archPath};
-    FS_Path binFilePath = {PATH_BINARY, 0x14, filePath};
+private:
+    int          mx;
+    int          my;
+    u32          mw;
+    u32          mh;
+    size_t       mVisibleEntries;
+    size_t       mIndex;
+    int          mPage;
+    std::vector
+    <Clickable*> mCells;
+};
 
-    Result res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SAVEDATA_AND_CONTENT, binArchPath, binFilePath, FS_OPEN_READ, 0);
-    if (R_SUCCEEDED(res))
-    {
-        u32 read;
-        FSFILE_Read(fileHandle, &read, 0, smdh, sizeof(smdh_s));
-    }
-    else
-    {
-        delete smdh;
-        smdh = NULL;
-    }
-
-    FSFILE_Close(fileHandle);
-    return smdh;
-}
+#endif

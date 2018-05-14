@@ -24,31 +24,39 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "smdh.hpp"
+#ifndef CLICKABLE_HPP
+#define CLICKABLE_HPP
 
-smdh_s *loadSMDH(u32 low, u32 high, u8 media)
+#include <citro2d.h>
+#include <string>
+#include "colors.hpp"
+
+class Clickable
 {
-    Handle fileHandle;
+public:
+    Clickable(int x, int y, u16 w, u16 h, u32 colorBg, u32 colorText, std::string message, bool centered);
+    ~Clickable(void);
 
-    u32 archPath[] = {low, high, media, 0x0};
-    static const u32 filePath[] = {0x0, 0x0, 0x2, 0x6E6F6369, 0x0};
-    smdh_s *smdh = new smdh_s;
+    void        draw(void);
+    void        draw(float size);
+    bool        held(void);
+    void        invertColors(void);
+    bool        released(void);
+    void        setColors(u32 bg, u32 text);
+    std::string text();
 
-    FS_Path binArchPath = {PATH_BINARY, 0x10, archPath};
-    FS_Path binFilePath = {PATH_BINARY, 0x14, filePath};
+private:
+    int         mx;
+    int         my;
+    u16         mw;
+    u16         mh;
+    u32         mColorBg;
+    u32         mColorText;
+    std::string mText;
+    bool        mCentered;
+    bool        mOldPressed;
+    C2D_Text    mC2dText;
+    C2D_TextBuf mTextBuf;
+};
 
-    Result res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SAVEDATA_AND_CONTENT, binArchPath, binFilePath, FS_OPEN_READ, 0);
-    if (R_SUCCEEDED(res))
-    {
-        u32 read;
-        FSFILE_Read(fileHandle, &read, 0, smdh, sizeof(smdh_s));
-    }
-    else
-    {
-        delete smdh;
-        smdh = NULL;
-    }
-
-    FSFILE_Close(fileHandle);
-    return smdh;
-}
+#endif

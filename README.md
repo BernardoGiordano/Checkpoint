@@ -47,7 +47,7 @@ Additionally, you can receive real-time support by joining PKSM's discord server
 
 ## Building
 
-Checkpoint for 3DS relies on [latest libctru](https://github.com/smealum/ctrulib) and [latest citro3d](https://github.com/fincs/citro3d).
+Checkpoint for 3DS relies on [latest libctru](https://github.com/smealum/ctrulib), [latest citro3d](https://github.com/fincs/citro3d) and [latest citro2d](https://github.com/devkitPro/citro2d).
 
 Checkpoint for Switch relies on [latest libnx](https://github.com/switchbrew/libnx).
 
