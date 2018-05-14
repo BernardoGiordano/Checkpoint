@@ -47,7 +47,10 @@ void hbkbd::hid(size_t& currentEntry)
 {
     static const size_t columns = 11;
 
-    if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_LEFT)
+    u64 kHeld = hidKeysHeld(CONTROLLER_P1_AUTO);
+    bool sleep = false;
+
+    if (kHeld & KEY_LEFT)
     {
         switch (currentEntry)
         {
@@ -72,8 +75,9 @@ void hbkbd::hid(size_t& currentEntry)
             default:
                 currentEntry--;
         }
+        sleep = true;
     }
-    else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RIGHT)
+    else if (kHeld & KEY_RIGHT)
     {
         switch (currentEntry)
         {
@@ -98,8 +102,9 @@ void hbkbd::hid(size_t& currentEntry)
             default:
                 currentEntry++;
         }
+        sleep = true;
     }
-    else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_UP)
+    else if (kHeld & KEY_UP)
     {
         switch (currentEntry)
         {
@@ -121,8 +126,9 @@ void hbkbd::hid(size_t& currentEntry)
             default:
                 currentEntry -= 11;
         }
+        sleep = true;
     }
-    else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_DOWN)
+    else if (kHeld & KEY_DOWN)
     {
         switch (currentEntry)
         {
@@ -145,6 +151,12 @@ void hbkbd::hid(size_t& currentEntry)
             default:
                 currentEntry += 11;
         }
+        sleep = true;
+    }
+
+    if (sleep)
+    {
+        svcSleepThread(1e8);
     }
 }
 
