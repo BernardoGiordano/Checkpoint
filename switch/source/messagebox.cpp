@@ -46,20 +46,22 @@ void MessageBox::clear(void)
 void MessageBox::draw(void)
 {
     static const u32 spacingFromEdges = 20;
+    static const u32 offset = 10;
 
-    u32 w = 0, mh = 30;
+    u32 w = 0, mh;
     u32 widths[mList.size()];
     for (size_t i = 0, sz = mList.size(); i < sz; i++)
     {
-        GetTextDimensions(font20, mList.at(i).c_str(), &widths[i], NULL);
+        GetTextDimensions(font20, mList.at(i).c_str(), &widths[i], &mh);
         if (widths[i] > w)
         {
             w = widths[i];
         }
     }
+    mh += offset;
     w += 2*spacingFromEdges; 
 
-    const u32 h = mh*mList.size() + 2*spacingFromEdges;
+    const u32 h = mh*mList.size() + 2*spacingFromEdges - offset;
     const u32 x = (1280-w)/2;
     const u32 y = (720-h)/2;
 

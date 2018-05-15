@@ -16,15 +16,16 @@
 #ifndef DRAW_HPP
 #define DRAW_HPP
 
+#include <ft2build.h>
+#include FT_FREETYPE_H
 #include <switch.h>
 #include "types.hpp"
 
-extern const ffnt_header_t tahoma24_nxfnt;
-extern const ffnt_header_t interuiregular20_nxfnt;
-extern const ffnt_header_t interuiregular14_nxfnt;
-#define font24 &tahoma24_nxfnt
-#define font20 &interuiregular20_nxfnt
-#define font14 &interuiregular14_nxfnt
+#define FONT_FACES_MAX PlSharedFontType_Total
+
+#define font24 7
+#define font20 6
+#define font14 4
 
 extern u8* framebuf;
 extern u32 framebuf_width;
@@ -70,12 +71,16 @@ static inline void Draw4PixelsRaw(u32 x, u32 y, color_t clr)
     *((u128*)&framebuf[off]) = val;
 }
 
+Result textInit(void);
+bool fontInitialize(void);
+void fontExit();
+
 void rectangle(u32 x, u32 y, u32 w, u32 h, color_t color);
 void rectangled(u32 x, u32 y, u32 w, u32 h, color_t color);
 void DrawPixel(u32 x, u32 y, color_t clr);
-void DrawText(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text);
-void DrawTextTruncate(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text, u32 max_width);
-void GetTextDimensions(const ffnt_header_t* font, const char* text, u32* width_out, u32* height_out);
+void DrawText(u32 font, u32 x, u32 y, color_t clr, const char* text);
+void DrawTextTruncate(u32 font, u32 x, u32 y, color_t clr, const char* text, u32 max_width, const char* end_text);
+void GetTextDimensions(u32 font, const char* text, u32* width_out, u32* height_out);
 void DrawImage(int x, int y, int width, int height, const u8 *image, ImageMode mode);
 
 #endif

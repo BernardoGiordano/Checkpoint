@@ -126,6 +126,6 @@ void Scrollable::draw(void)
     const size_t sz = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
     for (size_t i = baseIndex; i < baseIndex + sz; i++)
     {
-        mCells.at(i)->draw(font14, 24);
+        mCells.at(i)->draw(font14);
     }
 }

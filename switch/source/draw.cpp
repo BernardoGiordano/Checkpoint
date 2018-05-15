@@ -15,50 +15,90 @@
 
 #include "draw.hpp"
 
-static inline const ffnt_page_t* FontGetPage(const ffnt_header_t* font, u32 page_id)
+static FT_Error s_font_libret = 1;
+static FT_Error s_font_facesret[FONT_FACES_MAX];
+static FT_Library s_font_library;
+static FT_Face s_font_faces[FONT_FACES_MAX];
+static FT_Face s_font_lastusedface;
+static size_t s_font_faces_total = 0;
+static u64 s_textLanguageCode = 0;
+
+Result textInit(void)
 {
-    if (page_id >= font->npages)
-        return NULL;
-    ffnt_pageentry_t* ent = &((ffnt_pageentry_t*)(font+1))[page_id];
-    if (ent->size == 0)
-        return NULL;
-    return (const ffnt_page_t*)((const u8*)font + ent->offset);
+    Result res = setInitialize();
+    if (R_SUCCEEDED(res)) 
+    {
+        res = setGetSystemLanguage(&s_textLanguageCode);
+    }
+    setExit();
+    return res;
 }
 
-static inline bool FontLoadGlyph(glyph_t* glyph, const ffnt_header_t* font, u32 codepoint)
+static bool FontSetType(u32 scale)
 {
-    const ffnt_page_t* page = FontGetPage(font, codepoint >> 8);
-    if (!page)
-        return false;
+    FT_Error ret = 0;
+    for (u32 i = 0; i < s_font_faces_total; i++)
+    {
+        ret = FT_Set_Char_Size(s_font_faces[i], 0, scale*64, 300, 300);
+        if (ret) return false;
+    }
+    return true;
+}
 
-    codepoint &= 0xFF;
-    u32 off = page->hdr.pos[codepoint];
-    if (off == ~(u32)0)
-        return false;
+static inline bool FontLoadGlyph(glyph_t* glyph, u32 font, u32 codepoint)
+{
+    FT_Face face;
+    FT_Error ret = 0;
+    FT_GlyphSlot slot;
+    FT_UInt glyph_index;
+    FT_Bitmap* bitmap;
 
-    glyph->width   = page->hdr.widths[codepoint];
-    glyph->height  = page->hdr.heights[codepoint];
-    glyph->advance = page->hdr.advances[codepoint];
-    glyph->posX    = page->hdr.posX[codepoint];
-    glyph->posY    = page->hdr.posY[codepoint];
-    glyph->data    = &page->data[off];
+    if (s_font_faces_total == 0) return false;
+
+    for (u32 i = 0; i < s_font_faces_total; i++)
+    {
+        face = s_font_faces[i];
+        s_font_lastusedface = face;
+        glyph_index = FT_Get_Char_Index(face, codepoint);
+        if (glyph_index == 0) continue;
+
+        ret = FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT);
+        if (ret == 0)
+        {
+            ret = FT_Render_Glyph( face->glyph, FT_RENDER_MODE_NORMAL);
+        }
+        if (ret) return false;
+
+        break;
+    }
+
+    slot = face->glyph;
+    bitmap = &slot->bitmap;
+
+    glyph->width   = bitmap->width;
+    glyph->height  = bitmap->rows;
+    glyph->pitch   = bitmap->pitch;
+    glyph->data    = bitmap->buffer;
+    glyph->advance = slot->advance.x >> 6;
+    glyph->posX    = slot->bitmap_left;
+    glyph->posY    = slot->bitmap_top;
     return true;
 }
 
 static void DrawGlyph(u32 x, u32 y, color_t clr, const glyph_t* glyph)
 {
-    u32 i, j;
     const u8* data = glyph->data;
     x += glyph->posX;
-    y += glyph->posY;
-    for (j = 0; j < glyph->height; j ++)
+    y -= glyph->posY;
+    for (u32 j = 0; j < glyph->height; j ++)
     {
-        for (i = 0; i < glyph->width; i ++)
+        for (u32 i = 0; i < glyph->width; i ++)
         {
-            clr.a = *data++;
+            clr.a = data[i];
             if (!clr.a) continue;
             DrawPixel(x+i, y+j, clr);
         }
+        data += glyph->pitch;
     }
 }
 
@@ -70,7 +110,6 @@ static inline u8 DecodeByte(const char** ptr)
 }
 
 // UTF-8 code adapted from http://www.json.org/JSON_checker/utf8_decode.c
-
 static inline int8_t DecodeUTF8Cont(const char** ptr)
 {
     int c = DecodeByte(ptr);
@@ -129,15 +168,18 @@ static inline u32 DecodeUTF8(const char** ptr)
     return 0xFFFD;
 }
 
-static void DrawText_(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text, u32 max_width)
+static void DrawText_(u32 font, u32 x, u32 y, color_t clr, const char* text, u32 max_width, const char* end_text)
 {
-    y += font->baseline;
     u32 origX = x;
+    if (s_font_faces_total == 0) return;
+    if (!FontSetType(font)) return;
+    s_font_lastusedface = s_font_faces[0];
 
     while (*text)
     {
         if (max_width && x-origX >= max_width) {
-            break;
+            text = end_text;
+            max_width = 0;
         }
 
         glyph_t glyph;
@@ -146,11 +188,13 @@ static void DrawText_(const ffnt_header_t* font, u32 x, u32 y, color_t clr, cons
         if (codepoint == '\n')
         {
             if (max_width) {
-                break;
+                text = end_text;
+                max_width = 0;
+                continue;
             }
 
             x = origX;
-            y += font->height;
+            y += s_font_lastusedface->size->metrics.height / 64;
             continue;
         }
 
@@ -160,25 +204,29 @@ static void DrawText_(const ffnt_header_t* font, u32 x, u32 y, color_t clr, cons
                 continue;
         }
 
-        DrawGlyph(x, y, clr, &glyph);
+        DrawGlyph(x, y + font*3, clr, &glyph);
         x += glyph.advance;
     }
 }
 
-void DrawText(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text)
+void DrawText(u32 font, u32 x, u32 y, color_t clr, const char* text)
 {
-    DrawText_(font, x, y, clr, text, 0);
+    DrawText_(font, x, y, clr, text, 0, NULL);
 }
 
-void DrawTextTruncate(const ffnt_header_t* font, u32 x, u32 y, color_t clr, const char* text, u32 max_width)
+void DrawTextTruncate(u32 font, u32 x, u32 y, color_t clr, const char* text, u32 max_width, const char* end_text)
 {
-    DrawText_(font, x, y, clr, text, max_width);
+    DrawText_(font, x, y, clr, text, max_width, end_text);
 }
 
-void GetTextDimensions(const ffnt_header_t* font, const char* text, u32* width_out, u32* height_out)
+void GetTextDimensions(u32 font, const char* text, u32* width_out, u32* height_out)
 {
+    if (s_font_faces_total == 0) return;
+    if (!FontSetType(font)) return;
+    s_font_lastusedface = s_font_faces[0];
     u32 x = 0;
-    u32 width = 0, height = 0;
+    u32 width = 0, height = s_font_lastusedface->size->metrics.height / 64 - font*3;
+
     while (*text)
     {
         glyph_t glyph;
@@ -187,7 +235,8 @@ void GetTextDimensions(const ffnt_header_t* font, const char* text, u32* width_o
         if (codepoint == '\n')
         {
             x = 0;
-            height += font->height;
+            height += s_font_lastusedface->size->metrics.height / 64;
+            height -= font*3;
             continue;
         }
 
@@ -207,6 +256,57 @@ void GetTextDimensions(const ffnt_header_t* font, const char* text, u32* width_o
         *width_out = width;
     if (height_out)
         *height_out = height;
+}
+
+bool fontInitialize(void)
+{
+    FT_Error ret = 0;
+
+    for (u32 i = 0; i < FONT_FACES_MAX; i++)
+    {
+        s_font_facesret[i] = 1;
+    }
+
+    ret = FT_Init_FreeType(&s_font_library);
+    s_font_libret = ret;
+    if (s_font_libret) return false;
+
+    PlFontData fonts[PlSharedFontType_Total];
+    Result rc = 0;
+    rc = plGetSharedFont(s_textLanguageCode, fonts, FONT_FACES_MAX, &s_font_faces_total);
+    if (R_FAILED(rc)) return false;
+
+    for (u32 i = 0; i < s_font_faces_total; i++)
+    {
+        ret = FT_New_Memory_Face( 
+            s_font_library,
+            (const FT_Byte*)fonts[i].address,
+            fonts[i].size,
+            0,
+            &s_font_faces[i]
+        );
+
+        s_font_facesret[i] = ret;
+        if (ret) return false;
+    }
+
+    return true;
+}
+
+void fontExit()
+{
+    for (u32 i = 0; i < s_font_faces_total; i++)
+    {
+        if (s_font_facesret[i] == 0)
+        {
+            FT_Done_Face(s_font_faces[i]);
+        }
+    }
+
+    if (s_font_libret == 0)
+    {
+        FT_Done_FreeType(s_font_library);
+    }
 }
 
 void DrawImage(int x, int y, int width, int height, const u8 *image, ImageMode mode)

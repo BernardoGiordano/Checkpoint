@@ -29,7 +29,7 @@
 Info::Info(void)
 {
     mw = 480;
-    mh = 150;
+    mh = 140;
     mx = (1280 - mw) / 2;
     my = 720 - mh - 48;
 }

@@ -38,7 +38,7 @@ public:
     ~Clickable(void) { };
 
     void        draw(void);
-    void        draw(const ffnt_header_t* font, u32 messageHeight);
+    void        draw(u32 font);
     bool        held(void);
     void        invertColors(void);
     bool        released(void);

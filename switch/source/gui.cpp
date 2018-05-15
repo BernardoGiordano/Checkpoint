@@ -149,12 +149,13 @@ static void drawBackground(void)
     rectangle(0, 0, 1280, 40, COLOR_GREY_DARK);
     rectangle(0, 680, 1280, 40, COLOR_GREY_DARK);
 
-    u32 ver_w, checkpoint_w; 
-    GetTextDimensions(font20, ver, &ver_w, NULL);
+    u32 ver_w, ver_h, checkpoint_w; 
+    GetTextDimensions(font20, ver, &ver_w, &ver_h);
     GetTextDimensions(font24, "checkpoint", &checkpoint_w, NULL);
-    DrawText(font20, 10, 7, COLOR_GREY_LIGHT, DateTime::timeStr().c_str());
-    DrawText(font24, 1280 - 10 - ver_w - 40 - 12 - checkpoint_w, 0, COLOR_WHITE, "checkpoint");
-    DrawText(font20, 1280 - 10 - ver_w, 7, COLOR_GREY_LIGHT, ver);
+    u32 h = (40 - ver_h) / 2;
+    DrawText(font20, 10, h + 3, COLOR_GREY_LIGHT, DateTime::timeStr().c_str());
+    DrawText(font24, 1280 - 10 - ver_w - 40 - 12 - checkpoint_w, h, COLOR_WHITE, "checkpoint");
+    DrawText(font20, 1280 - 10 - ver_w, h + 3, COLOR_GREY_LIGHT, ver);
     DrawImage(1280 - 10 - ver_w - 40 - 6, 0, 40, 40, flag_bin, IMAGE_MODE_RGBA32); 
 }
 
@@ -178,9 +179,9 @@ void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
     
     std::string sizeString = StringUtils::sizeString(offset) + " of " + StringUtils::sizeString(size);
     
-    u32 textw;
-    GetTextDimensions(font20, sizeString.c_str(), &textw, NULL);
-    DrawText(font20, ceilf((1280 - textw)/2), spacingFromBars + 48, COLOR_BLACK, sizeString.c_str());
+    u32 textw, texth;
+    GetTextDimensions(font20, sizeString.c_str(), &textw, &texth);
+    DrawText(font20, ceilf((1280 - textw)/2), spacingFromBars + barHeight + (progressBarHeight - texth) / 2, COLOR_BLACK, sizeString.c_str());
 
     gfxFlushBuffers();
     gfxSwapBuffers();
@@ -337,7 +338,7 @@ void Gui::draw(void)
     u32 ins_w, ins_h;
     const char* instructions = "Hold - to see commands. Press + to exit.";
     GetTextDimensions(font20, instructions, &ins_w, &ins_h);
-    DrawText(font20, ceil((1280 - ins_w) / 2), 680 + 5, COLOR_WHITE, instructions);
+    DrawText(font20, ceil((1280 - ins_w) / 2), 680 + (40 - ins_h) / 2, COLOR_WHITE, instructions);
 
     gfxFlushBuffers();
     gfxSwapBuffers();

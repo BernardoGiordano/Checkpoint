@@ -94,24 +94,23 @@ void Clickable::setColors(color_t bg, color_t text)
 
 void Clickable::draw(void)
 {
-    static const u32 messageHeight = 44;
-    u32 textw;
-    GetTextDimensions(font24, mText.c_str(), &textw, NULL);
+    u32 textw, texth;
+    GetTextDimensions(font24, mText.c_str(), &textw, &texth);
     const u32 messageWidth = mCentered ? textw : mw - 8;
     bool hld = held();
     const color_t bgColor = hld ? mColorText : mColorBg;
     const color_t msgColor = hld ? mColorBg : mColorText;
     
     rectangle(mx, my, mw, mh, bgColor);
-    DrawText(font24, mx + (mw - messageWidth)/2, my + (mh - messageHeight)/2, msgColor, mText.c_str());	
+    DrawText(font24, mx + (mw - messageWidth)/2, my + (mh - texth)/2, msgColor, mText.c_str());	
 }
 
-void Clickable::draw(const ffnt_header_t* font, u32 messageHeight)
+void Clickable::draw(u32 font)
 {
-    u32 textw;
-    GetTextDimensions(font, mText.c_str(), &textw, NULL);
+    u32 textw, texth;
+    GetTextDimensions(font, mText.c_str(), &textw, &texth);
     const u32 messageWidth = mCentered ? textw : mw - 8;
     
     rectangle(mx, my, mw, mh, mColorBg);
-    DrawTextTruncate(font, mx + (mw - messageWidth)/2, my + (mh - messageHeight)/2, mColorText, mText.c_str(), mw - 4*2 - 40);
+    DrawTextTruncate(font, mx + (mw - messageWidth)/2, my + (mh - texth)/2, mColorText, mText.c_str(), mw - 4*2 - 40, "...");
 }
