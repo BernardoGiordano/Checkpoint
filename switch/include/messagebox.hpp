@@ -27,11 +27,12 @@
 #ifndef MESSAGEBOX_HPP
 #define MESSAGEBOX_HPP
 
+#include <math.h>
 #include <string>
 #include <switch.h>
 #include <vector>
 #include "draw.hpp"
-#include "gui.hpp"
+#include "colors.hpp"
 
 class MessageBox
 {

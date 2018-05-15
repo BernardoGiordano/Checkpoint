@@ -24,30 +24,31 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef UTIL_HPP
-#define UTIL_HPP
+#ifndef COMMON_HPP
+#define COMMON_HPP
 
-#include <3ds.h>
-#include <sys/stat.h>
-#include "common.hpp"
-#include "archive.hpp"
-#include "gui.hpp"
+#include <codecvt>
+#include <locale>
+#include <memory>
+#include <stdarg.h>
+#include <string>
+#include <string.h>
+#include <time.h>
 
-extern "C" {
-#include "sha256.h"
+namespace DateTime
+{
+    std::string timeStr(void);
+    std::string dateTimeStr(void);
 }
-
-#define CUSTOM_PATH_LEN 20
-
-void           calculateTitleDBHash(u8* hash);
-void           servicesExit(void);
-void           servicesInit(void);
-std::u16string swkbd(const std::string& suggestion);
 
 namespace StringUtils
 {
-    std::u16string removeForbiddenCharacters(std::u16string src);
-    std::u16string UTF8toUTF16(const char* src);
+    bool           containsInvalidChar(const std::string& str);
+    std::string    format(const std::string fmt_str, ...);
+    size_t         lines(const std::string& str);
+    std::string    removeForbiddenCharacters(std::string src);
+    std::string    sizeString(double size);
+    std::string    UTF16toUTF8(const std::u16string& src);
 }
 
 #endif

@@ -99,85 +99,6 @@ void calculateTitleDBHash(u8* hash)
     sha256(hash, (u8*)buf, (titleCount + 1) * sizeof(u64));
 }
 
-std::string DateTime::timeStr(void)
-{
-    time_t unixTime = time(NULL);
-    struct tm* timeStruct = gmtime((const time_t*)&unixTime);
-    return StringUtils::format("%02i:%02i:%02i", timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
-}
-
-std::string DateTime::dateTimeStr(void)
-{
-    time_t unixTime = time(NULL);
-    struct tm* timeStruct = gmtime((const time_t*)&unixTime);
-    return StringUtils::format("%04i%02i%02i-%02i%02i%02i", timeStruct->tm_year + 1900, timeStruct->tm_mon + 1, timeStruct->tm_mday, timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
-}
-
-std::u16string StringUtils::UTF8toUTF16(const char* src)
-{
-    char16_t tmp[256] = {0};
-    utf8_to_utf16((uint16_t *)tmp, (uint8_t *)src, 256);
-    return std::u16string(tmp);
-}
-
-std::string StringUtils::UTF16toUTF8(const std::u16string& src)
-{
-    static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
-    std::string dst = convert.to_bytes(src);
-    return dst;
-}
-
-std::u16string StringUtils::removeForbiddenCharacters(std::u16string src)
-{
-    static const std::u16string illegalChars = StringUtils::UTF8toUTF16(".,!\\/:?*\"<>|");
-    for (size_t i = 0; i < src.length(); i++)
-    {
-        if (illegalChars.find(src[i]) != std::string::npos)
-        {
-            src[i] = ' ';
-        }
-    }
-    
-    size_t i;
-    for (i = src.length() - 1; i > 0 && src[i] == L' '; i--);
-    src.erase(i + 1, src.length() - i);
-
-    return src;
-}
-
-// https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
-std::string StringUtils::format(const std::string fmt_str, ...)
-{
-    int final_n, n = ((int)fmt_str.size()) * 2; /* Reserve two times as much as the length of the fmt_str */
-    std::unique_ptr<char[]> formatted;
-    va_list ap;
-    while(1)
-    {
-        formatted.reset(new char[n]); /* Wrap the plain char array into the unique_ptr */
-        strcpy(&formatted[0], fmt_str.c_str());
-        va_start(ap, fmt_str);
-        final_n = vsnprintf(&formatted[0], n, fmt_str.c_str(), ap);
-        va_end(ap);
-        if (final_n < 0 || final_n >= n)
-            n += abs(final_n - n + 1);
-        else
-            break;
-    }
-    return std::string(formatted.get());
-}
-
-std::string StringUtils::sizeString(double size)
-{
-    int i = 0;
-    static const char* units[] = {"B", "kB", "MB", "GB"};
-    while (size > 1024)
-    {
-        size /= 1024;
-        i++;
-    }
-    return StringUtils::format("%.*f %s", i, size, units[i]);
-}
-
 std::u16string swkbd(const std::string& suggestion)
 {
     static SwkbdState swkbd;
@@ -197,4 +118,29 @@ std::u16string swkbd(const std::string& suggestion)
     }
     
     return StringUtils::UTF8toUTF16(" ");
+}
+
+std::u16string StringUtils::UTF8toUTF16(const char* src)
+{
+    char16_t tmp[256] = {0};
+    utf8_to_utf16((uint16_t *)tmp, (uint8_t *)src, 256);
+    return std::u16string(tmp);
+}
+
+std::u16string StringUtils::removeForbiddenCharacters(std::u16string src)
+{
+    static const std::u16string illegalChars = StringUtils::UTF8toUTF16(".,!\\/:?*\"<>|");
+    for (size_t i = 0; i < src.length(); i++)
+    {
+        if (illegalChars.find(src[i]) != std::string::npos)
+        {
+            src[i] = ' ';
+        }
+    }
+    
+    size_t i;
+    for (i = src.length() - 1; i > 0 && src[i] == L' '; i--);
+    src.erase(i + 1, src.length() - i);
+
+    return src;
 }

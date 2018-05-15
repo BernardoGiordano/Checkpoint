@@ -41,9 +41,9 @@ APP_VERSION	:=	${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
 TARGET		:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR		:=	out
 BUILD		:=	build
-SOURCES		:=	source
+SOURCES		:=	source ../common
 DATA		:=	data
-INCLUDES	:=	include
+INCLUDES	:=	include ../common
 EXEFS_SRC	:=	exefs_src
 #ROMFS	:=	romfs
 

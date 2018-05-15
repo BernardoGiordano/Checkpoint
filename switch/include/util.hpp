@@ -28,13 +28,8 @@
 #define UTIL_HPP
 
 #include <switch.h>
-#include <cctype>
-#include <memory>
 #include <sys/stat.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <string>
-#include <time.h>
+#include "common.hpp"
 #include "account.hpp"
 #include "gui.hpp"
 #include "hbkbd.hpp"
@@ -47,20 +42,5 @@
 
 void   servicesExit(void);
 Result servicesInit(void);
-
-namespace StringUtils
-{
-    bool        containsInvalidChar(const std::string& str);
-    std::string format(const std::string fmt_str, ...);
-    size_t      lines(const std::string& str);
-    std::string removeForbiddenCharacters(std::string src);
-    std::string sizeString(double size);
-}
-
-namespace DateTime
-{
-    std::string dateTimeStr(void);
-    std::string timeStr(void);
-}
 
 #endif
