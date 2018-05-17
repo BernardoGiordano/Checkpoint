@@ -35,6 +35,8 @@
 #include <string.h>
 #include <time.h>
 
+#define FASTSCROLL_WAIT 1.25e8
+
 namespace DateTime
 {
     std::string timeStr(void);

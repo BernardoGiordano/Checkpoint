@@ -186,6 +186,6 @@ void hid::index(size_t& currentEntry, int& page, size_t maxpages, size_t maxentr
 
     if (sleep)
     {
-        svcSleepThread(1e8);
+        svcSleepThread(FASTSCROLL_WAIT);
     }
 }

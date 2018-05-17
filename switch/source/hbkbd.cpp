@@ -156,7 +156,7 @@ void hbkbd::hid(size_t& currentEntry)
 
     if (sleep)
     {
-        svcSleepThread(1e8);
+        svcSleepThread(FASTSCROLL_WAIT);
     }
 }
 
