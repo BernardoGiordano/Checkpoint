@@ -62,7 +62,7 @@ std::string StringUtils::UTF16toUTF8(const std::u16string& src)
 std::string StringUtils::removeForbiddenCharacters(std::string src)
 {
     static const std::string illegalChars = ".,!\\/:?*\"<>|";
-    for (size_t i = 0; i < src.length(); i++)
+    for (size_t i = 0, sz = src.length(); i < sz; i++)
     {
         if (illegalChars.find(src[i]) != std::string::npos)
         {
@@ -96,19 +96,6 @@ std::string StringUtils::format(const std::string fmt_str, ...)
             break;
     }
     return std::string(formatted.get());
-}
-
-size_t StringUtils::lines(const std::string& str)
-{
-    size_t n = 1;
-    for (size_t i = 0, sz = str.length(); i < sz; i++)
-    {
-        if (str[i] == '\n')
-        {
-            n++;
-        }
-    }
-    return n;
 }
 
 std::string StringUtils::sizeString(double size)

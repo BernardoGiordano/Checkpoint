@@ -46,7 +46,6 @@ int main(int argc, char** argv)
     }
 
     int selectionTimer = 0;
-
     while(appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_PLUS))
     {
         hidScanInput();

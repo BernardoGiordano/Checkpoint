@@ -73,30 +73,48 @@ Result servicesInit(void)
     hbkbd::init();
 
     // debug
-    // static int sock = -1;
-    // struct sockaddr_in srv_addr;
-    // int ret = socketInitializeDefault();
-    // if (ret != 0) {
-    //     Gui::createError(ret, "socketInitializeDefault");
-    // } else {
-	//     sock = socket(AF_INET, SOCK_STREAM, 0);
-	//     if (!sock) {
-    //         Gui::createError(-3, "socket");
-    // }
-
-	//     bzero(&srv_addr, sizeof srv_addr);
-    //     srv_addr.sin_family=AF_INET;
-    //     srv_addr.sin_addr = __nxlink_host;
-    //     srv_addr.sin_port=htons(NXLINK_CLIENT_PORT);
-
-	//     ret = connect(sock, (struct sockaddr *) &srv_addr, sizeof(srv_addr));
-    // 	   if (ret != 0) {
-    //         Gui::createError(ret, "connect");
-    // 	   } else {
-	// 	       fflush(stdout);
-	// 	       dup2(sock, STDOUT_FILENO);
-    // 	   }
+    // if (socketInitializeDefault() == 0)
+    // {
+    //     nxlinkStdio();
     // }
 
     return 0;
+}
+
+std::u16string StringUtils::UTF8toUTF16(const char* src)
+{
+    char16_t tmp[256] = {0};
+    utf8_to_utf16((uint16_t *)tmp, (uint8_t *)src, 256);
+    return std::u16string(tmp);
+}
+
+// https://stackoverflow.com/questions/14094621/change-all-accented-letters-to-normal-letters-in-c
+std::string StringUtils::removeAccents(std::string str)
+{
+    std::u16string src = UTF8toUTF16(str.c_str());
+    const std::u16string illegal = UTF8toUTF16("ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ");
+    const std::u16string fixed   = UTF8toUTF16("AAAAAAECEEEEIIIIDNOOOOOx0UUUUYPsaaaaaaeceeeeiiiiOnooooo/0uuuuypy");
+    
+    for (size_t i = 0, sz = src.length(); i < sz; i++)
+    {
+        size_t index = illegal.find(src[i]);
+        if (index != std::string::npos)
+        {
+            src[i] = fixed[index];
+        }
+    }
+
+    return UTF16toUTF8(src);
+}
+
+std::string StringUtils::removeNotAscii(std::string str)
+{
+    for (size_t i = 0, sz = str.length(); i < sz; i++)
+    {
+        if (!isascii(str[i]))
+        {
+            str[i] = ' ';
+        }
+    }  
+    return str; 
 }

@@ -36,11 +36,18 @@
 #include "io.hpp"
 
 // debug
-// #include <sys/socket.h>
-// #include <arpa/inet.h>
-// #include <sys/errno.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <sys/errno.h>
 
 void   servicesExit(void);
 Result servicesInit(void);
+
+namespace StringUtils
+{
+    std::string    removeAccents(std::string str);
+    std::string    removeNotAscii(std::string str);
+    std::u16string UTF8toUTF16(const char* src);
+}
 
 #endif

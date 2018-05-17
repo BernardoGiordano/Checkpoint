@@ -43,12 +43,11 @@ namespace DateTime
 
 namespace StringUtils
 {
-    bool           containsInvalidChar(const std::string& str);
-    std::string    format(const std::string fmt_str, ...);
-    size_t         lines(const std::string& str);
-    std::string    removeForbiddenCharacters(std::string src);
-    std::string    sizeString(double size);
-    std::string    UTF16toUTF8(const std::u16string& src);
+    bool        containsInvalidChar(const std::string& str);
+    std::string format(const std::string fmt_str, ...);
+    std::string removeForbiddenCharacters(std::string src);
+    std::string sizeString(double size);
+    std::string UTF16toUTF8(const std::u16string& src);
 }
 
 #endif

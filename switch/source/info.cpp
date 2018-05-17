@@ -56,7 +56,7 @@ void Info::draw(void)
 {
     if ((mType == TYPE_INFO && mTTL > 0) || (mType == TYPE_ERROR && mTTL > 0 && mRes != 0))
     {
-        u32 w, hres = 44, hmessage = 24 * StringUtils::lines(mMessage);
+        u32 w, hres = 44, hmessage;
         u8 alpha = mTTL > 255 ? 255 : mTTL;
         color_t color, bordercolor, bgcolor;
         
@@ -73,7 +73,7 @@ void Info::draw(void)
             bgcolor = MakeColor(138, 138, 138, alpha);
         }
 
-        GetTextDimensions(font24, mTitle.c_str(), &w, NULL);
+        GetTextDimensions(font24, mTitle.c_str(), &w, &hmessage);
         const u32 spacing = (mh - hres - hmessage) / 3;
         rectangle(mx - 2, my - 2, mw + 4, mh + 4, bordercolor);
         rectangle(mx, my, mw, mh, bgcolor);
