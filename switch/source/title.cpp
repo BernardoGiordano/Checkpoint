@@ -62,8 +62,9 @@ void Title::init(u64 id, u128 userID, const std::string& name)
 {
     mId = id;
     mUserId = userID;
-    mName = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
-    mPath = "sdmc:/switch/Checkpoint/saves/" + StringUtils::format("0x%016llX", mId) + " " + mName;
+    mDisplayName = name;
+    mSafeName = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
+    mPath = "sdmc:/switch/Checkpoint/saves/" + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
     mIcon = NULL;
 
     if (!io::directoryExists(mPath))
@@ -86,7 +87,7 @@ u128 Title::userId(void)
 
 std::string Title::name(void)
 {
-    return mName;
+    return mDisplayName;
 }
 
 std::string Title::path(void)

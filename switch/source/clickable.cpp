@@ -107,10 +107,11 @@ void Clickable::draw(void)
 
 void Clickable::draw(u32 font)
 {
-    u32 textw, texth;
+    u32 textw, texth, dotlen;
     GetTextDimensions(font, mText.c_str(), &textw, &texth);
+    GetTextDimensions(font, "...", &dotlen, NULL);
     const u32 messageWidth = mCentered ? textw : mw - 8;
     
     rectangle(mx, my, mw, mh, mColorBg);
-    DrawTextTruncate(font, mx + (mw - messageWidth)/2, my + (mh - texth)/2, mColorText, mText.c_str(), mw - 4*2 - 40, "...");
+    DrawTextTruncate(font, mx + (mw - messageWidth)/2, my + (mh - texth)/2, mColorText, mText.c_str(), mw - 4*2 - 40 - dotlen, "...");
 }

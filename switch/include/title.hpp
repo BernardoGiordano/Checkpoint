@@ -58,7 +58,8 @@ public:
 private:
     u64           mId;
     u128          mUserId;
-    std::string   mName;
+    std::string   mDisplayName;
+    std::string   mSafeName;
     std::string   mPath;
     u8*           mIcon;
     std::vector
