@@ -26,32 +26,6 @@
 
 #include "clickable.hpp"
 
-Clickable::Clickable(int x, int y, u16 w, u16 h, u32 colorBg, u32 colorText, std::string text, bool centered)
-{
-    mx = x;
-    my = y;
-    mw = w;
-    mh = h;
-    mColorBg = colorBg;
-    mColorText = colorText;
-    mText = text;
-    mCentered = centered;
-    mOldPressed = false;
-    mTextBuf = C2D_TextBufNew(64);
-    C2D_TextParse(&mC2dText, mTextBuf, text.c_str());
-    C2D_TextOptimize(&mC2dText);
-}
-
-Clickable::~Clickable()
-{
-    C2D_TextBufDelete(mTextBuf);
-}
-
-std::string Clickable::text(void)
-{
-    return mText;
-}
-
 bool Clickable::held()
 {
     touchPosition touch;
@@ -80,19 +54,6 @@ bool Clickable::released(void)
     }
     
     return false;
-}
-
-void Clickable::invertColors(void)
-{
-    u32 tmp = mColorBg;
-    mColorBg = mColorText;
-    mColorText = tmp;
-}
-
-void Clickable::setColors(u32 bg, u32 text)
-{
-    mColorBg = bg;
-    mColorText = text;
 }
 
 void Clickable::draw(void)

@@ -24,26 +24,63 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef CLICKABLE_HPP
-#define CLICKABLE_HPP
+#ifndef ICLICKABLE_HPP
+#define ICLICKABLE_HPP
 
 #include <string>
-#include <switch.h>
-#include "iclickable.hpp"
-#include "draw.hpp"
 
-class Clickable : public IClickable<color_t>
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+
+template<typename T>
+class IClickable
 {
 public:
-    Clickable(int x, int y, u16 w, u16 h, color_t colorBg, color_t colorText, const std::string& message, bool centered)
-    : IClickable(x, y, w, h, colorBg, colorText, message, centered) { }
+    IClickable(int x, int y, u16 w, u16 h, T colorBg, T colorText, const std::string& message, bool centered)
+    : mx(x), my(y), mw(w), mh(h), mColorBg(colorBg), mColorText(colorText), mText(message), mCentered(centered) { }
     
-    virtual ~Clickable(void) { };
+    virtual ~IClickable(void)
+    {
+        mOldPressed = false;
+    }
 
-    void draw(void);
-    void draw(u32 font);
-    bool held(void) override;
-    bool released(void) override;
+    virtual bool held(void) = 0;
+    virtual bool released(void) = 0;
+    
+    void invertColors(void)
+    {
+        T tmp = mColorBg;
+        mColorBg = mColorText;
+        mColorText = tmp;
+    }
+
+    void setColors(T bg, T text)
+    {
+        mColorBg = bg;
+        mColorText = text;
+    }
+
+    std::string text(void)
+    {
+        return mText;
+    }
+
+    void text(const std::string& v)
+    {
+        mText = v;
+    }
+
+protected: 
+    int         mx;
+    int         my;
+    u16         mw;
+    u16         mh;
+    T           mColorBg;
+    T           mColorText;
+    std::string mText;
+    bool        mCentered;
+    bool        mOldPressed;
 };
 
 #endif

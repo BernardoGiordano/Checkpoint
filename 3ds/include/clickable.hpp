@@ -29,32 +29,31 @@
 
 #include <citro2d.h>
 #include <string>
+#include "iclickable.hpp"
 #include "colors.hpp"
 
-class Clickable
+class Clickable : public IClickable<u32>
 {
 public:
-    Clickable(int x, int y, u16 w, u16 h, u32 colorBg, u32 colorText, std::string message, bool centered);
-    ~Clickable(void);
+    Clickable(int x, int y, u16 w, u16 h, u32 colorBg, u32 colorText, std::string message, bool centered)
+    : IClickable(x, y, w, h, colorBg, colorText, message, centered)
+    {
+        mTextBuf = C2D_TextBufNew(64);
+        C2D_TextParse(&mC2dText, mTextBuf, message.c_str());
+        C2D_TextOptimize(&mC2dText);
+    }
 
-    void        draw(void);
-    void        draw(float size);
-    bool        held(void);
-    void        invertColors(void);
-    bool        released(void);
-    void        setColors(u32 bg, u32 text);
-    std::string text();
+    virtual ~Clickable(void)
+    {
+        C2D_TextBufDelete(mTextBuf);
+    }
 
-private:
-    int         mx;
-    int         my;
-    u16         mw;
-    u16         mh;
-    u32         mColorBg;
-    u32         mColorText;
-    std::string mText;
-    bool        mCentered;
-    bool        mOldPressed;
+    void draw(void);
+    void draw(float size);
+    bool held(void) override;
+    bool released(void) override;
+
+protected:
     C2D_Text    mC2dText;
     C2D_TextBuf mTextBuf;
 };

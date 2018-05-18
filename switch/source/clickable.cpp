@@ -26,41 +26,18 @@
 
 #include "clickable.hpp"
 
-Clickable::Clickable(u32 x, u32 y, u16 w, u16 h, color_t colorBg, color_t colorText, const std::string& text, bool centered)
-{
-    mx = x;
-    my = y;
-    mw = w;
-    mh = h;
-    mColorBg = colorBg;
-    mColorText = colorText;
-    mText = text;
-    mCentered = centered;
-    mOldPressed = false;
-}
-
-std::string Clickable::text(void)
-{
-    return mText;
-}
-
-void Clickable::text(const std::string& v)
-{
-    mText = v;
-}
-
 bool Clickable::held()
 {
     touchPosition touch;
     hidTouchRead(&touch, 0);
-    return ((hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH) && touch.px > mx && touch.px < mx+mw && touch.py > my && touch.py < my+mh);
+    return ((hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH) && (int)touch.px > mx && (int)touch.px < mx+mw && (int)touch.py > my && (int)touch.py < my+mh);
 }
 
 bool Clickable::released(void)
 {
     touchPosition touch;
     hidTouchRead(&touch, 0);	
-    const bool on = touch.px > mx && touch.px < mx+mw && touch.py > my && touch.py < my+mh;
+    const bool on = (int)touch.px > mx && (int)touch.px < mx+mw && (int)touch.py > my && (int)touch.py < my+mh;
     
     if (on)
     {
@@ -77,19 +54,6 @@ bool Clickable::released(void)
     }
     
     return false;
-}
-
-void Clickable::invertColors(void)
-{
-    color_t tmp = mColorBg;
-    mColorBg = mColorText;
-    mColorText = tmp;
-}
-
-void Clickable::setColors(color_t bg, color_t text)
-{
-    mColorBg = bg;
-    mColorText = text;
 }
 
 void Clickable::draw(void)
