@@ -74,8 +74,12 @@ void hid::entryType(entryType_t v)
 
 void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentries, const size_t entries, const size_t columns) {
     maxentries--;
+
+    u64 kHeld = hidKeysHeld();
+    u64 kDown = hidKeysDown();
+    bool sleep = false;
     
-    if (hidKeysDown() & KEY_L)
+    if (kDown & KEY_L)
     {
         page_back(page, maxpages);
         if (currentEntry > refreshMaxEntries(page, entries))
@@ -83,8 +87,7 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
             currentEntry = refreshMaxEntries(page, entries);
         }
     }
-    
-    if (hidKeysDown() & KEY_R)
+    else if (kDown & KEY_R)
     {
         page_forward(page, maxpages);
         if (currentEntry > refreshMaxEntries(page, entries))
@@ -92,10 +95,9 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
             currentEntry = refreshMaxEntries(page, entries);
         }
     }
-    
-    if (columns > 1)
+    else if (columns > 1)
     {
-        if (hidKeysDown() & KEY_LEFT)
+        if (kHeld & KEY_LEFT)
         {
             if (currentEntry > 0) 
             {
@@ -106,9 +108,9 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
                 page_back(page, maxpages);
                 currentEntry = refreshMaxEntries(page, entries);
             }
+            sleep = true;
         }
-        
-        if (hidKeysDown() & KEY_RIGHT)
+        else if (kHeld & KEY_RIGHT)
         {
             if (currentEntry < maxentries)
             {
@@ -119,9 +121,9 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
                 page_forward(page, maxpages);
                 currentEntry = 0;
             }
+            sleep = true;
         }
-        
-        if (hidKeysDown() & KEY_UP)
+        else if (kHeld & KEY_UP)
         {
             if (currentEntry <= columns - 1)
             {
@@ -135,9 +137,9 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
             {			
                 currentEntry -= columns;
             }
+            sleep = true;
         }
-        
-        if (hidKeysDown() & KEY_DOWN)
+        else if (kHeld & KEY_DOWN)
         {
             if ((int)(maxentries - columns) >= 0)
             {
@@ -153,12 +155,13 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
                         currentEntry = refreshMaxEntries(page, entries);
                     }
                 }
+                sleep = true;
             }
         }
     }
     else
     {
-        if (hidKeysDown() & KEY_UP)
+        if (kHeld & KEY_UP)
         {
             if (currentEntry > 0) 
             {
@@ -169,9 +172,9 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
                 page_back(page, maxpages);
                 currentEntry = refreshMaxEntries(page, entries);
             }
+            sleep = true;
         }
-        
-        if (hidKeysDown() & KEY_DOWN)
+        else if (kHeld & KEY_DOWN)
         {
             if (currentEntry < maxentries)
             {
@@ -182,6 +185,12 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
                 page_forward(page, maxpages);
                 currentEntry = 0;
             }
-        }		
+            sleep = true;
+        }
+    }
+
+    if (sleep)
+    {
+        svcSleepThread(FASTSCROLL_WAIT);
     }
 }
