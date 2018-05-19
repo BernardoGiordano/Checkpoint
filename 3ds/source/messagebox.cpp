@@ -76,11 +76,11 @@ void MessageBox::draw(void)
     const int x = (mScreenw-w)/2;
     const int y = (240-h)/2;
 
-    C2D_DrawRectSolid(x - 2, y - 2, 0.5f, w + 4, h + 4, COLOR_BLACK);
-    C2D_DrawRectSolid(x, y, 0.5f, w, h, mColorBg);
+    C2D_DrawRectSolid(x - 2, y - 2, 0.7f, w + 4, h + 4, COLOR_BLACK);
+    C2D_DrawRectSolid(x, y, 0.7f, w, h, mColorBg);
     
     for (size_t i = 0, sz = mList.size(); i < sz; i++)
     {
-        C2D_DrawText(&mList.at(i), C2D_WithColor, (mScreenw - ceilf(mList.at(i).width * size)) / 2, y + spacingFromEdges + mh*i, 0.5f, size, size, mColorText);
+        C2D_DrawText(&mList.at(i), C2D_WithColor, (mScreenw - ceilf(mList.at(i).width * size)) / 2, y + spacingFromEdges + mh*i, 0.7f, size, size, mColorText);
     }
 }
