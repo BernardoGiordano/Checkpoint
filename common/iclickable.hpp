@@ -38,12 +38,12 @@ class IClickable
 {
 public:
     IClickable(int x, int y, u16 w, u16 h, T colorBg, T colorText, const std::string& message, bool centered)
-    : mx(x), my(y), mw(w), mh(h), mColorBg(colorBg), mColorText(colorText), mText(message), mCentered(centered) { }
-    
-    virtual ~IClickable(void)
+    : mx(x), my(y), mw(w), mh(h), mColorBg(colorBg), mColorText(colorText), mText(message), mCentered(centered)
     {
         mOldPressed = false;
     }
+    
+    virtual ~IClickable(void) { }
 
     virtual bool held(void) = 0;
     virtual bool released(void) = 0;
