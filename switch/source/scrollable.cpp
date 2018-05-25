@@ -40,9 +40,9 @@ void Scrollable::updateSelection(void)
 
     const size_t maxentries = maxVisibleEntries();
     const size_t maxpages = (size() % mVisibleEntries == 0) ? size() / mVisibleEntries : size() / mVisibleEntries + 1;
-    const u32 hu = maxentries * mh / mVisibleEntries;
+    const int hu = maxentries * mh / mVisibleEntries;
     
-    if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && touch.py > my && touch.py < my+hu && touch.px > mx && touch.px < mx+mw)
+    if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && (int)touch.py > my && (int)touch.py < my+hu && (int)touch.px > mx && (int)touch.px < mx+mw)
     {
         mIndex = (size_t)((touch.py - my)*mVisibleEntries/mh);
     }

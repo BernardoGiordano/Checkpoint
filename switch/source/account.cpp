@@ -61,7 +61,7 @@ std::string Account::username(u128 id)
             return ""; 
         }
 
-        strncpy(username, profilebase.username, sizeof(profilebase.username));
+        strncpy(username, profilebase.username, sizeof(username) - 1);
         std::string user = std::string(username);
         mUsernames.insert({id, user});
         accountProfileClose(&profile);
