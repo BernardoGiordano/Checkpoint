@@ -356,7 +356,7 @@ void Gui::updateSelector(void)
     {
         const size_t entries = rowlen * collen;
         const size_t maxentries = (getTitleCount() - page*entries) > entries ? entries : getTitleCount() - page*entries;
-        const size_t maxpages = getTitleCount() / entries + 1;
+        const size_t maxpages = getTitleCount() % entries == 0 ? getTitleCount() / entries : getTitleCount() / entries + 1;
         hid::index(idx, page, maxpages, maxentries, entries, collen);
         directoryList->resetIndex();
     }
