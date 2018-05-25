@@ -79,7 +79,7 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
     u64 kDown = hidKeysDown();
     bool sleep = false;
     
-    if (kDown & KEY_L)
+    if (kDown & KEY_ZL)
     {
         page_back(page, maxpages);
         if (currentEntry > refreshMaxEntries(page, entries))
@@ -87,7 +87,7 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
             currentEntry = refreshMaxEntries(page, entries);
         }
     }
-    else if (kDown & KEY_R)
+    else if (kDown & KEY_ZR)
     {
         page_forward(page, maxpages);
         if (currentEntry > refreshMaxEntries(page, entries))

@@ -260,18 +260,20 @@ void Gui::init(void)
 
     info = new Info();
     info->init("", "", 0, TYPE_INFO);
-    buttonBackup = new Clickable(204, 102, 110, 54, COLOR_WHITE, bottomScrollEnabled ? COLOR_BLACK : COLOR_GREY_LIGHT, "Backup \uE008", true);
-    buttonRestore = new Clickable(204, 158, 110, 54, COLOR_WHITE, bottomScrollEnabled ? COLOR_BLACK : COLOR_GREY_LIGHT, "Restore \uE007", true);
+    buttonBackup = new Clickable(204, 102, 110, 54, COLOR_WHITE, bottomScrollEnabled ? COLOR_BLACK : COLOR_GREY_LIGHT, "Backup \uE004", true);
+    buttonRestore = new Clickable(204, 158, 110, 54, COLOR_WHITE, bottomScrollEnabled ? COLOR_BLACK : COLOR_GREY_LIGHT, "Restore \uE005", true);
     copyList = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE, GFX_TOP);
     directoryList = new Scrollable(6, 102, 196, 110, 5);
     messageBox = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE, GFX_TOP);        
     messageBox->push_message("Press \uE000 to enter target.");
+    messageBox->push_message("Press \uE004 to backup target.");
+    messageBox->push_message("Press \uE005 to restore target.");
     messageBox->push_message("Press \uE001 to exit target or deselect all titles.");
     messageBox->push_message("Press \uE002 to delete a backup.");
     messageBox->push_message("Press \uE003 to multiselect a title.");
     messageBox->push_message("Hold \uE003 to multiselect all titles.");
     messageBox->push_message("Press \uE006 to move between titles.");
-    messageBox->push_message("Press \uE004\uE005 to switch page.");
+    messageBox->push_message("Press \uE054\uE055 to switch page.");
     messageBox->push_message("Hold \uE001 to refresh titles.");
 
     spritesheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");

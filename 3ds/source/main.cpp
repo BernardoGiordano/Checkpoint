@@ -34,17 +34,20 @@ int main() {
     int refreshTimer = 0;
     Threads::create((ThreadFunc)Threads::titles);
 
-    while (aptMainLoop() && !(hidKeysDown() & KEY_START)) {
+    u32 kHeld, kDown = hidKeysDown();
+    while (aptMainLoop() && !(kDown & KEY_START)) {
         hidScanInput();
+        kDown = hidKeysDown();
+        kHeld = hidKeysHeld();
         
-        if (hidKeysDown() & KEY_A)
+        if (kDown & KEY_A)
         {
             Gui::bottomScroll(true);
             Gui::updateButtonsColor();
             hid::entryType(CELLS);
         }
         
-        if (hidKeysDown() & KEY_B)
+        if (kDown & KEY_B)
         {
             Gui::bottomScroll(false);
             Gui::updateButtonsColor();
@@ -52,7 +55,7 @@ int main() {
             Gui::clearSelectedEntries();
         }
         
-        if (hidKeysDown() & KEY_X)
+        if (kDown & KEY_X)
         {
             if (Gui::bottomScroll())
             {
@@ -78,12 +81,12 @@ int main() {
             }
         }
         
-        if (hidKeysDown() & KEY_Y)
+        if (kDown & KEY_Y)
         {
             Gui::addSelectedEntry(Gui::index());
         }
         
-        if (hidKeysHeld() & KEY_Y)
+        if (kHeld & KEY_Y)
         {
             selectionTimer++;
         }
@@ -102,7 +105,7 @@ int main() {
             selectionTimer = 0;
         }
 
-        if (hidKeysHeld() & KEY_B)
+        if (kHeld & KEY_B)
         {
             refreshTimer++;
         }
@@ -117,7 +120,7 @@ int main() {
             refreshTimer = 0;
         }
         
-        if (Gui::isBackupReleased())
+        if (Gui::isBackupReleased() || (Gui::bottomScroll() && kDown & KEY_L))
         {
             if (Gui::multipleSelectionEnabled())
             {
@@ -135,7 +138,7 @@ int main() {
             }
         }
         
-        if (Gui::isRestoreReleased())
+        if (Gui::isRestoreReleased() || (Gui::bottomScroll() && kDown & KEY_R))
         {
             if (Gui::multipleSelectionEnabled())
             {
