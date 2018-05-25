@@ -48,8 +48,8 @@ public:
         C2D_TextBufDelete(mTextBuf);
     }
 
-    void draw(void);
-    void draw(float size);
+    void draw(void) override;
+    void draw(float size) override;
     bool held(void) override;
     bool released(void) override;
 

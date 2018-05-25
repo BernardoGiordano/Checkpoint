@@ -29,39 +29,21 @@
 
 #include <switch.h>
 #include <vector>
+#include "iscrollable.hpp"
 #include "clickable.hpp"
 #include "draw.hpp"
 #include "hid.hpp"
 
-class Scrollable
+class Scrollable : public IScrollable<color_t>
 {
 public:
-    Scrollable(u32 x, u32 y, u32 w, u32 h, size_t visibleEntries);
-    ~Scrollable(void);
+    Scrollable(u32 x, u32 y, u32 w, u32 h, size_t visibleEntries)
+    : IScrollable(x, y, w, h, visibleEntries) { }
+    virtual ~Scrollable(void) { };
 
-    std::string cellName(size_t i);
-    void        draw(void);
-    void        flush(void);
-    size_t      index(void);
-    void        index(size_t i);
-    void        invertCellColors(size_t index);
-    size_t      maxVisibleEntries(void);
-    int         page(void);
-    void        push_back(color_t color, color_t colorMessage, const std::string& message);
-    void        resetIndex(void);
-    size_t      size(void);
-    void        updateSelection(void);
-
-private:
-    u32          mx;
-    u32          my;
-    u32          mw;
-    u32          mh;
-    size_t       mVisibleEntries;
-    size_t       mIndex;
-    int          mPage;
-    std::vector
-    <Clickable*> mCells;
+    void draw(void) override;
+    void push_back(color_t color, color_t colorMessage, const std::string& message) override;
+    void updateSelection(void) override;
 };
 
 #endif

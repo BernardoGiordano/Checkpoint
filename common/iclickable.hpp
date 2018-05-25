@@ -45,6 +45,8 @@ public:
     
     virtual ~IClickable(void) { }
 
+    virtual void draw(void) = 0;
+    virtual void draw(float size) = 0;
     virtual bool held(void) = 0;
     virtual bool released(void) = 0;
     

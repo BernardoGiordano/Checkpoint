@@ -69,7 +69,7 @@ void Clickable::draw(void)
     DrawText(font24, mx + (mw - messageWidth)/2, my + (mh - texth)/2, msgColor, mText.c_str());	
 }
 
-void Clickable::draw(u32 font)
+void Clickable::draw(float font)
 {
     u32 textw, texth, dotlen;
     GetTextDimensions(font, mText.c_str(), &textw, &texth);

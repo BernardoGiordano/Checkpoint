@@ -26,71 +26,11 @@
 
 #include "scrollable.hpp"
 
-std::string Scrollable::cellName(size_t index)
-{
-    return mCells.at(index)->text();
-}
-
-Scrollable::Scrollable(int _x, int _y, u32 _w, u32 _h, size_t _visibleEntries)
-{
-    mx = _x;
-    my = _y;
-    mw = _w;
-    mh = _h;
-    mVisibleEntries = _visibleEntries;
-    mIndex = 0;
-    mPage = 0;
-}
-
-Scrollable::~Scrollable(void)
-{
-    flush();
-}
-
 void Scrollable::push_back(u32 color, u32 colorMessage, const std::string& message)
 {
     static const float spacing = mh / mVisibleEntries;
     Clickable* cell = new Clickable(mx, my + (size() % mVisibleEntries)*spacing, mw, spacing, color, colorMessage, message, false);
     mCells.push_back(cell);
-}
-
-void Scrollable::flush(void)
-{
-    for (size_t i = 0, sz = size(); i < sz; i++)
-    {
-        delete mCells[i];
-    }
-    mCells.clear();
-}
-
-size_t Scrollable::size(void)
-{
-    return mCells.size();
-}
-
-size_t Scrollable::index(void)
-{
-    return mIndex + mPage*mVisibleEntries;
-}
-
-void Scrollable::invertCellColors(size_t i)
-{
-    if (i < size())
-    {
-        mCells.at(i)->invertColors();
-    }
-}
-
-void Scrollable::resetIndex(void)
-{
-    mIndex = 0;
-    mPage = 0;
-}
-
-void Scrollable::index(size_t i)
-{
-    mPage = i / mVisibleEntries;
-    mIndex = i - mPage * mVisibleEntries;
 }
 
 void Scrollable::updateSelection(void)
