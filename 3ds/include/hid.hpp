@@ -27,18 +27,41 @@
 #ifndef HID_HPP
 #define HID_HPP
 
-#include "gui.hpp"
+#include <3ds.h>
+#include <cmath>
+#include "common.hpp"
 
-typedef enum {
-    TITLES,
-    CELLS
-} entryType_t;
-
-namespace hid
+class Hid 
 {
-    entryType_t entryType(void);
-    void        entryType(entryType_t type_);
-    void        index(size_t& currentEntry, int& page, size_t maxpages, size_t maxentries, const size_t entries, const size_t columns);
-}
+public:
+    Hid(size_t entries, size_t columns)
+    : mMaxVisibleEntries(entries), mColumns(columns)
+    {
+        reset();
+        mMaxPages = 0;
+    }
+
+    ~Hid(void) { }
+
+    size_t fullIndex(void);
+    size_t index(void);
+    void index(size_t v);
+    size_t maxEntries(size_t max);
+    size_t maxVisibleEntries(void);
+    int page(void);
+    void page(int v);
+    void reset(void);
+    void update(size_t count);
+
+private:
+    void page_back(void);
+    void page_forward(void);
+
+    size_t mIndex;
+    int mPage;
+    size_t mMaxPages;
+    size_t mMaxVisibleEntries;
+    size_t mColumns;
+};
 
 #endif

@@ -38,12 +38,22 @@ class Scrollable : public IScrollable<u32>
 {
 public:
     Scrollable(int x, int y, u32 w, u32 h, size_t visibleEntries)
-    : IScrollable(x, y, w, h, visibleEntries) { }
-    virtual ~Scrollable(void) { }
+    : IScrollable(x, y, w, h, visibleEntries)
+    {
+        mHid = new Hid(visibleEntries, 1);
+    }
+    
+    virtual ~Scrollable(void)
+    {
+        delete mHid;
+    }
 
     void draw(void) override;
     void push_back(u32 color, u32 colorMessage, const std::string& message) override;
     void updateSelection(void) override;
+
+protected:
+    Hid* mHid;
 };
 
 #endif

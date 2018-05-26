@@ -24,56 +24,75 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "hid.hpp"
+#include "Hid.hpp"
 
-static entryType_t type;
-
-static size_t refreshMaxEntries(int page, size_t entries)
+size_t Hid::index(void)
 {
-    switch (type)
-    {
-        case TITLES: return (getTitleCount() - page*entries) > entries ? entries - 1 : getTitleCount() - page*entries - 1;
-        case CELLS: return (Gui::scrollableCount() - page*entries) > entries ? entries - 1 : Gui::scrollableCount() - page*entries - 1;
-    }
-    return 0;
+    return mIndex;
 }
 
-static void page_back(int& page, int maxpages)
+void Hid::index(size_t v)
 {
-    if (page > 0) 
+    mIndex = v;
+}
+
+size_t Hid::fullIndex(void)
+{
+    return mIndex + mPage * mMaxVisibleEntries;
+}
+
+int Hid::page(void)
+{
+    return mPage;
+}
+
+void Hid::page(int v)
+{
+    mPage = v;
+}
+
+void Hid::reset(void)
+{
+    mIndex = 0;
+    mPage = 0;
+}
+
+size_t Hid::maxVisibleEntries(void)
+{
+    return mMaxVisibleEntries;
+}
+
+size_t Hid::maxEntries(size_t count)
+{
+    return (count - mPage*mMaxVisibleEntries) > mMaxVisibleEntries ? mMaxVisibleEntries - 1 : count - mPage*mMaxVisibleEntries - 1;
+}
+
+void Hid::page_back(void)
+{
+    if (mPage > 0) 
     {
-        page--;
+        mPage--;
     }
-    else if (page == 0)
+    else if (mPage == 0)
     {
-        page = maxpages - 1;
+        mPage = mMaxPages - 1;
     }
 }
 
-static void page_forward(int& page, int maxpages)
+void Hid::page_forward(void)
 {
-    if (page < maxpages - 1)
+    if (mPage < (int)mMaxPages - 1)
     {
-        page++;
+        mPage++;
     }
-    else if (page == maxpages - 1)
+    else if (mPage == (int)mMaxPages - 1)
     {		
-        page = 0;
+        mPage = 0;
     }
 }
 
-entryType_t hid::entryType(void)
-{
-    return type;
-}
-
-void hid::entryType(entryType_t v)
-{
-    type = v;	
-}
-
-void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentries, const size_t entries, const size_t columns) {
-    maxentries--;
+void Hid::update(size_t count) {
+    mMaxPages = (count % mMaxVisibleEntries == 0) ? count / mMaxVisibleEntries : count / mMaxVisibleEntries + 1;
 
     u64 kHeld = hidKeysHeld();
     u64 kDown = hidKeysDown();
@@ -81,78 +100,93 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
     
     if (kDown & KEY_ZL)
     {
-        page_back(page, maxpages);
-        if (currentEntry > refreshMaxEntries(page, entries))
+        page_back();
+        if (mIndex > maxEntries(count))
         {
-            currentEntry = refreshMaxEntries(page, entries);
+            mIndex = maxEntries(count);
         }
     }
     else if (kDown & KEY_ZR)
     {
-        page_forward(page, maxpages);
-        if (currentEntry > refreshMaxEntries(page, entries))
+        page_forward();
+        if (mIndex > maxEntries(count))
         {
-            currentEntry = refreshMaxEntries(page, entries);
+            mIndex = maxEntries(count);
         }
     }
-    else if (columns > 1)
+    else if (mColumns > 1)
     {
         if (kHeld & KEY_LEFT)
         {
-            if (currentEntry > 0) 
+            if (mIndex > 0) 
             {
-                currentEntry--;
+                mIndex--;
             }
-            else if (currentEntry == 0)
+            else if (mIndex == 0)
             {
-                page_back(page, maxpages);
-                currentEntry = refreshMaxEntries(page, entries);
+                page_back();
+                mIndex = maxEntries(count);
             }
             sleep = true;
         }
         else if (kHeld & KEY_RIGHT)
         {
-            if (currentEntry < maxentries)
+            if (mIndex < maxEntries(count))
             {
-                currentEntry++;
+                mIndex++;
             }
-            else if (currentEntry == maxentries)
+            else if (mIndex == maxEntries(count))
             {
-                page_forward(page, maxpages);
-                currentEntry = 0;
+                page_forward();
+                mIndex = 0;
             }
             sleep = true;
         }
         else if (kHeld & KEY_UP)
         {
-            if (currentEntry <= columns - 1)
+            if (mIndex < mColumns)
             {
-                page_back(page, maxpages);
-                if (currentEntry > refreshMaxEntries(page, entries))
+                // store the previous page
+                int page = mPage;
+                // update it
+                page_back();
+                // refresh the maximum amount of entries
+                size_t maxentries = maxEntries(count);
+                // if we went to the last page, make sure we go to the last valid row instead of the last absolute one
+                mIndex = page == 0 ? (size_t)((floor(maxentries / mColumns) + 1)) * mColumns + mIndex - mColumns : mMaxVisibleEntries + mIndex - mColumns;
+                // handle possible overflows
+                if (mIndex > maxentries)
                 {
-                    currentEntry = refreshMaxEntries(page, entries);
+                    mIndex = maxentries;
                 }
             }
-            else if (currentEntry >= columns)
-            {			
-                currentEntry -= columns;
+            else if (mIndex >= mColumns)
+            {
+                mIndex -= mColumns;
             }
             sleep = true;
         }
         else if (kHeld & KEY_DOWN)
         {
-            if ((int)(maxentries - columns) >= 0)
+            size_t maxentries = maxEntries(count);
+            if ((int)(maxentries - mColumns) >= 0)
             {
-                if (currentEntry <= maxentries - columns)
+                if (mIndex <= maxentries - mColumns)
                 {
-                    currentEntry += columns;
+                    mIndex += mColumns;
                 }
-                else if (currentEntry >= maxentries - columns + 1)
+                else if (mIndex >= maxentries - mColumns + 1)
                 {
-                    page_forward(page, maxpages);
-                    if (currentEntry > refreshMaxEntries(page, entries))
+                    // store the old maxentries value to use later
+                    maxentries = maxEntries(count);
+                    // change page
+                    page_forward();
+                    // we need to setup the index to be on a new row: quantize the row and evaluate it
+                    mIndex = (mIndex + mColumns) % (size_t)(floor(maxentries / mColumns) * mColumns + mColumns);
+                    // in case rows are not full of icons, handle possible overflows
+                    if (mIndex > maxEntries(count))
                     {
-                        currentEntry = refreshMaxEntries(page, entries);
+                        mIndex = maxEntries(count);
                     }
                 }
                 sleep = true;
@@ -163,27 +197,27 @@ void hid::index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentr
     {
         if (kHeld & KEY_UP)
         {
-            if (currentEntry > 0) 
+            if (mIndex > 0) 
             {
-                currentEntry--;
+                mIndex--;
             }
-            else if (currentEntry == 0)
+            else if (mIndex == 0)
             {
-                page_back(page, maxpages);
-                currentEntry = refreshMaxEntries(page, entries);
+                page_back();
+                mIndex = maxEntries(count);
             }
             sleep = true;
         }
         else if (kHeld & KEY_DOWN)
         {
-            if (currentEntry < maxentries)
+            if (mIndex < maxEntries(count))
             {
-                currentEntry++;
+                mIndex++;
             }
-            else if (currentEntry == maxentries)
+            else if (mIndex == maxEntries(count))
             {
-                page_forward(page, maxpages);
-                currentEntry = 0;
+                page_forward();
+                mIndex = 0;
             }
             sleep = true;
         }

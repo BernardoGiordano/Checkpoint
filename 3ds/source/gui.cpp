@@ -48,11 +48,10 @@ static MessageBox* messageBox;
 static MessageBox* copyList;
 static Scrollable* directoryList;
 
-static size_t idx;
-static int page;
 static const size_t rowlen = 4;
 static const size_t collen = 8;
 static bool bottomScrollEnabled;
+static Hid* hid;
 
 static void drawBackground(gfxScreen_t screen);
 static void drawSelector(void);
@@ -67,11 +66,6 @@ C2D_Image Gui::TWLIcon(void)
 C2D_Image Gui::noIcon(void)
 {
     return C2D_SpriteSheetGetImage(spritesheet, sprites_noicon_idx);
-}
-
-size_t Gui::scrollableCount(void)
-{
-    return directoryList->size();
 }
 
 std::string Gui::nameFromCell(size_t index)
@@ -253,10 +247,9 @@ void Gui::init(void)
 
     top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
-    
-    idx = 0;
-    page = 0;
+
     bottomScrollEnabled = false;
+    hid = new Hid(rowlen * collen, collen);
 
     info = new Info();
     info->init("", "", 0, TYPE_INFO);
@@ -310,6 +303,7 @@ void Gui::exit(void)
     C2D_TextBufDelete(dynamicBuf);
     C2D_TextBufDelete(staticBuf);
     C2D_SpriteSheetFree(spritesheet);
+    delete hid;
     delete messageBox;
     delete directoryList;
     delete copyList;
@@ -328,7 +322,7 @@ bool Gui::bottomScroll(void)
 
 size_t Gui::index(void)
 {
-    return idx + page*rowlen*collen;
+    return hid->fullIndex();
 }
 
 void Gui::bottomScroll(bool enable)
@@ -354,10 +348,7 @@ void Gui::updateSelector(void)
 {
     if (!bottomScrollEnabled)
     {
-        const size_t entries = rowlen * collen;
-        const size_t maxentries = (getTitleCount() - page*entries) > entries ? entries : getTitleCount() - page*entries;
-        const size_t maxpages = getTitleCount() % entries == 0 ? getTitleCount() / entries : getTitleCount() / entries + 1;
-        hid::index(idx, page, maxpages, maxentries, entries, collen);
+        hid->update(getTitleCount());
         directoryList->resetIndex();
     }
     else
@@ -369,8 +360,8 @@ void Gui::updateSelector(void)
 static void drawSelector(void)
 {
     static const int w = 2;
-    const int x = selectorX(idx);
-    const int y = selectorY(idx);
+    const int x = selectorX(hid->index());
+    const int y = selectorY(hid->index());
     C2D_DrawRectSolid(         x,          y, 0.5f, 50,       50, C2D_Color32(255, 255, 255, 200)); 
     C2D_DrawRectSolid(         x,          y, 0.5f, 50,        w, COLOR_RED); // top
     C2D_DrawRectSolid(         x,      y + w, 0.5f,  w, 50 - 2*w, COLOR_RED); // left
@@ -390,10 +381,10 @@ static int selectorY(size_t i)
 
 void Gui::draw(void)
 {
-    const size_t entries = rowlen * collen;
-    const size_t max = (getTitleCount() - page*entries) > entries ? entries : getTitleCount() - page*entries;
+    const size_t entries = hid->maxVisibleEntries();
+    const size_t max = hid->maxEntries(getTitleCount()) + 1;
     const Mode_t mode = Archive::mode();
-    
+ 
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     C2D_TargetClear(top, COLOR_BG);
     C2D_TargetClear(bottom, COLOR_BG);
@@ -401,7 +392,7 @@ void Gui::draw(void)
     C2D_SceneBegin(top);
     drawBackground(GFX_TOP);
 
-    for (size_t k = page*entries; k < page*entries + max; k++)
+    for (size_t k = hid->page()*entries; k < hid->page()*entries + max; k++)
     {
         C2D_DrawImageAt(icon(k), selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
     }
@@ -411,7 +402,7 @@ void Gui::draw(void)
         drawSelector();
     }
 
-    for (size_t k = page*entries; k < page*entries + max; k++)
+    for (size_t k = hid->page()*entries; k < hid->page()*entries + max; k++)
     {
         if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end())
         {
@@ -438,7 +429,7 @@ void Gui::draw(void)
     if (getTitleCount() > 0)
     {
         Title title;
-        getTitle(title, idx + page*entries);
+        getTitle(title, hid->fullIndex());
         
         directoryList->flush();
         std::vector<std::u16string> dirs = mode == MODE_SAVE ? title.saves() : title.extdata();
@@ -516,6 +507,5 @@ bool Gui::isRestoreReleased(void)
 
 void Gui::resetIndex(void)
 {
-    idx = 0;
-    page = 0;
+    hid->reset();
 }

@@ -62,7 +62,6 @@ namespace Gui
     std::string nameFromCell(size_t index);
     void        resetIndex(void);
     void        resetScrollableIndex(void);
-    size_t      scrollableCount(void);
     size_t      scrollableIndex(void);
     void        scrollableIndex(size_t index);
     void        updateButtonsColor(void);

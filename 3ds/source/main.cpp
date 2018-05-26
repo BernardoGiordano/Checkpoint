@@ -44,14 +44,12 @@ int main() {
         {
             Gui::bottomScroll(true);
             Gui::updateButtonsColor();
-            hid::entryType(CELLS);
         }
         
         if (kDown & KEY_B)
         {
             Gui::bottomScroll(false);
             Gui::updateButtonsColor();
-            hid::entryType(TITLES);
             Gui::clearSelectedEntries();
         }
         
