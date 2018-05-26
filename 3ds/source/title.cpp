@@ -26,7 +26,7 @@
 
 #include "title.hpp"
 
-static bool checkHigh(u64 id);
+static bool validId(u64 id);
 static C2D_Image loadTextureIcon(smdh_s *smdh);
 
 static std::vector<Title> titleSaves;
@@ -330,10 +330,10 @@ C2D_Image Title::icon(void)
     return mIcon;
 }
 
-static bool checkHigh(u64 id)
+static bool validId(u64 id)
 {
     u32 high = id >> 32;
-    return (high == 0x00040000 || high == 0x00040002);
+    return !Configuration::getInstance().filter(id) && (high == 0x00040000 || high == 0x00040002);
 }
 
 void loadTitles(bool forceRefresh)
@@ -402,7 +402,7 @@ void loadTitles(bool forceRefresh)
 
         for (u32 i = 0; i < count; i++)
         {
-            if (checkHigh(ids[i]))
+            if (validId(ids[i]))
             {
                 Title title;
                 if (title.load(ids[i], MEDIATYPE_SD, CARD_CTR))
@@ -438,7 +438,7 @@ void loadTitles(bool forceRefresh)
                 if (count > 0)
                 {
                     AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, ids);	
-                    if (checkHigh(ids[0]))
+                    if (validId(ids[0]))
                     {
                         Title title;
                         if (title.load(ids[0], MEDIATYPE_GAME_CARD, cardType))
