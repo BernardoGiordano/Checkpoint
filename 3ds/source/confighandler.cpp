@@ -54,26 +54,38 @@ Configuration::Configuration(void)
         if (outFile == NULL)
         {
             // handle failures here
+            delete config;
             return;
         }
         fwrite(config, 1, size, outFile);
         fclose(outFile);
-
-        // load json config file
-        std::ifstream i(BASEPATH);
-        i >> mJson;
-        i.close();
-
-        // parse filters
-        std::vector<std::string> filter = mJson["filter"];
-        for (auto& id : filter)
-        {
-            mFilterIds.emplace(strtoull(id.c_str(), NULL, 16));
-        }
+        delete config;
     }
+
+    // load json config file
+    std::ifstream i(BASEPATH);
+    i >> mJson;
+    i.close();
+
+    // TODO: check for json version to mathc with the app
+
+    // parse filters
+    std::vector<std::string> filter = mJson["filter"];
+    for (auto& id : filter)
+    {
+        mFilterIds.emplace(strtoull(id.c_str(), NULL, 16));
+    }
+
+    // parse nand saves
+    mNandSaves = mJson["nandsaves"];
 }
 
 bool Configuration::filter(u64 id)
 {
     return mFilterIds.find(id) != mFilterIds.end();
+}
+
+bool Configuration::nandSaves(void)
+{
+    return mNandSaves;
 }

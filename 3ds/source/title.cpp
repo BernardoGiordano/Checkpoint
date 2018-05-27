@@ -75,7 +75,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         mSavePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/saves/") + StringUtils::UTF8toUTF16(unique) + mShortDescription;
         mExtdataPath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/extdata/") + StringUtils::UTF8toUTF16(unique) + mShortDescription;
         AM_GetTitleProductCode(mMedia, mId, productCode);
-        
+
         mAccessibleSave = Archive::accessible(mediaType(), lowId(), highId());
         mAccessibleExtdata = Archive::accessible(extdataId());
         
@@ -332,8 +332,38 @@ C2D_Image Title::icon(void)
 
 static bool validId(u64 id)
 {
+    // check for invalid titles
+    switch ((u32)id)
+    {
+        // Instruction Manual
+        case 0x00008602:
+        case 0x00009202:
+        case 0x00009B02:
+        case 0x0000A402:
+        case 0x0000AC02:
+        case 0x0000B402:
+        // Internet Browser
+        case 0x00008802:
+        case 0x00009402:
+        case 0x00009D02:
+        case 0x0000A602:
+        case 0x0000AE02:
+        case 0x0000B602:
+        case 0x20008802:
+        case 0x20009402:
+        case 0x20009D02:
+        case 0x2000AE02:
+            return false;
+    }
+
+    // check for updates 
     u32 high = id >> 32;
-    return !Configuration::getInstance().filter(id) && (high == 0x00040000 || high == 0x00040002);
+    if (high == 0x0004000E)
+    {
+        return false;
+    }
+
+    return !Configuration::getInstance().filter(id);
 }
 
 void loadTitles(bool forceRefresh)
@@ -393,10 +423,32 @@ void loadTitles(bool forceRefresh)
     else
     {
         u32 count = 0;
-        AM_GetTitleCount(MEDIATYPE_SD, &count);
-        titleSaves.reserve(count + 1);
-        titleExtdatas.reserve(count + 1);
 
+        if (Configuration::getInstance().nandSaves())
+        {
+            AM_GetTitleCount(MEDIATYPE_NAND, &count);
+            u64 ids_nand[count];
+            AM_GetTitleList(NULL, MEDIATYPE_NAND, count, ids_nand);
+
+            for (u32 i = 0; i < count; i++)
+            {
+                if (validId(ids_nand[i]))
+                {
+                    Title title;
+                    if (title.load(ids_nand[i], MEDIATYPE_NAND, CARD_CTR))
+                    {
+                        if (title.accessibleSave())
+                        {
+                            titleSaves.push_back(title);
+                        }
+                        // TODO: extdata?
+                    }
+                }
+            }
+        }
+
+        count = 0;
+        AM_GetTitleCount(MEDIATYPE_SD, &count);
         u64 ids[count];
         AM_GetTitleList(NULL, MEDIATYPE_SD, count, ids);
 

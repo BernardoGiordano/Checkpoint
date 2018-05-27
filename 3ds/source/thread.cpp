@@ -35,7 +35,7 @@ void Threads::create(ThreadFunc entrypoint)
 {
     s32 prio = 0;
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
-    Thread thread = threadCreate((ThreadFunc)entrypoint, NULL, 4*1024, prio-1, -2, false);
+    Thread thread = threadCreate((ThreadFunc)entrypoint, NULL, 64*1024, prio-1, -2, false);
     threads.push_back(thread);
 }
 

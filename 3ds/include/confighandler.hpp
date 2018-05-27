@@ -45,6 +45,7 @@ public:
     }
 
     bool filter(u64 id);
+    bool nandSaves(void);
 
 private:
     Configuration(void);
@@ -55,6 +56,7 @@ private:
 
     nlohmann::json mJson;
     std::unordered_set<u64> mFilterIds;
+    bool mNandSaves;
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
 };
 

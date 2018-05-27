@@ -152,7 +152,8 @@ void io::backup(size_t index)
         FS_Archive archive;
         if (mode == MODE_SAVE)
         {
-            res = Archive::save(&archive, title.mediaType(), title.lowId(), title.highId());
+            // TODO: make it optional through configurations
+            res = title.mediaType() == MEDIATYPE_NAND ? Archive::nandsave(&archive, title.mediaType(), title.uniqueId()) : Archive::save(&archive, title.mediaType(), title.lowId(), title.highId());
         }
         else if (mode == MODE_EXTDATA)
         {

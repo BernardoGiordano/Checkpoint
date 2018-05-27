@@ -43,6 +43,7 @@ namespace Archive
     void       mode(Mode_t v);
     FS_Archive sdmc(void);
     
+    Result     nandsave(FS_Archive* archive, FS_MediaType mediatype, u32 uniqueid);
     Result     save(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);
     Result     extdata(FS_Archive* archive, u32 extdata);
     bool       accessible(FS_MediaType mediatype, u32 lowid, u32 highid); // save
