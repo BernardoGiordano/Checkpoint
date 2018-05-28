@@ -55,7 +55,33 @@ Configuration::Configuration(void)
     }
 
     // parse nand saves
-    mNandSaves = mJson["nandsaves"];
+    mNandSaves = mJson["nand_saves"];
+
+    // parse additional save folders
+    auto js = mJson["additional_save_folders"];
+    for (auto it = js.begin(); it != js.end(); ++it)
+    {
+        std::vector<std::string> folders = it.value()["folders"];
+        std::vector<std::u16string> u16folders;
+        for (auto& folder : folders)
+        {
+            u16folders.push_back(StringUtils::UTF8toUTF16(folder.c_str()));
+        }
+        mAdditionalSaveFolders.emplace(strtoull(it.key().c_str(), NULL, 16), u16folders);
+    }
+
+    // parse additional extdata folders
+    auto je = mJson["additional_extdata_folders"];
+    for (auto it = je.begin(); it != je.end(); ++it)
+    {
+        std::vector<std::string> folders = it.value()["folders"];
+        std::vector<std::u16string> u16folders;
+        for (auto& folder : folders)
+        {
+            u16folders.push_back(StringUtils::UTF8toUTF16(folder.c_str()));
+        }
+        mAdditionalExtdataFolders.emplace(strtoull(it.key().c_str(), NULL, 16), u16folders);
+    }
 }
 
 void Configuration::store(void)
@@ -75,4 +101,18 @@ bool Configuration::filter(u64 id)
 bool Configuration::nandSaves(void)
 {
     return mNandSaves;
+}
+
+std::vector<std::u16string> Configuration::additionalSaveFolders(u64 id)
+{
+    std::vector<std::u16string> emptyvec;
+    auto folders = mAdditionalSaveFolders.find(id);
+    return folders == mAdditionalSaveFolders.end() ? emptyvec : folders->second;
+}
+
+std::vector<std::u16string> Configuration::additionalExtdataFolders(u64 id)
+{
+    std::vector<std::u16string> emptyvec;
+    auto folders = mAdditionalExtdataFolders.find(id);
+    return folders == mAdditionalExtdataFolders.end() ? emptyvec : folders->second;
 }

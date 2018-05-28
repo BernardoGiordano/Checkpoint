@@ -55,6 +55,7 @@ public:
     <std::u16string> extdata(void);
     u32              extdataId(void);
     std::u16string   extdataPath(void);
+    std::u16string   fullExtdataPath(size_t index);
     u32              highId(void);
     C2D_Image        icon(void);
     u64              id(void);
@@ -64,8 +65,9 @@ public:
     u32              lowId(void);
     FS_MediaType     mediaType(void);
     std::string      mediaTypeString(void);
-    void             refreshDirectories(void);   
+    void             refreshDirectories(void); 
     std::u16string   savePath(void);
+    std::u16string   fullSavePath(size_t index);
     std::vector
     <std::u16string> saves(void);
     std::string      shortDescription(void); 
@@ -85,7 +87,11 @@ private:
     std::vector
     <std::u16string> mSaves;
     std::vector
+    <std::u16string> mFullSavePaths;
+    std::vector
     <std::u16string> mExtdata;
+    std::vector
+    <std::u16string> mFullExtdataPaths;
     u64              mId;
     FS_MediaType     mMedia;
     FS_CardType      mCard;

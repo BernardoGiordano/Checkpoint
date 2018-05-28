@@ -337,8 +337,8 @@ void io::restore(size_t index)
         
         if (R_SUCCEEDED(res))
         {
-            std::u16string srcPath = mode == MODE_SAVE ? title.savePath() : title.extdataPath();
-            srcPath += StringUtils::UTF8toUTF16("/") + StringUtils::UTF8toUTF16(Gui::nameFromCell(cellIndex).c_str()) + StringUtils::UTF8toUTF16("/");
+            std::u16string srcPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
+            srcPath += StringUtils::UTF8toUTF16("/");
             std::u16string dstPath = StringUtils::UTF8toUTF16("/");
             
             if (mode != MODE_EXTDATA)
@@ -429,7 +429,7 @@ void io::restore(size_t index)
         delete[] saveFile;
     }
     
-    Gui::createInfo("Success!", Gui::nameFromCell(cellIndex) + " has been restored successfully.");
+    Gui::createInfo("Success!", Gui::nameFromCell(cellIndex) + " has been restored\nsuccessfully.");
 }
 
 void io::deleteBackupFolder(const std::u16string& path)

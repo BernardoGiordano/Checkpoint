@@ -37,6 +37,39 @@ The first launch will take considerably longer than usual (usually 1-2 minutes d
 
 You can scroll between the title list with the DPAD/LR and target a title with A when the selector is on it. Now, you can use the DPAD or the touchscreen to select a target backup to restore/overwrite.
 
+## Configuration file
+
+Example `config.json` file:
+
+```
+{
+  "filter": [
+    "0x000400000011C400",
+    "0x000400000014F100"
+  ],
+  "additional_save_folders": {
+    "0x00040000001B5000": {
+      "folders": [
+        "/3ds/mySaves/1B50",
+        "/moreSaves"
+      ]
+    },
+    "0x00040000001B5100": {
+      "folders": [
+        "/3ds/PKSM/backups"
+      ]
+    }
+  },
+  "additional_extdata_folders": {
+
+  },
+  "nand_saves": true,
+  "version_major": 3,
+  "version_minor": 1,
+  "version_micro": 1
+}
+```
+
 ## Troubleshooting
 
 Checkpoint displays error codes when something weird happens or operations fail. If you have any issues, please ensure they haven't already been addressed, and report the error code and a summary of your operations to reproduce it.

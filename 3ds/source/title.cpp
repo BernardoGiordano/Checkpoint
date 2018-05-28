@@ -208,6 +208,16 @@ std::u16string Title::extdataPath(void)
     return mExtdataPath;
 }
 
+std::u16string Title::fullSavePath(size_t index)
+{
+    return mFullSavePaths.at(index);
+}
+
+std::u16string Title::fullExtdataPath(size_t index)
+{
+    return mFullExtdataPaths.at(index);
+}
+
 std::vector<std::u16string> Title::saves(void)
 {
     return mSaves;
@@ -225,7 +235,7 @@ void Title::refreshDirectories(void)
     
     if (accessibleSave())
     {
-        // save backups
+        // standard save backups
         Directory savelist(Archive::sdmc(), mSavePath);
         if (savelist.good())
         {
@@ -234,15 +244,36 @@ void Title::refreshDirectories(void)
                 if (savelist.folder(i))
                 {
                     mSaves.push_back(savelist.entry(i));
+                    mFullSavePaths.push_back(mSavePath + StringUtils::UTF8toUTF16("/") + savelist.entry(i));
                 }
             }
             
             std::sort(mSaves.rbegin(), mSaves.rend());
             mSaves.insert(mSaves.begin(), StringUtils::UTF8toUTF16("New..."));
+            mFullSavePaths.insert(mFullSavePaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
         else
         {
             Gui::createError(savelist.error(), "Couldn't retrieve the directory list for the title " + shortDescription());
+        }
+
+        // save backups from configuration
+        std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
+        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); it++)
+        {
+            // we have other folders to parse
+            Directory list(Archive::sdmc(), *it);
+            if (list.good())
+            {
+                for (size_t i = 0, sz = list.size(); i < sz; i++)
+                {
+                    if (list.folder(i))
+                    {
+                        mSaves.push_back(list.entry(i));
+                        mFullSavePaths.push_back(mSavePath + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                    }
+                }
+            }
         }
     }
     
@@ -257,15 +288,36 @@ void Title::refreshDirectories(void)
                 if (extlist.folder(i))
                 {
                     mExtdata.push_back(extlist.entry(i));
+                    mFullExtdataPaths.push_back(mExtdataPath + StringUtils::UTF8toUTF16("/") + extlist.entry(i));
                 }
             }
             
             std::sort(mExtdata.begin(), mExtdata.end());
             mExtdata.insert(mExtdata.begin(), StringUtils::UTF8toUTF16("New..."));
+            mFullExtdataPaths.insert(mFullExtdataPaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
         else
         {
             Gui::createError(extlist.error(), "Couldn't retrieve the extdata list for the title " + shortDescription());
+        }
+
+        // extdata backups from configuration
+        std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
+        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); it++)
+        {
+            // we have other folders to parse
+            Directory list(Archive::sdmc(), *it);
+            if (list.good())
+            {
+                for (size_t i = 0, sz = list.size(); i < sz; i++)
+                {
+                    if (list.folder(i))
+                    {
+                        mExtdata.push_back(list.entry(i));
+                        mFullExtdataPaths.push_back(mExtdataPath + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                    }
+                }
+            }
         }
     }
 }

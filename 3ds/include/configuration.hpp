@@ -28,6 +28,7 @@
 #define CONFIGHANDLER_HPP
 
 #include <fstream>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 #include "json.hpp"
@@ -45,6 +46,8 @@ public:
 
     bool filter(u64 id);
     bool nandSaves(void);
+    std::vector<std::u16string> additionalSaveFolders(u64 id);
+    std::vector<std::u16string> additionalExtdataFolders(u64 id);
 
 private:
     Configuration(void);
@@ -57,6 +60,7 @@ private:
 
     nlohmann::json mJson;
     std::unordered_set<u64> mFilterIds;
+    std::unordered_map<u64, std::vector<std::u16string>> mAdditionalSaveFolders, mAdditionalExtdataFolders;
     bool mNandSaves;
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
 };

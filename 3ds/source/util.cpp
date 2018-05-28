@@ -60,8 +60,6 @@ void servicesInit(void)
     mkdir("sdmc:/3ds/Checkpoint/extdata", 777);
     
     Gui::init();
-
-    Configuration::getInstance();
 }
 
 void calculateTitleDBHash(u8* hash)
