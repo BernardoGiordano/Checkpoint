@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include "common.hpp"
 #include "archive.hpp"
+#include "configuration.hpp"
 #include "gui.hpp"
 
 extern "C" {

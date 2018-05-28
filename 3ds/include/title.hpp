@@ -32,7 +32,7 @@
 #include <string>
 #include <vector>
 #include "archive.hpp"
-#include "confighandler.hpp"
+#include "configuration.hpp"
 #include "directory.hpp"
 #include "fsstream.hpp"
 #include "io.hpp"

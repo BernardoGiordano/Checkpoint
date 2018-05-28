@@ -24,18 +24,14 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "confighandler.hpp"
+#include "configuration.hpp"
 
 Configuration::Configuration(void)
 {
     // check for existing config.json files on the sd card, BASEPATH
     if (!io::fileExists(Archive::sdmc(), StringUtils::UTF8toUTF16(BASEPATH.c_str())))
     {
-        std::ifstream src("romfs:/config.json");
-        std::ofstream dst(BASEPATH);
-        dst << src.rdbuf();
-        src.close();
-        dst.close();
+        store();
     }
 
     // load json config file
@@ -43,7 +39,13 @@ Configuration::Configuration(void)
     i >> mJson;
     i.close();
 
-    // TODO: check for json version to match with the app
+    int version_major = mJson["version_major"];
+    int version_minor = mJson["version_minor"];
+    int version_micro = mJson["version_micro"];
+    if (version_major != VERSION_MAJOR || version_minor != VERSION_MINOR || version_micro != VERSION_MICRO)
+    {
+        store();
+    }
 
     // parse filters
     std::vector<std::string> filter = mJson["filter"];
@@ -54,6 +56,15 @@ Configuration::Configuration(void)
 
     // parse nand saves
     mNandSaves = mJson["nandsaves"];
+}
+
+void Configuration::store(void)
+{
+    std::ifstream src("romfs:/config.json");
+    std::ofstream dst(BASEPATH);
+    dst << src.rdbuf();
+    src.close();
+    dst.close();
 }
 
 bool Configuration::filter(u64 id)

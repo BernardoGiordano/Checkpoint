@@ -50,6 +50,8 @@ private:
     Configuration(void);
     ~Configuration(void) { };
 
+    void store(void);
+
     Configuration(Configuration const&) = delete;
     void operator=(Configuration const&) = delete;
 
