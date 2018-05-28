@@ -31,35 +31,11 @@ Configuration::Configuration(void)
     // check for existing config.json files on the sd card, BASEPATH
     if (!io::fileExists(Archive::sdmc(), StringUtils::UTF8toUTF16(BASEPATH.c_str())))
     {
-        FILE* inFile = fopen("romfs:/config.json", "r");
-        if (inFile == NULL)
-        {
-            // handle failures here
-            return;
-        }
-        fseek(inFile, 0, SEEK_END);
-        u32 size = ftell(inFile);
-        u8* config = new u8[size];
-        if (config == NULL)
-        {
-            fclose(inFile);
-            return;
-        }
-        rewind(inFile);
-        fread(config, size, 1, inFile);
-        fclose(inFile);
-
-        // store the config file inside of BASEPATH
-        FILE* outFile = fopen(BASEPATH.c_str(), "w");
-        if (outFile == NULL)
-        {
-            // handle failures here
-            delete config;
-            return;
-        }
-        fwrite(config, 1, size, outFile);
-        fclose(outFile);
-        delete config;
+        std::ifstream src("romfs:/config.json");
+        std::ofstream dst(BASEPATH);
+        dst << src.rdbuf();
+        src.close();
+        dst.close();
     }
 
     // load json config file
@@ -67,7 +43,7 @@ Configuration::Configuration(void)
     i >> mJson;
     i.close();
 
-    // TODO: check for json version to mathc with the app
+    // TODO: check for json version to match with the app
 
     // parse filters
     std::vector<std::string> filter = mJson["filter"];

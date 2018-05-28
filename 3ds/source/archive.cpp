@@ -54,16 +54,19 @@ FS_Archive Archive::sdmc(void)
     return mSdmc;
 }
 
-Result Archive::nandsave(FS_Archive* archive, FS_MediaType mediatype, u32 uniqueid)
-{
-    const u32 path[2] = { mediatype, (0x00020000 | uniqueid) };
-    return FSUSER_OpenArchive(archive, ARCHIVE_SYSTEM_SAVEDATA, {PATH_BINARY, 8, path});
-}
-
 Result Archive::save(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid)
 {
-    const u32 path[3] = { mediatype, lowid, highid };
-    return FSUSER_OpenArchive(archive, ARCHIVE_USER_SAVEDATA, {PATH_BINARY, 12, path});
+    if (mediatype == MEDIATYPE_NAND)
+    {
+        const u32 path[2] = { mediatype, (0x00020000 | lowid >> 8) };
+        return FSUSER_OpenArchive(archive, ARCHIVE_SYSTEM_SAVEDATA, {PATH_BINARY, 8, path});        
+    }
+    else
+    {
+        const u32 path[3] = { mediatype, lowid, highid };
+        return FSUSER_OpenArchive(archive, ARCHIVE_USER_SAVEDATA, {PATH_BINARY, 12, path});
+    }
+    return 0;
 }
 
 Result Archive::extdata(FS_Archive* archive, u32 ext)
@@ -75,7 +78,7 @@ Result Archive::extdata(FS_Archive* archive, u32 ext)
 bool Archive::accessible(FS_MediaType mediatype, u32 lowid, u32 highid)
 {
     FS_Archive archive;
-    Result res = mediatype == MEDIATYPE_NAND ? nandsave(&archive, mediatype, lowid >> 8) : save(&archive, mediatype, lowid, highid);
+    Result res = save(&archive, mediatype, lowid, highid);
     if (R_SUCCEEDED(res))
     {
         FSUSER_CloseArchive(archive);

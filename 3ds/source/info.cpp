@@ -96,10 +96,10 @@ void Info::draw(void)
 
         C2D_TextGetDimensions(&mTitle, 0.6f, 0.6f, &w, &hres);
         const float spacing = (mh - hres - hmessage) / 3;
-        C2D_DrawRectSolid(mx - 2, my - 2, 0.5f, mw + 4, mh + 4, bordercolor);
-        C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, bgcolor);
-        C2D_DrawText(&mTitle, C2D_WithColor, mx + (mw - w) / 2, my + spacing, 0.5f, 0.6f, 0.6f, color);
-        C2D_DrawText(&mMessage, C2D_WithColor, mx + 10, my + 2*spacing + hres, 0.5f, 0.46f, 0.46f, color);
+        C2D_DrawRectSolid(mx - 2, my - 2, 0.65f, mw + 4, mh + 4, bordercolor);
+        C2D_DrawRectSolid(mx, my, 0.65f, mw, mh, bgcolor);
+        C2D_DrawText(&mTitle, C2D_WithColor, mx + (mw - w) / 2, my + spacing, 0.65f, 0.6f, 0.6f, color);
+        C2D_DrawText(&mMessage, C2D_WithColor, mx + 10, my + 2*spacing + hres, 0.65f, 0.46f, 0.46f, color);
 
         mTTL--;
     }
