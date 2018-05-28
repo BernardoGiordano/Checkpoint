@@ -166,21 +166,24 @@ void io::backup(size_t index)
             std::u16string customPath;
             if (Gui::multipleSelectionEnabled())
             {
-                customPath = isNewFolder ? StringUtils::UTF8toUTF16(suggestion.c_str()) : StringUtils::UTF8toUTF16(Gui::nameFromCell(cellIndex).c_str());
+                customPath = isNewFolder ? StringUtils::UTF8toUTF16(suggestion.c_str()) : StringUtils::UTF8toUTF16("");
             }
             else
             {
-                customPath = isNewFolder ? StringUtils::removeForbiddenCharacters(swkbd(suggestion)) : StringUtils::UTF8toUTF16(Gui::nameFromCell(cellIndex).c_str());
+                customPath = isNewFolder ? StringUtils::removeForbiddenCharacters(swkbd(suggestion)) : StringUtils::UTF8toUTF16("");
             }
             
-            if (!customPath.compare(StringUtils::UTF8toUTF16(" ")))
+            std::u16string dstPath;
+            if (customPath.empty())
             {
-                FSUSER_CloseArchive(archive);
-                return;
+                // we're overriding an existing folder
+                dstPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
             }
-            
-            std::u16string dstPath = mode == MODE_SAVE ? title.savePath() : title.extdataPath();
-            dstPath += StringUtils::UTF8toUTF16("/") + customPath;
+            else
+            {
+                dstPath = mode == MODE_SAVE ? title.savePath() : title.extdataPath();
+                dstPath += StringUtils::UTF8toUTF16("/") + customPath;
+            } 
             
             if (!isNewFolder || io::directoryExists(Archive::sdmc(), dstPath))
             {
@@ -234,20 +237,24 @@ void io::backup(size_t index)
         std::u16string customPath;
         if (Gui::multipleSelectionEnabled())
         {
-            customPath = isNewFolder ? StringUtils::UTF8toUTF16(suggestion.c_str()) : StringUtils::UTF8toUTF16(Gui::nameFromCell(cellIndex).c_str());
+            customPath = isNewFolder ? StringUtils::UTF8toUTF16(suggestion.c_str()) : StringUtils::UTF8toUTF16("");
         }
         else
         {
-            customPath = isNewFolder ? swkbd(suggestion) : StringUtils::UTF8toUTF16(Gui::nameFromCell(cellIndex).c_str());
-        }
-            
-        if (!customPath.compare(StringUtils::UTF8toUTF16(" ")))
-        {
-            return;
+            customPath = isNewFolder ? swkbd(suggestion) : StringUtils::UTF8toUTF16("");
         }
         
-        std::u16string dstPath = mode == MODE_SAVE ? title.savePath() : title.extdataPath();
-        dstPath += StringUtils::UTF8toUTF16("/") + customPath;
+        std::u16string dstPath;
+        if (customPath.empty())
+        {
+            // we're overriding an existing folder
+            dstPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
+        }
+        else
+        {
+            dstPath = mode == MODE_SAVE ? title.savePath() : title.extdataPath();
+            dstPath += StringUtils::UTF8toUTF16("/") + customPath;
+        } 
         
         if (!isNewFolder || io::directoryExists(Archive::sdmc(), dstPath))
         {
@@ -389,8 +396,8 @@ void io::restore(size_t index)
         u32 saveSize = SPIGetCapacity(cardType);
         u32 pageSize = SPIGetPageSize(cardType);
 
-        std::u16string srcPath = mode == MODE_SAVE ? title.savePath() : title.extdataPath();
-        srcPath += StringUtils::UTF8toUTF16("/") + StringUtils::UTF8toUTF16(Gui::nameFromCell(cellIndex).c_str()) + StringUtils::UTF8toUTF16("/") + StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
+        std::u16string srcPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex) + StringUtils::UTF8toUTF16("/") + StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
+        srcPath += StringUtils::UTF8toUTF16("/");
 
         u8* saveFile = new u8[saveSize];
         FSStream stream(Archive::sdmc(), srcPath, FS_OPEN_READ);

@@ -50,6 +50,7 @@ public:
 
     void draw(void) override;
     void push_back(u32 color, u32 colorMessage, const std::string& message) override;
+    void resetIndex(void) override;
     void updateSelection(void) override;
 
 protected:

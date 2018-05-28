@@ -91,7 +91,7 @@ public:
         }
     }
 
-    void resetIndex(void)
+    virtual void resetIndex(void)
     {
         mIndex = 0;
         mPage = 0;

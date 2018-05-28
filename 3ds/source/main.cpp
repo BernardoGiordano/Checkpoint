@@ -51,6 +51,7 @@ int main() {
             Gui::bottomScroll(false);
             Gui::updateButtonsColor();
             Gui::clearSelectedEntries();
+            Gui::resetScrollableIndex();
         }
         
         if (kDown & KEY_X)

@@ -26,6 +26,12 @@
 
 #include "scrollable.hpp"
 
+void Scrollable::resetIndex(void)
+{
+    mHid->index(0);
+    mHid->page(0);
+}
+
 void Scrollable::push_back(u32 color, u32 colorMessage, const std::string& message)
 {
     static const float spacing = mh / mVisibleEntries;
