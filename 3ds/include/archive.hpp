@@ -36,8 +36,8 @@ typedef enum {
 
 namespace Archive
 {
-    Result    init(void);
-    void      exit(void);
+    Result     init(void);
+    void       exit(void);
     
     Mode_t     mode(void);
     void       mode(Mode_t v);

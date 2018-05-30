@@ -55,14 +55,14 @@ int main(int argc, char** argv)
         {
             Gui::backupScroll(true);
             Gui::updateButtonsColor();
-            hid::entryType(CELLS);
+            Gui::entryType(CELLS);
         }
         
         if (kdown & KEY_B || kdown & KEY_LEFT)
         {
             Gui::backupScroll(false);
             Gui::updateButtonsColor();
-            hid::entryType(TITLES);
+            Gui::entryType(TITLES);
             Gui::clearSelectedEntries();
         }
 

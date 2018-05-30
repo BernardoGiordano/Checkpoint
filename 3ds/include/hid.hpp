@@ -28,40 +28,41 @@
 #define HID_HPP
 
 #include <3ds.h>
-#include <cmath>
-#include "common.hpp"
+#include "ihid.hpp"
 
-class Hid 
+class Hid : public IHid
 {
 public:
     Hid(size_t entries, size_t columns)
-    : mMaxVisibleEntries(entries), mColumns(columns)
+    : IHid(entries, columns) { }
+
+    virtual ~Hid(void) { }
+
+    u64 down(void) override
     {
-        reset();
-        mMaxPages = 0;
+        return (u64)hidKeysDown();
     }
 
-    ~Hid(void) { }
+    u64 held(void) override
+    {
+        return (u64)hidKeysHeld();
+    }
 
-    size_t fullIndex(void);
-    size_t index(void);
-    void index(size_t v);
-    size_t maxEntries(size_t max);
-    size_t maxVisibleEntries(void);
-    int page(void);
-    void page(int v);
-    void reset(void);
-    void update(size_t count);
+    void update(size_t count)
+    {
+        IHid::update(count);
+        if (mSleep)
+        {
+            svcSleepThread(FASTSCROLL_WAIT);
+        }
+    }
 
-private:
-    void page_back(void);
-    void page_forward(void);
-
-    size_t mIndex;
-    int mPage;
-    size_t mMaxPages;
-    size_t mMaxVisibleEntries;
-    size_t mColumns;
+    u64 _KEY_ZL(void) override { return KEY_ZL; }
+    u64 _KEY_ZR(void) override { return KEY_ZR; }
+    u64 _KEY_LEFT(void) override { return KEY_LEFT; }
+    u64 _KEY_RIGHT(void) override { return KEY_RIGHT; }
+    u64 _KEY_UP(void) override { return KEY_UP; }
+    u64 _KEY_DOWN(void) override { return KEY_DOWN; }
 };
 
 #endif

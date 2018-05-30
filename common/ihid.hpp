@@ -24,36 +24,57 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef SCROLLABLE_HPP
-#define SCROLLABLE_HPP
+#ifndef IHID_HPP
+#define IHID_HPP
 
-#include <switch.h>
-#include <vector>
-#include "iscrollable.hpp"
-#include "clickable.hpp"
-#include "draw.hpp"
-#include "hid.hpp"
+#include <cstdint>
 
-class Scrollable : public IScrollable<color_t>
+typedef uint64_t u64;
+
+#include <cmath>
+#include "common.hpp"
+
+class IHid 
 {
 public:
-    Scrollable(u32 x, u32 y, u32 w, u32 h, size_t visibleEntries)
-    : IScrollable(x, y, w, h, visibleEntries)
+    IHid(size_t entries, size_t columns)
+    : mMaxVisibleEntries(entries), mColumns(columns)
     {
-        mHid = new Hid(visibleEntries, 1);
+        reset();
+        mMaxPages = 0;
     }
 
-    virtual ~Scrollable(void)
-    {
-        delete mHid;
-    };
+    virtual ~IHid(void) { }
 
-    void draw(void) override;
-    void push_back(color_t color, color_t colorMessage, const std::string& message) override;
-    void updateSelection(void) override;
+    size_t fullIndex(void);
+    size_t index(void);
+    void   index(size_t v);
+    size_t maxEntries(size_t max);
+    size_t maxVisibleEntries(void);
+    int    page(void);
+    void   page(int v);
+    void   reset(void);
+    void   update(size_t count);
 
 protected:
-    Hid* mHid;
+    void   page_back(void);
+    void   page_forward(void);
+
+    virtual u64 down(void) = 0;
+    virtual u64 held(void) = 0;
+    virtual u64 _KEY_ZL(void) = 0;
+    virtual u64 _KEY_ZR(void) = 0;
+    virtual u64 _KEY_LEFT(void) = 0;
+    virtual u64 _KEY_RIGHT(void) = 0;
+    virtual u64 _KEY_UP(void) = 0;
+    virtual u64 _KEY_DOWN(void) = 0;
+
+    size_t mIndex;
+    int    mPage;
+    size_t mMaxPages;
+    size_t mMaxVisibleEntries;
+    size_t mColumns;
+    bool   mSleep;
 };
 
 #endif

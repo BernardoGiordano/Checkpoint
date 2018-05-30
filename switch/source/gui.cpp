@@ -39,8 +39,14 @@ static Scrollable* backupList;
 
 static const size_t cols = 14;
 static bool backupScrollEnabled;
+static entryType_t type;
 
 static char ver[8];
+
+void Gui::entryType(entryType_t type_)
+{
+    type = type_;
+}
 
 void Gui::createInfo(const std::string& title, const std::string& message)
 {

@@ -38,16 +38,16 @@ void Scrollable::updateSelection(void)
     touchPosition touch;
     hidTouchRead(&touch, 0);
 
-    const size_t maxentries = maxVisibleEntries();
-    const size_t maxpages = (size() % mVisibleEntries == 0) ? size() / mVisibleEntries : size() / mVisibleEntries + 1;
-    const int hu = maxentries * mh / mVisibleEntries;
+    const int hu = mHid->maxEntries(size()) * mh / mVisibleEntries;
     
     if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && (int)touch.py > my && (int)touch.py < my+hu && (int)touch.px > mx && (int)touch.px < mx+mw)
     {
-        mIndex = (size_t)((touch.py - my)*mVisibleEntries/mh);
+        mHid->index((size_t)((touch.py - my)*mVisibleEntries/mh));
     }
     
-    hid::index(mIndex, mPage, maxpages, maxentries, mVisibleEntries, 1);
+    mHid->update(size());
+    mIndex = mHid->index();
+    mPage = mHid->page();
 }
 
 void Scrollable::draw(void)

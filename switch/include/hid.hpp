@@ -27,15 +27,42 @@
 #ifndef HID_HPP
 #define HID_HPP
 
-#include "hbkbd.hpp"
-#include "gui.hpp"
-#include "types.hpp"
+#include <switch.h>
+#include "ihid.hpp"
 
-namespace hid
+class Hid : public IHid
 {
-    entryType_t entryType(void);
-    void        entryType(entryType_t type_);
-    void        index(size_t &currentEntry, int &page, size_t maxpages, size_t maxentries, const size_t entries, const size_t columns);
-}
+public:
+    Hid(size_t entries, size_t columns)
+    : IHid(entries, columns) { }
+
+    virtual ~Hid(void) { }
+
+    u64 down(void) override
+    {
+        return hidKeysDown(CONTROLLER_P1_AUTO);
+    }
+
+    u64 held(void) override
+    {
+        return hidKeysHeld(CONTROLLER_P1_AUTO);
+    }
+
+    void update(size_t count)
+    {
+        IHid::update(count);
+        if (mSleep)
+        {
+            svcSleepThread(FASTSCROLL_WAIT);
+        }
+    }
+
+    u64 _KEY_ZL(void) override { return KEY_ZL; }
+    u64 _KEY_ZR(void) override { return KEY_ZR; }
+    u64 _KEY_LEFT(void) override { return KEY_LEFT; }
+    u64 _KEY_RIGHT(void) override { return KEY_RIGHT; }
+    u64 _KEY_UP(void) override { return KEY_UP; }
+    u64 _KEY_DOWN(void) override { return KEY_DOWN; }
+};
 
 #endif

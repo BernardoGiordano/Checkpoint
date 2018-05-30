@@ -58,6 +58,7 @@ namespace Gui
     bool        backupScroll(void);
     void        backupScroll(bool enable);
     size_t      count(entryType_t type);
+    void        entryType(entryType_t type);
     size_t      index(entryType_t type);
     void        index(entryType_t type, size_t i);
     bool        isBackupReleased(void);

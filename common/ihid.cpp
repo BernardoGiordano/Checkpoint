@@ -24,50 +24,50 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "Hid.hpp"
+#include "ihid.hpp"
 
-size_t Hid::index(void)
+size_t IHid::index(void)
 {
     return mIndex;
 }
 
-void Hid::index(size_t v)
+void IHid::index(size_t v)
 {
     mIndex = v;
 }
 
-size_t Hid::fullIndex(void)
+size_t IHid::fullIndex(void)
 {
     return mIndex + mPage * mMaxVisibleEntries;
 }
 
-int Hid::page(void)
+int IHid::page(void)
 {
     return mPage;
 }
 
-void Hid::page(int v)
+void IHid::page(int v)
 {
     mPage = v;
 }
 
-void Hid::reset(void)
+void IHid::reset(void)
 {
     mIndex = 0;
     mPage = 0;
 }
 
-size_t Hid::maxVisibleEntries(void)
+size_t IHid::maxVisibleEntries(void)
 {
     return mMaxVisibleEntries;
 }
 
-size_t Hid::maxEntries(size_t count)
+size_t IHid::maxEntries(size_t count)
 {
     return (count - mPage*mMaxVisibleEntries) > mMaxVisibleEntries ? mMaxVisibleEntries - 1 : count - mPage*mMaxVisibleEntries - 1;
 }
 
-void Hid::page_back(void)
+void IHid::page_back(void)
 {
     if (mPage > 0) 
     {
@@ -79,7 +79,7 @@ void Hid::page_back(void)
     }
 }
 
-void Hid::page_forward(void)
+void IHid::page_forward(void)
 {
     if (mPage < (int)mMaxPages - 1)
     {
@@ -91,14 +91,14 @@ void Hid::page_forward(void)
     }
 }
 
-void Hid::update(size_t count) {
+void IHid::update(size_t count) {
     mMaxPages = (count % mMaxVisibleEntries == 0) ? count / mMaxVisibleEntries : count / mMaxVisibleEntries + 1;
 
-    u64 kHeld = hidKeysHeld();
-    u64 kDown = hidKeysDown();
-    bool sleep = false;
+    u64 kHeld = held();
+    u64 kDown = down();
+    mSleep = false;
     
-    if (kDown & KEY_ZL)
+    if (kDown & _KEY_ZL())
     {
         page_back();
         if (mIndex > maxEntries(count))
@@ -106,7 +106,7 @@ void Hid::update(size_t count) {
             mIndex = maxEntries(count);
         }
     }
-    else if (kDown & KEY_ZR)
+    else if (kDown & _KEY_ZR())
     {
         page_forward();
         if (mIndex > maxEntries(count))
@@ -116,7 +116,7 @@ void Hid::update(size_t count) {
     }
     else if (mColumns > 1)
     {
-        if (kHeld & KEY_LEFT)
+        if (kHeld & _KEY_LEFT())
         {
             if (mIndex > 0) 
             {
@@ -127,9 +127,9 @@ void Hid::update(size_t count) {
                 page_back();
                 mIndex = maxEntries(count);
             }
-            sleep = true;
+            mSleep = true;
         }
-        else if (kHeld & KEY_RIGHT)
+        else if (kHeld & _KEY_RIGHT())
         {
             if (mIndex < maxEntries(count))
             {
@@ -140,9 +140,9 @@ void Hid::update(size_t count) {
                 page_forward();
                 mIndex = 0;
             }
-            sleep = true;
+            mSleep = true;
         }
-        else if (kHeld & KEY_UP)
+        else if (kHeld & _KEY_UP())
         {
             if (mIndex < mColumns)
             {
@@ -164,9 +164,9 @@ void Hid::update(size_t count) {
             {
                 mIndex -= mColumns;
             }
-            sleep = true;
+            mSleep = true;
         }
-        else if (kHeld & KEY_DOWN)
+        else if (kHeld & _KEY_DOWN())
         {
             size_t maxentries = maxEntries(count);
             if ((int)(maxentries - mColumns) >= 0)
@@ -189,13 +189,13 @@ void Hid::update(size_t count) {
                         mIndex = maxEntries(count);
                     }
                 }
-                sleep = true;
+                mSleep = true;
             }
         }
     }
     else
     {
-        if (kHeld & KEY_UP)
+        if (kHeld & _KEY_UP())
         {
             if (mIndex > 0) 
             {
@@ -206,9 +206,9 @@ void Hid::update(size_t count) {
                 page_back();
                 mIndex = maxEntries(count);
             }
-            sleep = true;
+            mSleep = true;
         }
-        else if (kHeld & KEY_DOWN)
+        else if (kHeld & _KEY_DOWN())
         {
             if (mIndex < maxEntries(count))
             {
@@ -219,12 +219,7 @@ void Hid::update(size_t count) {
                 page_forward();
                 mIndex = 0;
             }
-            sleep = true;
+            mSleep = true;
         }
-    }
-
-    if (sleep)
-    {
-        svcSleepThread(FASTSCROLL_WAIT);
     }
 }
