@@ -44,11 +44,10 @@ void Scrollable::updateSelection(void)
     touchPosition touch;
     hidTouchRead(&touch, 0);
 
-    const int hu = mHid->maxEntries(size()) * mh / mVisibleEntries;
-    
-    if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && (int)touch.py > my && (int)touch.py < my+hu && (int)touch.px > mx && (int)touch.px < mx+mw)
+    const int hu = (mHid->maxEntries(size()) + 1) * mh / mVisibleEntries;
+    if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && touch.py > (float)my && touch.py < (float)(my+hu) && touch.px > (float)mx && touch.px < (float)(mx+mw))
     {
-        mHid->index((size_t)((touch.py - my)*mVisibleEntries/mh));
+        mHid->index(ceilf((touch.py - my)*mVisibleEntries/mh));
     }
     
     mHid->update(size());
