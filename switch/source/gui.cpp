@@ -239,8 +239,8 @@ void Gui::init(void)
     info->init("", "", 0, TYPE_INFO);
     titleList = new Scrollable(40, 80, 398, 560, cols);
     backupList = new Scrollable(444, 80, 398, 560, cols);
-    buttonBackup = new Clickable(984, 476, 256, 80, COLOR_WHITE, COLOR_GREY_LIGHT, "Backup", true);
-    buttonRestore = new Clickable(984, 560, 256, 80, COLOR_WHITE, COLOR_GREY_LIGHT, "Restore", true);
+    buttonBackup = new Clickable(984, 476, 256, 80, COLOR_WHITE, COLOR_GREY_LIGHT, "Backup [L]", true);
+    buttonRestore = new Clickable(984, 560, 256, 80, COLOR_WHITE, COLOR_GREY_LIGHT, "Restore [R]", true);
     copyList = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);
     messageBox = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);        
     messageBox->push_message("Press A to enter target.");

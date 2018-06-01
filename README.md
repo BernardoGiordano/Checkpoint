@@ -19,6 +19,7 @@ Checkpoint relies on the following folders to store the files it generates. Note
 ### 3DS
 
 * **`sdmc:/3ds/Checkpoint`**: root path
+* **`sdmc:/3ds/Checkpoint/config.json`**: custom configuration file
 * **`sdmc:/3ds/Checkpoint/saves/<unique id> <game title>`**: root path for all the save backups for a generic game
 * **`sdmc:/3ds/Checkpoint/extdata/<unique id> <game title>`**: root path for all the extdata backups for a generic game
 
@@ -39,7 +40,9 @@ You can scroll between the title list with the DPAD/LR and target a title with A
 
 ## Configuration file
 
-Example `config.json` file:
+You can add and toggle features to Checkpoint for 3DS by editing the configuration file.
+
+Here's an example:
 
 ```
 {
