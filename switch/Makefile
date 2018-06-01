@@ -30,13 +30,13 @@ include $(DEVKITPRO)/libnx/switch_rules
 #     - icon.jpg
 #     - <libnx folder>/default_icon.jpg
 #---------------------------------------------------------------------------------
+VERSION_MAJOR := 3
+VERSION_MINOR := 2
+VERSION_MICRO := 0
+
 APP_TITLE	:=	Checkpoint
 APP_AUTHOR	:=	Bernardo Giordano
 APP_VERSION	:=	${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
-
-VERSION_MAJOR := 3
-VERSION_MINOR := 1
-VERSION_MICRO := 1
 
 TARGET		:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR		:=	out
