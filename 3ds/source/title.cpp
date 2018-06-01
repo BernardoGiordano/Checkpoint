@@ -232,6 +232,8 @@ void Title::refreshDirectories(void)
 {
     mSaves.clear();
     mExtdata.clear();
+    mFullSavePaths.clear();
+    mFullExtdataPaths.clear();
     
     if (accessibleSave())
     {

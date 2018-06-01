@@ -77,6 +77,7 @@ int main() {
                 Gui::resetIndex();
                 Archive::mode(Archive::mode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
                 Gui::clearSelectedEntries();
+                Gui::resetScrollableIndex();
             }
         }
         

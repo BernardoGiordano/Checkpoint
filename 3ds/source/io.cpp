@@ -174,7 +174,7 @@ void io::backup(size_t index)
             }
             
             std::u16string dstPath;
-            if (customPath.empty())
+            if (!isNewFolder)
             {
                 // we're overriding an existing folder
                 dstPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
@@ -191,7 +191,7 @@ void io::backup(size_t index)
                 if (R_FAILED(res))
                 {
                     FSUSER_CloseArchive(archive);
-                    Gui::createError(res, "Failed to delete the existing backup directory recursively.");
+                    Gui::createError(res, "Failed to delete the existing\nbackup directory recursively.");
                     return;
                 }
             }
@@ -245,7 +245,7 @@ void io::backup(size_t index)
         }
         
         std::u16string dstPath;
-        if (customPath.empty())
+        if (!isNewFolder)
         {
             // we're overriding an existing folder
             dstPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);

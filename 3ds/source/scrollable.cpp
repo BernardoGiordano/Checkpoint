@@ -26,6 +26,13 @@
 
 #include "scrollable.hpp"
 
+void Scrollable::setIndex(size_t i)
+{
+    IScrollable::index(i);
+    mHid->index(mIndex);
+    mHid->page(mPage);
+}
+
 void Scrollable::resetIndex(void)
 {
     mHid->index(0);
@@ -41,15 +48,15 @@ void Scrollable::push_back(u32 color, u32 colorMessage, const std::string& messa
 
 void Scrollable::updateSelection(void)
 {
-    touchPosition touch;
-    hidTouchRead(&touch);
+    // touchPosition touch;
+    // hidTouchRead(&touch);
 
-    const u32 hu = mHid->maxEntries(size()) * mh / mVisibleEntries;
+    // const u32 hu = mHid->maxEntries(size()) * mh / mVisibleEntries;
     
-    if (hidKeysHeld() & KEY_TOUCH && touch.py > my && touch.py < my+hu && touch.px > mx && touch.px < mx+mw)
-    {
-        mHid->index((size_t)((touch.py - my)*mVisibleEntries/mh));
-    }
+    // if (hidKeysHeld() & KEY_TOUCH && touch.py > my && touch.py < my+hu && touch.px > mx && touch.px < mx+mw)
+    // {
+    //     mHid->index((size_t)((touch.py - my)*mVisibleEntries/mh));
+    // }
     
     mHid->update(size());
     mIndex = mHid->index();

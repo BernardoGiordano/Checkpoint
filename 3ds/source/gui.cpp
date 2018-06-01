@@ -235,7 +235,7 @@ size_t Gui::scrollableIndex(void)
 
 void Gui::scrollableIndex(size_t idx)
 {
-    directoryList->index(idx);
+    directoryList->setIndex(idx);
 }
 
 void Gui::init(void)
