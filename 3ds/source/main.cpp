@@ -65,9 +65,8 @@ int main() {
                 {
                     Title title;
                     getTitle(title, Gui::index());
-                    std::vector<std::u16string> list = isSaveMode ? title.saves() : title.extdata();
-                    std::u16string basepath = isSaveMode ? title.savePath() : title.extdataPath();
-                    io::deleteBackupFolder(basepath + StringUtils::UTF8toUTF16("/") + list.at(index));
+                    std::u16string path = isSaveMode ? title.fullSavePath(index) : title.fullExtdataPath(index);
+                    io::deleteBackupFolder(path);
                     refreshDirectories(title.id());
                     Gui::scrollableIndex(index - 1);
                 }

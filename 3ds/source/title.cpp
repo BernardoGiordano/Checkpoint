@@ -272,7 +272,7 @@ void Title::refreshDirectories(void)
                     if (list.folder(i))
                     {
                         mSaves.push_back(list.entry(i));
-                        mFullSavePaths.push_back(mSavePath + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                        mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
                     }
                 }
             }
@@ -316,7 +316,7 @@ void Title::refreshDirectories(void)
                     if (list.folder(i))
                     {
                         mExtdata.push_back(list.entry(i));
-                        mFullExtdataPaths.push_back(mExtdataPath + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                        mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
                     }
                 }
             }
