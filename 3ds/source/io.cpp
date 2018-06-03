@@ -191,7 +191,7 @@ void io::backup(size_t index)
                 if (R_FAILED(res))
                 {
                     FSUSER_CloseArchive(archive);
-                    Gui::createError(res, "Failed to delete the existing\nbackup directory recursively.");
+                    Gui::createError(res, "Failed to delete the existing backup directory recursively.");
                     return;
                 }
             }
@@ -396,8 +396,8 @@ void io::restore(size_t index)
         u32 saveSize = SPIGetCapacity(cardType);
         u32 pageSize = SPIGetPageSize(cardType);
 
-        std::u16string srcPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex) + StringUtils::UTF8toUTF16("/") + StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
-        srcPath += StringUtils::UTF8toUTF16("/");
+        std::u16string srcPath = title.fullSavePath(cellIndex);
+        srcPath += StringUtils::UTF8toUTF16("/") + StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
 
         u8* saveFile = new u8[saveSize];
         FSStream stream(Archive::sdmc(), srcPath, FS_OPEN_READ);
@@ -436,7 +436,7 @@ void io::restore(size_t index)
         delete[] saveFile;
     }
     
-    Gui::createInfo("Success!", Gui::nameFromCell(cellIndex) + " has been restored\nsuccessfully.");
+    Gui::createInfo("Success!", Gui::nameFromCell(cellIndex) + " has been restored successfully.");
 }
 
 void io::deleteBackupFolder(const std::u16string& path)
