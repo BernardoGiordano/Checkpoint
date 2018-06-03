@@ -47,6 +47,8 @@ public:
     void init(Result res, const std::string& message, int ttl, Info_t type);
     
 private:
+    std::string addNewLines(const std::string& mess);
+
     size_t      mw;
     size_t      mh;
     int         mx;

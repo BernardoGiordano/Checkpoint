@@ -36,7 +36,24 @@ Info::~Info(void)
     C2D_TextBufDelete(mTextBuf);
 }
 
-void Info::init(const std::string& title, const std::string& message, int ttl, Info_t type)
+std::string Info::addNewLines(const std::string& mess)
+{
+    std::string message = mess;
+    float defaultWidth = 0.46f * fontGetInfo()->defaultWidth.charWidth;
+    float width = defaultWidth * message.length();
+    float maxWidth = mw - 4;
+    if (width > maxWidth)
+    {
+        size_t maxChars = ceilf(maxWidth / defaultWidth * 1.5f);
+        for (std::string::iterator it = message.begin() + maxChars; it < message.end(); it += maxChars)
+        {
+            message.insert(it++, '\n');
+        }
+    }
+    return message;
+}
+
+void Info::init(const std::string& title, const std::string& mess, int ttl, Info_t type)
 {
     mw = 240;
     mh = 70;
@@ -46,6 +63,7 @@ void Info::init(const std::string& title, const std::string& message, int ttl, I
     mType = type;
     mRes = 0;
 
+    std::string message = addNewLines(mess);
     C2D_TextBufClear(mTextBuf);
     C2D_TextParse(&mTitle, mTextBuf, title.c_str());
     C2D_TextParse(&mMessage, mTextBuf, message.c_str());
@@ -53,7 +71,7 @@ void Info::init(const std::string& title, const std::string& message, int ttl, I
     C2D_TextOptimize(&mMessage);
 }
 
-void Info::init(Result res, const std::string& message, int ttl, Info_t type)
+void Info::init(Result res, const std::string& mess, int ttl, Info_t type)
 {
     mw = 240;
     mh = 70;
@@ -63,6 +81,7 @@ void Info::init(Result res, const std::string& message, int ttl, Info_t type)
     mType = type;
     mRes = res;
 
+    std::string message = addNewLines(mess);
     char buf[30];
     sprintf(buf, "Error: %08lX", mRes);
     C2D_TextBufClear(mTextBuf);
