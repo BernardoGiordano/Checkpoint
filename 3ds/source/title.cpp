@@ -251,6 +251,7 @@ void Title::refreshDirectories(void)
             }
             
             std::sort(mSaves.rbegin(), mSaves.rend());
+            std::sort(mFullSavePaths.rbegin(), mFullSavePaths.rend());
             mSaves.insert(mSaves.begin(), StringUtils::UTF8toUTF16("New..."));
             mFullSavePaths.insert(mFullSavePaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
@@ -295,6 +296,7 @@ void Title::refreshDirectories(void)
             }
             
             std::sort(mExtdata.begin(), mExtdata.end());
+            std::sort(mFullExtdataPaths.begin(), mFullExtdataPaths.end());
             mExtdata.insert(mExtdata.begin(), StringUtils::UTF8toUTF16("New..."));
             mFullExtdataPaths.insert(mFullExtdataPaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
