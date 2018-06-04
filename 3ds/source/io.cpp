@@ -191,7 +191,7 @@ void io::backup(size_t index)
                 if (R_FAILED(res))
                 {
                     FSUSER_CloseArchive(archive);
-                    Gui::createError(res, "Failed to delete the existing backup directory recursively.");
+                    Gui::createError(res, "Failed to delete the existing backup\ndirectory recursively.");
                     return;
                 }
             }
@@ -261,7 +261,7 @@ void io::backup(size_t index)
             res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
             if (R_FAILED(res))
             {
-                Gui::createError(res, "Failed to delete the existing backup directory recursively.");
+                Gui::createError(res, "Failed to delete the existing\nbackup directory recursively.");
                 return;
             }
         }
@@ -436,7 +436,7 @@ void io::restore(size_t index)
         delete[] saveFile;
     }
     
-    Gui::createInfo("Success!", Gui::nameFromCell(cellIndex) + " has been restored successfully.");
+    Gui::createInfo("Success!", Gui::nameFromCell(cellIndex) + "\nhas been restored successfully.");
 }
 
 void io::deleteBackupFolder(const std::u16string& path)
