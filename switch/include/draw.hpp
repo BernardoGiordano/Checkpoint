@@ -82,5 +82,6 @@ void DrawText(u32 font, u32 x, u32 y, color_t clr, const char* text);
 void DrawTextTruncate(u32 font, u32 x, u32 y, color_t clr, const char* text, u32 max_width, const char* end_text);
 void GetTextDimensions(u32 font, const char* text, u32* width_out, u32* height_out);
 void DrawImage(int x, int y, int width, int height, const u8 *image, ImageMode mode);
+void downscaleRGBImg(const u8 *image, u8* out, int srcWidth, int srcHeight, int destWidth, int destHeight);
 
 #endif

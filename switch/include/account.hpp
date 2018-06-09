@@ -31,12 +31,26 @@
 #include <string.h>
 #include <switch.h>
 #include <unordered_map>
+#include "draw.hpp"
+#include "types.hpp"
+
+extern "C" {
+#include "nanojpeg.h"
+}
+
+#define USER_ICON_SIZE 96
+
+struct User {
+    std::string name;
+    u8*         icon; 
+};
 
 namespace Account 
 {
     Result      init(void);
     void        exit(void);
 
+    u8*         icon(u128 id);
     std::string username(u128 id);
 }
 

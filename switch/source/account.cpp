@@ -26,7 +26,7 @@
 
 #include "account.hpp"
 
-static std::unordered_map<u128, std::string> mUsernames;
+static std::unordered_map<u128, User> mUsers;
 
 Result Account::init(void)
 {
@@ -35,38 +35,77 @@ Result Account::init(void)
 
 void Account::exit(void)
 {
+    for (auto& value : mUsers)
+    {
+        free(value.second.icon);
+    }
     accountExit();
+}
+
+static User getUser(u128 id)
+{
+    User user{ "", NULL };
+    AccountProfile profile;
+    AccountProfileBase profilebase;
+    memset(&profilebase, 0, sizeof(profilebase));
+
+    if (R_SUCCEEDED(accountGetProfile(&profile, id)) && 
+        R_SUCCEEDED(accountProfileGet(&profile, NULL, &profilebase)))
+    {
+        user.name = std::string(profilebase.username, 0x20);
+
+        //load icon
+        u8* buffer;
+        size_t image_size, real_size;
+        if (R_SUCCEEDED(accountProfileGetImageSize(&profile, &image_size)) &&
+            (buffer = (u8*)malloc(image_size)) != NULL &&
+            R_SUCCEEDED(accountProfileLoadImage(&profile, buffer, image_size, &real_size)))
+        {
+            njInit();
+            size_t fullsize = 256*256*3;
+            if (njDecode(buffer, real_size) == NJ_OK &&
+                njGetWidth() == 256 &&
+                njGetHeight() == 256 &&
+                (size_t)njGetImageSize() == fullsize &&
+                njIsColor() == 1)
+            {
+                u8* decoded_buffer = njGetImage();
+                user.icon = (u8*)malloc(USER_ICON_SIZE*USER_ICON_SIZE*3);
+                downscaleRGBImg(decoded_buffer, user.icon, 256, 256, USER_ICON_SIZE, USER_ICON_SIZE);
+                decoded_buffer = NULL;
+            }
+            free(buffer);
+            njDone();
+        }
+    }
+
+    accountProfileClose(&profile);
+    return user;
 }
 
 std::string Account::username(u128 id)
 {
-    std::unordered_map<u128, std::string>::const_iterator got = mUsernames.find(id);
-    if (got == mUsernames.end())
+    std::unordered_map<u128, User>::const_iterator got = mUsers.find(id);
+    if (got == mUsers.end())
     {
-        // look for a user and add it to the map
-        AccountProfile profile;
-        AccountProfileBase profilebase;
-        char username[0x21] = {0};
-        memset(&profilebase, 0, sizeof(profilebase));
-
-        Result res = accountGetProfile(&profile, id);
-        if (R_FAILED(res))
-        {
-            return ""; 
-        }
-
-        res = accountProfileGet(&profile, NULL, &profilebase);
-        if (R_FAILED(res))
-        {
-            return ""; 
-        }
-
-        strncpy(username, profilebase.username, sizeof(username) - 1);
-        std::string user = std::string(username);
-        mUsernames.insert({id, user});
-        accountProfileClose(&profile);
-        return user;
+        User user = getUser(id);
+        mUsers.insert({id, user});
+        return user.name;
     }
 
-    return got->second;
+    return got->second.name;
+}
+
+u8* Account::icon(u128 id)
+{
+    std::unordered_map<u128, User>::const_iterator got = mUsers.find(id);
+    // the null check in the icon is to handle the bad memory issue that isn't yet fixed
+    if (got == mUsers.end() || got->second.icon == NULL)
+    {
+        User user = getUser(id);
+        mUsers.insert({id, user});
+        return user.icon;
+    }
+
+    return got->second.icon;
 }
