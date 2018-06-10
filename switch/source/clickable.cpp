@@ -59,14 +59,14 @@ bool Clickable::released(void)
 void Clickable::draw(void)
 {
     u32 textw, texth;
-    GetTextDimensions(font24, mText.c_str(), &textw, &texth);
+    GetTextDimensions(7, mText.c_str(), &textw, &texth);
     const u32 messageWidth = mCentered ? textw : mw - 8;
     bool hld = held();
     const color_t bgColor = hld ? mColorText : mColorBg;
     const color_t msgColor = hld ? mColorBg : mColorText;
     
     rectangle(mx, my, mw, mh, bgColor);
-    DrawText(font24, mx + (mw - messageWidth)/2, my + (mh - texth)/2, msgColor, mText.c_str());	
+    DrawText(7, mx + (mw - messageWidth)/2, my + (mh - texth)/2, msgColor, mText.c_str());	
 }
 
 void Clickable::draw(float font)

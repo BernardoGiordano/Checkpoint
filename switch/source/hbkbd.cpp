@@ -336,14 +336,14 @@ std::string hbkbd::keyboard(const std::string& suggestion)
         rectangle(0, starty - margintb, 1280, 356, COLOR_GREY_DARKER);
 
         u32 texth;
-        GetTextDimensions(font24, " ", NULL, &texth);
+        GetTextDimensions(7, " ", NULL, &texth);
         if (str.empty())
         {
-            DrawText(font24, marginlr*2, 140 + (84 - texth) / 2, COLOR_GREY_LIGHT, suggestion.c_str());            
+            DrawText(7, marginlr*2, 140 + (84 - texth) / 2, COLOR_GREY_LIGHT, suggestion.c_str());            
         }
         else
         {
-            DrawText(font24, marginlr*2, 140 + (84 - texth) / 2, COLOR_WHITE, str.c_str());   
+            DrawText(7, marginlr*2, 140 + (84 - texth) / 2, COLOR_WHITE, str.c_str());   
         }
 
         for (size_t i = 0, sz = buttons.size(); i < sz; i++)

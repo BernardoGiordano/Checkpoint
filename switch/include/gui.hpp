@@ -50,7 +50,7 @@ namespace Gui
 {
     void        init(void);
     void        exit(void);
-    void        draw(void);
+    void        draw(u128 uid);
 
     void        createInfo(const std::string& title, const std::string& message);
     void        createError(Result res, const std::string& message);

@@ -32,6 +32,7 @@
 
 int main(int argc, char** argv)
 {
+    u128 currentUId = -1;
     Result res = servicesInit();
     if (R_FAILED(res))
     {
@@ -74,7 +75,7 @@ int main(int argc, char** argv)
                 if (index > 0 && Gui::askForConfirmation("Delete selected backup?"))
                 {
                     Title title;
-                    getTitle(title, Gui::index(TITLES));
+                    getTitle(title, currentUId, Gui::index(TITLES));
                     std::vector<std::string> list = title.saves();
                     std::string path = title.path() + "/" + list.at(index);
                     io::deleteFolderRecursively(path.c_str());
@@ -101,7 +102,7 @@ int main(int argc, char** argv)
         if (selectionTimer > 90)
         {
             Gui::clearSelectedEntries();
-            for (size_t i = 0, sz = getTitleCount(); i < sz; i++)
+            for (size_t i = 0, sz = getTitleCount(currentUId); i < sz; i++)
             {
                 Gui::addSelectedEntry(i);
             }
@@ -116,13 +117,13 @@ int main(int argc, char** argv)
                 std::vector<size_t> list = Gui::selectedEntries();
                 for (size_t i = 0, sz = list.size(); i < sz; i++)
                 {
-                    io::backup(list.at(i));
+                    io::backup(list.at(i), currentUId);
                 }
                 Gui::clearSelectedEntries();
             }
             else
             {
-                io::backup(Gui::index(TITLES));
+                io::backup(Gui::index(TITLES), currentUId);
             }
         }
         
@@ -134,12 +135,12 @@ int main(int argc, char** argv)
             }
             else
             {
-                io::restore(Gui::index(TITLES));
+                io::restore(Gui::index(TITLES), currentUId);
             }
         }
 
         Gui::updateSelector();
-        Gui::draw();
+        Gui::draw(currentUId);
     }
 
     Threads::destroy();

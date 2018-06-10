@@ -152,17 +152,21 @@ static void drawBackground(void)
     framebuf = gfxGetFramebuffer(&framebuf_width, NULL);
     memset(framebuf, 51, gfxGetFramebufferSize());
 
-    rectangle(0, 0, 1280, 40, COLOR_GREY_DARK);
-    rectangle(0, 680, 1280, 40, COLOR_GREY_DARK);
+    const u8 bar_height = 28;
+    const u8 image_dim = 32;
+    rectangle(0, 0, 1280, bar_height, COLOR_GREY_DARK);
+    rectangle(0, 720 - bar_height, 1280, bar_height, COLOR_GREY_DARK);
 
     u32 ver_w, ver_h, checkpoint_w; 
-    GetTextDimensions(font20, ver, &ver_w, &ver_h);
-    GetTextDimensions(font24, "checkpoint", &checkpoint_w, NULL);
-    u32 h = (40 - ver_h) / 2;
-    DrawText(font20, 10, h + 3, COLOR_GREY_LIGHT, DateTime::timeStr().c_str());
-    DrawText(font24, 1280 - 10 - ver_w - 40 - 12 - checkpoint_w, h, COLOR_WHITE, "checkpoint");
-    DrawText(font20, 1280 - 10 - ver_w, h + 3, COLOR_GREY_LIGHT, ver);
-    DrawImage(1280 - 10 - ver_w - 40 - 6, 0, 40, 40, flag_bin, IMAGE_MODE_RGBA32); 
+    GetTextDimensions(5, ver, &ver_w, &ver_h);
+    GetTextDimensions(6, "checkpoint", &checkpoint_w, NULL);
+    u32 h = (bar_height - ver_h) / 2 - 1;
+    DrawText(5, 10, h + 3, COLOR_GREY_LIGHT, DateTime::timeStr().c_str());
+    DrawText(6, 1280 - 10 - ver_w - image_dim - 12 - checkpoint_w, h, COLOR_WHITE, "checkpoint");
+    DrawText(5, 1280 - 10 - ver_w, h + 3, COLOR_GREY_LIGHT, ver);
+    DrawImage(1280 - 10 - ver_w - image_dim - 6, -2, image_dim, image_dim, flag_bin, IMAGE_MODE_RGBA32); 
+    // shadow
+    rectangle(0, bar_height, 1280, 2, COLOR_GREY_DARKER);
 }
 
 void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
@@ -186,8 +190,8 @@ void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
     std::string sizeString = StringUtils::sizeString(offset) + " of " + StringUtils::sizeString(size);
     
     u32 textw, texth;
-    GetTextDimensions(font20, sizeString.c_str(), &textw, &texth);
-    DrawText(font20, ceilf((1280 - textw)/2), spacingFromBars + barHeight + (progressBarHeight - texth) / 2, COLOR_BLACK, sizeString.c_str());
+    GetTextDimensions(6, sizeString.c_str(), &textw, &texth);
+    DrawText(6, ceilf((1280 - textw)/2), spacingFromBars + barHeight + (progressBarHeight - texth) / 2, COLOR_BLACK, sizeString.c_str());
 
     gfxFlushBuffers();
     gfxSwapBuffers();
@@ -266,73 +270,75 @@ void Gui::exit(void)
     gfxExit();
 }
 
-void Gui::draw(void)
+void Gui::draw(u128 uid)
 {
+    const u8 bar_height = 28;
+
     titleList->flush();
     backupList->flush();
 
     // draw
     drawBackground();
 
-    drawOutline(984, 476, 256, 164, 4, COLOR_GREY_LIGHT);
-    rectangle(984, 556, 256, 4, COLOR_GREY_LIGHT);
-    drawOutline(40, 80, 804, 560, 4, COLOR_GREY_LIGHT);
-    rectangle(440, 80, 4, 560, COLOR_GREY_LIGHT);
-    // TODO: optimize
-    rectangle(40, 80, 398, 560, COLOR_GREY_DARK);
-    rectangle(444, 80, 398, 560, COLOR_GREY_DARK);
+    // drawOutline(984, 476, 256, 164, 4, COLOR_GREY_LIGHT);
+    // rectangle(984, 556, 256, 4, COLOR_GREY_LIGHT);
+    // drawOutline(40, 80, 804, 560, 4, COLOR_GREY_LIGHT);
+    // rectangle(440, 80, 4, 560, COLOR_GREY_LIGHT);
+    // // TODO: optimize
+    // rectangle(40, 80, 398, 560, COLOR_GREY_DARK);
+    // rectangle(444, 80, 398, 560, COLOR_GREY_DARK);
 
-    for (size_t i = 0, sz = getTitleCount(); i < sz; i++)
-    {
-        Title title;
-        getTitle(title, i);
-        titleList->push_back(COLOR_WHITE, !backupScrollEnabled ? COLOR_BLUE : COLOR_GREY_LIGHT, title.name());
+    // for (size_t i = 0, sz = getTitleCount(uid); i < sz; i++)
+    // {
+    //     Title title;
+    //     getTitle(title, uid, i);
+    //     titleList->push_back(COLOR_WHITE, !backupScrollEnabled ? COLOR_BLUE : COLOR_GREY_LIGHT, title.name());
     
-        if (i == Gui::index(TITLES))
-        {
-            std::vector<std::string> dirs = title.saves();
-            for (size_t j = 0, amount = dirs.size(); j < amount; j++)
-            {
-                backupList->push_back(COLOR_WHITE, backupScrollEnabled ? COLOR_BLUE : COLOR_GREY_LIGHT, dirs.at(j));
-            }
+    //     if (i == Gui::index(TITLES))
+    //     {
+    //         std::vector<std::string> dirs = title.saves();
+    //         for (size_t j = 0, amount = dirs.size(); j < amount; j++)
+    //         {
+    //             backupList->push_back(COLOR_WHITE, backupScrollEnabled ? COLOR_BLUE : COLOR_GREY_LIGHT, dirs.at(j));
+    //         }
 
-            // descriptions
-            u32 userw;
-            DrawText(font14, 980, 354, COLOR_GREY_LIGHT, "User: ");
-            GetTextDimensions(font14, "User:  ", &userw, NULL);
-            DrawText(font14, 980 + userw, 354, COLOR_WHITE, Account::username(title.userId()).c_str());
+    //         // descriptions
+    //         u32 userw;
+    //         DrawText(4, 980, 354, COLOR_GREY_LIGHT, "User: ");
+    //         GetTextDimensions(4, "User:  ", &userw, NULL);
+    //         DrawText(4, 980 + userw, 354, COLOR_WHITE, Account::username(title.userId()).c_str());
 
-            // icon
-            drawOutline(984, 80, 256, 256, 4, COLOR_BLACK);
-            if (title.icon() != NULL)
-            {
-                DrawImage(984, 80, 256, 256, title.icon(), IMAGE_MODE_RGB24);
-            }
-            else
-            {
-                rectangle(984, 80, 256, 256, COLOR_WHITE);
-            }
-        }
-    }
+    //         // icon
+    //         drawOutline(984, 80, 256, 256, 4, COLOR_BLACK);
+    //         if (title.icon() != NULL)
+    //         {
+    //             DrawImage(984, 80, 256, 256, title.icon(), IMAGE_MODE_RGB24);
+    //         }
+    //         else
+    //         {
+    //             rectangle(984, 80, 256, 256, COLOR_WHITE);
+    //         }
+    //     }
+    // }
 
-    titleList->invertCellColors(titleList->index());
-    if (backupScrollEnabled)
-    {
-        backupList->invertCellColors(backupList->index());
-    }
+    // titleList->invertCellColors(titleList->index());
+    // if (backupScrollEnabled)
+    // {
+    //     backupList->invertCellColors(backupList->index());
+    // }
 
-    titleList->draw();
-    backupList->draw();
-    buttonBackup->draw();
-    buttonRestore->draw();
+    // titleList->draw();
+    // backupList->draw();
+    // buttonBackup->draw();
+    // buttonRestore->draw();
 
-    for (size_t k = titleList->page()*14; k < titleList->page()*14 + titleList->maxVisibleEntries(); k++)
-    {
-        if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end())
-        {
-            DrawImage(398, 80+40*(k%14), 40, 40, k == titleList->index() ? checkbox_white_bin : checkbox_grey_bin, IMAGE_MODE_RGBA32); 
-        }
-    }
+    // for (size_t k = titleList->page()*14; k < titleList->page()*14 + titleList->maxVisibleEntries(); k++)
+    // {
+    //     if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end())
+    //     {
+    //         DrawImage(398, 80+40*(k%14), 40, 40, k == titleList->index() ? checkbox_white_bin : checkbox_grey_bin, IMAGE_MODE_RGBA32); 
+    //     }
+    // }
 
     info->draw();
     
@@ -343,8 +349,8 @@ void Gui::draw(void)
 
     u32 ins_w, ins_h;
     const char* instructions = "Hold - to see commands. Press + to exit.";
-    GetTextDimensions(font20, instructions, &ins_w, &ins_h);
-    DrawText(font20, ceil((1280 - ins_w) / 2), 680 + (40 - ins_h) / 2, COLOR_WHITE, instructions);
+    GetTextDimensions(5, instructions, &ins_w, &ins_h);
+    DrawText(5, ceil((1280 - ins_w) / 2), 720 - bar_height + (bar_height - ins_h) / 2, COLOR_WHITE, instructions);
 
     gfxFlushBuffers();
     gfxSwapBuffers();

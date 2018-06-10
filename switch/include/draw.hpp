@@ -23,10 +23,6 @@
 
 #define FONT_FACES_MAX PlSharedFontType_Total
 
-#define font24 7
-#define font20 6
-#define font14 4
-
 extern u8* framebuf;
 extern u32 framebuf_width;
 

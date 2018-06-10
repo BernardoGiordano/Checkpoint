@@ -52,7 +52,7 @@ void MessageBox::draw(void)
     u32 widths[mList.size()];
     for (size_t i = 0, sz = mList.size(); i < sz; i++)
     {
-        GetTextDimensions(font20, mList.at(i).c_str(), &widths[i], &mh);
+        GetTextDimensions(6, mList.at(i).c_str(), &widths[i], &mh);
         if (widths[i] > w)
         {
             w = widths[i];
@@ -70,6 +70,6 @@ void MessageBox::draw(void)
     
     for (size_t i = 0, sz = mList.size(); i < sz; i++)
     {
-        DrawText(font20, ceil((1280 - widths[i]) / 2), y + spacingFromEdges + mh*i, mColorText, mList.at(i).c_str());
+        DrawText(6, ceil((1280 - widths[i]) / 2), y + spacingFromEdges + mh*i, mColorText, mList.at(i).c_str());
     }
 }

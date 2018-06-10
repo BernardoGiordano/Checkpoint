@@ -187,7 +187,7 @@ int io::deleteFolderRecursively(const char* path)
     return 0;
 }
 
-void io::backup(size_t index)
+void io::backup(size_t index, u128 uid)
 {
     // check if multiple selection is enabled and don't ask for confirmation if that's the case
     if (!Gui::multipleSelectionEnabled())
@@ -203,7 +203,7 @@ void io::backup(size_t index)
     Result res = 0;
     
     Title title;
-    getTitle(title, index);
+    getTitle(title, uid, index);
     
     FsFileSystem fileSystem;
     res = FileSystem::mount(&fileSystem, title.id(), title.userId());
@@ -263,7 +263,7 @@ void io::backup(size_t index)
     Gui::createInfo("Success!", "Progress correctly saved to disk.");
 }
 
-void io::restore(size_t index)
+void io::restore(size_t index, u128 uid)
 {
     const size_t cellIndex = Gui::index(CELLS);
     if (cellIndex == 0 || !Gui::askForConfirmation("Restore selected save?"))
@@ -274,7 +274,7 @@ void io::restore(size_t index)
     Result res = 0;
     
     Title title;
-    getTitle(title, index);
+    getTitle(title, uid, index);
     
     FsFileSystem fileSystem;
     res = FileSystem::mount(&fileSystem, title.id(), title.userId());

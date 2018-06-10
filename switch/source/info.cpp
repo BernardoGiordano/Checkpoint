@@ -73,12 +73,12 @@ void Info::draw(void)
             bgcolor = MakeColor(138, 138, 138, alpha);
         }
 
-        GetTextDimensions(font24, mTitle.c_str(), &w, &hmessage);
+        GetTextDimensions(7, mTitle.c_str(), &w, &hmessage);
         const u32 spacing = (mh - hres - hmessage) / 3;
         rectangle(mx - 2, my - 2, mw + 4, mh + 4, bordercolor);
         rectangle(mx, my, mw, mh, bgcolor);
-        DrawText(font24, mx + (mw - w) / 2, my + spacing, color, mTitle.c_str());
-        DrawText(font14, mx + 10, my + 2*spacing + hres, color, mMessage.c_str());
+        DrawText(7, mx + (mw - w) / 2, my + spacing, color, mTitle.c_str());
+        DrawText(4, mx + 10, my + 2*spacing + hres, color, mMessage.c_str());
 
         mTTL--;
     }

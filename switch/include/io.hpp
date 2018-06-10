@@ -40,8 +40,8 @@
 
 namespace io
 {
-    void   backup(size_t index);
-    void   restore(size_t index);
+    void   backup(size_t index, u128 uid);
+    void   restore(size_t index, u128 uid);
     
     Result copyDirectory(const std::string& srcPath, const std::string& dstPath);
     void   copyFile(const std::string& srcPath, const std::string& dstPath);
