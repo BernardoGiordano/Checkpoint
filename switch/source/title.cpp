@@ -203,15 +203,13 @@ void loadTitles(void)
                     if (it != titles.end())
                     {
                         // found
-                        for (int i = 0; i < 30; i++)
-                            it->second.push_back(title);
+                        it->second.push_back(title);
                     }
                     else
                     {
                         // not found, insert into map
                         std::vector<Title> v;
-                        for (int i = 0; i < 30; i++)
-                            v.push_back(title);
+                        v.push_back(title);
                         titles.emplace(uid, v);
                     }
                 }
