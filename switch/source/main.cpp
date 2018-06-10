@@ -24,15 +24,12 @@
 *         reasonable ways as different from the original version.
 */
 
-#include <switch.h>
-#include "thread.hpp"
-#include "title.hpp"
-#include "util.hpp"
-#include "io.hpp"
+#include "main.hpp"
+
+u128 g_currentUId = 0;
 
 int main(int argc, char** argv)
 {
-    u128 currentUId = -1;
     Result res = servicesInit();
     if (R_FAILED(res))
     {
@@ -49,17 +46,22 @@ int main(int argc, char** argv)
     int selectionTimer = 0;
     while(appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_PLUS))
     {
+        // get the user IDs
+        std::vector<u128> userIds = Account::ids();
+        // set g_currentUId to a default user in case we loaded at least one user
+        if (g_currentUId == 0 && !userIds.empty()) g_currentUId = userIds.at(0);
+
         hidScanInput();
         u32 kdown = hidKeysDown(CONTROLLER_P1_AUTO);
 
-        if (kdown & KEY_A || kdown & KEY_RIGHT)
+        if (kdown & KEY_A)
         {
             Gui::backupScroll(true);
             Gui::updateButtonsColor();
             Gui::entryType(CELLS);
         }
         
-        if (kdown & KEY_B || kdown & KEY_LEFT)
+        if (kdown & KEY_B)
         {
             Gui::backupScroll(false);
             Gui::updateButtonsColor();
@@ -75,7 +77,7 @@ int main(int argc, char** argv)
                 if (index > 0 && Gui::askForConfirmation("Delete selected backup?"))
                 {
                     Title title;
-                    getTitle(title, currentUId, Gui::index(TITLES));
+                    getTitle(title, g_currentUId, Gui::index(TITLES));
                     std::vector<std::string> list = title.saves();
                     std::string path = title.path() + "/" + list.at(index);
                     io::deleteFolderRecursively(path.c_str());
@@ -102,7 +104,7 @@ int main(int argc, char** argv)
         if (selectionTimer > 90)
         {
             Gui::clearSelectedEntries();
-            for (size_t i = 0, sz = getTitleCount(currentUId); i < sz; i++)
+            for (size_t i = 0, sz = getTitleCount(g_currentUId); i < sz; i++)
             {
                 Gui::addSelectedEntry(i);
             }
@@ -117,13 +119,13 @@ int main(int argc, char** argv)
                 std::vector<size_t> list = Gui::selectedEntries();
                 for (size_t i = 0, sz = list.size(); i < sz; i++)
                 {
-                    io::backup(list.at(i), currentUId);
+                    io::backup(list.at(i), g_currentUId);
                 }
                 Gui::clearSelectedEntries();
             }
             else
             {
-                io::backup(Gui::index(TITLES), currentUId);
+                io::backup(Gui::index(TITLES), g_currentUId);
             }
         }
         
@@ -135,12 +137,12 @@ int main(int argc, char** argv)
             }
             else
             {
-                io::restore(Gui::index(TITLES), currentUId);
+                io::restore(Gui::index(TITLES), g_currentUId);
             }
         }
 
         Gui::updateSelector();
-        Gui::draw(currentUId);
+        Gui::draw(g_currentUId);
     }
 
     Threads::destroy();

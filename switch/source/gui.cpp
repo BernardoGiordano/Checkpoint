@@ -34,12 +34,18 @@ static Clickable* buttonBackup;
 static Clickable* buttonRestore;
 static MessageBox* messageBox;
 static MessageBox* copyList;
-static Scrollable* titleList;
 static Scrollable* backupList;
 
-static const size_t cols = 14;
+static const size_t rowlen = 5;
+static const size_t collen = 4;
+static const size_t cols = 6;
 static bool backupScrollEnabled;
+static Hid* hid;
 static entryType_t type;
+
+static void drawSelector(void);
+static int selectorX(size_t i);
+static int selectorY(size_t i);
 
 static char ver[8];
 
@@ -60,19 +66,19 @@ void Gui::createError(Result res, const std::string& message)
 
 size_t Gui::count(entryType_t type)
 {
-    return type == TITLES ? titleList->size() : backupList->size();
+    return type == TITLES ? getTitleCount(g_currentUId) : backupList->size();
 }
 
-std::string Gui::nameFromCell(entryType_t type, size_t index)
+std::string Gui::nameFromCell(size_t index)
 {
-    return type == TITLES ? titleList->cellName(index) : backupList->cellName(index);
+    return backupList->cellName(index);
 }
 
 void Gui::resetIndex(entryType_t type)
 {
     if (type == TITLES)
     {
-        titleList->resetIndex();
+        hid->reset();
     }
     else
     {
@@ -82,14 +88,15 @@ void Gui::resetIndex(entryType_t type)
 
 size_t Gui::index(entryType_t type)
 {
-    return type == TITLES ? titleList->index() : backupList->index();
+    return type == TITLES ? hid->index() : backupList->index();
 }
 
 void Gui::index(entryType_t type, size_t i)
 {
     if (type == TITLES)
     {
-        titleList->index(i);
+        hid->page(i / hid->maxVisibleEntries());
+        hid->index(i - hid->page() * hid->maxVisibleEntries());
     }
     else
     {
@@ -141,10 +148,10 @@ void Gui::addSelectedEntry(size_t idx)
 
 static void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, color_t color)
 {
-    rectangle(x - size, y - size, w + 2*size, size, color); // top
-    rectangle(x - size, y, size, h, color); // left
-    rectangle(x + w, y, size, h, color); // right
-    rectangle(x - size, y + h, w + 2*size, size, color); // bottom
+    rectangled(x - size, y - size, w + 2*size, size, color); // top
+    rectangled(x - size, y, size, h, color); // left
+    rectangled(x + w, y, size, h, color); // right
+    rectangled(x - size, y + h, w + 2*size, size, color); // bottom
 }
 
 static void drawBackground(void)
@@ -241,10 +248,10 @@ void Gui::init(void)
     backupScrollEnabled = false;
     info = new Info();
     info->init("", "", 0, TYPE_INFO);
-    titleList = new Scrollable(40, 80, 398, 560, cols);
-    backupList = new Scrollable(444, 80, 398, 560, cols);
-    buttonBackup = new Clickable(984, 476, 256, 80, COLOR_WHITE, COLOR_GREY_LIGHT, "Backup [L]", true);
-    buttonRestore = new Clickable(984, 560, 256, 80, COLOR_WHITE, COLOR_GREY_LIGHT, "Restore [R]", true);
+    hid = new Hid(rowlen * collen, collen);
+    backupList = new Scrollable(532, 466, 520, 222, cols);
+    buttonBackup = new Clickable(1054, 466, 220, 110, COLOR_WHITE, COLOR_GREY_LIGHT, "Backup [L]", true);
+    buttonRestore = new Clickable(1054, 578, 220, 110, COLOR_WHITE, COLOR_GREY_LIGHT, "Restore [R]", true);
     copyList = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);
     messageBox = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);        
     messageBox->push_message("Press A to enter target.");
@@ -255,13 +262,13 @@ void Gui::init(void)
     messageBox->push_message("Press Y to multiselect a title.");
     messageBox->push_message("Hold Y to multiselect all titles.");
     messageBox->push_message("Press the arrows to move between titles.");
-    messageBox->push_message("Press ZL/ZR to switch page.");
+    messageBox->push_message("Press ZL/ZR to switch user.");
 }
 
 void Gui::exit(void)
 {
     delete info;
-    delete titleList;
+    delete hid;
     delete backupList;
     delete copyList;
     delete buttonBackup;
@@ -273,72 +280,75 @@ void Gui::exit(void)
 void Gui::draw(u128 uid)
 {
     const u8 bar_height = 28;
-
-    titleList->flush();
-    backupList->flush();
+    const u8 spacing = 4;
+    const size_t entries = hid->maxVisibleEntries();
+    const size_t max = hid->maxEntries(getTitleCount(g_currentUId)) + 1;
 
     // draw
     drawBackground();
 
-    // drawOutline(984, 476, 256, 164, 4, COLOR_GREY_LIGHT);
-    // rectangle(984, 556, 256, 4, COLOR_GREY_LIGHT);
-    // drawOutline(40, 80, 804, 560, 4, COLOR_GREY_LIGHT);
-    // rectangle(440, 80, 4, 560, COLOR_GREY_LIGHT);
-    // // TODO: optimize
-    // rectangle(40, 80, 398, 560, COLOR_GREY_DARK);
-    // rectangle(444, 80, 398, 560, COLOR_GREY_DARK);
+    // user icons
+    std::vector<u128> userIds = Account::ids();
+    for (size_t i = 0; i < userIds.size(); i++)
+    {
+        if (Account::icon(userIds.at(i)) != NULL)
+        {
+            DrawImage(1280 - (spacing + USER_ICON_SIZE) * (i + 1), bar_height + spacing, USER_ICON_SIZE, USER_ICON_SIZE, Account::icon(userIds.at(i)), IMAGE_MODE_RGB24);
+        }
+    }
 
-    // for (size_t i = 0, sz = getTitleCount(uid); i < sz; i++)
-    // {
-    //     Title title;
-    //     getTitle(title, uid, i);
-    //     titleList->push_back(COLOR_WHITE, !backupScrollEnabled ? COLOR_BLUE : COLOR_GREY_LIGHT, title.name());
-    
-    //     if (i == Gui::index(TITLES))
-    //     {
-    //         std::vector<std::string> dirs = title.saves();
-    //         for (size_t j = 0, amount = dirs.size(); j < amount; j++)
-    //         {
-    //             backupList->push_back(COLOR_WHITE, backupScrollEnabled ? COLOR_BLUE : COLOR_GREY_LIGHT, dirs.at(j));
-    //         }
+    // title icons
+    for (size_t k = hid->page()*entries; k < hid->page()*entries + max; k++)
+    {
+        int selectorx = selectorX(k);
+        int selectory = selectorY(k);
+        if (smallIcon(g_currentUId, k) != NULL)
+        {
+            DrawImage(selectorx, selectory, 128, 128, smallIcon(g_currentUId, k), IMAGE_MODE_RGB24);
+        }
+        else
+        {
+            reloadSmallIcon(g_currentUId, k);
+            rectangle(selectorx, selectory, 128, 128, COLOR_WHITE);
+        }
 
-    //         // descriptions
-    //         u32 userw;
-    //         DrawText(4, 980, 354, COLOR_GREY_LIGHT, "User: ");
-    //         GetTextDimensions(4, "User:  ", &userw, NULL);
-    //         DrawText(4, 980 + userw, 354, COLOR_WHITE, Account::username(title.userId()).c_str());
+        if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end())
+        {
+            //rectangle(selectorx + 94, selectory + 94, 24, 24, COLOR_WHITE);
+            DrawImage(selectorx + 86, selectory + 86, 40, 40, checkbox_black_bin, IMAGE_MODE_RGBA32); 
+        }
+    }
 
-    //         // icon
-    //         drawOutline(984, 80, 256, 256, 4, COLOR_BLACK);
-    //         if (title.icon() != NULL)
-    //         {
-    //             DrawImage(984, 80, 256, 256, title.icon(), IMAGE_MODE_RGB24);
-    //         }
-    //         else
-    //         {
-    //             rectangle(984, 80, 256, 256, COLOR_WHITE);
-    //         }
-    //     }
-    // }
+    // title selector
+    if (getTitleCount(g_currentUId) > 0)
+    {
+        drawSelector();
+    }
 
-    // titleList->invertCellColors(titleList->index());
-    // if (backupScrollEnabled)
-    // {
-    //     backupList->invertCellColors(backupList->index());
-    // }
+    if (getTitleCount(g_currentUId) > 0)
+    {
+        Title title;
+        getTitle(title, g_currentUId, hid->fullIndex());
+        
+        backupList->flush();
+        std::vector<std::string> dirs = title.saves();
+        
+        for (size_t i = 0; i < dirs.size(); i++)
+        {
+            backupList->push_back(COLOR_WHITE, backupScrollEnabled ? COLOR_BLUE : COLOR_GREY_LIGHT, dirs.at(i));
+            if (i == backupList->index())
+            {
+                backupList->invertCellColors(i);
+            }
+        }
 
-    // titleList->draw();
-    // backupList->draw();
-    // buttonBackup->draw();
-    // buttonRestore->draw();
-
-    // for (size_t k = titleList->page()*14; k < titleList->page()*14 + titleList->maxVisibleEntries(); k++)
-    // {
-    //     if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end())
-    //     {
-    //         DrawImage(398, 80+40*(k%14), 40, 40, k == titleList->index() ? checkbox_white_bin : checkbox_grey_bin, IMAGE_MODE_RGBA32); 
-    //     }
-    // }
+        drawOutline(532, 466, 742, 222, 2, COLOR_GREY_LIGHT);
+        rectangled(1052, 466, 2, 222, COLOR_GREY_LIGHT);
+        rectangled(1052, 576, 222, 2, COLOR_GREY_LIGHT);
+        backupList->draw();
+        buttonBackup->draw();
+        buttonRestore->draw();
+    }
 
     info->draw();
     
@@ -395,11 +405,31 @@ void Gui::updateSelector(void)
 {
     if (!backupScrollEnabled)
     {
-        titleList->updateSelection();
+        hid->update(getTitleCount(g_currentUId));
         backupList->resetIndex();
     }
     else
     {
         backupList->updateSelection();
     }
+}
+
+static void drawSelector(void)
+{
+    static const int sz = 124;
+    static const int w = 4;
+    const int x = selectorX(hid->index()) + w/2;
+    const int y = selectorY(hid->index()) + w/2;
+    
+    drawOutline(x, y, sz, sz, w, COLOR_GREEN);
+}
+
+static int selectorX(size_t i)
+{
+    return 128*((i % (rowlen*collen)) % collen) + 4 * (((i % (rowlen*collen)) % collen) + 1);
+}
+
+static int selectorY(size_t i)
+{
+    return 28 + 128*((i % (rowlen*collen)) / collen) + 4 * (((i % (rowlen*collen)) / collen) + 1);
 }

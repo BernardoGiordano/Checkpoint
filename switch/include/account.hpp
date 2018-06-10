@@ -39,7 +39,7 @@ extern "C" {
 #include "nanojpeg.h"
 }
 
-#define USER_ICON_SIZE 64
+#define USER_ICON_SIZE 80
 
 struct User {
     u128        id;

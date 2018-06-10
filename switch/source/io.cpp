@@ -228,11 +228,11 @@ void io::backup(size_t index, u128 uid)
 
     if (Gui::multipleSelectionEnabled())
     {
-        customPath = isNewFolder ? suggestion : Gui::nameFromCell(CELLS, cellIndex);
+        customPath = isNewFolder ? suggestion : Gui::nameFromCell(cellIndex);
     }
     else
     {
-        customPath = isNewFolder ? StringUtils::removeForbiddenCharacters(hbkbd::keyboard(suggestion)) : Gui::nameFromCell(CELLS, cellIndex);
+        customPath = isNewFolder ? StringUtils::removeForbiddenCharacters(hbkbd::keyboard(suggestion)) : Gui::nameFromCell(cellIndex);
     }
     
     std::string dstPath = title.path() + "/" + customPath;
@@ -294,7 +294,7 @@ void io::restore(size_t index, u128 uid)
         return;        
     }
 
-    std::string srcPath = title.path() + "/" + Gui::nameFromCell(CELLS, cellIndex) + "/";
+    std::string srcPath = title.path() + "/" + Gui::nameFromCell(cellIndex) + "/";
     std::string dstPath = "save:/";
     
     res = io::deleteFolderRecursively(dstPath.c_str());
@@ -320,7 +320,7 @@ void io::restore(size_t index, u128 uid)
     }
     else
     {
-        Gui::createInfo("Success!", Gui::nameFromCell(CELLS, cellIndex) + " has been restored\nsuccessfully.");
+        Gui::createInfo("Success!", Gui::nameFromCell(cellIndex) + " has been restored\nsuccessfully.");
     }
     
     FileSystem::unmount();

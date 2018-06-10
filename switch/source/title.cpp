@@ -50,10 +50,11 @@ static void loadIcon(Title& title, NsApplicationControlData* nsacd, size_t icons
     if (imageptr == NULL)
     {
         njDone();
-        return;       
+        return;   
     }
 
     title.icon(imageptr, imagesize);
+    title.smallIcon(imageptr, 128*128*3);
     imageptr = NULL;
     njDone();
 }
@@ -62,10 +63,12 @@ void Title::init(u64 id, u128 userID, const std::string& name)
 {
     mId = id;
     mUserId = userID;
+    mUserName = Account::username(userID);
     mDisplayName = name;
     mSafeName = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
     mPath = "sdmc:/switch/Checkpoint/saves/" + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
     mIcon = NULL;
+    mSmallIcon = NULL;
 
     if (!io::directoryExists(mPath))
     {
@@ -83,6 +86,11 @@ u64 Title::id(void)
 u128 Title::userId(void)
 {
     return mUserId;
+}
+
+std::string Title::userName(void)
+{
+    return mUserName;
 }
 
 std::string Title::name(void)
@@ -105,10 +113,21 @@ u8* Title::icon(void)
     return mIcon;
 }
 
+u8* Title::smallIcon(void)
+{
+    return mSmallIcon;
+}
+
 void Title::icon(u8* data, size_t iconsize)
 {
     mIcon = (u8*)malloc(iconsize);
     std::copy(data, data + iconsize, mIcon);
+}
+
+void Title::smallIcon(u8* data, size_t iconsize)
+{
+    mSmallIcon = (u8*)malloc(iconsize);
+    downscaleRGBImg(data, mSmallIcon, 256, 256, 128, 128);
 }
 
 void Title::refreshDirectories(void)
@@ -184,13 +203,15 @@ void loadTitles(void)
                     if (it != titles.end())
                     {
                         // found
-                        it->second.push_back(title);
+                        for (int i = 0; i < 30; i++)
+                            it->second.push_back(title);
                     }
                     else
                     {
                         // not found, insert into map
                         std::vector<Title> v;
-                        v.push_back(title);
+                        for (int i = 0; i < 30; i++)
+                            v.push_back(title);
                         titles.emplace(uid, v);
                     }
                 }
@@ -237,4 +258,19 @@ void refreshDirectories(u64 id)
             }
         }
     }
+}
+
+u8* smallIcon(u128 uid, size_t i)
+{
+    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+    return it != titles.end() ? it->second.at(i).smallIcon() : NULL; 
+}
+
+void reloadSmallIcon(u128 uid, size_t i)
+{
+    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+    if (it != titles.end())
+    {
+        it->second.at(i).smallIcon(it->second.at(i).icon(), 128*128*3);
+    } 
 }

@@ -36,14 +36,14 @@
 #include "draw.hpp"
 #include "info.hpp"
 #include "hid.hpp"
+#include "main.hpp"
 #include "messagebox.hpp"
 #include "scrollable.hpp"
 #include "title.hpp"
 #include "types.hpp"
 #include "util.hpp"
 
-#include "checkbox_grey_bin.h"
-#include "checkbox_white_bin.h"
+#include "checkbox_black_bin.h"
 #include "flag_bin.h"
 
 namespace Gui
@@ -63,7 +63,7 @@ namespace Gui
     void        index(entryType_t type, size_t i);
     bool        isBackupReleased(void);
     bool        isRestoreReleased(void);
-    std::string nameFromCell(entryType_t type, size_t index);
+    std::string nameFromCell(size_t index);
     void        resetIndex(entryType_t type);
     void        updateButtonsColor(void);
     void        updateSelector(void);
