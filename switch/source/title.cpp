@@ -26,7 +26,7 @@
 
 #include "title.hpp"
 
-static std::vector<Title> titles;
+static std::unordered_map<u128, std::vector<Title>> titles;
 
 static void loadIcon(Title& title, NsApplicationControlData* nsacd, size_t iconsize)
 {
@@ -178,7 +178,21 @@ void loadTitles(void)
                     Title title;
                     title.init(tid, uid, std::string(nle->name));
                     loadIcon(title, nsacd, outsize - sizeof(nsacd->nacp));
-                    titles.push_back(title);
+
+                    // check if the vector is already created
+                    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+                    if (it != titles.end())
+                    {
+                        // found
+                        it->second.push_back(title);
+                    }
+                    else
+                    {
+                        // not found, insert into map
+                        std::vector<Title> v;
+                        v.push_back(title);
+                        titles.emplace(uid, v);
+                    }
                 }
             }
             nle = NULL;
@@ -188,31 +202,39 @@ void loadTitles(void)
     free(nsacd);
     fsSaveDataIteratorClose(&iterator);
 
-    std::sort(titles.begin(), titles.end(), [](Title& l, Title& r) {
-        return l.name() < r.name();
-    });
-}
-
-void getTitle(Title &dst, size_t i)
-{
-    if (i < getTitleCount())
+    for (auto& vect : titles)
     {
-        dst = titles.at(i);
+        std::sort(vect.second.begin(), vect.second.end(), [](Title& l, Title& r) {
+            return l.name() < r.name();
+        });
     }
 }
 
-size_t getTitleCount(void)
+void getTitle(Title &dst, u128 uid, size_t i)
 {
-    return titles.size();
+    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+    if (it != titles.end() && i < getTitleCount(uid))
+    {
+        dst = it->second.at(i);
+    }
+}
+
+size_t getTitleCount(u128 uid)
+{
+    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+    return it != titles.end() ? it->second.size() : 0;
 }
 
 void refreshDirectories(u64 id)
 {
-    for (size_t i = 0; i < titles.size(); i++)
+    for (auto& pair : titles)
     {
-        if (titles.at(i).id() == id)
+        for (size_t i = 0; i < pair.second.size(); i++)
         {
-            titles.at(i).refreshDirectories();
+            if (pair.second.at(i).id() == id)
+            {
+                pair.second.at(i).refreshDirectories();
+            }
         }
     }
 }

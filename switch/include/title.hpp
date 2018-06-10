@@ -33,6 +33,7 @@
 #include <switch.h>
 #include <utility>
 #include <vector>
+#include <unordered_map>
 #include "filesystem.hpp"
 #include "io.hpp"
 
@@ -66,8 +67,8 @@ private:
     <std::string> mSaves;
 };
 
-void   getTitle(Title &dst, size_t i);
-size_t getTitleCount(void);
+void   getTitle(Title &dst, u128 uid, size_t i);
+size_t getTitleCount(u128 uid);
 void   loadTitles(void);
 void   refreshDirectories(u64 id);
 
