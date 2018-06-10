@@ -31,6 +31,7 @@
 #include <string.h>
 #include <switch.h>
 #include <unordered_map>
+#include <vector>
 #include "draw.hpp"
 #include "types.hpp"
 
@@ -38,9 +39,10 @@ extern "C" {
 #include "nanojpeg.h"
 }
 
-#define USER_ICON_SIZE 96
+#define USER_ICON_SIZE 64
 
 struct User {
+    u128        id;
     std::string name;
     u8*         icon; 
 };
@@ -50,6 +52,8 @@ namespace Account
     Result      init(void);
     void        exit(void);
 
+    std::vector
+    <u128>      ids(void);
     u8*         icon(u128 id);
     std::string username(u128 id);
 }

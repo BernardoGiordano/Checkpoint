@@ -42,9 +42,19 @@ void Account::exit(void)
     accountExit();
 }
 
+std::vector<u128> Account::ids(void)
+{
+    std::vector<u128> v;
+    for (auto& value : mUsers)
+    {
+        v.push_back(value.second.id);
+    }
+    return v;
+}
+
 static User getUser(u128 id)
 {
-    User user{ "", NULL };
+    User user{ id, "", NULL };
     AccountProfile profile;
     AccountProfileBase profilebase;
     memset(&profilebase, 0, sizeof(profilebase));
