@@ -44,8 +44,9 @@ extern "C" {
 class Title 
 {
 public:
-    void init(u64 titleid, u128 userID, const std::string& name);
-    
+    void init(u64 titleid, u128 userID, const std::string& name, const std::string& author);
+
+    std::string   author(void);
     u8*           smallIcon(void);
     u8*           icon(void);
     void          smallIcon(u8* data, size_t iconsize);
@@ -65,6 +66,7 @@ private:
     std::string   mUserName;
     std::string   mDisplayName;
     std::string   mSafeName;
+    std::string   mAuthor;
     std::string   mPath;
     u8*           mIcon;
     u8*           mSmallIcon;

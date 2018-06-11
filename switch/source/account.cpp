@@ -26,7 +26,7 @@
 
 #include "account.hpp"
 
-static std::unordered_map<u128, User> mUsers;
+static std::map<u128, User> mUsers;
 
 Result Account::init(void)
 {
@@ -95,7 +95,7 @@ static User getUser(u128 id)
 
 std::string Account::username(u128 id)
 {
-    std::unordered_map<u128, User>::const_iterator got = mUsers.find(id);
+    std::map<u128, User>::const_iterator got = mUsers.find(id);
     if (got == mUsers.end())
     {
         User user = getUser(id);
@@ -108,7 +108,7 @@ std::string Account::username(u128 id)
 
 u8* Account::icon(u128 id)
 {
-    std::unordered_map<u128, User>::const_iterator got = mUsers.find(id);
+    std::map<u128, User>::const_iterator got = mUsers.find(id);
     // the null check in the icon is to handle the bad memory issue that isn't yet fixed
     if (got == mUsers.end() || got->second.icon == NULL)
     {

@@ -59,11 +59,12 @@ static void loadIcon(Title& title, NsApplicationControlData* nsacd, size_t icons
     njDone();
 }
 
-void Title::init(u64 id, u128 userID, const std::string& name)
+void Title::init(u64 id, u128 userID, const std::string& name, const std::string& author)
 {
     mId = id;
     mUserId = userID;
     mUserName = Account::username(userID);
+    mAuthor = author;
     mDisplayName = name;
     mSafeName = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
     mPath = "sdmc:/switch/Checkpoint/saves/" + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
@@ -91,6 +92,11 @@ u128 Title::userId(void)
 std::string Title::userName(void)
 {
     return mUserName;
+}
+
+std::string Title::author(void)
+{
+    return mAuthor;
 }
 
 std::string Title::name(void)
@@ -195,7 +201,7 @@ void loadTitles(void)
                 if (R_SUCCEEDED(res) && nle != NULL)
                 {
                     Title title;
-                    title.init(tid, uid, std::string(nle->name));
+                    title.init(tid, uid, std::string(nle->name), std::string(nle->author));
                     loadIcon(title, nsacd, outsize - sizeof(nsacd->nacp));
 
                     // check if the vector is already created

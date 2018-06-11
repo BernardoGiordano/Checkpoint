@@ -27,6 +27,7 @@
 #include "main.hpp"
 
 u128 g_currentUId = 0;
+u8 g_currentUserIndex = 0;
 
 int main(int argc, char** argv)
 {
@@ -53,6 +54,17 @@ int main(int argc, char** argv)
 
         hidScanInput();
         u32 kdown = hidKeysDown(CONTROLLER_P1_AUTO);
+
+        if (kdown & KEY_ZL)
+        {
+            g_currentUserIndex = ++g_currentUserIndex % userIds.size();
+            g_currentUId = userIds.at(g_currentUserIndex);
+        }
+        if (kdown & KEY_ZR)
+        {
+            g_currentUserIndex = g_currentUserIndex - 1 < 0 ? userIds.size() - 1 : g_currentUserIndex - 1;
+            g_currentUId = userIds.at(g_currentUserIndex);
+        }
 
         if (kdown & KEY_A)
         {

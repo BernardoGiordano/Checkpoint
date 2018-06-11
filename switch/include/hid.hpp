@@ -57,8 +57,8 @@ public:
         }
     }
 
-    u64 _KEY_ZL(void) override { return KEY_ZL; }
-    u64 _KEY_ZR(void) override { return KEY_ZR; }
+    u64 _KEY_ZL(void) override { return 0; }
+    u64 _KEY_ZR(void) override { return 0; }
     u64 _KEY_LEFT(void) override { return KEY_LEFT; }
     u64 _KEY_RIGHT(void) override { return KEY_RIGHT; }
     u64 _KEY_UP(void) override { return KEY_UP; }

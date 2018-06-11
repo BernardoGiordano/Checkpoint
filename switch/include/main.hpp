@@ -8,5 +8,6 @@
 #include "io.hpp"
 
 extern u128 g_currentUId;
+extern u8 g_currentUserIndex;
 
 #endif

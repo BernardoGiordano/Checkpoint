@@ -44,7 +44,6 @@ static Hid* hid;
 static entryType_t type;
 
 static float timer = 0;
-static void drawSelector(void);
 static int selectorX(size_t i);
 static int selectorY(size_t i);
 
@@ -287,14 +286,25 @@ void Gui::draw(u128 uid)
 
     // draw
     drawBackground();
+    rectangled(0, bar_height + 2, 532, 720 - 2*bar_height - 2, MakeColor(55, 55, 55, 255));
 
     // user icons
     std::vector<u128> userIds = Account::ids();
     for (size_t i = 0; i < userIds.size(); i++)
     {
+        const u32 x = 1280 - (spacing + USER_ICON_SIZE) * (i + 1);
+        const u32 y = bar_height + spacing;
+        if (i == g_currentUserIndex)
+        {
+            float highlight_multiplier = fmax(0.0, fabs(fmod(timer, 1.0) - 0.5) / 0.5);
+            color_t color = COLOR_GREEN;
+            color = MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier, color.b + (255 - color.b) * highlight_multiplier, 255);    
+            drawOutline(x, y, USER_ICON_SIZE, USER_ICON_SIZE, 4, color);
+        }
+
         if (Account::icon(userIds.at(i)) != NULL)
         {
-            DrawImage(1280 - (spacing + USER_ICON_SIZE) * (i + 1), bar_height + spacing, USER_ICON_SIZE, USER_ICON_SIZE, Account::icon(userIds.at(i)), IMAGE_MODE_RGB24);
+            DrawImage(x, y, USER_ICON_SIZE, USER_ICON_SIZE, Account::icon(userIds.at(i)), IMAGE_MODE_RGB24);
         }
     }
 
@@ -323,7 +333,12 @@ void Gui::draw(u128 uid)
     // title selector
     if (getTitleCount(g_currentUId) > 0)
     {
-        drawSelector();
+        const int x = selectorX(hid->index()) + spacing/2;
+        const int y = selectorY(hid->index()) + spacing/2;
+        float highlight_multiplier = fmax(0.0, fabs(fmod(timer, 1.0) - 0.5) / 0.5);
+        color_t color = COLOR_BLUE;
+        color = MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier, color.b + (255 - color.b) * highlight_multiplier, 255);
+        drawOutline(x, y, 124, 124, spacing, color);
     }
 
     if (getTitleCount(g_currentUId) > 0)
@@ -348,6 +363,25 @@ void Gui::draw(u128 uid)
             drawOutline(1016, 157, 256, 256, 4, COLOR_BLACK);
             DrawImage(1016, 157, 256, 256, title.icon(), IMAGE_MODE_RGB24);
         }
+
+        // draw infos
+        u32 title_w, h, dotlen, titleid_w, producer_w, user_w;
+        GetTextDimensions(5, "...", &dotlen, NULL);
+        GetTextDimensions(5, "Title: ", &title_w, &h);
+        GetTextDimensions(5, "Title ID: ", &titleid_w, NULL);
+        GetTextDimensions(5, "Author: ", &producer_w, NULL);
+        GetTextDimensions(5, "User: ", &user_w, NULL);
+        h += 12;
+
+        DrawText(5, 540, 159, COLOR_GREY_LIGHT, "Title: ");
+        DrawText(5, 540, 159 + h, COLOR_GREY_LIGHT, "Title ID: ");
+        DrawText(5, 540, 159 + h*2, COLOR_GREY_LIGHT, "Author: ");
+        DrawText(5, 540, 159+ h*3, COLOR_GREY_LIGHT, "User: ");
+
+        DrawTextTruncate(5, 540 + title_w, 159, COLOR_WHITE, title.name().c_str(), 1012 - 540 - title_w - 4*2 - 40 - dotlen, "...");
+        DrawTextTruncate(5, 540 + titleid_w, 159 + h, COLOR_WHITE, StringUtils::format("0x%016llX", title.id()).c_str(), 1012 - 540 - titleid_w - 4*2 - 40 - dotlen, "...");
+        DrawTextTruncate(5, 540 + producer_w, 159 + h*2, COLOR_WHITE, title.author().c_str(), 1012 - 540 - producer_w - 4*2 - 40 - dotlen, "...");
+        DrawTextTruncate(5, 540 + user_w, 159 + h*3, COLOR_WHITE, title.userName().c_str(), 1012 - 540 - user_w - 4*2 - 40 - dotlen, "...");
 
         drawOutline(540, 462, 730, 222, 4, COLOR_GREY_LIGHT);
         rectangled(1046, 462, 4, 222, COLOR_GREY_LIGHT);
@@ -422,20 +456,6 @@ void Gui::updateSelector(void)
     {
         backupList->updateSelection();
     }
-}
-
-static void drawSelector(void)
-{
-    static const int sz = 124;
-    static const int w = 4;
-    const int x = selectorX(hid->index()) + w/2;
-    const int y = selectorY(hid->index()) + w/2;
-
-    float highlight_multiplier = fmax(0.0, fabs(fmod(timer, 1.0) - 0.5) / 0.5);
-    color_t color = COLOR_BLUE;
-    color = MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier, color.b + (255 - color.b) * highlight_multiplier, 255);    
-    
-    drawOutline(x, y, sz, sz, w, color);
 }
 
 static int selectorX(size_t i)
