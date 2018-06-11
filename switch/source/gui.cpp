@@ -249,9 +249,9 @@ void Gui::init(void)
     info = new Info();
     info->init("", "", 0, TYPE_INFO);
     hid = new Hid(rowlen * collen, collen);
-    backupList = new Scrollable(532, 466, 520, 222, cols);
-    buttonBackup = new Clickable(1054, 466, 220, 110, COLOR_WHITE, COLOR_GREY_LIGHT, "Backup [L]", true);
-    buttonRestore = new Clickable(1054, 578, 220, 110, COLOR_WHITE, COLOR_GREY_LIGHT, "Restore [R]", true);
+    backupList = new Scrollable(540, 462, 506, 222, cols);
+    buttonBackup = new Clickable(1050, 462, 220, 109, COLOR_WHITE, COLOR_GREY_LIGHT, "Backup [L]", true);
+    buttonRestore = new Clickable(1050, 575, 220, 109, COLOR_WHITE, COLOR_GREY_LIGHT, "Restore [R]", true);
     copyList = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);
     messageBox = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);        
     messageBox->push_message("Press A to enter target.");
@@ -342,9 +342,9 @@ void Gui::draw(u128 uid)
             }
         }
 
-        drawOutline(532, 466, 742, 222, 2, COLOR_GREY_LIGHT);
-        rectangled(1052, 466, 2, 222, COLOR_GREY_LIGHT);
-        rectangled(1052, 576, 222, 2, COLOR_GREY_LIGHT);
+        drawOutline(540, 462, 730, 222, 4, COLOR_GREY_LIGHT);
+        rectangled(1046, 462, 4, 222, COLOR_GREY_LIGHT);
+        rectangled(1048, 571, 222, 4, COLOR_GREY_LIGHT);
         backupList->draw();
         buttonBackup->draw();
         buttonRestore->draw();
