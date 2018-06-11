@@ -43,6 +43,7 @@ static bool backupScrollEnabled;
 static Hid* hid;
 static entryType_t type;
 
+static float timer = 0;
 static void drawSelector(void);
 static int selectorX(size_t i);
 static int selectorY(size_t i);
@@ -342,6 +343,12 @@ void Gui::draw(u128 uid)
             }
         }
 
+        if (title.icon() != NULL)
+        {
+            drawOutline(1016, 157, 256, 256, 4, COLOR_BLACK);
+            DrawImage(1016, 157, 256, 256, title.icon(), IMAGE_MODE_RGB24);
+        }
+
         drawOutline(540, 462, 730, 222, 4, COLOR_GREY_LIGHT);
         rectangled(1046, 462, 4, 222, COLOR_GREY_LIGHT);
         rectangled(1048, 571, 222, 4, COLOR_GREY_LIGHT);
@@ -362,6 +369,9 @@ void Gui::draw(u128 uid)
     GetTextDimensions(5, instructions, &ins_w, &ins_h);
     DrawText(5, ceil((1280 - ins_w) / 2), 720 - bar_height + (bar_height - ins_h) / 2, COLOR_WHITE, instructions);
 
+    // increase timer
+    timer += 0.05f;
+    
     gfxFlushBuffers();
     gfxSwapBuffers();
     gfxWaitForVsync();
@@ -420,8 +430,12 @@ static void drawSelector(void)
     static const int w = 4;
     const int x = selectorX(hid->index()) + w/2;
     const int y = selectorY(hid->index()) + w/2;
+
+    float highlight_multiplier = fmax(0.0, fabs(fmod(timer, 1.0) - 0.5) / 0.5);
+    color_t color = COLOR_BLUE;
+    color = MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier, color.b + (255 - color.b) * highlight_multiplier, 255);    
     
-    drawOutline(x, y, sz, sz, w, COLOR_GREEN);
+    drawOutline(x, y, sz, sz, w, color);
 }
 
 static int selectorX(size_t i)
