@@ -30,6 +30,7 @@ void servicesExit(void)
 {
     // debug
     // socketExit();
+    freeIcons();
     nsExit();
     Account::exit();
     hbkbd::exit();

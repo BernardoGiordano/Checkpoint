@@ -45,12 +45,11 @@ class Title
 {
 public:
     void init(u64 titleid, u128 userID, const std::string& name, const std::string& author);
+    ~Title(void) { };
 
     std::string   author(void);
     u8*           smallIcon(void);
     u8*           icon(void);
-    void          smallIcon(u8* data, size_t iconsize);
-    void          icon(u8* data, size_t iconsize);
     u64           id(void);
     std::string   name(void);
     std::string   path(void);
@@ -68,8 +67,6 @@ private:
     std::string   mSafeName;
     std::string   mAuthor;
     std::string   mPath;
-    u8*           mIcon;
-    u8*           mSmallIcon;
     std::vector
     <std::string> mSaves;
 };
@@ -78,7 +75,8 @@ void   getTitle(Title &dst, u128 uid, size_t i);
 size_t getTitleCount(u128 uid);
 void   loadTitles(void);
 void   refreshDirectories(u64 id);
-u8*    smallIcon(u128 uid, size_t i);
 void   reloadSmallIcon(u128 uid, size_t i);
+u8*    smallIcon(u128 id, size_t i);
+void   freeIcons(void);
 
 #endif

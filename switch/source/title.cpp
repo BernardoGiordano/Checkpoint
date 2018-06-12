@@ -27,36 +27,56 @@
 #include "title.hpp"
 
 static std::unordered_map<u128, std::vector<Title>> titles;
+static std::unordered_map<u64, std::pair<u8*, u8*>> icons;
 
-static void loadIcon(Title& title, NsApplicationControlData* nsacd, size_t iconsize)
+void freeIcons(void)
 {
-    uint8_t* imageptr = NULL;
-    size_t imagesize = 256*256*3;
-    
-    njInit();
-    if (njDecode(nsacd->icon, iconsize) != NJ_OK)
+    for (auto& pair in icons)
     {
-        njDone();
-        return;
+        free(pair.second.first);
+        free(pair.second.second);
     }
+}
 
-    if (njGetWidth() != 256 || njGetHeight() != 256 || (size_t)njGetImageSize() != imagesize || njIsColor() != 1)
+static void loadIcon(u64 id, NsApplicationControlData* nsacd, size_t iconsize)
+{
+    auto it = icons.find(id);
+    if (it == icons.end())
     {
-        njDone();
-        return;
-    }
+        uint8_t* imageptr = NULL;
+        size_t imagesize = 256*256*3;
+        
+        njInit();
+        if (njDecode(nsacd->icon, iconsize) != NJ_OK)
+        {
+            njDone();
+            return;
+        }
 
-    imageptr = njGetImage();
-    if (imageptr == NULL)
-    {
-        njDone();
-        return;   
-    }
+        if (njGetWidth() != 256 || njGetHeight() != 256 || (size_t)njGetImageSize() != imagesize || njIsColor() != 1)
+        {
+            njDone();
+            return;
+        }
 
-    title.icon(imageptr, imagesize);
-    title.smallIcon(imageptr, 128*128*3);
-    imageptr = NULL;
-    njDone();
+        imageptr = njGetImage();
+        if (imageptr == NULL)
+        {
+            njDone();
+            return;   
+        }
+
+        u8* mIcon = (u8*)malloc(imagesize);
+        std::copy(imageptr, imageptr + imagesize, mIcon);
+
+        u8* mSmallIcon = (u8*)malloc(128*128*3);
+        downscaleRGBImg(mIcon, mSmallIcon, 256, 256, 128, 128);
+
+        icons.insert({id, std::make_pair(mIcon, mSmallIcon)});
+
+        imageptr = NULL;
+        njDone();
+    }
 }
 
 void Title::init(u64 id, u128 userID, const std::string& name, const std::string& author)
@@ -68,8 +88,6 @@ void Title::init(u64 id, u128 userID, const std::string& name, const std::string
     mDisplayName = name;
     mSafeName = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
     mPath = "sdmc:/switch/Checkpoint/saves/" + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
-    mIcon = NULL;
-    mSmallIcon = NULL;
 
     if (!io::directoryExists(mPath))
     {
@@ -116,24 +134,14 @@ std::vector<std::string> Title::saves()
 
 u8* Title::icon(void)
 {
-    return mIcon;
+    auto it = icons.find(mId);
+    return it != icons.end() ? it->second.first : NULL;
 }
 
 u8* Title::smallIcon(void)
 {
-    return mSmallIcon;
-}
-
-void Title::icon(u8* data, size_t iconsize)
-{
-    mIcon = (u8*)malloc(iconsize);
-    std::copy(data, data + iconsize, mIcon);
-}
-
-void Title::smallIcon(u8* data, size_t iconsize)
-{
-    mSmallIcon = (u8*)malloc(iconsize);
-    downscaleRGBImg(data, mSmallIcon, 256, 256, 128, 128);
+    auto it = icons.find(mId);
+    return it != icons.end() ? it->second.second : NULL;
 }
 
 void Title::refreshDirectories(void)
@@ -202,7 +210,7 @@ void loadTitles(void)
                 {
                     Title title;
                     title.init(tid, uid, std::string(nle->name), std::string(nle->author));
-                    loadIcon(title, nsacd, outsize - sizeof(nsacd->nacp));
+                    loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
 
                     // check if the vector is already created
                     std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
@@ -270,11 +278,11 @@ u8* smallIcon(u128 uid, size_t i)
     return it != titles.end() ? it->second.at(i).smallIcon() : NULL; 
 }
 
-void reloadSmallIcon(u128 uid, size_t i)
-{
-    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
-    if (it != titles.end())
-    {
-        it->second.at(i).smallIcon(it->second.at(i).icon(), 128*128*3);
-    } 
-}
+// void reloadSmallIcon(u128 uid, size_t i)
+// {
+//     std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+//     if (it != titles.end())
+//     {
+//         it->second.at(i).smallIcon(it->second.at(i).icon(), 128*128*3);
+//     }
+// }
