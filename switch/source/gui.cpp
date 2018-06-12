@@ -319,7 +319,7 @@ void Gui::draw(u128 uid)
         }
         else
         {
-            reloadSmallIcon(g_currentUId, k);
+            //reloadSmallIcon(g_currentUId, k);
             rectangle(selectorx, selectory, 128, 128, COLOR_WHITE);
         }
 
@@ -366,23 +366,30 @@ void Gui::draw(u128 uid)
         }
 
         // draw infos
-        u32 title_w, h, dotlen, titleid_w, producer_w, user_w;
+        u32 info_w, info_h, title_w, h, dotlen, titleid_w, producer_w, user_w;
+        GetTextDimensions(7, "Title informations", &info_w, &info_h);
         GetTextDimensions(5, "...", &dotlen, NULL);
         GetTextDimensions(5, "Title: ", &title_w, &h);
         GetTextDimensions(5, "Title ID: ", &titleid_w, NULL);
         GetTextDimensions(5, "Author: ", &producer_w, NULL);
         GetTextDimensions(5, "User: ", &user_w, NULL);
+
         h += 12;
+        u32 offset = 159 + 16 + info_h + h/2;
+        
+        rectangle(536, 159, 468, 16 + info_h, COLOR_GREY_DARK);
+        rectangle(536, offset - h/2, 468, h*4 + h/2, COLOR_GREY_DARKER);
+        
+        DrawText(7, 540 - 12 + 468 - info_w, 169, COLOR_GREY_LIGHT, "Title informations");
+        DrawText(5, 540, offset, COLOR_GREY_LIGHT, "Title: ");
+        DrawText(5, 540, offset + h, COLOR_GREY_LIGHT, "Title ID: ");
+        DrawText(5, 540, offset + h*2, COLOR_GREY_LIGHT, "Author: ");
+        DrawText(5, 540, offset + h*3, COLOR_GREY_LIGHT, "User: ");
 
-        DrawText(5, 540, 159, COLOR_GREY_LIGHT, "Title: ");
-        DrawText(5, 540, 159 + h, COLOR_GREY_LIGHT, "Title ID: ");
-        DrawText(5, 540, 159 + h*2, COLOR_GREY_LIGHT, "Author: ");
-        DrawText(5, 540, 159+ h*3, COLOR_GREY_LIGHT, "User: ");
-
-        DrawTextTruncate(5, 540 + title_w, 159, COLOR_WHITE, title.name().c_str(), 1012 - 540 - title_w - 4*2 - 40 - dotlen, "...");
-        DrawTextTruncate(5, 540 + titleid_w, 159 + h, COLOR_WHITE, StringUtils::format("0x%016llX", title.id()).c_str(), 1012 - 540 - titleid_w - 4*2 - 40 - dotlen, "...");
-        DrawTextTruncate(5, 540 + producer_w, 159 + h*2, COLOR_WHITE, title.author().c_str(), 1012 - 540 - producer_w - 4*2 - 40 - dotlen, "...");
-        DrawTextTruncate(5, 540 + user_w, 159 + h*3, COLOR_WHITE, title.userName().c_str(), 1012 - 540 - user_w - 4*2 - 40 - dotlen, "...");
+        DrawTextTruncate(5, 540 + title_w, offset, COLOR_WHITE, title.name().c_str(), 1012 - 540 - title_w - 4*2 - 20 - dotlen, "...");
+        DrawTextTruncate(5, 540 + titleid_w, offset + h, COLOR_WHITE, StringUtils::format("0x%016llX", title.id()).c_str(), 1012 - 540 - titleid_w - 4*2 - 20 - dotlen, "...");
+        DrawTextTruncate(5, 540 + producer_w, offset + h*2, COLOR_WHITE, title.author().c_str(), 1012 - 540 - producer_w - 4*2 - 20 - dotlen, "...");
+        DrawTextTruncate(5, 540 + user_w, offset + h*3, COLOR_WHITE, title.userName().c_str(), 1012 - 540 - user_w - 4*2 - 20 - dotlen, "...");
 
         drawOutline(540, 462, 730, 222, 4, COLOR_GREY_LIGHT);
         rectangled(1046, 462, 4, 222, COLOR_GREY_LIGHT);

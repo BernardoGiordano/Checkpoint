@@ -56,7 +56,7 @@ int main(int argc, char** argv)
         u32 kdown = hidKeysDown(CONTROLLER_P1_AUTO);
         if (kdown & KEY_ZL)
         {
-            g_currentUserIndex = ++g_currentUserIndex % userIds.size();
+            ++g_currentUserIndex %= userIds.size();
             g_currentUId = userIds.at(g_currentUserIndex);
         }
         if (kdown & KEY_ZR)
@@ -73,7 +73,7 @@ int main(int argc, char** argv)
             if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
                 touch.px >= u32(1280 - (USER_ICON_SIZE + 4) * (i+1)) &&
                 touch.px <= u32(1280 - (USER_ICON_SIZE + 4) * i) &&
-                touch.py >= u32(32 && touch.py <= 32 + USER_ICON_SIZE))
+                touch.py >= 32 && touch.py <= 32 + USER_ICON_SIZE)
             {
                 g_currentUserIndex = i;
                 g_currentUId = userIds.at(g_currentUserIndex);
