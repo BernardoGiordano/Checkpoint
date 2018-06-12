@@ -88,7 +88,7 @@ void Gui::resetIndex(entryType_t type)
 
 size_t Gui::index(entryType_t type)
 {
-    return type == TITLES ? hid->index() : backupList->index();
+    return type == TITLES ? hid->fullIndex() : backupList->index();
 }
 
 void Gui::index(entryType_t type, size_t i)
@@ -326,7 +326,7 @@ void Gui::draw(u128 uid)
         if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end())
         {
             //rectangle(selectorx + 94, selectory + 94, 24, 24, COLOR_WHITE);
-            DrawImage(selectorx + 86, selectory + 86, 40, 40, checkbox_black_bin, IMAGE_MODE_RGBA32); 
+            DrawImage(selectorx + 86, selectory + 86, 40, 40, checkbox_bin, IMAGE_MODE_RGBA32); 
         }
     }
 
@@ -339,6 +339,7 @@ void Gui::draw(u128 uid)
         color_t color = COLOR_BLUE;
         color = MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier, color.b + (255 - color.b) * highlight_multiplier, 255);
         drawOutline(x, y, 124, 124, spacing, color);
+        rectangled(x, y, 124, 124, MakeColor(255, 255, 255, 80));
     }
 
     if (getTitleCount(g_currentUId) > 0)

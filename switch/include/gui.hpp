@@ -43,7 +43,7 @@
 #include "types.hpp"
 #include "util.hpp"
 
-#include "checkbox_black_bin.h"
+#include "checkbox_bin.h"
 #include "flag_bin.h"
 
 namespace Gui
