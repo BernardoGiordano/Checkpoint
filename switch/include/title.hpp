@@ -75,7 +75,6 @@ void   getTitle(Title &dst, u128 uid, size_t i);
 size_t getTitleCount(u128 uid);
 void   loadTitles(void);
 void   refreshDirectories(u64 id);
-void   reloadSmallIcon(u128 uid, size_t i);
 u8*    smallIcon(u128 id, size_t i);
 void   freeIcons(void);
 

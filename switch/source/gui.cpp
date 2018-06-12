@@ -319,13 +319,11 @@ void Gui::draw(u128 uid)
         }
         else
         {
-            //reloadSmallIcon(g_currentUId, k);
             rectangle(selectorx, selectory, 128, 128, COLOR_WHITE);
         }
 
         if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end())
         {
-            //rectangle(selectorx + 94, selectory + 94, 24, 24, COLOR_WHITE);
             DrawImage(selectorx + 86, selectory + 86, 40, 40, checkbox_bin, IMAGE_MODE_RGBA32); 
         }
     }

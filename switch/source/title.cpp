@@ -277,12 +277,3 @@ u8* smallIcon(u128 uid, size_t i)
     std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
     return it != titles.end() ? it->second.at(i).smallIcon() : NULL; 
 }
-
-// void reloadSmallIcon(u128 uid, size_t i)
-// {
-//     std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
-//     if (it != titles.end())
-//     {
-//         it->second.at(i).smallIcon(it->second.at(i).icon(), 128*128*3);
-//     }
-// }
