@@ -31,10 +31,10 @@ static std::unordered_map<u64, std::pair<u8*, u8*>> icons;
 
 void freeIcons(void)
 {
-    for (auto& pair in icons)
+    for (auto& i : icons)
     {
-        free(pair.second.first);
-        free(pair.second.second);
+        free(i.second.first);
+        free(i.second.second);
     }
 }
 

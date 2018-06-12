@@ -56,12 +56,12 @@ void Gui::entryType(entryType_t type_)
 
 void Gui::createInfo(const std::string& title, const std::string& message)
 {
-    info->init(title, message, 300, TYPE_INFO);
+    info->init(title, message, 100, TYPE_INFO);
 }
 
 void Gui::createError(Result res, const std::string& message)
 {
-    info->init(res, message, 300, TYPE_ERROR);
+    info->init(res, message, 100, TYPE_ERROR);
 }
 
 size_t Gui::count(entryType_t type)
@@ -365,7 +365,7 @@ void Gui::draw(u128 uid)
 
         // draw infos
         u32 info_w, info_h, title_w, h, dotlen, titleid_w, producer_w, user_w;
-        GetTextDimensions(7, "Title informations", &info_w, &info_h);
+        GetTextDimensions(7, "Title information", &info_w, &info_h);
         GetTextDimensions(5, "...", &dotlen, NULL);
         GetTextDimensions(5, "Title: ", &title_w, &h);
         GetTextDimensions(5, "Title ID: ", &titleid_w, NULL);
@@ -378,7 +378,7 @@ void Gui::draw(u128 uid)
         rectangle(536, 159, 468, 16 + info_h, COLOR_GREY_DARK);
         rectangle(536, offset - h/2, 468, h*4 + h/2, COLOR_GREY_DARKER);
         
-        DrawText(7, 540 - 12 + 468 - info_w, 169, COLOR_GREY_LIGHT, "Title informations");
+        DrawText(7, 540 - 12 + 468 - info_w, 169, COLOR_GREY_LIGHT, "Title information");
         DrawText(5, 540, offset, COLOR_GREY_LIGHT, "Title: ");
         DrawText(5, 540, offset + h, COLOR_GREY_LIGHT, "Title ID: ");
         DrawText(5, 540, offset + h*2, COLOR_GREY_LIGHT, "Author: ");
