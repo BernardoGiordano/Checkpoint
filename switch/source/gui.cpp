@@ -450,6 +450,29 @@ void Gui::updateSelector(void)
     if (!backupScrollEnabled)
     {
         hid->update(getTitleCount(g_currentUId));
+        
+        // loop through every rendered title
+        touchPosition touch;
+        hidTouchRead(&touch, 0);
+        for (u8 row = 0; row < rowlen; row++)
+        {
+            for (u8 col = 0; col < collen; col++)
+            {
+                u8 index = row * collen + col;
+                if (index > hid->maxEntries(getTitleCount(g_currentUId)))
+                    break;
+
+                u32 x = selectorX(index);
+                u32 y = selectorY(index);
+                if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
+                    touch.px >= x && touch.px <= x + 128 &&
+                    touch.py >= y && touch.py <= y + 128)
+                {
+                    hid->index(index);
+                }
+            }
+        }
+
         backupList->resetIndex();
     }
     else
