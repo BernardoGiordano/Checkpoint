@@ -37,12 +37,9 @@ extern "C" {
 #include "sha256.h"
 }
 
-#define CUSTOM_PATH_LEN 20
-
-void           calculateTitleDBHash(u8* hash);
-void           servicesExit(void);
-void           servicesInit(void);
-std::u16string swkbd(const std::string& suggestion);
+void calculateTitleDBHash(u8* hash);
+void servicesExit(void);
+void servicesInit(void);
 
 namespace StringUtils
 {

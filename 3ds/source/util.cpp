@@ -99,27 +99,6 @@ void calculateTitleDBHash(u8* hash)
     sha256(hash, (u8*)buf, (titleCount + 1) * sizeof(u64));
 }
 
-std::u16string swkbd(const std::string& suggestion)
-{
-    static SwkbdState swkbd;
-    SwkbdButton button = SWKBD_BUTTON_NONE;
-    char buf[CUSTOM_PATH_LEN] = {0};
-    
-    swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, CUSTOM_PATH_LEN - 1); 
-    swkbdSetHintText(&swkbd, "Choose a name for your backup.");
-    swkbdSetInitialText(&swkbd, suggestion.c_str());
-    
-    button = swkbdInputText(&swkbd, buf, CUSTOM_PATH_LEN);
-    buf[CUSTOM_PATH_LEN - 1] = '\0';
-    
-    if (button == SWKBD_BUTTON_CONFIRM)
-    {
-        return StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(buf));
-    }
-    
-    return StringUtils::UTF8toUTF16(" ");
-}
-
 std::u16string StringUtils::UTF8toUTF16(const char* src)
 {
     char16_t tmp[256] = {0};

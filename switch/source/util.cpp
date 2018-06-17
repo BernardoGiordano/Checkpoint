@@ -33,7 +33,6 @@ void servicesExit(void)
     freeIcons();
     nsExit();
     Account::exit();
-    hbkbd::exit();
     Gui::exit();
     fontExit();
     plExit();
@@ -71,7 +70,6 @@ Result servicesInit(void)
     }  
     
     Gui::init();
-    hbkbd::init();
 
     // debug
     // if (socketInitializeDefault() == 0)

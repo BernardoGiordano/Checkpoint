@@ -232,7 +232,7 @@ void io::backup(size_t index, u128 uid)
     }
     else
     {
-        customPath = isNewFolder ? StringUtils::removeForbiddenCharacters(hbkbd::keyboard(suggestion)) : Gui::nameFromCell(cellIndex);
+        customPath = isNewFolder ? StringUtils::removeForbiddenCharacters(KeyboardManager::get().keyboard(suggestion)) : Gui::nameFromCell(cellIndex);
     }
     
     std::string dstPath = title.path() + "/" + customPath;

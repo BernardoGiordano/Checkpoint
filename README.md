@@ -10,7 +10,7 @@ Moreover, Checkpoint is extremely lightweight - while being packaged with a nice
 
 Checkpoint for 3DS natively supports 3DS and DS cartridges, digital standard titles and demo titles. It also automatically checks and filters homebrew titles which may not have a save archive to backup or restore, which is done without an external title list and filters. For this reason, Checkpoint doesn't need constant user maintenance to retain full functionality.
 
-Checkpoint for Switch natively supports NAND saves for the titles you have played. Title informations are loaded automatically.
+Checkpoint for Switch natively supports NAND saves for the titles you have played. Title information are loaded automatically.
 
 ## Working path
 

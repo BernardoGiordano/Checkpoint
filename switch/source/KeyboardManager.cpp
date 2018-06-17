@@ -24,26 +24,9 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "hbkbd.hpp"
+#include "KeyboardManager.hpp"
 
-static const u32 buttonSpacing = 4;
-static const u32 normalWidth = 92;
-static const u32 bigWidth = 116;
-static const u32 height = 60;
-static const u32 margintb = 20;
-static const u32 marginlr = 54;
-static const u32 starty = 720 - 356 + margintb;
-
-static const std::string letters = "1234567890@qwertyuiop+asdfghjkl_:zxcvbnm,.-/";
-static std::vector<HbkbdButton*> buttons;
-static size_t prevSelectedButtonIndex;
-
-size_t hbkbd::count(void)
-{
-    return buttons.size();
-}
-
-void hbkbd::hid(size_t& currentEntry)
+void KeyboardManager::hid(size_t& currentEntry)
 {
     static const size_t columns = 11;
 
@@ -160,7 +143,7 @@ void hbkbd::hid(size_t& currentEntry)
     }
 }
 
-void hbkbd::init(void)
+KeyboardManager::KeyboardManager(void)
 {
     buttons.clear();
 
@@ -249,15 +232,15 @@ void hbkbd::init(void)
     prevSelectedButtonIndex = 0;
 }
 
-void hbkbd::exit(void)
+KeyboardManager::~KeyboardManager(void)
 {
-    for (size_t i = 0, sz = buttons.size(); i < sz; i++)
+    for (size_t i = 0; i < buttons.size(); i++)
     {
         delete buttons[i];
     }
 }
 
-static bool logic(std::string& str, size_t i)
+bool KeyboardManager::logic(std::string& str, size_t i)
 {
     if (buttons.at(i)->text().compare("caps") == 0)
     {
@@ -299,7 +282,7 @@ static bool logic(std::string& str, size_t i)
     return false;
 }
 
-std::string hbkbd::keyboard(const std::string& suggestion)
+std::string KeyboardManager::keyboard(const std::string& suggestion)
 {
     size_t index;
     std::string str;

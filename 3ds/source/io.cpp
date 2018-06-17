@@ -170,7 +170,8 @@ void io::backup(size_t index)
             }
             else
             {
-                customPath = isNewFolder ? StringUtils::removeForbiddenCharacters(swkbd(suggestion)) : StringUtils::UTF8toUTF16("");
+                customPath = isNewFolder ? StringUtils::removeForbiddenCharacters(KeyboardManager::get().keyboard(suggestion)) 
+                    : StringUtils::UTF8toUTF16("");
             }
             
             std::u16string dstPath;
@@ -241,7 +242,7 @@ void io::backup(size_t index)
         }
         else
         {
-            customPath = isNewFolder ? swkbd(suggestion) : StringUtils::UTF8toUTF16("");
+            customPath = isNewFolder ? KeyboardManager::get().keyboard(suggestion) : StringUtils::UTF8toUTF16("");
         }
         
         std::u16string dstPath;

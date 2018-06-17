@@ -32,7 +32,6 @@
 #include "common.hpp"
 #include "account.hpp"
 #include "gui.hpp"
-#include "hbkbd.hpp"
 #include "io.hpp"
 
 // debug

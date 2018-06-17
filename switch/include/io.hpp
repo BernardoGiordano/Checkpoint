@@ -34,7 +34,7 @@
 #include <unistd.h>
 #include "directory.hpp"
 #include "gui.hpp"
-#include "hbkbd.hpp"
+#include "KeyboardManager.hpp"
 
 #define BUFFER_SIZE 0x50000
 

@@ -24,8 +24,8 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef HBKBD_HPP
-#define HBKBD_HPP
+#ifndef KEYBOARDMANAGER_HPP
+#define KEYBOARDMANAGER_HPP
 
 #include <locale>
 #include <string>
@@ -34,8 +34,6 @@
 #include "clickable.hpp"
 #include "draw.hpp"
 #include "util.hpp"
-
-#define CUSTOM_PATH_LEN 49
 
 extern u8* framebuf;
 extern u32 framebuf_width;
@@ -80,13 +78,40 @@ protected:
 #define INDEX_CAPS 47
 #define INDEX_SPACE 48
 
-namespace hbkbd 
+class KeyboardManager
 {
-    void        init(void);
-    void        exit(void);
-    size_t      count(void);
-    void        hid(size_t& currentEntry);
+public:
+    static KeyboardManager& get(void)
+    {
+        static KeyboardManager mSingleton;
+        return mSingleton;
+    }
+
+    KeyboardManager(KeyboardManager const&) = delete;
+    void operator=(KeyboardManager const&) = delete;
+
     std::string keyboard(const std::string& suggestion);
-}
+
+    static const size_t CUSTOM_PATH_LEN = 49;
+
+private:
+    KeyboardManager(void);
+    virtual ~KeyboardManager(void);
+
+    void hid(size_t& currentEntry);
+    bool logic(std::string& str, size_t i);
+
+    const u32 buttonSpacing = 4;
+    const u32 normalWidth = 92;
+    const u32 bigWidth = 116;
+    const u32 height = 60;
+    const u32 margintb = 20;
+    const u32 marginlr = 54;
+    const u32 starty = 720 - 356 + margintb;
+
+    const std::string letters = "1234567890@qwertyuiop+asdfghjkl_:zxcvbnm,.-/";
+    std::vector<HbkbdButton*> buttons;
+    size_t prevSelectedButtonIndex;
+};
 
 #endif

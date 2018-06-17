@@ -24,29 +24,34 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef IO_HPP
-#define IO_HPP
+#ifndef KEYBOARDMANAGER_HPP
+#define KEYBOARDMANAGER_HPP
 
 #include <3ds.h>
-#include "directory.hpp"
-#include "fsstream.hpp"
-#include "KeyboardManager.hpp"
-#include "gui.hpp"
+#include <string>
 #include "util.hpp"
 
-#define BUFFER_SIZE 0x50000
-
-namespace io 
+class KeyboardManager
 {
-    void   backup(size_t index);
-    void   restore(size_t index);
-    
-    Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
-    void   copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
-    Result createDirectory(FS_Archive archive, const std::u16string& path);
-    void   deleteBackupFolder(const std::u16string& path);
-    bool   directoryExists(FS_Archive archive, const std::u16string& path);
-    bool   fileExists(FS_Archive archive, const std::u16string& path);
-}
+public:
+    static KeyboardManager& get(void)
+    {
+        static KeyboardManager mSingleton;
+        return mSingleton;
+    }
+
+    KeyboardManager(KeyboardManager const&) = delete;
+    void operator=(KeyboardManager const&) = delete;
+
+    std::u16string keyboard(const std::string& suggestion);
+
+    static const size_t CUSTOM_PATH_LEN = 20;
+
+private:
+    KeyboardManager(void);
+    virtual ~KeyboardManager(void) { }
+
+    SwkbdState mSwkbd;
+};
 
 #endif
