@@ -26,6 +26,13 @@
 
 #include "scrollable.hpp"
 
+void Scrollable::setIndex(size_t i)
+{
+    IScrollable::index(i);
+    mHid->index(mIndex);
+    mHid->page(mPage);
+}
+
 void Scrollable::resetIndex(void)
 {
     mHid->index(0);

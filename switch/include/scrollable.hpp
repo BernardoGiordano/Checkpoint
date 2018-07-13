@@ -49,6 +49,7 @@ public:
     };
 
     void draw(void) override;
+    void setIndex(size_t i);
     void push_back(color_t color, color_t colorMessage, const std::string& message) override;
     void resetIndex(void) override;
     void updateSelection(void) override;

@@ -100,7 +100,7 @@ void Gui::index(entryType_t type, size_t i)
     }
     else
     {
-        backupList->index(i);
+        backupList->setIndex(i);
     }
 }
 
