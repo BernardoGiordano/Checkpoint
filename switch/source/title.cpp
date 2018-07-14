@@ -202,33 +202,37 @@ void loadTitles(void)
         {
             u64 tid = info.titleID;
             u128 uid = info.userID;
-            res = nsGetApplicationControlData(1, tid, nsacd, sizeof(NsApplicationControlData), &outsize);
-            if (R_SUCCEEDED(res) && !(outsize < sizeof(nsacd->nacp)))
+            if (!Configuration::getInstance().filter(tid))
             {
-                res = nacpGetLanguageEntry(&nsacd->nacp, &nle);
-                if (R_SUCCEEDED(res) && nle != NULL)
+                res = nsGetApplicationControlData(1, tid, nsacd, sizeof(NsApplicationControlData), &outsize);
+                if (R_SUCCEEDED(res) && !(outsize < sizeof(nsacd->nacp)))
                 {
-                    Title title;
-                    title.init(tid, uid, std::string(nle->name), std::string(nle->author));
-                    loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
+                    res = nacpGetLanguageEntry(&nsacd->nacp, &nle);
+                    if (R_SUCCEEDED(res) && nle != NULL)
+                    {
+                        Title title;
+                        title.init(tid, uid, std::string(nle->name), std::string(nle->author));
+                        loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
 
-                    // check if the vector is already created
-                    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
-                    if (it != titles.end())
-                    {
-                        // found
-                        it->second.push_back(title);
-                    }
-                    else
-                    {
-                        // not found, insert into map
-                        std::vector<Title> v;
-                        v.push_back(title);
-                        titles.emplace(uid, v);
+                        // check if the vector is already created
+                        std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+                        if (it != titles.end())
+                        {
+                            // found
+                            it->second.push_back(title);
+                        }
+                        else
+                        {
+                            // not found, insert into map
+                            std::vector<Title> v;
+                            v.push_back(title);
+                            titles.emplace(uid, v);
+                        }
                     }
                 }
+                nle = NULL;
             }
-            nle = NULL;
+
         }
     }
 

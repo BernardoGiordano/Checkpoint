@@ -32,7 +32,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 VERSION_MAJOR := 3
 VERSION_MINOR := 3
-VERSION_MICRO := 0
+VERSION_MICRO := 1
 
 APP_TITLE	:=	Checkpoint
 APP_AUTHOR	:=	Bernardo Giordano
@@ -45,7 +45,7 @@ SOURCES		:=	source ../common
 DATA		:=	data
 INCLUDES	:=	include ../common
 EXEFS_SRC	:=	exefs_src
-#ROMFS	:=	romfs
+ROMFS	:=	romfs
 
 #---------------------------------------------------------------------------------
 # options for code generation

@@ -41,6 +41,7 @@ void servicesExit(void)
 Result servicesInit(void)
 {
     Result res = 0;
+    romfsInit();
     res = io::createDirectory("sdmc:/switch");
     res = io::createDirectory("sdmc:/switch/Checkpoint");
     res = io::createDirectory("sdmc:/switch/Checkpoint/saves");

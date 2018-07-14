@@ -24,59 +24,44 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef TITLE_HPP
-#define TITLE_HPP
+#ifndef CONFIGHANDLER_HPP
+#define CONFIGHANDLER_HPP
 
-#include <algorithm>
-#include <stdlib.h>
-#include <string>
-#include <switch.h>
-#include <utility>
-#include <vector>
+#include <fstream>
 #include <unordered_map>
-#include "configuration.hpp"
-#include "filesystem.hpp"
+#include <unordered_set>
+#include <vector>
+#include "json.hpp"
 #include "io.hpp"
+#include "util.hpp"
 
-extern "C" {
-#include "nanojpeg.h"
-}
-
-class Title 
+class Configuration
 {
 public:
-    void init(u64 titleid, u128 userID, const std::string& name, const std::string& author);
-    ~Title(void) { };
+    static Configuration& getInstance(void)
+    {
+        static Configuration mConfiguration;
+        return mConfiguration;
+    }
 
-    std::string   author(void);
-    u8*           smallIcon(void);
-    u8*           icon(void);
-    u64           id(void);
-    std::string   name(void);
-    std::string   path(void);
-    void          refreshDirectories(void);
-    std::vector
-    <std::string> saves(void);
-    u128          userId(void);
-    std::string   userName(void);
+    bool filter(u64 id);
+    bool nandSaves(void);
+    std::vector<std::string> additionalSaveFolders(u64 id);
 
 private:
-    u64           mId;
-    u128          mUserId;
-    std::string   mUserName;
-    std::string   mDisplayName;
-    std::string   mSafeName;
-    std::string   mAuthor;
-    std::string   mPath;
-    std::vector
-    <std::string> mSaves;
-};
+    Configuration(void);
+    ~Configuration(void) { };
 
-void   getTitle(Title &dst, u128 uid, size_t i);
-size_t getTitleCount(u128 uid);
-void   loadTitles(void);
-void   refreshDirectories(u64 id);
-u8*    smallIcon(u128 id, size_t i);
-void   freeIcons(void);
+    void store(void);
+
+    Configuration(Configuration const&) = delete;
+    void operator=(Configuration const&) = delete;
+
+    nlohmann::json mJson;
+    std::unordered_set<u64> mFilterIds;
+    std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders;
+    bool mNandSaves;
+    std::string BASEPATH = "/switch/Checkpoint/config.json";
+};
 
 #endif
