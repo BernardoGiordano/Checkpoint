@@ -130,7 +130,7 @@ int main(int argc, char** argv)
             selectionTimer = 0;
         }
         
-        if (selectionTimer > 90)
+        if (selectionTimer > 45)
         {
             Gui::clearSelectedEntries();
             for (size_t i = 0, sz = getTitleCount(g_currentUId); i < sz; i++)
