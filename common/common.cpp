@@ -40,18 +40,6 @@ std::string DateTime::dateTimeStr(void)
     return StringUtils::format("%04i%02i%02i-%02i%02i%02i", timeStruct->tm_year + 1900, timeStruct->tm_mon + 1, timeStruct->tm_mday, timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
 }
 
-bool StringUtils::containsInvalidChar(const std::string& str)
-{
-    for (size_t i = 0, sz = str.length(); i < sz; i++)
-    {
-        if (!isascii(str[i]))
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
 std::string StringUtils::UTF16toUTF8(const std::u16string& src)
 {
     static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;

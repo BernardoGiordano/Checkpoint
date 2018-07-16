@@ -45,7 +45,6 @@ namespace DateTime
 
 namespace StringUtils
 {
-    bool        containsInvalidChar(const std::string& str);
     std::string format(const std::string fmt_str, ...);
     std::string removeForbiddenCharacters(std::string src);
     std::string sizeString(double size);

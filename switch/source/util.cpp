@@ -115,6 +115,6 @@ std::string StringUtils::removeNotAscii(std::string str)
         {
             str[i] = ' ';
         }
-    }  
+    }
     return str; 
 }
