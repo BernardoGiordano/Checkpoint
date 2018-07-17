@@ -73,5 +73,5 @@ void Scrollable::draw(void)
 
     size_t blankRows = mVisibleEntries - sz;
     size_t rowHeight = mh / mVisibleEntries;
-    rectangled(mx, my + (baseIndex + sz) * rowHeight, mw, rowHeight * blankRows, COLOR_GREY_DARKER);
+    rectangled(mx, my + sz * rowHeight, mw, rowHeight * blankRows, COLOR_GREY_DARKER);
 }
