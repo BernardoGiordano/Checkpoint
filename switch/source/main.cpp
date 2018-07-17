@@ -84,14 +84,24 @@ int main(int argc, char** argv)
             }
         }
 
-        if (kdown & KEY_A)
+        if (kdown & KEY_A ||
+            (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
+            (int)touch.px > 540 &&
+            (int)touch.px < 1046 &&
+            (int)touch.py > 462 &&
+            (int)touch.py < 692))
         {
             Gui::backupScroll(true);
             Gui::updateButtonsColor();
             Gui::entryType(CELLS);
         }
         
-        if (kdown & KEY_B)
+        if (kdown & KEY_B ||
+            (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
+            (int)touch.px > 0 &&
+            (int)touch.px < 532 &&
+            (int)touch.py > 28 &&
+            (int)touch.py < 692))
         {
             Gui::index(CELLS, 0);
             Gui::backupScroll(false);
