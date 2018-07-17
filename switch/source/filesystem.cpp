@@ -31,6 +31,11 @@ Result FileSystem::mount(FsFileSystem* fileSystem, u64 titleID, u128 userID)
     return fsMount_SaveData(fileSystem, titleID, userID);
 }
 
+Result FileSystem::mount(FsFileSystem* fileSystem, u64 saveID)
+{
+    return fsMount_SystemSaveData(fileSystem, saveID);
+}
+
 int FileSystem::mount(FsFileSystem fs)
 {
     return fsdevMountDevice("save", fs);

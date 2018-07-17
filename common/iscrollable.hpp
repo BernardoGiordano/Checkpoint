@@ -103,6 +103,11 @@ public:
         mIndex = i - mPage * mVisibleEntries;
     }
 
+    size_t visibleEntries(void)
+    {
+        return mVisibleEntries;
+    }
+
 protected:
     int    mx;
     int    my;

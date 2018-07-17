@@ -208,8 +208,8 @@ void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
 bool Gui::askForConfirmation(const std::string& text)
 {
     bool ret = false;
-    Clickable* buttonYes = new Clickable(293, 540, 200, 80, COLOR_WHITE, COLOR_BLACK, "Yes", true);
-    Clickable* buttonNo = new Clickable(786, 540, 200, 80, COLOR_WHITE, COLOR_BLACK, "No", true);
+    Clickable* buttonYes = new Clickable(293, 540, 200, 80, COLOR_WHITE, COLOR_BLACK, "Yes (A)", true);
+    Clickable* buttonNo = new Clickable(786, 540, 200, 80, COLOR_WHITE, COLOR_BLACK, "No (B)", true);
     MessageBox* message = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);
     message->push_message(text);
     
@@ -306,6 +306,10 @@ void Gui::draw(u128 uid)
         {
             DrawImage(x, y, USER_ICON_SIZE, USER_ICON_SIZE, Account::icon(userIds.at(i)), IMAGE_MODE_RGB24);
         }
+        else
+        {
+            rectangle(x, y, USER_ICON_SIZE, USER_ICON_SIZE, COLOR_BLACK);
+        }
     }
 
     // title icons
@@ -319,7 +323,7 @@ void Gui::draw(u128 uid)
         }
         else
         {
-            rectangle(selectorx, selectory, 128, 128, COLOR_WHITE);
+            rectangle(selectorx, selectory, 128, 128, COLOR_BLACK);
         }
 
         if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end())

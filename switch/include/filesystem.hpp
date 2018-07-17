@@ -28,11 +28,11 @@
 #define FILESYSTEM_HPP
 
 #include <switch.h>
-#include "gui.hpp"
 
 namespace FileSystem 
 {
     Result mount(FsFileSystem* fileSystem, u64 titleID, u128 userID);
+    Result mount(FsFileSystem* fileSystem, u64 saveID);
     int    mount(FsFileSystem fs);
     void   unmount(void);
 }

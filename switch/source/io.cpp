@@ -220,7 +220,7 @@ void io::backup(size_t index, u128 uid)
     else
     {
         Gui::createError(res, "Failed to mount save.");
-        return;        
+        return;
     }
 
     std::string suggestion = DateTime::dateTimeStr() + " " + StringUtils::removeNotAscii(StringUtils::removeAccents(Account::username(title.userId())));
@@ -228,14 +228,24 @@ void io::backup(size_t index, u128 uid)
 
     if (Gui::multipleSelectionEnabled())
     {
-        customPath = isNewFolder ? suggestion : Gui::nameFromCell(cellIndex);
+        customPath = isNewFolder ? suggestion : "";
     }
     else
     {
-        customPath = isNewFolder ? StringUtils::removeForbiddenCharacters(KeyboardManager::get().keyboard(suggestion)) : Gui::nameFromCell(cellIndex);
+        customPath = isNewFolder ? StringUtils::removeForbiddenCharacters(KeyboardManager::get().keyboard(suggestion)) : "";
     }
     
-    std::string dstPath = title.path() + "/" + customPath;
+    std::string dstPath;
+    if (!isNewFolder)
+    {
+        // we're overriding an existing folder
+        dstPath = title.fullPath(cellIndex);
+    }
+    else
+    {
+        dstPath = title.path() + "/" + customPath;
+    } 
+
     if (!isNewFolder || io::directoryExists(dstPath))
     {
         int ret = io::deleteFolderRecursively(dstPath.c_str());
@@ -277,7 +287,7 @@ void io::restore(size_t index, u128 uid)
     getTitle(title, uid, index);
     
     FsFileSystem fileSystem;
-    res = FileSystem::mount(&fileSystem, title.id(), title.userId());
+    res = title.systemSave() ? FileSystem::mount(&fileSystem, title.id()) : FileSystem::mount(&fileSystem, title.id(), title.userId());
     if (R_SUCCEEDED(res))
     {
         int ret = FileSystem::mount(fileSystem);
@@ -294,7 +304,7 @@ void io::restore(size_t index, u128 uid)
         return;        
     }
 
-    std::string srcPath = title.path() + "/" + Gui::nameFromCell(cellIndex) + "/";
+    std::string srcPath = title.fullPath(cellIndex) + "/";
     std::string dstPath = "save:/";
     
     res = io::deleteFolderRecursively(dstPath.c_str());

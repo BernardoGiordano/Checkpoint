@@ -31,6 +31,7 @@
 #include <vector>
 #include "iscrollable.hpp"
 #include "clickable.hpp"
+#include "colors.hpp"
 #include "draw.hpp"
 #include "hid.hpp"
 

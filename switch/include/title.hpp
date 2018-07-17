@@ -45,7 +45,7 @@ extern "C" {
 class Title 
 {
 public:
-    void init(u64 titleid, u128 userID, const std::string& name, const std::string& author);
+    void init(u8 saveDataType, u64 titleid, u128 userID, const std::string& name, const std::string& author);
     ~Title(void) { };
 
     std::string   author(void);
@@ -54,9 +54,12 @@ public:
     u64           id(void);
     std::string   name(void);
     std::string   path(void);
+    std::string   fullPath(size_t index);
     void          refreshDirectories(void);
     std::vector
     <std::string> saves(void);
+    u8            saveDataType(void);
+    bool          systemSave(void);
     u128          userId(void);
     std::string   userName(void);
 
@@ -70,6 +73,9 @@ private:
     std::string   mPath;
     std::vector
     <std::string> mSaves;
+    std::vector
+    <std::string> mFullSavePaths;
+    u8            mSaveDataType;
 };
 
 void   getTitle(Title &dst, u128 uid, size_t i);

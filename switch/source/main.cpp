@@ -72,7 +72,8 @@ int main(int argc, char** argv)
         hidTouchRead(&touch, 0);
         for (u8 i = 0; i < userIds.size(); i++)
         {
-            if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
+            if (!Gui::backupScroll() &&
+                hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
                 touch.px >= u32(1280 - (USER_ICON_SIZE + 4) * (i+1)) &&
                 touch.px <= u32(1280 - (USER_ICON_SIZE + 4) * i) &&
                 touch.py >= 32 && touch.py <= 32 + USER_ICON_SIZE)
@@ -92,6 +93,7 @@ int main(int argc, char** argv)
         
         if (kdown & KEY_B)
         {
+            Gui::index(CELLS, 0);
             Gui::backupScroll(false);
             Gui::updateButtonsColor();
             Gui::entryType(TITLES);
@@ -107,8 +109,7 @@ int main(int argc, char** argv)
                 {
                     Title title;
                     getTitle(title, g_currentUId, Gui::index(TITLES));
-                    std::vector<std::string> list = title.saves();
-                    std::string path = title.path() + "/" + list.at(index);
+                    std::string path = title.fullPath(index);
                     io::deleteFolderRecursively(path.c_str());
                     refreshDirectories(title.id());
                     Gui::index(CELLS, index - 1);              

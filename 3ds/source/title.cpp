@@ -77,7 +77,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         AM_GetTitleProductCode(mMedia, mId, productCode);
 
         mAccessibleSave = Archive::accessible(mediaType(), lowId(), highId());
-        mAccessibleExtdata = Archive::accessible(extdataId());
+        mAccessibleExtdata = mMedia == MEDIATYPE_NAND ? false : Archive::accessible(extdataId());
         
         if (mAccessibleSave)
         {
@@ -89,7 +89,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
                 {
                     Gui::createError(res, "Failed to create backup directory.");
                 }
-            }		
+            }
         }
 
         if (mAccessibleExtdata)
@@ -257,7 +257,7 @@ void Title::refreshDirectories(void)
         }
         else
         {
-            Gui::createError(savelist.error(), "Couldn't retrieve the directory list for the title " + shortDescription());
+            Gui::createError(savelist.error(), "Couldn't retrieve the directory list\nfor the title " + shortDescription());
         }
 
         // save backups from configuration
@@ -302,7 +302,7 @@ void Title::refreshDirectories(void)
         }
         else
         {
-            Gui::createError(extlist.error(), "Couldn't retrieve the extdata list for the title " + shortDescription());
+            Gui::createError(extlist.error(), "Couldn't retrieve the extdata list\nfor the title " + shortDescription());
         }
 
         // extdata backups from configuration

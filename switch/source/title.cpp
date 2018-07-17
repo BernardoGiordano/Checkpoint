@@ -79,10 +79,11 @@ static void loadIcon(u64 id, NsApplicationControlData* nsacd, size_t iconsize)
     }
 }
 
-void Title::init(u64 id, u128 userID, const std::string& name, const std::string& author)
+void Title::init(u8 saveDataType, u64 id, u128 userID, const std::string& name, const std::string& author)
 {
     mId = id;
     mUserId = userID;
+    mSaveDataType = saveDataType;
     mUserName = Account::username(userID);
     mAuthor = author;
     mDisplayName = name;
@@ -95,6 +96,16 @@ void Title::init(u64 id, u128 userID, const std::string& name, const std::string
     }
 
     refreshDirectories();
+}
+
+bool Title::systemSave(void)
+{
+    return mSaveDataType != FsSaveDataType_SaveData;
+}
+
+u8 Title::saveDataType(void)
+{
+    return mSaveDataType;
 }
 
 u64 Title::id(void)
@@ -127,6 +138,11 @@ std::string Title::path(void)
     return mPath;
 }
 
+std::string Title::fullPath(size_t index)
+{
+    return mFullSavePaths.at(index);
+}
+
 std::vector<std::string> Title::saves()
 {
     return mSaves;
@@ -147,6 +163,8 @@ u8* Title::smallIcon(void)
 void Title::refreshDirectories(void)
 {
     mSaves.clear();
+    mFullSavePaths.clear();
+
     Directory savelist(mPath);
     if (savelist.good())
     {
@@ -155,15 +173,37 @@ void Title::refreshDirectories(void)
             if (savelist.folder(i))
             {
                 mSaves.push_back(savelist.entry(i));
+                mFullSavePaths.push_back(mPath + "/" + savelist.entry(i));
             }
         }
         
         std::sort(mSaves.rbegin(), mSaves.rend());
+        std::sort(mFullSavePaths.rbegin(), mFullSavePaths.rend());
         mSaves.insert(mSaves.begin(), "New...");
+        mFullSavePaths.insert(mFullSavePaths.begin(), "New...");
     }
     else
     {
         Gui::createError(savelist.error(), "Couldn't retrieve the directory list for the title " + name() + ".");
+    }
+
+    // save backups from configuration
+    std::vector<std::string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
+    for (std::vector<std::string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); it++)
+    {
+        // we have other folders to parse
+        Directory list(*it);
+        if (list.good())
+        {
+            for (size_t i = 0, sz = list.size(); i < sz; i++)
+            {
+                if (list.folder(i))
+                {
+                    mSaves.push_back(list.entry(i));
+                    mFullSavePaths.push_back(*it + "/" + list.entry(i));
+                }
+            }
+        }
     }
 }
 
@@ -211,7 +251,7 @@ void loadTitles(void)
                     if (R_SUCCEEDED(res) && nle != NULL)
                     {
                         Title title;
-                        title.init(tid, uid, std::string(nle->name), std::string(nle->author));
+                        title.init(info.SaveDataType, tid, uid, std::string(nle->name), std::string(nle->author));
                         loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
 
                         // check if the vector is already created

@@ -70,4 +70,8 @@ void Scrollable::draw(void)
     {
         mCells.at(i)->draw(4);
     }
+
+    size_t blankRows = mVisibleEntries - sz;
+    size_t rowHeight = mh / mVisibleEntries;
+    rectangled(mx, my + (baseIndex + sz) * rowHeight, mw, rowHeight * blankRows, COLOR_GREY_DARKER);
 }

@@ -45,7 +45,6 @@ public:
     }
 
     bool filter(u64 id);
-    bool nandSaves(void);
     std::vector<std::string> additionalSaveFolders(u64 id);
 
 private:
@@ -60,7 +59,6 @@ private:
     nlohmann::json mJson;
     std::unordered_set<u64> mFilterIds;
     std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders;
-    bool mNandSaves;
     std::string BASEPATH = "/switch/Checkpoint/config.json";
 };
 
