@@ -505,12 +505,10 @@ void loadTitles(bool forceRefresh)
         for (auto& title : titleSaves)
         {
             title.refreshDirectories();
-            title.setIcon();
         }
         for (auto& title : titleExtdatas)
         {
             title.refreshDirectories();
-            title.setIcon();
         }
     }
     else
@@ -632,13 +630,18 @@ int getTitleCount(void)
     return mode == MODE_SAVE ? titleSaves.size() : titleExtdatas.size();
 }
 
+void Title::setIcon(C2D_Image icon)
+{
+    mIcon = icon;
+}
+
 C2D_Image icon(int i)
 {
     const Mode_t mode = Archive::mode();
     return mode == MODE_SAVE ? titleSaves.at(i).icon() : titleExtdatas.at(i).icon();
 }
 
-static C2D_Image loadTextureIcon(smdh_s *smdh)
+static C2D_Image loadTextureByBytes(u16* bigIconData)
 {
     C3D_Tex* tex = (C3D_Tex*)malloc(sizeof(C3D_Tex));
     static const Tex3DS_SubTexture subt3x = { 48, 48, 0.0f, 48/64.0f, 48/64.0f, 0.0f };
@@ -646,7 +649,7 @@ static C2D_Image loadTextureIcon(smdh_s *smdh)
     C3D_TexInit(image.tex, 64, 64, GPU_RGB565);
     
     u16* dest = (u16*)image.tex->data + (64-48)*64;
-    u16* src = (u16*)smdh->bigIconData;
+    u16* src = bigIconData;
     for (int j = 0; j < 48; j += 8)
     {
         memcpy(dest, src, 48*8*sizeof(u16));
@@ -657,18 +660,9 @@ static C2D_Image loadTextureIcon(smdh_s *smdh)
     return image;
 }
 
-void Title::setIcon(void)
+static C2D_Image loadTextureIcon(smdh_s *smdh)
 {
-    if (mCard == CARD_CTR)
-    {
-        smdh_s* smdh = loadSMDH(lowId(), highId(), mediaType());
-        mIcon = loadTextureIcon(smdh);
-        delete smdh;
-    }
-    else
-    {
-        mIcon = Gui::TWLIcon();
-    }
+    return loadTextureByBytes(smdh->bigIconData);
 }
 
 void refreshDirectories(u64 id)
@@ -696,7 +690,7 @@ void refreshDirectories(u64 id)
     }
 }
 
-static const size_t ENTRYSIZE = 733;
+static const size_t ENTRYSIZE = 5341;
 
 /**
  * CACHE STRUCTURE
@@ -712,6 +706,7 @@ static const size_t ENTRYSIZE = 733;
  * mediaType (730, 1)
  * fs cardtype (731, 1)
  * cardtype (732, 1)
+ * bigIconData (733, 4608)
  */
 
 static void exportTitleListCache(std::vector<Title> list, const std::u16string path)
@@ -729,6 +724,16 @@ static void exportTitleListCache(std::vector<Title> list, const std::u16string p
         FS_MediaType media = list.at(i).mediaType();
         FS_CardType cardType = list.at(i).cardType();
         CardType card = list.at(i).SPICardType();
+
+        if (cardType == CARD_CTR)
+        {
+            smdh_s* smdh = loadSMDH(list.at(i).lowId(), list.at(i).highId(), media);
+            if (smdh != NULL)
+            {
+                memcpy(cache + i*ENTRYSIZE + 733, smdh->bigIconData, 0x900*2);
+            }
+            delete smdh;
+        }
 
         memcpy(cache + i*ENTRYSIZE + 0, &id, sizeof(u64));
         memcpy(cache + i*ENTRYSIZE + 8, list.at(i).productCode, 16);
@@ -806,10 +811,23 @@ static void importTitleListCache(void)
         memcpy(extdataPath, cachesaves + i*ENTRYSIZE + 474, 256);
         memcpy(&media, cachesaves + i*ENTRYSIZE + 730, sizeof(u8));
         memcpy(&cardType, cachesaves + i*ENTRYSIZE + 731, sizeof(u8));
-        memcpy(&card, cachesaves + i*ENTRYSIZE + 732, sizeof(u8));        
+        memcpy(&card, cachesaves + i*ENTRYSIZE + 732, sizeof(u8));
         
         Title title;
         title.load(id, productCode, accessibleSave, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription), StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType, card);
+
+        if (cardType == CARD_CTR)
+        {
+            u16 bigIconData[0x900];
+            memcpy(bigIconData, cachesaves + i*ENTRYSIZE + 733, 0x900*2);
+            C2D_Image icon = loadTextureByBytes(bigIconData);
+            title.setIcon(icon);
+        }
+        else
+        {
+            title.setIcon(Gui::TWLIcon());
+        }
+
         titleSaves.at(i) = title;
         alreadystored.push_back(id);
     }
@@ -845,6 +863,19 @@ static void importTitleListCache(void)
             
             Title title;
             title.load(id, productCode, accessibleSave, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription), StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType, card);
+
+            if (cardType == CARD_CTR)
+            {
+                u16 bigIconData[0x900];
+                memcpy(bigIconData, cacheextdatas + i*ENTRYSIZE + 733, 0x900*2);
+                C2D_Image icon = loadTextureByBytes(bigIconData);
+                title.setIcon(icon);
+            }
+            else
+            {
+                title.setIcon(Gui::TWLIcon());
+            }
+
             titleExtdatas.at(i) = title;			
         }
         else

@@ -72,7 +72,7 @@ public:
     std::u16string   fullSavePath(size_t index);
     std::vector
     <std::u16string> saves(void);
-    void             setIcon(void);
+    void             setIcon(C2D_Image icon);
     std::string      shortDescription(void);
     std::u16string   getShortDescription(void); 
     CardType         SPICardType(void);
