@@ -52,6 +52,23 @@ void Title::load(void)
     mExtdata.clear();
 }
 
+void Title::load(u64 id, u8* _productCode, bool accessibleSave, bool accessibleExtdata, std::u16string shortDescription, std::u16string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card)
+{
+    mId = id;
+    mAccessibleSave = accessibleSave;
+    mAccessibleExtdata = accessibleExtdata;
+    mShortDescription = shortDescription;
+    mLongDescription = longDescription;
+    mSavePath = savePath;
+    mExtdataPath = extdataPath;
+    mMedia = media;
+    mCard = cardType;
+    mCardType = card;
+    mIcon = Gui::noIcon();
+
+    memcpy(productCode, _productCode, 16);
+}
+
 bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 {
     bool loadTitle = false;
@@ -193,9 +210,19 @@ std::string Title::shortDescription(void)
     return StringUtils::UTF16toUTF8(mShortDescription);
 }
 
+std::u16string Title::getShortDescription(void)
+{
+    return mShortDescription;
+}
+
 std::string Title::longDescription(void)
 {
     return StringUtils::UTF16toUTF8(mLongDescription);
+}
+
+std::u16string Title::getLongDescription(void)
+{
+    return mLongDescription;
 }
 
 std::u16string Title::savePath(void)
@@ -424,8 +451,8 @@ static bool validId(u64 id)
 
 void loadTitles(bool forceRefresh)
 {
-    std::u16string savecachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/savecache");
-    std::u16string extdatacachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/extdatacache");
+    std::u16string savecachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache");
+    std::u16string extdatacachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache");
     
     // on refreshing
     titleSaves.clear();
@@ -475,6 +502,16 @@ void loadTitles(bool forceRefresh)
     {
         // deserialize data
         importTitleListCache();
+        for (auto& title : titleSaves)
+        {
+            title.refreshDirectories();
+            title.setIcon();
+        }
+        for (auto& title : titleExtdatas)
+        {
+            title.refreshDirectories();
+            title.setIcon();
+        }
     }
     else
     {
@@ -620,6 +657,20 @@ static C2D_Image loadTextureIcon(smdh_s *smdh)
     return image;
 }
 
+void Title::setIcon(void)
+{
+    if (mCard == CARD_CTR)
+    {
+        smdh_s* smdh = loadSMDH(lowId(), highId(), mediaType());
+        mIcon = loadTextureIcon(smdh);
+        delete smdh;
+    }
+    else
+    {
+        mIcon = Gui::TWLIcon();
+    }
+}
+
 void refreshDirectories(u64 id)
 {
     const Mode_t mode = Archive::mode();
@@ -645,35 +696,70 @@ void refreshDirectories(u64 id)
     }
 }
 
+static const size_t ENTRYSIZE = 733;
+
+/**
+ * CACHE STRUCTURE
+ * start, len
+ * id (0, 8)
+ * productCode (8, 16)
+ * accessibleSave (24, 1)
+ * accessibleExtdata (25, 1)
+ * shortDescription (26, 64)
+ * longDescription (90, 128)
+ * savePath (218, 256)
+ * extdataPath (474, 256)
+ * mediaType (730, 1)
+ * fs cardtype (731, 1)
+ * cardtype (732, 1)
+ */
+
 static void exportTitleListCache(std::vector<Title> list, const std::u16string path)
 {
-    u8* cache = new u8[list.size() * 10];
+    u8* cache = new u8[list.size() * ENTRYSIZE]();
     for (size_t i = 0; i < list.size(); i++)
     {
         u64 id = list.at(i).id();
+        bool accessibleSave = list.at(i).accessibleSave();
+        bool accessibleExtdata = list.at(i).accessibleExtdata();
+        std::string shortDescription = StringUtils::UTF16toUTF8(list.at(i).getShortDescription());
+        std::string longDescription = StringUtils::UTF16toUTF8(list.at(i).getLongDescription());
+        std::string savePath = StringUtils::UTF16toUTF8(list.at(i).savePath());
+        std::string extdataPath = StringUtils::UTF16toUTF8(list.at(i).extdataPath());
         FS_MediaType media = list.at(i).mediaType();
-        FS_CardType card = list.at(i).cardType();
-        memcpy(cache + i*10 + 0, &id, sizeof(u64));
-        memcpy(cache + i*10 + 8, &media, sizeof(u8));
-        memcpy(cache + i*10 + 9, &card, sizeof(u8));
+        FS_CardType cardType = list.at(i).cardType();
+        CardType card = list.at(i).SPICardType();
+
+        memcpy(cache + i*ENTRYSIZE + 0, &id, sizeof(u64));
+        memcpy(cache + i*ENTRYSIZE + 8, list.at(i).productCode, 16);
+        memcpy(cache + i*ENTRYSIZE + 24, &accessibleSave, sizeof(u8));
+        memcpy(cache + i*ENTRYSIZE + 25, &accessibleExtdata, sizeof(u8));
+        memcpy(cache + i*ENTRYSIZE + 26, shortDescription.c_str(), shortDescription.length());
+        memcpy(cache + i*ENTRYSIZE + 90, longDescription.c_str(), longDescription.length());
+        memcpy(cache + i*ENTRYSIZE + 218, savePath.c_str(), savePath.length());
+        memcpy(cache + i*ENTRYSIZE + 474, extdataPath.c_str(), extdataPath.length());
+        memcpy(cache + i*ENTRYSIZE + 730, &media, sizeof(u8));
+        memcpy(cache + i*ENTRYSIZE + 731, &cardType, sizeof(u8));
+        memcpy(cache + i*ENTRYSIZE + 732, &card, sizeof(u8));
     }
+
     FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, path.data()));
-    FSStream output(Archive::sdmc(), path, FS_OPEN_WRITE, list.size() * 10);
-    output.write(cache, list.size() * 10);
+    FSStream output(Archive::sdmc(), path, FS_OPEN_WRITE, list.size() * ENTRYSIZE);
+    output.write(cache, list.size() * ENTRYSIZE);
     output.close();
     delete[] cache;
 }
 
 static void importTitleListCache(void)
 {
-    FSStream inputsaves(Archive::sdmc(), StringUtils::UTF8toUTF16("/3ds/Checkpoint/savecache"), FS_OPEN_READ);
-    u32 sizesaves = inputsaves.size() / 10;
+    FSStream inputsaves(Archive::sdmc(), StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache"), FS_OPEN_READ);
+    u32 sizesaves = inputsaves.size() / ENTRYSIZE;
     u8* cachesaves = new u8[inputsaves.size()];
     inputsaves.read(cachesaves, inputsaves.size());
     inputsaves.close();
     
-    FSStream inputextdatas(Archive::sdmc(), StringUtils::UTF8toUTF16("/3ds/Checkpoint/extdatacache"), FS_OPEN_READ);
-    u32 sizeextdatas = inputextdatas.size() / 10;
+    FSStream inputextdatas(Archive::sdmc(), StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache"), FS_OPEN_READ);
+    u32 sizeextdatas = inputextdatas.size() / ENTRYSIZE;
     u8* cacheextdatas = new u8[inputextdatas.size()];
     inputextdatas.read(cacheextdatas, inputextdatas.size());
     inputextdatas.close();
@@ -699,13 +785,31 @@ static void importTitleListCache(void)
     for (size_t i = 0; i < sizesaves; i++)
     {
         u64 id;
+        u8 productCode[16];
+        bool accessibleSave;
+        bool accessibleExtdata;
+        char shortDescription[0x40];
+        char longDescription[0x80];
+        char savePath[256];
+        char extdataPath[256];
         FS_MediaType media;
-        FS_CardType card;
-        memcpy(&id, cachesaves + i*10, sizeof(u64));
-        memcpy(&media, cachesaves + i*10 + 8, sizeof(u8));
-        memcpy(&card, cachesaves + i*10 + 9, sizeof(u8));
+        FS_CardType cardType;
+        CardType card;
+
+        memcpy(&id, cachesaves + i*ENTRYSIZE, sizeof(u64));
+        memcpy(productCode, cachesaves + i*ENTRYSIZE + 8, 16);
+        memcpy(&accessibleSave, cachesaves + i*ENTRYSIZE + 24, sizeof(u8));
+        memcpy(&accessibleExtdata, cachesaves + i*ENTRYSIZE + 25, sizeof(u8));
+        memcpy(shortDescription, cachesaves + i*ENTRYSIZE + 26, 0x40);
+        memcpy(longDescription, cachesaves + i*ENTRYSIZE + 90, 0x80);
+        memcpy(savePath, cachesaves + i*ENTRYSIZE + 218, 256);
+        memcpy(extdataPath, cachesaves + i*ENTRYSIZE + 474, 256);
+        memcpy(&media, cachesaves + i*ENTRYSIZE + 730, sizeof(u8));
+        memcpy(&cardType, cachesaves + i*ENTRYSIZE + 731, sizeof(u8));
+        memcpy(&card, cachesaves + i*ENTRYSIZE + 732, sizeof(u8));        
+        
         Title title;
-        title.load(id, media, card);
+        title.load(id, productCode, accessibleSave, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription), StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType, card);
         titleSaves.at(i) = title;
         alreadystored.push_back(id);
     }
@@ -713,16 +817,34 @@ static void importTitleListCache(void)
     for (size_t i = 0; i < sizeextdatas; i++)
     {
         u64 id;
-        memcpy(&id, cacheextdatas + i*10, sizeof(u64));
+        memcpy(&id, cacheextdatas + i*ENTRYSIZE, sizeof(u64));
         std::vector<u64>::iterator it = find(alreadystored.begin(), alreadystored.end(), id);
         if (it == alreadystored.end())
         {
+            u8 productCode[16];
+            bool accessibleSave;
+            bool accessibleExtdata;
+            char shortDescription[0x40];
+            char longDescription[0x80];
+            char savePath[256];
+            char extdataPath[256];
             FS_MediaType media;
-            FS_CardType card;
-            memcpy(&media, cacheextdatas + i*10 + 8, sizeof(u8));
-            memcpy(&card, cacheextdatas + i*10 + 9, sizeof(u8));
+            FS_CardType cardType;
+            CardType card;
+
+            memcpy(productCode, cacheextdatas + i*ENTRYSIZE + 8, 16);
+            memcpy(&accessibleSave, cacheextdatas + i*ENTRYSIZE + 24, sizeof(u8));
+            memcpy(&accessibleExtdata, cacheextdatas + i*ENTRYSIZE + 25, sizeof(u8));
+            memcpy(shortDescription, cacheextdatas + i*ENTRYSIZE + 26, 0x40);
+            memcpy(longDescription, cacheextdatas + i*ENTRYSIZE + 90, 0x80);
+            memcpy(savePath, cacheextdatas + i*ENTRYSIZE + 218, 256);
+            memcpy(extdataPath, cacheextdatas + i*ENTRYSIZE + 474, 256);
+            memcpy(&media, cacheextdatas + i*ENTRYSIZE + 730, sizeof(u8));
+            memcpy(&cardType, cacheextdatas + i*ENTRYSIZE + 731, sizeof(u8));
+            memcpy(&card, cacheextdatas + i*ENTRYSIZE + 732, sizeof(u8));       
+            
             Title title;
-            title.load(id, media, card);
+            title.load(id, productCode, accessibleSave, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription), StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType, card);
             titleExtdatas.at(i) = title;			
         }
         else
