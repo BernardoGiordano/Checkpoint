@@ -26,6 +26,7 @@ Checkpoint relies on the following folders to store the files it generates. Note
 ### Switch
 
 * **`sdmc:/switch/Checkpoint`**: root path
+* **`sdmc:/switch/Checkpoint/config.json`**: custom configuration file
 * **`sdmc:/switch/Checkpoint/saves/<title id> <game title>`**: root path for all the save backups for a generic game
 
 ## Usage
@@ -85,7 +86,7 @@ Additionally, you can receive real-time support by joining PKSM's discord server
 
 Checkpoint for 3DS relies on [latest libctru](https://github.com/smealum/ctrulib), [latest citro3d](https://github.com/fincs/citro3d) and [latest citro2d](https://github.com/devkitPro/citro2d).
 
-Checkpoint for Switch relies on [latest libnx](https://github.com/switchbrew/libnx).
+Checkpoint for Switch relies on [latest libnx](https://github.com/switchbrew/libnx) and switch-freetype, available from [dkp-pacman](https://github.com/devkitPro/pacman/releases).
 
 ## License
 
@@ -93,13 +94,15 @@ This project is licensed under the GNU GPLv3. Additional Terms 7.b and 7.c of GP
 
 ## Credits
 
-Even though this is the result of independent research and work, Checkpoint for 3DS couldn't be possible without J-D-K's [JKSM](https://gbatemp.net/threads/release-jks-savemanager-homebrew-cia-save-manager.413143/), which is an incredible piece of software that you should all be using. Best regards JK, hope you're fine.
+Even though this is the result of independent research and work, Checkpoint for 3DS couldn't be possible without J-D-K's original [JKSM](https://github.com/J-D-K/JKSM) version, which is an incredible piece of software that you should all be using. Best regards JK, hope you're fine.
 
 TuxSH for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which SPI code has been taken.
 
 All the maintainers for [nx-hbmenu](https://github.com/switchbrew/nx-hbmenu), for all the Switch rendering functions.
 
 Yellows8 and all the mantainers for [switch-examples](https://github.com/switchbrew/switch-examples).
+
+[rakujira](https://twitter.com/rakujira) for the awesome Checkpoint icons he provided!
 
 Hikari-chin and all the other testers for their help with testing.
 
