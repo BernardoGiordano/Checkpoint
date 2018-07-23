@@ -97,3 +97,15 @@ std::string StringUtils::sizeString(double size)
     }
     return StringUtils::format("%.*f %s", i, size, units[i]);
 }
+
+bool StringUtils::containsInvalidChar(const std::string& str)
+{
+    for (size_t i = 0, sz = str.length(); i < sz; i++)
+    {
+        if (!isascii(str[i]))
+        {
+            return true;
+        }
+    }
+    return false;
+}

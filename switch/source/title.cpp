@@ -87,7 +87,7 @@ void Title::init(u8 saveDataType, u64 id, u128 userID, const std::string& name, 
     mUserName = Account::username(userID);
     mAuthor = author;
     mDisplayName = name;
-    mSafeName = StringUtils::removeNotAscii(StringUtils::removeForbiddenCharacters(name));
+    mSafeName = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
     mPath = "sdmc:/switch/Checkpoint/saves/" + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
 
     if (!io::directoryExists(mPath))
