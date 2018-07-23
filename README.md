@@ -33,7 +33,7 @@ Checkpoint relies on the following folders to store the files it generates. Note
 
 You can use Checkpoint for 3DS with both cfw and Rosalina-based Homebrew Launchers. *hax-based Homebrew Launchers are not supported by Checkpoint. 
 
-Checkpoint for Switch only runs on homebrew launcher. You're required to reboot your console after restoring a save through Checkpoint for Switch.
+Checkpoint for Switch only runs on homebrew launcher. Make sure you're running up-to-date payloads.
 
 The first launch will take considerably longer than usual (usually 1-2 minutes depending on how many titles you have installed), due to the working directories being created - Checkpoint will be significatively faster upon launch from then on.
 
