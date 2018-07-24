@@ -90,6 +90,13 @@ u32 FSStream::read(void *buf, u32 sz)
 {
     u32 rd = 0;
     mResult = FSFILE_Read(mHandle, &rd, mOffset, buf, sz);
+    if (R_FAILED(mResult))
+    {
+        if (rd > sz)
+        {
+            rd = sz;
+        }
+    }
     mOffset += rd;
     return rd;
 }
