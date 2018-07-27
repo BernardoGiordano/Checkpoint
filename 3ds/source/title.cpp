@@ -284,6 +284,7 @@ void Title::refreshDirectories(void)
         }
         else
         {
+            //fprintf(stderr, "Title 0x%016llX, %s\n", id(), shortDescription().c_str());
             Gui::createError(savelist.error(), "Couldn't retrieve the directory list\nfor the title " + shortDescription());
         }
 
@@ -329,6 +330,7 @@ void Title::refreshDirectories(void)
         }
         else
         {
+            //fprintf(stderr, "Title 0x%016llX, %s\n", id(), shortDescription().c_str());
             Gui::createError(extlist.error(), "Couldn't retrieve the extdata list\nfor the title " + shortDescription());
         }
 
@@ -436,6 +438,8 @@ static bool validId(u64 id)
         case 0x20009402:
         case 0x20009D02:
         case 0x2000AE02:
+        // Garbage
+        case 0x00021A00:
             return false;
     }
 
