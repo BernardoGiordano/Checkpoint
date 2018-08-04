@@ -116,7 +116,6 @@ int main() {
         if (refreshTimer > 90)
         {
             Gui::resetIndex();
-            Archive::mode(Archive::mode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
             Gui::clearSelectedEntries();
             Gui::resetScrollableIndex();            
             Threads::create((ThreadFunc)Threads::titles);
