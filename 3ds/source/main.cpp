@@ -104,7 +104,7 @@ int main() {
             selectionTimer = 0;
         }
 
-        if (kHeld & KEY_B)
+        if (kHeld & KEY_B && !Gui::bottomScroll())
         {
             refreshTimer++;
         }
