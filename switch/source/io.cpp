@@ -223,7 +223,7 @@ void io::backup(size_t index, u128 uid)
         return;
     }
 
-    std::string suggestion = DateTime::dateTimeStr() + " " + StringUtils::removeNotAscii(StringUtils::removeAccents(Account::username(title.userId())));
+    std::string suggestion = DateTime::dateTimeStr() + " " + (StringUtils::containsInvalidChar(Account::username(title.userId())) ? "" : StringUtils::removeNotAscii(StringUtils::removeAccents(Account::username(title.userId()))));
     std::string customPath;
 
     if (Gui::multipleSelectionEnabled())
