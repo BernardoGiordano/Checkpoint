@@ -59,7 +59,7 @@ CFLAGS	:=	-g -Wall -O3 -ffunction-sections \
 			-DVERSION_MICRO=${VERSION_MICRO} \
 			`freetype-config --cflags`
 
-CFLAGS	+=	$(INCLUDE) -D__SWITCH__
+CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D_GNU_SOURCE=1
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 

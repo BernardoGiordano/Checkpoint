@@ -25,6 +25,7 @@
 */
 
 #include "common.hpp"
+#include <stdio.h>
 
 std::string DateTime::timeStr(void)
 {
@@ -68,6 +69,15 @@ std::string StringUtils::removeForbiddenCharacters(std::string src)
 // https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
 std::string StringUtils::format(const std::string fmt_str, ...)
 {
+#if __GNU_VISIBLE
+    va_list ap;
+    char *fp = NULL;
+    va_start(ap, fmt_str);
+    vasprintf(&fp, fmt_str.c_str(), ap);
+    va_end(ap);
+    std::unique_ptr<char[]> formatted(fp);
+    return std::string(formatted.get());
+#else
     int final_n, n = ((int)fmt_str.size()) * 2; /* Reserve two times as much as the length of the fmt_str */
     std::unique_ptr<char[]> formatted;
     va_list ap;
@@ -84,6 +94,7 @@ std::string StringUtils::format(const std::string fmt_str, ...)
             break;
     }
     return std::string(formatted.get());
+#endif
 }
 
 std::string StringUtils::sizeString(double size)
