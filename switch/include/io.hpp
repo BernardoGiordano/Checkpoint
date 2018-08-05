@@ -32,6 +32,7 @@
 #include <switch.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <utility>
 #include "directory.hpp"
 #include "gui.hpp"
 #include "KeyboardManager.hpp"

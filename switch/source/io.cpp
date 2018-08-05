@@ -232,7 +232,23 @@ void io::backup(size_t index, u128 uid)
     }
     else
     {
-        customPath = isNewFolder ? StringUtils::removeForbiddenCharacters(KeyboardManager::get().keyboard(suggestion)) : "";
+        if (isNewFolder)
+        {
+            std::pair<bool, std::string> keyboardResponse = KeyboardManager::get().keyboard(suggestion);
+            if (keyboardResponse.first)
+            {
+                customPath = StringUtils::removeForbiddenCharacters(keyboardResponse.second);
+            }
+            else
+            {
+                FileSystem::unmount();
+                return;
+            }
+        }
+        else
+        {
+            customPath = "";
+        }
     }
     
     std::string dstPath;

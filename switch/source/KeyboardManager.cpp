@@ -282,7 +282,7 @@ bool KeyboardManager::logic(std::string& str, size_t i)
     return false;
 }
 
-std::string KeyboardManager::keyboard(const std::string& suggestion)
+std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& suggestion)
 {
     size_t index;
     std::string str;
@@ -308,7 +308,7 @@ std::string KeyboardManager::keyboard(const std::string& suggestion)
             bool ret = logic(str, index);
             if (ret)
             {
-                return str.empty() ? suggestion : str;
+                return str.empty() ? std::make_pair(true, suggestion) : std::make_pair(true, str);
             }
         }
 
@@ -339,7 +339,7 @@ std::string KeyboardManager::keyboard(const std::string& suggestion)
                 bool ret = logic(str, i);
                 if (ret)
                 {
-                    return str.empty() ? suggestion : str;
+                    return str.empty() ? std::make_pair(true, suggestion) : std::make_pair(true, str);
                 }
             }
 
@@ -361,5 +361,5 @@ std::string KeyboardManager::keyboard(const std::string& suggestion)
         gfxWaitForVsync();
     }
 
-    return suggestion;
+    return std::make_pair(false, suggestion);
 }

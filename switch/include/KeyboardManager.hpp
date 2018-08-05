@@ -30,6 +30,7 @@
 #include <locale>
 #include <string>
 #include <switch.h>
+#include <utility>
 #include <vector>
 #include "clickable.hpp"
 #include "draw.hpp"
@@ -90,7 +91,7 @@ public:
     KeyboardManager(KeyboardManager const&) = delete;
     void operator=(KeyboardManager const&) = delete;
 
-    std::string keyboard(const std::string& suggestion);
+    std::pair<bool, std::string> keyboard(const std::string& suggestion);
 
     static const size_t CUSTOM_PATH_LEN = 49;
 
