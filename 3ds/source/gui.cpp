@@ -349,8 +349,11 @@ void Gui::updateSelector(void)
 {
     if (!bottomScrollEnabled)
     {
-        hid->update(getTitleCount());
-        directoryList->resetIndex();
+        if (getTitleCount() > 0)
+        {
+            hid->update(getTitleCount());
+            directoryList->resetIndex();           
+        }
     }
     else
     {
