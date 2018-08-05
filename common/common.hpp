@@ -28,6 +28,7 @@
 #define COMMON_HPP
 
 #include <codecvt>
+#include <cstdio>
 #include <locale>
 #include <memory>
 #include <stdarg.h>
