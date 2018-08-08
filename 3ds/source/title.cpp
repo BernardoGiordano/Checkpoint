@@ -146,6 +146,8 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         std::copy(headerData + 12, headerData + 16, _gameCode);
         _cardTitle[13] = '\0';
         _gameCode[5] = '\0';
+
+        fprintf(stderr, "Card title: %s, game code: %s\n", _cardTitle, _gameCode);
         
         res = SPIGetCardType(&mCardType, (_gameCode[0] == 'I') ? 1 : 0);
         if (R_FAILED(res))

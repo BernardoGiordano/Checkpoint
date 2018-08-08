@@ -46,6 +46,7 @@
 #define SPI_HPP
 
 #include <3ds.h>
+#include <cstdio>
 #include <cstring>
 
 extern "C" {

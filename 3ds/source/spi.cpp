@@ -380,6 +380,7 @@ Result SPIGetCardType(CardType* type, int infrared)
     while (tries < maxTries)
     { 
         res = SPIReadJEDECIDAndStatusReg(t, &jedec, &sr); // dummy
+        fprintf(stderr, "SPIReadJEDECIDAndStatusReg: %016lX\n", res);
         if (res) return res;
         
         if ((sr & 0xfd) == 0x00 && (jedec != 0x00ffffff)) { break; }		
@@ -390,21 +391,22 @@ Result SPIGetCardType(CardType* type, int infrared)
         t = FLASH_INFRARED_DUMMY;
     } 
     
-    if (t == EEPROM_512B) { *type = t; return 0; }
+    if (t == EEPROM_512B) { fprintf(stderr, "Type is EEPROM_512B: %d\n", t); *type = t; return 0; }
     else if (t == EEPROM_STD_DUMMY)
     {
         bool mirrored = false;
-        
-        if ( (res = _SPIIsDataMirrored(t, 8192, &mirrored)) ) return res;
+        fprintf(stderr, "Type is EEPROM_STD_DUMMY: %d\n", t);
+        if ( (res = _SPIIsDataMirrored(t, 8192, &mirrored)) ) { fprintf(stderr, "SPIISDATAMIRRORED 8192 FAILED: %d\n", t); return res; }
         if (mirrored) t = EEPROM_8KB;
         else
         {
-            if ( (res = _SPIIsDataMirrored(t, 65536, &mirrored)) ) return res;
+            if ( (res = _SPIIsDataMirrored(t, 65536, &mirrored)) ) { fprintf(stderr, "SPIISDATAMIRRORED 65536 FAILED: %d\n", t); return res; }
             if (mirrored) t = EEPROM_64KB;
             else t = EEPROM_128KB;
         }
         
         *type = t;
+        fprintf(stderr, "Type: %d\n", t);
         return 0;
     }
     else if (t == FLASH_INFRARED_DUMMY)
