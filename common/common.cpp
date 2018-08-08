@@ -65,32 +65,14 @@ std::string StringUtils::removeForbiddenCharacters(std::string src)
     return src;
 }
 
-// https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
 std::string StringUtils::format(const std::string fmt_str, ...)
 {
     va_list ap;
-#if __GNU_VISIBLE
     char *fp = NULL;
     va_start(ap, fmt_str);
     vasprintf(&fp, fmt_str.c_str(), ap);
     va_end(ap);
     std::unique_ptr<char[]> formatted(fp);
-#else
-    int final_n, n = ((int)fmt_str.size()) * 2; /* Reserve two times as much as the length of the fmt_str */
-    std::unique_ptr<char[]> formatted;
-    while(1)
-    {
-        formatted.reset(new char[n]); /* Wrap the plain char array into the unique_ptr */
-        strcpy(&formatted[0], fmt_str.c_str());
-        va_start(ap, fmt_str);
-        final_n = vsnprintf(&formatted[0], n, fmt_str.c_str(), ap);
-        va_end(ap);
-        if (final_n < 0 || final_n >= n)
-            n += abs(final_n - n + 1);
-        else
-            break;
-    }
-#endif
     return std::string(formatted.get());
 }
 
