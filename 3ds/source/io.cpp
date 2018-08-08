@@ -230,11 +230,8 @@ void io::backup(size_t index)
     else
     {
         CardType cardType = title.SPICardType();
-        fprintf(stderr, "CardType: %u\n", cardType);
         u32 saveSize = SPIGetCapacity(cardType);
         u32 sectorSize = (saveSize < 0x10000) ? saveSize : 0x10000;
-
-        fprintf(stderr, "Savesize: %lu, sectorSize: %lu\n", saveSize, sectorSize);
         
         std::string suggestion = DateTime::dateTimeStr();
         
@@ -285,7 +282,6 @@ void io::backup(size_t index)
             res = SPIReadSaveData(cardType, sectorSize*i, saveFile + sectorSize*i, sectorSize);
             if (R_FAILED(res))
             {
-                fprintf(stderr, "Failed at iteration %lu\n", i);
                 break;
             }
             Gui::drawCopy(StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav"), sectorSize*(i+1), saveSize);
@@ -401,8 +397,6 @@ void io::restore(size_t index)
         u32 saveSize = SPIGetCapacity(cardType);
         u32 pageSize = SPIGetPageSize(cardType);
 
-        fprintf(stderr, "Savesize: %lu, pageSize: %lu\n", saveSize, pageSize);
-
         std::u16string srcPath = title.fullSavePath(cellIndex);
         srcPath += StringUtils::UTF8toUTF16("/") + StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
 
@@ -412,7 +406,6 @@ void io::restore(size_t index)
         if (stream.good())
         {
             stream.read(saveFile, saveSize);
-            fprintf(stderr, "Stream is good\n");
         }
         res = stream.result();
         stream.close();
