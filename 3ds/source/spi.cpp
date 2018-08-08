@@ -378,8 +378,11 @@ Result SPIGetCardType(CardType* type, int infrared)
     
     u32 maxTries = (infrared == -1) ? 2 : 1; // note: infrared = -1 fails 1/3 of the time
     while (tries < maxTries)
-    { 
+    {
         res = SPIReadJEDECIDAndStatusReg(t, &jedec, &sr); // dummy
+        //fprintf(stderr, "JEDEC: 0x%016lX\n", jedec);
+        //fprintf(stderr, "SPIReadJEDECIDAndStatusReg: %016lX\n", res);
+        //fprintf(stderr, "CardType (While inside maxTries loop): %016lX\n", t);
         if (res) return res;
         
         if ((sr & 0xfd) == 0x00 && (jedec != 0x00ffffff)) { break; }		
@@ -388,44 +391,60 @@ Result SPIGetCardType(CardType* type, int infrared)
         
         ++tries;
         t = FLASH_INFRARED_DUMMY;
-    } 
+    }
+
+    //fprintf(stderr, "CardType (after the maxTries loop): %016lX\n", t);
     
-    if (t == EEPROM_512B) { *type = t; return 0; }
+    if (t == EEPROM_512B)
+    {
+        //fprintf(stderr, "Type is EEPROM_512B: %d\n", t); 
+        *type = t;
+        return 0;
+    }
     else if (t == EEPROM_STD_DUMMY)
     {
         bool mirrored = false;
-        
-        if ( (res = _SPIIsDataMirrored(t, 8192, &mirrored)) ) return res;
+        if ((res = _SPIIsDataMirrored(t, 8192, &mirrored))) { return res; }
         if (mirrored) t = EEPROM_8KB;
         else
         {
-            if ( (res = _SPIIsDataMirrored(t, 65536, &mirrored)) ) return res;
+            if ((res = _SPIIsDataMirrored(t, 65536, &mirrored))) { return res; }
             if (mirrored) t = EEPROM_64KB;
             else t = EEPROM_128KB;
         }
         
         *type = t;
+        //fprintf(stderr, "Type: %d\n", t);
         return 0;
     }
     else if (t == FLASH_INFRARED_DUMMY)
     {
         if (infrared == 0) *type = NO_CHIP; // did anything go wrong?
-        
         if (jedec == jedecOrderedList[0] || jedec == jedecOrderedList[1]) *type = FLASH_256KB_INFRARED;
         else *type = FLASH_512KB_INFRARED;
-        
         return 0;
     }
     else
     {
-        if (infrared == 1) *type = NO_CHIP; // did anything go wrong?
+        if (infrared == 1)
+        {
+            *type = NO_CHIP; // did anything go wrong?
+            //fprintf(stderr, "infrared is 1, *type = NO_CHIP\n");
+        }
         if (jedec == 0x204017) { *type = FLASH_8MB; return 0; } // 8MB. savegame-manager: which one? (more work is required to unlock this save chip!)
+        if (jedec == 0x208013) { *type = FLASH_512KB_1; return 0; }
 
         for (int i = 0; i < 6; ++i)
         {
-            if(jedec == jedecOrderedList[i]) { *type = (CardType)((int) FLASH_256KB_1 + i); return 0; }  
+            if(jedec == jedecOrderedList[i])
+            {
+                *type = (CardType)((int) FLASH_256KB_1 + i);
+                //fprintf(stderr, "Found a jedec equal to one in the ordered list. Type: %016lX", *type);
+                return 0;
+            }  
         }
-        
+
+        //fprintf(stderr, "*type = NO_CHIP\n");
         *type = NO_CHIP;
         return 0;
     }
