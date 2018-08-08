@@ -432,7 +432,7 @@ Result SPIGetCardType(CardType* type, int infrared)
         }
         fprintf(stderr, "So because you're seeing this message, the loop that checked if jedec was equal to jedecORderedList[i] did not return anything\n");
         fprintf(stderr, "This means *type is set to NO_CHIP\n");
-        *type = 6;
+        *type = FLASH_512KB_1;
         return 0;
     }
 }
