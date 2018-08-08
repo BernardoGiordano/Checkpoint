@@ -423,16 +423,16 @@ Result SPIGetCardType(CardType* type, int infrared)
     else
     {
         fprintf(stderr, "We're at the final else statement inside spi.cpp\n");
-        if (infrared == 1) *type = NO_CHIP; fprintf(stderr, "infrared is 1, meaning *type = NO_CHIP\n"); // did anything go wrong?
+        if (infrared == 1) { *type = NO_CHIP; fprintf(stderr, "infrared is 1, meaning *type = NO_CHIP\n"); } // did anything go wrong? 
         if (jedec == 0x204017) { *type = FLASH_8MB; return 0; } // 8MB. savegame-manager: which one? (more work is required to unlock this save chip!)
 
         for (int i = 0; i < 6; ++i)
         {
-            if(jedec == jedecOrderedList[i]) { *type = (CardType)((int) FLASH_256KB_1 + i); fprintf(stderr, "jedec is equal to jedcOrderedList[i], so we're returnign zero here"); return 0; }  
+            if(jedec == jedecOrderedList[i]) { *type = (CardType)((int) FLASH_256KB_1 + i); fprintf(stderr, "jedec is equal to jedcOrderedList[i], so we're returnign zero here. Type: %016lX", *type); return 0; }  
         }
-         fprintf(stderr, "So because you're seeing this message, the loop that checked if jedec was equal to jedecORderedList[i] did not return anything\n");
-          fprintf(stderr, "This means *type is set to NO_CHIP\n");
-        *type = NO_CHIP;
+        fprintf(stderr, "So because you're seeing this message, the loop that checked if jedec was equal to jedecORderedList[i] did not return anything\n");
+        fprintf(stderr, "This means *type is set to NO_CHIP\n");
+        *type = 6;
         return 0;
     }
 }
