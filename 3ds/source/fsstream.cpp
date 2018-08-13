@@ -101,7 +101,7 @@ u32 FSStream::read(void *buf, u32 sz)
     return rd;
 }
 
-u32 FSStream::write(void *buf, u32 sz)
+u32 FSStream::write(const void *buf, u32 sz)
 {
     u32 wt = 0;
     mResult = FSFILE_Write(mHandle, &wt, mOffset, buf, sz, FS_WRITE_FLUSH);
