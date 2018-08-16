@@ -1,7 +1,6 @@
 {
   "hostname": "localhost",
-  "password": "admin",
+  "password": "",
   "port": 5000,
-  "username": "root",
-  "dbname": "checkpoint"
+  "username": ""
 }
