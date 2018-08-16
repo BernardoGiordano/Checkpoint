@@ -1,13 +1,30 @@
 #!/usr/bin/env python3
-from flask import Flask, request, abort, jsonify
+from flask import Flask, request, jsonify
+from flask.logging import default_handler
+from logging.config import dictConfig
+import atexit
 import json
+import hashlib
 import mysql.connector
 import os
-import atexit
-import hashlib
 
 
 # Couple variables and constants
+dictConfig({
+    'version': 1,
+    'formatters': {'default': {
+        'format': '[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
+    }},
+    'handlers': {'wsgi': {
+        'class': 'logging.StreamHandler',
+        'stream': 'ext://flask.logging.wsgi_errors_stream',
+        'formatter': 'default'
+    }},
+    'root': {
+        'level': 'INFO',
+        'handlers': ['wsgi']
+    }
+})
 app = Flask(__name__)
 connection_params_json = "connection.json"
 dbname_default = "checkpoint"
@@ -17,36 +34,56 @@ dao = None
 # Services
 @app.route('/')
 def index():
-    return createResult("RUNNING")
+    return createAndLogResult("RUNNING")
 
 @app.route('/api/v1/saves/<int:titleId>', methods=['GET'])
 def savesById(titleId):
+    app.logger.info("Resource savesById called for Title Id: %d", titleId)
     try:
         serial = request.headers.get('Serial')
         if not serial or not titleId:
-            return createResult("INVALID_PARAMETERS")
+            return createAndLogResult("INVALID_PARAMETERS")
         result = getSavesByTitleId(titleId, sha256(serial))
     except Exception as e:
-        return createResult("INTERNAL_ERROR")
+        return createAndLogResult("INTERNAL_ERROR")
     if result is None:
-        return createResult("NOT_FOUND")
+        return createAndLogResult("NOT_FOUND")
     else:
+        createAndLogResult("OK_CONTENT")
         return jsonify(result)
 
 @app.route('/api/v1/save/<int:id>', methods=['GET'])
 def saveById(id):
+    app.logger.info("Resource saveById called for Id: %d", id)
     try:
         serial = request.headers.get('Serial')
         if not serial or not id:
-            return createResult("INVALID_PARAMETERS")
+            return createAndLogResult("INVALID_PARAMETERS")
         result = getSaveById(id, sha256(serial))
     except Exception as e:
-        return createResult("INTERNAL_ERROR")
+        return createAndLogResult("INTERNAL_ERROR")
     if result is None:
-        return createResult("NOT_FOUND")
+        return createAndLogResult("NOT_FOUND")
     else:
+        createAndLogResult("OK_CONTENT")
         return jsonify(result)
 
+@app.route('/api/v1/save/<int:id>', methods=['DELETE'])
+def deleteById(id):
+    app.logger.info("Resource deleteById called for Id: %d", id)
+    try:
+        serial = request.headers.get('Serial')
+        if not serial or not id:
+            return createAndLogResult("INVALID_PARAMETERS")
+        result = deleteSaveById(id, sha256(serial))
+    except Exception as e:
+        return createAndLogResult("INTERNAL_ERROR")
+    if result is 0:
+        return createAndLogResult("NOT_FOUND")
+    elif result is 1:
+        return createAndLogResult("OK_NO_CONTENT")
+    else:
+        return createAndLogResult("")
 
 # Database methods
 def queryForObject(query):
@@ -61,6 +98,11 @@ def queryForObject(query):
             json_data.append(dict(zip(columns, item)))
         return json_data
 
+def update(query):
+    cursor = dao.cursor()
+    cursor.execute(query)
+    return cursor.rowcount
+
 def getSavesByTitleId(titleId, serial):
     return queryForObject("""
         SELECT * FROM saves
@@ -73,6 +115,13 @@ def getSaveById(id, serial):
         SELECT * FROM saves
         WHERE id={}
         AND (serial='{}' OR private=false)
+    """.format(id, serial))
+
+def deleteSaveById(id, serial):
+    return update("""
+        DELETE FROM SAVES
+        WHERE id={}
+        AND serial='{}'
     """.format(id, serial))
 
 
@@ -95,7 +144,19 @@ def createResult(argument):
         "INTERNAL_ERROR":     {'code': 500, 'message': 'Internal server error'},
         "GENERIC_ERROR":      {'code': 500, 'message': 'Generic server error'}
     }
-    return jsonify(switcher.get(argument, lambda: {'code': 500, 'message': 'Generic server error'}))
+    value = switcher.get(argument)
+    if value is None:
+        return createResult("GENERIC_ERROR")
+    else:
+        return value
+
+def createAndLogResult(argument):
+    result = createResult(argument)
+    info(result)
+    return jsonify(result)
+
+def info(result):
+    app.logger.info("Served with result %d: %s", result['code'], result['message'])
 
 def createDatabase(hostname, username, password):
     connection = mysql.connector.connect(host=hostname, user=username, passwd=password, auth_plugin="mysql_native_password")
@@ -161,8 +222,9 @@ if __name__ == '__main__':
     atexit.register(exit_handler)
 
     # serve
+    app.logger.removeHandler(default_handler)
     app.run(
         host='0.0.0.0',
         port=port,
-        debug=True
+        debug=False
     )
