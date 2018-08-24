@@ -7,7 +7,7 @@ import json
 import hashlib
 import mysql.connector
 import os
-
+import traceback
 
 # Couple variables and constants
 dictConfig({
@@ -28,8 +28,8 @@ dictConfig({
 app = Flask(__name__)
 connection_params_json = "connection.json"
 dbname_default = "checkpoint"
+directory_default = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saves")
 dao = None
-
 
 # Services
 @app.route('/')
@@ -45,6 +45,7 @@ def savesById(titleId):
             return createAndLogResult("INVALID_PARAMETERS")
         result = getSavesByTitleId(titleId, sha256(serial))
     except Exception as e:
+        trace(e)
         return createAndLogResult("INTERNAL_ERROR")
     if result is None:
         return createAndLogResult("NOT_FOUND")
@@ -61,6 +62,7 @@ def saveById(id):
             return createAndLogResult("INVALID_PARAMETERS")
         result = getSaveById(id, sha256(serial))
     except Exception as e:
+        trace(e)
         return createAndLogResult("INTERNAL_ERROR")
     if result is None:
         return createAndLogResult("NOT_FOUND")
@@ -77,9 +79,33 @@ def deleteById(id):
             return createAndLogResult("INVALID_PARAMETERS")
         result = deleteSaveById(id, sha256(serial))
     except Exception as e:
+        trace(e)
         return createAndLogResult("INTERNAL_ERROR")
     if result is 0:
         return createAndLogResult("NOT_FOUND")
+    elif result is 1:
+        return createAndLogResult("OK_NO_CONTENT")
+    else:
+        return createAndLogResult("")
+
+@app.route('/api/v1/save', methods=['PUT'])
+def putSave():
+    app.logger.info("Resource putSave called")
+    try:
+        serial = request.headers.get('Serial')
+        metadata = json.loads(request.files.get('metadata').read())      
+        attachment = request.files.get('attachment')
+        if not serial or not metadata or not attachment:
+            return createAndLogResult("INVALID_PARAMETERS")
+        # TODO: check consistenza valori in metadata
+        # mockRequest = "{hash, private, product_code, serial, title_id, type, username}"
+        result = createSave(metadata)
+        # TODO: se result positivo, salva file su disco
+    except Exception as e:
+        trace(e)
+        return createAndLogResult("INTERNAL_ERROR")
+    if result is 0:
+        return createAndLogResult("INTERNAL_ERROR")
     elif result is 1:
         return createAndLogResult("OK_NO_CONTENT")
     else:
@@ -124,8 +150,15 @@ def deleteSaveById(id, serial):
         AND serial='{}'
     """.format(id, serial))
 
+def createSave(metadata):
+    # TODO: query
+    return 0
+
 
 # Utils
+def trace(err):
+    traceback.print_tb(err.__traceback__)
+
 def sha256(value):
     return hashlib.sha256(value.encode('utf-8')).hexdigest()
 
@@ -179,7 +212,7 @@ def createDatabase(hostname, username, password):
             product_code varchar(32),
             serial char(64) NOT NULL,
             title_id bigint,
-            type enum('3DS', 'Switch') NOT NULL,
+            type enum('DS', 3DS', 'Switch') NOT NULL,
             username varchar(255),
             PRIMARY KEY (id))
         """)
@@ -190,6 +223,11 @@ def createDatabase(hostname, username, password):
         connection.close()
 
 if __name__ == '__main__':
+    # create destination folder for the saves
+    if not os.path.exists(directory_default):
+        print("Creating save destination directory...")
+        os.makedirs(directory_default)
+
     # load connection parameters
     connection_json = json.load(open(connection_params_json, "r"))
     hostname = connection_json["hostname"]
@@ -226,5 +264,5 @@ if __name__ == '__main__':
     app.run(
         host='0.0.0.0',
         port=port,
-        debug=False
+        debug=True
     )
