@@ -9,7 +9,5 @@
 
   },
   "nand_saves": false,
-  "version_major": 3,
-  "version_minor": 4,
-  "version_micro": 0
+  "version": 1
 }

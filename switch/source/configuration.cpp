@@ -39,10 +39,7 @@ Configuration::Configuration(void)
     i >> mJson;
     i.close();
 
-    int version_major = mJson["version_major"];
-    int version_minor = mJson["version_minor"];
-    int version_micro = mJson["version_micro"];
-    if (version_major != VERSION_MAJOR || version_minor != VERSION_MINOR || version_micro != VERSION_MICRO)
+    if (mJson.find("version") == mJson.end() || mJson["version"] != CONFIG_VERSION)
     {
         store();
     }

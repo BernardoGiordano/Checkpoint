@@ -35,6 +35,8 @@
 #include "io.hpp"
 #include "util.hpp"
 
+#define CONFIG_VERSION 1
+
 class Configuration
 {
 public:
