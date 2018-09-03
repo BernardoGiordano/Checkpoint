@@ -37,7 +37,7 @@ APP_AUTHOR		:=	Bernardo Giordano
 
 VERSION_MAJOR := 3
 VERSION_MINOR := 4
-VERSION_MICRO := 1
+VERSION_MICRO := 2
 
 TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out
