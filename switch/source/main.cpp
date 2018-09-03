@@ -38,11 +38,7 @@ int main(int argc, char** argv)
         return res;
     }
 
-    res = Threads::create((ThreadFunc)loadTitles);
-    if (R_FAILED(res))
-    {
-        Gui::createError(res, "Failed to create thread.");
-    }
+    loadTitles();
 
     int selectionTimer = 0;
     while(appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_PLUS))
@@ -120,7 +116,7 @@ int main(int argc, char** argv)
                     Title title;
                     getTitle(title, g_currentUId, Gui::index(TITLES));
                     std::string path = title.fullPath(index);
-                    io::deleteFolderRecursively(path.c_str());
+                    io::deleteFolderRecursively((path + "/").c_str());
                     refreshDirectories(title.id());
                     Gui::index(CELLS, index - 1);              
                 }
@@ -185,7 +181,6 @@ int main(int argc, char** argv)
         Gui::draw(g_currentUId);
     }
 
-    Threads::destroy();
     servicesExit();
     return 0;
 }
