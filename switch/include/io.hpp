@@ -27,8 +27,8 @@
 #ifndef IO_HPP
 #define IO_HPP
 
-#include <cstdio>
 #include <dirent.h>
+#include <fstream>
 #include <switch.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -37,7 +37,7 @@
 #include "gui.hpp"
 #include "KeyboardManager.hpp"
 
-#define BUFFER_SIZE 0x50000
+#define BUFFER_SIZE 0x80000
 
 namespace io
 {
@@ -47,7 +47,7 @@ namespace io
     Result copyDirectory(const std::string& srcPath, const std::string& dstPath);
     void   copyFile(const std::string& srcPath, const std::string& dstPath);
     Result createDirectory(const std::string& path);
-    int    deleteFolderRecursively(const char* path);
+    Result deleteFolderRecursively(const std::string& path);
     bool   directoryExists(const std::string& path);
     bool   fileExists(const std::string& path);
 }

@@ -34,33 +34,31 @@ bool io::fileExists(const std::string& path)
 
 void io::copyFile(const std::string& srcPath, const std::string& dstPath)
 {
-    FILE* src = fopen(srcPath.c_str(), "rb");
-    FILE* dst = fopen(dstPath.c_str(), "wb");
-    if (src == NULL || dst == NULL)
+    std::fstream src(srcPath, std::ios::in | std::ios::binary);
+    std::fstream dst(dstPath, std::ios::out | std::ios::binary);
+    if (!src.is_open() || !dst.is_open())
     {
         return;
     }
      
-    fseek(src, 0, SEEK_END);
-    u64 sz = ftell(src);
-    rewind(src);
+    src.seekg(0, src.end);
+    u64 sz = src.tellg();
+    src.seekg(0, src.beg);
 
-    size_t size;
-    char* buf = new char[BUFFER_SIZE];
-
+    u8* buf = new u8[BUFFER_SIZE];
     u64 offset = 0;
     size_t slashpos = srcPath.rfind("/");
     std::string name = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
-    while ((size = fread(buf, 1, BUFFER_SIZE, src)) > 0)
-    {
-        fwrite(buf, 1, size, dst);
-        offset += size;
+    while (offset < sz) {
+        src.read((char*)buf, BUFFER_SIZE);
+        dst.write((char*)buf, src.gcount());
+        offset += src.gcount();
         Gui::drawCopy(name, offset, sz);
     }
 
     delete[] buf;
-    fclose(src);
-    fclose(dst);
+    src.close();
+    dst.close();
 
     // commit each file to the save
     if (dstPath.rfind("save:/", 0) == 0)
@@ -121,69 +119,31 @@ bool io::directoryExists(const std::string& path)
 }
 
 // https://stackoverflow.com/questions/2256945/removing-a-non-empty-directory-programmatically-in-c-or-c
-int io::deleteFolderRecursively(const char* path)
+Result io::deleteFolderRecursively(const std::string& path)
 {
-    DIR *d = opendir(path);
-    size_t path_len = strlen(path);
-    int r = -1;
-
-    if (d)
+    Directory dir(path);
+    if (!dir.good())
     {
-        struct dirent *p;
+        return dir.error();
+    }
 
-        r = 0;
-        while (!r && (p=readdir(d)))
+    for (size_t i = 0, sz = dir.size(); i < sz; i++)
+    {
+        if (dir.folder(i))
         {
-            int r2 = -1;
-            char *buf;
-            size_t len;
-
-            /* Skip the names "." and ".." as we don't want to recurse on them. */
-            if (!strcmp(p->d_name, ".") || !strcmp(p->d_name, ".."))
-            {
-                continue;
-            }
-
-            len = path_len + strlen(p->d_name) + 2; 
-            buf = new char[len];
-
-            if (buf)
-            {
-                struct stat statbuf;
-
-                snprintf(buf, len, "%s/%s", path, p->d_name);
-
-                if (!stat(buf, &statbuf))
-                {
-                    if (S_ISDIR(statbuf.st_mode))
-                    {
-                        r2 = io::deleteFolderRecursively(buf);
-                    }
-                    else
-                    {
-                        r2 = unlink(buf);
-                    }
-                }
-
-                delete[] buf;
-            }
-
-            r = r2;
+            std::string newpath = path + "/" + dir.entry(i) + "/";
+            deleteFolderRecursively(newpath);
+            newpath = path + dir.entry(i);
+            rmdir(newpath.c_str());
         }
-
-        closedir(d);
+        else
+        {
+            std::string newpath = path + dir.entry(i);
+            std::remove(newpath.c_str());
+        }
     }
 
-    if (!r)
-    {
-        r = rmdir(path);
-    }
-
-    if (!r)
-    {
-        return r;
-    }
-
+    rmdir(path.c_str());
     return 0;
 }
 
@@ -264,7 +224,7 @@ void io::backup(size_t index, u128 uid)
 
     if (!isNewFolder || io::directoryExists(dstPath))
     {
-        int ret = io::deleteFolderRecursively(dstPath.c_str());
+        int ret = io::deleteFolderRecursively((dstPath + "/").c_str());
         if (ret != 0)
         {
             FileSystem::unmount();
@@ -278,7 +238,7 @@ void io::backup(size_t index, u128 uid)
     if (R_FAILED(res))
     {
         FileSystem::unmount();
-        io::deleteFolderRecursively(dstPath.c_str());
+        io::deleteFolderRecursively((dstPath + "/").c_str());
         Gui::createError(res, "Failed to backup save.");
         return;
     }
