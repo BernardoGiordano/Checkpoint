@@ -226,7 +226,7 @@ KeyboardManager::KeyboardManager(void)
     );
     buttons.push_back(spacebar);
 
-    // set first button as selected
+    // set OK button as selected
     buttons.at(46)->selected(true);
     buttons.at(46)->invertColors();
     prevSelectedButtonIndex = 46;
