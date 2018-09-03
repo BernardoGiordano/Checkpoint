@@ -226,10 +226,10 @@ KeyboardManager::KeyboardManager(void)
     );
     buttons.push_back(spacebar);
 
-    // set first button as selected
-    buttons.at(0)->selected(true);
-    buttons.at(0)->invertColors();
-    prevSelectedButtonIndex = 0;
+    // set OK button as selected
+    buttons.at(INDEX_OK)->selected(true);
+    buttons.at(INDEX_OK)->invertColors();
+    prevSelectedButtonIndex = INDEX_OK;
 }
 
 KeyboardManager::~KeyboardManager(void)
