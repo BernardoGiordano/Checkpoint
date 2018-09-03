@@ -227,9 +227,9 @@ KeyboardManager::KeyboardManager(void)
     buttons.push_back(spacebar);
 
     // set first button as selected
-    buttons.at(0)->selected(true);
-    buttons.at(0)->invertColors();
-    prevSelectedButtonIndex = 0;
+    buttons.at(46)->selected(true);
+    buttons.at(46)->invertColors();
+    prevSelectedButtonIndex = 46;
 }
 
 KeyboardManager::~KeyboardManager(void)
