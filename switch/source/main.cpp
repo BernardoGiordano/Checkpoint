@@ -80,8 +80,8 @@ int main(int argc, char** argv)
             }
         }
 
-        if (kdown & KEY_A ||
-            (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
+		// Handle touching the backup scrollbox
+        if ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
             (int)touch.px > 540 &&
             (int)touch.px < 1046 &&
             (int)touch.py > 462 &&
@@ -90,6 +90,32 @@ int main(int argc, char** argv)
             Gui::backupScroll(true);
             Gui::updateButtonsColor();
             Gui::entryType(CELLS);
+        }
+
+		// Handle pressing A
+		// Backup list active: Backup/Restore
+		// Backup list inactive: Activate backup list
+        if (kdown & KEY_A)
+        {
+			// If backup list is active...
+			if (Gui::backupScroll())
+			{
+				// If the "New..." entry is selected...
+				if (0 == Gui::index(CELLS))
+				{
+					io::backup(Gui::index(TITLES), g_currentUId);
+				}
+				else
+				{
+					io::restore(Gui::index(TITLES), g_currentUId);
+				}
+			}
+			else
+			{
+				Gui::backupScroll(true);
+				Gui::updateButtonsColor();
+				Gui::entryType(CELLS);
+			}
         }
         
         if (kdown & KEY_B ||
