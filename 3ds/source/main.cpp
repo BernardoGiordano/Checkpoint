@@ -29,7 +29,7 @@
 
 int main() {
     servicesInit();
-    
+
     int selectionTimer = 0;
     int refreshTimer = 0;
     Threads::create((ThreadFunc)Threads::titles);
@@ -39,21 +39,46 @@ int main() {
         hidScanInput();
         kDown = hidKeysDown();
         kHeld = hidKeysHeld();
-        
+
+        // Handle pressing A
+        // Backup list active:   Backup/Restore
+        // Backup list inactive: Activate backup list only if multiple
+        //                       selections are enabled
         if (kDown & KEY_A)
         {
-            Gui::bottomScroll(true);
-            Gui::updateButtonsColor();
+            // If backup list is active...
+            if (Gui::bottomScroll())
+            {
+                // If the "New..." entry is selected...
+                if (0 == Gui::scrollableIndex())
+                {
+                    io::backup(Gui::index());
+                }
+                else
+                {
+                    io::restore(Gui::index());
+                }
+            }
+            else
+            {
+                // Activate backup list only if multiple selections are not enabled
+                if (!Gui::multipleSelectionEnabled())
+                {
+                    Gui::bottomScroll(true);
+                    Gui::updateButtonsColor();
+                }
+            }
         }
-        
+
+
         if (kDown & KEY_B)
         {
             Gui::bottomScroll(false);
-            Gui::updateButtonsColor();
             Gui::clearSelectedEntries();
             Gui::resetScrollableIndex();
+            Gui::updateButtonsColor();
         }
-        
+
         if (kDown & KEY_X)
         {
             if (Gui::bottomScroll())
@@ -79,12 +104,18 @@ int main() {
                 Gui::resetScrollableIndex();
             }
         }
-        
+
         if (kDown & KEY_Y)
         {
+            if (Gui::bottomScroll())
+            {
+                Gui::resetScrollableIndex();
+                Gui::bottomScroll(false);
+            }
             Gui::addSelectedEntry(Gui::index());
+            Gui::updateButtonsColor(); // Do this last
         }
-        
+
         if (kHeld & KEY_Y)
         {
             selectionTimer++;
@@ -93,7 +124,7 @@ int main() {
         {
             selectionTimer = 0;
         }
-        
+
         if (selectionTimer > 90)
         {
             Gui::clearSelectedEntries();
@@ -117,12 +148,12 @@ int main() {
         {
             Gui::resetIndex();
             Gui::clearSelectedEntries();
-            Gui::resetScrollableIndex();            
+            Gui::resetScrollableIndex();
             Threads::create((ThreadFunc)Threads::titles);
             refreshTimer = 0;
         }
-        
-        if (Gui::isBackupReleased() || (Gui::bottomScroll() && kDown & KEY_L))
+
+        if (Gui::isBackupReleased() || (kDown & KEY_L))
         {
             if (Gui::multipleSelectionEnabled())
             {
@@ -133,29 +164,31 @@ int main() {
                     io::backup(list.at(i));
                 }
                 Gui::clearSelectedEntries();
+                Gui::updateButtonsColor();
             }
-            else
+            else if (Gui::bottomScroll())
             {
                 io::backup(Gui::index());
             }
         }
-        
-        if (Gui::isRestoreReleased() || (Gui::bottomScroll() && kDown & KEY_R))
+
+        if (Gui::isRestoreReleased() || (kDown & KEY_R))
         {
             if (Gui::multipleSelectionEnabled())
             {
                 Gui::clearSelectedEntries();
+                Gui::updateButtonsColor();
             }
-            else
+            else if (Gui::bottomScroll())
             {
                 io::restore(Gui::index());
             }
         }
-        
+
         Gui::updateSelector();
         Gui::draw();
     }
-    
+
     Threads::destroy();
     servicesExit();
 }
