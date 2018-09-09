@@ -80,18 +80,54 @@ int main(int argc, char** argv)
             }
         }
 
-        if (kdown & KEY_A ||
-            (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
+        // Handle touching the backup list
+        if ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
             (int)touch.px > 540 &&
             (int)touch.px < 1046 &&
             (int)touch.py > 462 &&
             (int)touch.py < 692))
         {
-            Gui::backupScroll(true);
-            Gui::updateButtonsColor();
-            Gui::entryType(CELLS);
+            // Activate backup list only if multiple selections are enabled
+            if (!Gui::multipleSelectionEnabled())
+            {
+                Gui::backupScroll(true);
+                Gui::updateButtonsColor();
+                Gui::entryType(CELLS);
+            }
         }
-        
+
+        // Handle pressing A
+        // Backup list active:   Backup/Restore
+        // Backup list inactive: Activate backup list only if multiple
+        //                         selections are enabled
+        if (kdown & KEY_A)
+        {
+            // If backup list is active...
+            if (Gui::backupScroll())
+            {
+                // If the "New..." entry is selected...
+                if (0 == Gui::index(CELLS))
+                {
+                    io::backup(Gui::index(TITLES), g_currentUId);
+                }
+                else
+                {
+                    io::restore(Gui::index(TITLES), g_currentUId);
+                }
+            }
+            else
+            {
+                // Activate backup list only if multiple selections are not enabled
+                if (!Gui::multipleSelectionEnabled())
+                {
+                    Gui::backupScroll(true);
+                    Gui::updateButtonsColor();
+                    Gui::entryType(CELLS);
+                }
+            }
+        }
+
+        // Handle pressing B
         if (kdown & KEY_B ||
             (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
             (int)touch.px > 0 &&
@@ -101,11 +137,12 @@ int main(int argc, char** argv)
         {
             Gui::index(CELLS, 0);
             Gui::backupScroll(false);
-            Gui::updateButtonsColor();
             Gui::entryType(TITLES);
             Gui::clearSelectedEntries();
+            Gui::updateButtonsColor(); // Do this last
         }
 
+         // Handle pressing X
         if (kdown & KEY_X)
         {
             if (Gui::backupScroll())
@@ -118,16 +155,28 @@ int main(int argc, char** argv)
                     std::string path = title.fullPath(index);
                     io::deleteFolderRecursively((path + "/").c_str());
                     refreshDirectories(title.id());
-                    Gui::index(CELLS, index - 1);              
+                    Gui::index(CELLS, index - 1);
                 }
             }
         }
 
-        if (kdown & KEY_Y && !(Gui::backupScroll()))
+        // Handle pressing Y
+        // Backup list active:   Deactivate backup list, select title, and
+        //                         enable backup button
+        // Backup list inactive: Select title and enable backup button
+        if (kdown & KEY_Y)
         {
+            if (Gui::backupScroll())
+            {
+                Gui::index(CELLS, 0);
+                Gui::backupScroll(false);
+            }
+            Gui::entryType(TITLES);
             Gui::addSelectedEntry(Gui::index(TITLES));
+            Gui::updateButtonsColor(); // Do this last
         }
-        
+
+        // Handle holding Y
         if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_Y && !(Gui::backupScroll()))
         {
             selectionTimer++;
@@ -136,7 +185,7 @@ int main(int argc, char** argv)
         {
             selectionTimer = 0;
         }
-        
+
         if (selectionTimer > 45)
         {
             Gui::clearSelectedEntries();
@@ -147,7 +196,8 @@ int main(int argc, char** argv)
             selectionTimer = 0;
         }
 
-        if (Gui::isBackupReleased() || (kdown & KEY_L && Gui::backupScroll()))
+        // Handle pressing/touching L
+        if (Gui::isBackupReleased() || (kdown & KEY_L))
         {
             if (Gui::multipleSelectionEnabled())
             {
@@ -158,20 +208,23 @@ int main(int argc, char** argv)
                     io::backup(list.at(i), g_currentUId);
                 }
                 Gui::clearSelectedEntries();
+                Gui::updateButtonsColor();
             }
-            else
+            else if (Gui::backupScroll())
             {
                 io::backup(Gui::index(TITLES), g_currentUId);
             }
         }
-        
-        if (Gui::isRestoreReleased() || (kdown & KEY_R && Gui::backupScroll()))
+
+        // Handle pressing/touching R
+        if (Gui::isRestoreReleased() || (kdown & KEY_R))
         {
             if (Gui::multipleSelectionEnabled())
             {
                 Gui::clearSelectedEntries();
+                Gui::updateButtonsColor();
             }
-            else
+            else if (Gui::backupScroll())
             {
                 io::restore(Gui::index(TITLES), g_currentUId);
             }

@@ -423,12 +423,12 @@ void Gui::draw(u128 uid)
 
 bool Gui::isBackupReleased(void)
 {
-    return buttonBackup->released() && backupScrollEnabled;
+    return buttonBackup->released();
 }
 
 bool Gui::isRestoreReleased(void)
 {
-    return buttonRestore->released() && backupScrollEnabled;
+    return buttonRestore->released();
 }
 
 bool Gui::backupScroll(void)
@@ -443,7 +443,12 @@ void Gui::backupScroll(bool enable)
 
 void Gui::updateButtonsColor(void)
 {
-    if (backupScrollEnabled)
+    if (Gui::multipleSelectionEnabled())
+    {
+        buttonBackup->setColors(COLOR_WHITE, COLOR_BLACK);
+        buttonRestore->setColors(COLOR_WHITE, COLOR_GREY_LIGHT);
+    }
+    else if (backupScrollEnabled)
     {
         buttonBackup->setColors(COLOR_WHITE, COLOR_BLACK);
         buttonRestore->setColors(COLOR_WHITE, COLOR_BLACK);
@@ -451,7 +456,7 @@ void Gui::updateButtonsColor(void)
     else
     {
         buttonBackup->setColors(COLOR_WHITE, COLOR_GREY_LIGHT);
-        buttonRestore->setColors(COLOR_WHITE, COLOR_GREY_LIGHT);		
+        buttonRestore->setColors(COLOR_WHITE, COLOR_GREY_LIGHT);
     }
 }
 
