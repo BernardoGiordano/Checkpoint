@@ -70,7 +70,6 @@ int main() {
             }
         }
 
-
         if (kDown & KEY_B)
         {
             Gui::bottomScroll(false);
