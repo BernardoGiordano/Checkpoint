@@ -32,7 +32,7 @@ static C3D_RenderTarget* bottom;
 
 static C2D_SpriteSheet spritesheet;
 static C2D_Image flag;
-static C2D_Sprite checkbox;
+static C2D_Sprite checkbox, star;
 static C2D_ImageTint checkboxTint;
 
 static C2D_TextBuf staticBuf, dynamicBuf;
@@ -275,6 +275,8 @@ void Gui::init(void)
     C2D_SpriteFromSheet(&checkbox, spritesheet, sprites_checkbox_idx);
     C2D_SpriteSetDepth(&checkbox, 0.6f);
     C2D_PlainImageTint(&checkboxTint, C2D_Color32(88, 88, 88, 255), 1.0f);
+    C2D_SpriteFromSheet(&star, spritesheet, sprites_star_idx);
+    C2D_SpriteSetDepth(&star, 0.6f);
 
     char ver[10];
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
@@ -424,6 +426,13 @@ void Gui::draw(void)
             C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 31, 0.5f, 16, 16, COLOR_WHITE);
             C2D_SpriteSetPos(&checkbox, selectorX(k) + 27, selectorY(k) + 27);
             C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
+        }
+
+        if (favorite(k))
+        {
+            C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 3, 0.5f, 16, 16, COLOR_GOLD);
+            C2D_SpriteSetPos(&star, selectorX(k) + 27, selectorY(k) - 1);
+            C2D_DrawSpriteTinted(&star, &checkboxTint);
         }
     }
 

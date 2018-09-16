@@ -9,6 +9,7 @@
 #define COLOR_BLUE C2D_Color32(0, 0, 255, 255)
 #define COLOR_SELECTOR C2D_Color32(29, 50, 253, 255)
 #define COLOR_RED C2D_Color32(255, 0, 0, 255)
+#define COLOR_GOLD C2D_Color32(255, 215, 0, 255)
 
 #define COLOR_GREY_DARKER C2D_Color32(70, 70, 70, 255)
 #define COLOR_GREY_DARK C2D_Color32(79, 79, 79, 255)
