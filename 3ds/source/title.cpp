@@ -568,11 +568,13 @@ void loadTitles(bool forceRefresh)
         }
         
         std::sort(titleSaves.begin(), titleSaves.end(), [](Title& l, Title& r) {
-            return l.shortDescription() < r.shortDescription();
+            return l.shortDescription() < r.shortDescription() &&
+                Configuration::getInstance().favorite(l.id()) > Configuration::getInstance().favorite(r.id());
         });
         
         std::sort(titleExtdatas.begin(), titleExtdatas.end(), [](Title& l, Title& r) {
-            return l.shortDescription() < r.shortDescription();
+            return l.shortDescription() < r.shortDescription() &&
+                Configuration::getInstance().favorite(l.id()) > Configuration::getInstance().favorite(r.id());
         });
         
         FS_CardType cardType;
@@ -643,6 +645,13 @@ C2D_Image icon(int i)
 {
     const Mode_t mode = Archive::mode();
     return mode == MODE_SAVE ? titleSaves.at(i).icon() : titleExtdatas.at(i).icon();
+}
+
+bool favorite(int i)
+{
+    const Mode_t mode = Archive::mode();
+    u64 id = mode == MODE_SAVE ? titleSaves.at(i).id() : titleExtdatas.at(i).id();
+    return Configuration::getInstance().favorite(id);
 }
 
 static C2D_Image loadTextureByBytes(u16* bigIconData)

@@ -51,6 +51,13 @@ Configuration::Configuration(void)
         mFilterIds.emplace(strtoull(id.c_str(), NULL, 16));
     }
 
+    // parse favorites
+    std::vector<std::string> favorites = mJson["favorites"];
+    for (auto& id : favorites)
+    {
+        mFavoriteIds.emplace(strtoull(id.c_str(), NULL, 16));
+    }
+
     // parse nand saves
     mNandSaves = mJson["nand_saves"];
 
@@ -93,6 +100,11 @@ void Configuration::store(void)
 bool Configuration::filter(u64 id)
 {
     return mFilterIds.find(id) != mFilterIds.end();
+}
+
+bool Configuration::favorite(u64 id)
+{
+    return mFavoriteIds.find(id) != mFavoriteIds.end();
 }
 
 bool Configuration::nandSaves(void)

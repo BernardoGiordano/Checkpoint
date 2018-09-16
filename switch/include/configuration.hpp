@@ -35,7 +35,7 @@
 #include "io.hpp"
 #include "util.hpp"
 
-#define CONFIG_VERSION 1
+#define CONFIG_VERSION 2
 
 class Configuration
 {
@@ -47,6 +47,7 @@ public:
     }
 
     bool filter(u64 id);
+    bool favorite(u64 id);
     std::vector<std::string> additionalSaveFolders(u64 id);
 
 private:
@@ -59,7 +60,7 @@ private:
     void operator=(Configuration const&) = delete;
 
     nlohmann::json mJson;
-    std::unordered_set<u64> mFilterIds;
+    std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders;
     std::string BASEPATH = "/switch/Checkpoint/config.json";
 };

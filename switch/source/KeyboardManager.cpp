@@ -358,7 +358,6 @@ std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& sugges
 
         gfxFlushBuffers();
         gfxSwapBuffers();
-        gfxWaitForVsync();
     }
 
     return std::make_pair(false, suggestion);

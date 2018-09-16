@@ -51,6 +51,13 @@ Configuration::Configuration(void)
         mFilterIds.emplace(strtoull(id.c_str(), NULL, 16));
     }
 
+    // parse favorites
+    std::vector<std::string> favorites = mJson["favorites"];
+    for (auto& id : favorites)
+    {
+        mFavoriteIds.emplace(strtoull(id.c_str(), NULL, 16));
+    }
+
     // parse additional save folders
     auto js = mJson["additional_save_folders"];
     for (auto it = js.begin(); it != js.end(); ++it)
@@ -77,6 +84,11 @@ void Configuration::store(void)
 bool Configuration::filter(u64 id)
 {
     return mFilterIds.find(id) != mFilterIds.end();
+}
+
+bool Configuration::favorite(u64 id)
+{
+    return mFavoriteIds.find(id) != mFavoriteIds.end();
 }
 
 std::vector<std::string> Configuration::additionalSaveFolders(u64 id)

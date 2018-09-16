@@ -62,6 +62,8 @@ void servicesInit(void)
     Gui::init();
 
     //consoleDebugInit(debugDevice_SVC);
+
+    Configuration::getInstance();
 }
 
 void calculateTitleDBHash(u8* hash)

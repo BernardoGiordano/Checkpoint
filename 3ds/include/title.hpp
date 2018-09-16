@@ -106,6 +106,7 @@ private:
 void      getTitle(Title &dst, int i);
 int       getTitleCount(void);
 C2D_Image icon(int i);
+bool      favorite(int i);
 
 void      loadFilter(void);
 void      loadTitles(bool forceRefresh);

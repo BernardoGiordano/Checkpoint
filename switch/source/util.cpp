@@ -78,6 +78,8 @@ Result servicesInit(void)
     //     nxlinkStdio();
     // }
 
+    Configuration::getInstance();
+
     return 0;
 }
 

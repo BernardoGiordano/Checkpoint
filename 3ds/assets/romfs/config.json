@@ -2,6 +2,9 @@
   "filter": [
 
   ],
+  "favorites": [
+
+  ],
   "additional_save_folders": {
 
   },
@@ -9,5 +12,5 @@
 
   },
   "nand_saves": false,
-  "version": 1
+  "version": 2
 }

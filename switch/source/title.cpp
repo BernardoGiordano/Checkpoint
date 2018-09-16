@@ -282,7 +282,8 @@ void loadTitles(void)
     for (auto& vect : titles)
     {
         std::sort(vect.second.begin(), vect.second.end(), [](Title& l, Title& r) {
-            return l.name() < r.name();
+            return l.name() < r.name() &&
+                Configuration::getInstance().favorite(l.id()) > Configuration::getInstance().favorite(r.id());
         });
     }
 }
@@ -300,6 +301,12 @@ size_t getTitleCount(u128 uid)
 {
     std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
     return it != titles.end() ? it->second.size() : 0;
+}
+
+bool favorite(u128 uid, int i)
+{
+    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+    return it != titles.end() ? Configuration::getInstance().favorite(it->second.at(i).id()) : false;
 }
 
 void refreshDirectories(u64 id)

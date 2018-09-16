@@ -83,6 +83,7 @@ size_t getTitleCount(u128 uid);
 void   loadTitles(void);
 void   refreshDirectories(u64 id);
 u8*    smallIcon(u128 id, size_t i);
+bool   favorite(u128 uid, int i);
 void   freeIcons(void);
 
 #endif
