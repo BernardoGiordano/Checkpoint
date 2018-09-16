@@ -45,6 +45,7 @@
 
 #include "checkbox_bin.h"
 #include "flag_bin.h"
+#include "star_bin.h"
 
 namespace Gui
 {

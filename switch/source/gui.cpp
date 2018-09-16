@@ -328,6 +328,12 @@ void Gui::draw(u128 uid)
         {
             DrawImage(selectorx + 86, selectory + 86, 40, 40, checkbox_bin, IMAGE_MODE_RGBA32); 
         }
+
+        if (favorite(g_currentUId, k))
+        {
+            rectangle(selectorx + 94, selectory + 8, 24, 24, COLOR_GOLD);
+            DrawImage(selectorx + 86, selectory, 40, 40, star_bin, IMAGE_MODE_RGBA32);
+        }
     }
 
     // title selector
