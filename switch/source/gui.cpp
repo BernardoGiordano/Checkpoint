@@ -202,7 +202,6 @@ void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
 
     gfxFlushBuffers();
     gfxSwapBuffers();
-    gfxWaitForVsync();
 }
 
 bool Gui::askForConfirmation(const std::string& text)
@@ -232,7 +231,6 @@ bool Gui::askForConfirmation(const std::string& text)
 
         gfxFlushBuffers();
         gfxSwapBuffers();
-        gfxWaitForVsync();
     }
     
     delete message;
@@ -418,7 +416,6 @@ void Gui::draw(u128 uid)
     
     gfxFlushBuffers();
     gfxSwapBuffers();
-    gfxWaitForVsync();
 }
 
 bool Gui::isBackupReleased(void)
