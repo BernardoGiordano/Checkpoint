@@ -78,19 +78,19 @@ Here's an example:
 
 Checkpoint displays error codes when something weird happens or operations fail. If you have any issues, please ensure they haven't already been addressed, and report the error code and a summary of your operations to reproduce it.
 
-Additionally, you can receive real-time support by joining PKSM's discord server.
+Additionally, you can receive real-time support by joining FlagBrew's discord server.
 
 [![Discord](https://discordapp.com/api/guilds/278222834633801728/widget.png?style=banner3&time-)](https://discord.gg/bGKEyfY)
 
 ## Building
 
-Checkpoint for 3DS relies on [latest libctru](https://github.com/smealum/ctrulib), [latest citro3d](https://github.com/fincs/citro3d) and [latest citro2d](https://github.com/devkitPro/citro2d).
+Checkpoint for 3DS relies on latest [libctru](https://github.com/smealum/ctrulib), latest [citro3d](https://github.com/fincs/citro3d) and latest [citro2d](https://github.com/devkitPro/citro2d).
 
-Checkpoint for Switch relies on [latest libnx](https://github.com/switchbrew/libnx) and switch-freetype, available from [dkp-pacman](https://github.com/devkitPro/pacman/releases).
+Checkpoint for Switch relies on latest [libnx](https://github.com/switchbrew/libnx) and switch-freetype, available from [dkp-pacman](https://github.com/devkitPro/pacman/releases).
 
 ## License
 
-This project is licensed under the GNU GPLv3. Additional Terms 7.b and 7.c of GPLv3 apply to this. See [LICENSE.md](https://github.com/BernardoGiordano/Checkpoint/blob/master/LICENSE) for details.
+This project is licensed under the GNU GPLv3. Additional Terms 7.b and 7.c of GPLv3 apply to this. See [LICENSE.md](https://github.com/FlagBrew/Checkpoint/blob/master/LICENSE) for details.
 
 ## Credits
 
@@ -98,11 +98,13 @@ Even though this is the result of independent research and work, Checkpoint for 
 
 TuxSH for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which SPI code has been taken.
 
+WinterMute and [devkitPro](https://devkitpro.org/) contributors for devkitARM, devkitA64 and [dkp-pacman](https://github.com/devkitPro/pacman/releases).
+
 All the maintainers for [nx-hbmenu](https://github.com/switchbrew/nx-hbmenu), for all the Switch rendering functions.
 
 Yellows8 and all the mantainers for [switch-examples](https://github.com/switchbrew/switch-examples).
 
-[rakujira](https://twitter.com/rakujira) for the awesome Checkpoint icons he provided!
+[rakujira](https://twitter.com/rakujira) for the awesome Checkpoint logos!
 
 Hikari-chin and all the other testers for their help with testing.
 
