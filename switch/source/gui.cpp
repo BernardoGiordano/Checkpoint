@@ -207,8 +207,8 @@ void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
 bool Gui::askForConfirmation(const std::string& text)
 {
     bool ret = false;
-    Clickable* buttonYes = new Clickable(293, 540, 200, 80, COLOR_WHITE, COLOR_BLACK, "Yes (A)", true);
-    Clickable* buttonNo = new Clickable(786, 540, 200, 80, COLOR_WHITE, COLOR_BLACK, "No (B)", true);
+    Clickable* buttonYes = new Clickable(293, 540, 200, 80, COLOR_WHITE, COLOR_BLACK, "Yes \uE000", true);
+    Clickable* buttonNo = new Clickable(786, 540, 200, 80, COLOR_WHITE, COLOR_BLACK, "No \uE001", true);
     MessageBox* message = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);
     message->push_message(text);
     
@@ -248,19 +248,19 @@ void Gui::init(void)
     info->init("", "", 0, TYPE_INFO);
     hid = new Hid(rowlen * collen, collen);
     backupList = new Scrollable(540, 462, 506, 222, cols);
-    buttonBackup = new Clickable(1050, 462, 220, 109, COLOR_WHITE, COLOR_GREY_LIGHT, "Backup [L]", true);
-    buttonRestore = new Clickable(1050, 575, 220, 109, COLOR_WHITE, COLOR_GREY_LIGHT, "Restore [R]", true);
+    buttonBackup = new Clickable(1050, 462, 220, 109, COLOR_WHITE, COLOR_GREY_LIGHT, "Backup \uE004", true);
+    buttonRestore = new Clickable(1050, 575, 220, 109, COLOR_WHITE, COLOR_GREY_LIGHT, "Restore \uE005", true);
     copyList = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);
     messageBox = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);        
-    messageBox->push_message("Press A to enter target.");
-    messageBox->push_message("Press B to exit target or deselect all titles.");
-    messageBox->push_message("Press L to backup target.");
-    messageBox->push_message("Press R to restore target.");
-    messageBox->push_message("Press X to delete a backup.");
-    messageBox->push_message("Press Y to multiselect a title.");
-    messageBox->push_message("Hold Y to multiselect all titles.");
-    messageBox->push_message("Press the arrows to move between titles.");
-    messageBox->push_message("Press ZL/ZR to switch user.");
+    messageBox->push_message("Press \uE000 to enter target.");
+    messageBox->push_message("Press \uE001 to exit target or deselect all titles.");
+    messageBox->push_message("Press \uE004 to backup target.");
+    messageBox->push_message("Press \uE005 to restore target.");
+    messageBox->push_message("Press \uE002 to delete a backup.");
+    messageBox->push_message("Press \uE003 to multiselect a title.");
+    messageBox->push_message("Hold \uE003 to multiselect all titles.");
+    messageBox->push_message("Press \uE041 to move between titles.");
+    messageBox->push_message("Press \uE085/\uE086 to switch user.");
 }
 
 void Gui::exit(void)
@@ -413,7 +413,7 @@ void Gui::draw(u128 uid)
     }
 
     u32 ins_w, ins_h;
-    const char* instructions = "Hold - to see commands. Press + to exit.";
+    const char* instructions = "Hold \uE046 to see commands. Press \uE045 to exit.";
     GetTextDimensions(5, instructions, &ins_w, &ins_h);
     DrawText(5, ceil((1280 - ins_w) / 2), 720 - bar_height + (bar_height - ins_h) / 2, COLOR_WHITE, instructions);
 
