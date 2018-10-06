@@ -36,6 +36,7 @@ void servicesExit(void)
     Gui::exit();
     fontExit();
     plExit();
+    romfsExit();
 }
 
 Result servicesInit(void)
