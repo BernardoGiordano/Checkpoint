@@ -39,7 +39,7 @@ void Scrollable::resetIndex(void)
     mHid->page(0);
 }
 
-void Scrollable::push_back(color_t color, color_t colorMessage, const std::string& message)
+void Scrollable::push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message)
 {
     static const float spacing = mh / mVisibleEntries;
     Clickable* cell = new Clickable(mx, my + (size() % mVisibleEntries)*spacing, mw, spacing, color, colorMessage, message, false);
@@ -73,5 +73,5 @@ void Scrollable::draw(void)
 
     size_t blankRows = mVisibleEntries - sz;
     size_t rowHeight = mh / mVisibleEntries;
-    rectangled(mx, my + sz * rowHeight, mw, rowHeight * blankRows, COLOR_GREY_DARKER);
+    SDL_DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, COLOR_GREY_DARKER);
 }

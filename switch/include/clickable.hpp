@@ -30,12 +30,12 @@
 #include <string>
 #include <switch.h>
 #include "iclickable.hpp"
-#include "draw.hpp"
+#include "SDLHelper.hpp"
 
-class Clickable : public IClickable<color_t>
+class Clickable : public IClickable<SDL_Color>
 {
 public:
-    Clickable(int x, int y, u16 w, u16 h, color_t colorBg, color_t colorText, const std::string& message, bool centered)
+    Clickable(int x, int y, u16 w, u16 h, SDL_Color colorBg, SDL_Color colorText, const std::string& message, bool centered)
     : IClickable(x, y, w, h, colorBg, colorText, message, centered) { }
     virtual ~Clickable(void) { };
 

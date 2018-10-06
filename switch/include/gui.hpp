@@ -33,7 +33,7 @@
 #include "account.hpp"
 #include "colors.hpp"
 #include "clickable.hpp"
-#include "draw.hpp"
+#include "SDLHelper.hpp"
 #include "info.hpp"
 #include "hid.hpp"
 #include "main.hpp"
@@ -42,10 +42,6 @@
 #include "title.hpp"
 #include "types.hpp"
 #include "util.hpp"
-
-#include "checkbox_bin.h"
-#include "flag_bin.h"
-#include "star_bin.h"
 
 namespace Gui
 {

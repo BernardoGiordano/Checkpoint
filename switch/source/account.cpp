@@ -37,7 +37,7 @@ void Account::exit(void)
 {
     for (auto& value : mUsers)
     {
-        free(value.second.icon);
+        SDL_DestroyTexture(value.second.icon);
     }
     accountExit();
 }
@@ -71,21 +71,23 @@ static User getUser(u128 id)
             (buffer = (u8*)malloc(image_size)) != NULL &&
             R_SUCCEEDED(accountProfileLoadImage(&profile, buffer, image_size, &real_size)))
         {
-            njInit();
-            size_t fullsize = 256*256*3;
-            if (njDecode(buffer, real_size) == NJ_OK &&
-                njGetWidth() == 256 &&
-                njGetHeight() == 256 &&
-                (size_t)njGetImageSize() == fullsize &&
-                njIsColor() == 1)
-            {
-                u8* decoded_buffer = njGetImage();
-                user.icon = (u8*)malloc(USER_ICON_SIZE*USER_ICON_SIZE*3);
-                downscaleRGBImg(decoded_buffer, user.icon, 256, 256, USER_ICON_SIZE, USER_ICON_SIZE);
-                decoded_buffer = NULL;
-            }
+            SDL_LoadImage(&user.icon, buffer, image_size);
+
+            // njInit();
+            // size_t fullsize = 256*256*3;
+            // if (njDecode(buffer, real_size) == NJ_OK &&
+            //     njGetWidth() == 256 &&
+            //     njGetHeight() == 256 &&
+            //     (size_t)njGetImageSize() == fullsize &&
+            //     njIsColor() == 1)
+            // {
+            //     u8* decoded_buffer = njGetImage();
+            //     user.icon = (u8*)malloc(USER_ICON_SIZE*USER_ICON_SIZE*3);
+            //     downscaleRGBImg(decoded_buffer, user.icon, 256, 256, USER_ICON_SIZE, USER_ICON_SIZE);
+            //     decoded_buffer = NULL;
+            // }
             free(buffer);
-            njDone();
+            //njDone();
         }
     }
 
@@ -106,9 +108,10 @@ std::string Account::username(u128 id)
     return got->second.name;
 }
 
-u8* Account::icon(u128 id)
+SDL_Texture* Account::icon(u128 id)
 {
     std::map<u128, User>::const_iterator got = mUsers.find(id);
+    // TODO: remove the null check
     // the null check in the icon is to handle the bad memory issue that isn't yet fixed
     if (got == mUsers.end() || got->second.icon == NULL)
     {

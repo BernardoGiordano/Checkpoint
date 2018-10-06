@@ -33,16 +33,13 @@
 #include <utility>
 #include <vector>
 #include "clickable.hpp"
-#include "draw.hpp"
+#include "SDLHelper.hpp"
 #include "util.hpp"
-
-extern u8* framebuf;
-extern u32 framebuf_width;
 
 class HbkbdButton : public Clickable 
 {
 public:
-    HbkbdButton(u32 x, u32 y, u16 w, u16 h, color_t colorBg, color_t colorText, const std::string& message, bool centered)
+    HbkbdButton(u32 x, u32 y, u16 w, u16 h, SDL_Color colorBg, SDL_Color colorText, const std::string& message, bool centered)
     : Clickable(x, y, w, h, colorBg, colorText, message, centered)
     {
         mSelected = false;
@@ -59,12 +56,12 @@ public:
         // outline
         if (mSelected)
         {
-            color_t color = MakeColor(138, 138, 138, 255);
+            SDL_Color color = SDL_MakeColour(138, 138, 138, 255);
             static const size_t size = 2;
-            rectangled(mx - size, my - size, mw + 2*size, size, color); // top
-            rectangled(mx - size, my, size, mh, color); // left
-            rectangled(mx + mw, my, size, mh, color); // right
-            rectangled(mx - size, my + mh, mw + 2*size, size, color); // bottom
+            SDL_DrawRect(mx - size, my - size, mw + 2*size, size, color); // top
+            SDL_DrawRect(mx - size, my, size, mh, color); // left
+            SDL_DrawRect(mx + mw, my, size, mh, color); // right
+            SDL_DrawRect(mx - size, my + mh, mw + 2*size, size, color); // bottom
         }
     }
 

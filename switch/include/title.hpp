@@ -34,13 +34,10 @@
 #include <utility>
 #include <vector>
 #include <unordered_map>
+#include "SDLHelper.hpp"
 #include "configuration.hpp"
 #include "filesystem.hpp"
 #include "io.hpp"
-
-extern "C" {
-#include "nanojpeg.h"
-}
 
 class Title 
 {
@@ -49,8 +46,7 @@ public:
     ~Title(void) { };
 
     std::string   author(void);
-    u8*           smallIcon(void);
-    u8*           icon(void);
+    SDL_Texture*  icon(void);
     u64           id(void);
     std::string   name(void);
     std::string   path(void);
@@ -82,8 +78,8 @@ void   getTitle(Title &dst, u128 uid, size_t i);
 size_t getTitleCount(u128 uid);
 void   loadTitles(void);
 void   refreshDirectories(u64 id);
-u8*    smallIcon(u128 id, size_t i);
 bool   favorite(u128 uid, int i);
 void   freeIcons(void);
+SDL_Texture* smallIcon(u128 uid, size_t i);
 
 #endif

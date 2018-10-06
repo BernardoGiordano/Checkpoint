@@ -312,24 +312,23 @@ std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& sugges
             }
         }
 
-        framebuf = gfxGetFramebuffer(&framebuf_width, NULL);
-        memset(framebuf, 51, gfxGetFramebufferSize());
+        SDL_ClearScreen(COLOR_GREY_BG);
 
-        rectangle(marginlr, 140, 1280 - marginlr*2, 84, COLOR_GREY_MEDIUM);
-        rectangle(0, starty - margintb, 1280, 356, COLOR_GREY_DARKER);
+        SDL_DrawRect(marginlr, 140, 1280 - marginlr*2, 84, COLOR_GREY_MEDIUM);
+        SDL_DrawRect(0, starty - margintb, 1280, 356, COLOR_GREY_DARKER);
 
         u32 texth, counter_width;
         std::string counter = StringUtils::format("Custom name length: %d/%d", str.empty() ? suggestion.length() : str.length(), CUSTOM_PATH_LEN);
         GetTextDimensions(7, " ", NULL, &texth);
         GetTextDimensions(4, counter.c_str(), &counter_width, NULL);
-        DrawText(4, 1280 - marginlr - counter_width, 236, COLOR_WHITE, counter.c_str());
+        SDL_DrawText(4, 1280 - marginlr - counter_width, 236, COLOR_WHITE, counter.c_str());
         if (str.empty())
         {
-            DrawText(7, marginlr*2, 140 + (84 - texth) / 2, COLOR_GREY_LIGHT, suggestion.c_str());            
+            SDL_DrawText(7, marginlr*2, 140 + (84 - texth) / 2, COLOR_GREY_LIGHT, suggestion.c_str());            
         }
         else
         {
-            DrawText(7, marginlr*2, 140 + (84 - texth) / 2, COLOR_WHITE, str.c_str());   
+            SDL_DrawText(7, marginlr*2, 140 + (84 - texth) / 2, COLOR_WHITE, str.c_str());   
         }
 
         for (size_t i = 0, sz = buttons.size(); i < sz; i++)
@@ -356,8 +355,7 @@ std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& sugges
             buttons.at(i)->draw();
         }
 
-        gfxFlushBuffers();
-        gfxSwapBuffers();
+        SDL_Render();
     }
 
     return std::make_pair(false, suggestion);

@@ -27,14 +27,13 @@
 #include "title.hpp"
 
 static std::unordered_map<u128, std::vector<Title>> titles;
-static std::unordered_map<u64, std::pair<u8*, u8*>> icons;
+static std::unordered_map<u64, SDL_Texture*> icons;
 
 void freeIcons(void)
 {
     for (auto& i : icons)
     {
-        free(i.second.first);
-        free(i.second.second);
+        SDL_DestroyTexture(i.second);
     }
 }
 
@@ -43,39 +42,43 @@ static void loadIcon(u64 id, NsApplicationControlData* nsacd, size_t iconsize)
     auto it = icons.find(id);
     if (it == icons.end())
     {
-        uint8_t* imageptr = NULL;
-        size_t imagesize = 256*256*3;
+        SDL_Texture* texture;
+        SDL_LoadImage(&texture, nsacd->icon, iconsize);
+        icons.insert({id, texture});
+
+        // uint8_t* imageptr = NULL;
+        // size_t imagesize = 256*256*3;
         
-        njInit();
-        if (njDecode(nsacd->icon, iconsize) != NJ_OK)
-        {
-            njDone();
-            return;
-        }
+        // njInit();
+        // if (njDecode(nsacd->icon, iconsize) != NJ_OK)
+        // {
+        //     njDone();
+        //     return;
+        // }
 
-        if (njGetWidth() != 256 || njGetHeight() != 256 || (size_t)njGetImageSize() != imagesize || njIsColor() != 1)
-        {
-            njDone();
-            return;
-        }
+        // if (njGetWidth() != 256 || njGetHeight() != 256 || (size_t)njGetImageSize() != imagesize || njIsColor() != 1)
+        // {
+        //     njDone();
+        //     return;
+        // }
 
-        imageptr = njGetImage();
-        if (imageptr == NULL)
-        {
-            njDone();
-            return;   
-        }
+        // imageptr = njGetImage();
+        // if (imageptr == NULL)
+        // {
+        //     njDone();
+        //     return;   
+        // }
 
-        u8* mIcon = (u8*)malloc(imagesize);
-        std::copy(imageptr, imageptr + imagesize, mIcon);
+        // u8* mIcon = (u8*)malloc(imagesize);
+        // std::copy(imageptr, imageptr + imagesize, mIcon);
 
-        u8* mSmallIcon = (u8*)malloc(128*128*3);
-        downscaleRGBImg(mIcon, mSmallIcon, 256, 256, 128, 128);
+        // u8* mSmallIcon = (u8*)malloc(128*128*3);
+        // downscaleRGBImg(mIcon, mSmallIcon, 256, 256, 128, 128);
 
-        icons.insert({id, std::make_pair(mIcon, mSmallIcon)});
+        // icons.insert({id, std::make_pair(mIcon, mSmallIcon)});
 
-        imageptr = NULL;
-        njDone();
+        // imageptr = NULL;
+        // njDone();
     }
 }
 
@@ -148,16 +151,10 @@ std::vector<std::string> Title::saves()
     return mSaves;
 }
 
-u8* Title::icon(void)
+SDL_Texture* Title::icon(void)
 {
     auto it = icons.find(mId);
-    return it != icons.end() ? it->second.first : NULL;
-}
-
-u8* Title::smallIcon(void)
-{
-    auto it = icons.find(mId);
-    return it != icons.end() ? it->second.second : NULL;
+    return it != icons.end() ? it->second : NULL;
 }
 
 void Title::refreshDirectories(void)
@@ -323,8 +320,8 @@ void refreshDirectories(u64 id)
     }
 }
 
-u8* smallIcon(u128 uid, size_t i)
+SDL_Texture* smallIcon(u128 uid, size_t i)
 {
     std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
-    return it != titles.end() ? it->second.at(i).smallIcon() : NULL; 
+    return it != titles.end() ? it->second.at(i).icon() : NULL; 
 }
