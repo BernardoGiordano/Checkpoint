@@ -33,16 +33,15 @@
 #include <utility>
 #include <vector>
 #include "clickable.hpp"
-#include "draw.hpp"
+#include "SDLHelper.hpp"
 #include "util.hpp"
 
-extern u8* framebuf;
-extern u32 framebuf_width;
+#define DELAY_TICKS 3500000
 
 class HbkbdButton : public Clickable 
 {
 public:
-    HbkbdButton(u32 x, u32 y, u16 w, u16 h, color_t colorBg, color_t colorText, const std::string& message, bool centered)
+    HbkbdButton(u32 x, u32 y, u16 w, u16 h, SDL_Color colorBg, SDL_Color colorText, const std::string& message, bool centered)
     : Clickable(x, y, w, h, colorBg, colorText, message, centered)
     {
         mSelected = false;
@@ -59,12 +58,12 @@ public:
         // outline
         if (mSelected)
         {
-            color_t color = MakeColor(138, 138, 138, 255);
+            SDL_Color color = FC_MakeColor(138, 138, 138, 255);
             static const size_t size = 2;
-            rectangled(mx - size, my - size, mw + 2*size, size, color); // top
-            rectangled(mx - size, my, size, mh, color); // left
-            rectangled(mx + mw, my, size, mh, color); // right
-            rectangled(mx - size, my + mh, mw + 2*size, size, color); // bottom
+            SDLH_DrawRect(mx - size, my - size, mw + 2*size, size, color); // top
+            SDLH_DrawRect(mx - size, my, size, mh, color); // left
+            SDLH_DrawRect(mx + mw, my, size, mh, color); // right
+            SDLH_DrawRect(mx - size, my + mh, mw + 2*size, size, color); // bottom
         }
     }
 
@@ -109,6 +108,9 @@ private:
     const u32 margintb = 20;
     const u32 marginlr = 54;
     const u32 starty = 720 - 356 + margintb;
+
+    u64 currentTime = 0;
+    u64 lastTime = 0;
 
     const std::string letters = "1234567890@qwertyuiop+asdfghjkl_:zxcvbnm,.-/";
     std::vector<HbkbdButton*> buttons;

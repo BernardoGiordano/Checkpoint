@@ -98,6 +98,11 @@ def putSave():
         if not serial or not metadata or not attachment:
             return createAndLogResult("INVALID_PARAMETERS")
         # TODO: check consistenza valori in metadata
+        if metadata.hash and len(metadata.hash) == 32 \
+            and metadata.name \
+            and metadata.serial and len(metadata.serial) == 64 \
+            and metadata.type:
+            print(metadata.name)
         # mockRequest = "{hash, private, product_code, serial, title_id, type, username}"
         result = createSave(metadata)
         # TODO: se result positivo, salva file su disco
@@ -217,6 +222,7 @@ def createDatabase(hostname, username, password):
             PRIMARY KEY (id))
         """)
     except mysql.connector.errors.ProgrammingError as e:
+        trace(e)
         print("Couldn't setup database. Closing...")
         exit()
     finally:

@@ -58,27 +58,27 @@ void Info::draw(void)
     {
         u32 w, hres = 44, hmessage;
         u8 alpha = mTTL > 255 ? 255 : mTTL;
-        color_t color, bordercolor, bgcolor;
+        SDL_Color color, bordercolor, bgcolor;
         
         if (mType == TYPE_ERROR)
         {
-            color = MakeColor(255, 255, 255, alpha);
-            bordercolor = MakeColor(70, 70, 70, alpha);
-            bgcolor = MakeColor(79, 79, 79, alpha);
+            color = FC_MakeColor(255, 255, 255, alpha);
+            bordercolor = FC_MakeColor(70, 70, 70, alpha);
+            bgcolor = FC_MakeColor(79, 79, 79, alpha);
         }
         else if (mType == TYPE_INFO)
         {
-            color = MakeColor(255, 255, 255, alpha);
-            bordercolor = MakeColor(70, 70, 70, alpha);
-            bgcolor = MakeColor(138, 138, 138, alpha);
+            color = FC_MakeColor(255, 255, 255, alpha);
+            bordercolor = FC_MakeColor(70, 70, 70, alpha);
+            bgcolor = FC_MakeColor(138, 138, 138, alpha);
         }
 
-        GetTextDimensions(7, mTitle.c_str(), &w, &hmessage);
+        SDLH_GetTextDimensions(36, mTitle.c_str(), &w, &hmessage);
         const u32 spacing = (mh - hres - hmessage) / 3;
-        rectangle(mx - 2, my - 2, mw + 4, mh + 4, bordercolor);
-        rectangle(mx, my, mw, mh, bgcolor);
-        DrawText(7, mx + (mw - w) / 2, my + spacing, color, mTitle.c_str());
-        DrawText(4, mx + 10, my + 2*spacing + hres, color, mMessage.c_str());
+        SDLH_DrawRect(mx - 2, my - 2, mw + 4, mh + 4, bordercolor);
+        SDLH_DrawRect(mx, my, mw, mh, bgcolor);
+        SDLH_DrawText(36, mx + (mw - w) / 2, my + spacing, color, mTitle.c_str());
+        SDLH_DrawText(20, mx + 10, my + 2*spacing + hres, color, mMessage.c_str());
 
         mTTL--;
     }

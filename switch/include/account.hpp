@@ -32,19 +32,15 @@
 #include <switch.h>
 #include <map>
 #include <vector>
-#include "draw.hpp"
+#include "SDLHelper.hpp"
 #include "types.hpp"
-
-extern "C" {
-#include "nanojpeg.h"
-}
 
 #define USER_ICON_SIZE 80
 
 struct User {
-    u128        id;
-    std::string name;
-    u8*         icon; 
+    u128         id;
+    std::string  name;
+    SDL_Texture* icon; 
 };
 
 namespace Account 
@@ -53,9 +49,9 @@ namespace Account
     void        exit(void);
 
     std::vector
-    <u128>      ids(void);
-    u8*         icon(u128 id);
-    std::string username(u128 id);
+    <u128>       ids(void);
+    SDL_Texture* icon(u128 id);
+    std::string  username(u128 id);
 }
 
 #endif

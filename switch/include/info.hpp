@@ -29,7 +29,7 @@
 
 #include <switch.h>
 #include <string>
-#include "draw.hpp"
+#include "SDLHelper.hpp"
 #include "util.hpp"
 
 typedef enum {

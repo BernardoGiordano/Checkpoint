@@ -96,7 +96,6 @@ void IHid::update(size_t count) {
 
     u64 kHeld = held();
     u64 kDown = down();
-    mSleep = false;
     
     if (kDown & _KEY_ZL())
     {
@@ -127,7 +126,6 @@ void IHid::update(size_t count) {
                 page_back();
                 mIndex = maxEntries(count);
             }
-            mSleep = true;
         }
         else if (kHeld & _KEY_RIGHT())
         {
@@ -140,7 +138,6 @@ void IHid::update(size_t count) {
                 page_forward();
                 mIndex = 0;
             }
-            mSleep = true;
         }
         else if (kHeld & _KEY_UP())
         {
@@ -164,7 +161,6 @@ void IHid::update(size_t count) {
             {
                 mIndex -= mColumns;
             }
-            mSleep = true;
         }
         else if (kHeld & _KEY_DOWN())
         {
@@ -189,7 +185,6 @@ void IHid::update(size_t count) {
                         mIndex = maxEntries(count);
                     }
                 }
-                mSleep = true;
             }
         }
     }
@@ -206,7 +201,6 @@ void IHid::update(size_t count) {
                 page_back();
                 mIndex = maxEntries(count);
             }
-            mSleep = true;
         }
         else if (kHeld & _KEY_DOWN())
         {
@@ -219,7 +213,6 @@ void IHid::update(size_t count) {
                 page_forward();
                 mIndex = 0;
             }
-            mSleep = true;
         }
     }
 }

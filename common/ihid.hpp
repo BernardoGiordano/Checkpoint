@@ -28,11 +28,10 @@
 #define IHID_HPP
 
 #include <cstdint>
-
-typedef uint64_t u64;
-
 #include <cmath>
 #include "common.hpp"
+
+typedef uint64_t u64;
 
 class IHid 
 {
@@ -42,6 +41,8 @@ public:
     {
         reset();
         mMaxPages = 0;
+        mCurrentTime = 0;
+        mLastTime = 0;
     }
 
     virtual ~IHid(void) { }
@@ -74,7 +75,8 @@ protected:
     size_t mMaxPages;
     size_t mMaxVisibleEntries;
     size_t mColumns;
-    bool   mSleep;
+    u64    mCurrentTime;
+    u64    mLastTime;
 };
 
 #endif

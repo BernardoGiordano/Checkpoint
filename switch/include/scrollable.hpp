@@ -32,10 +32,10 @@
 #include "iscrollable.hpp"
 #include "clickable.hpp"
 #include "colors.hpp"
-#include "draw.hpp"
+#include "SDLHelper.hpp"
 #include "hid.hpp"
 
-class Scrollable : public IScrollable<color_t>
+class Scrollable : public IScrollable<SDL_Color>
 {
 public:
     Scrollable(u32 x, u32 y, u32 w, u32 h, size_t visibleEntries)
@@ -51,7 +51,7 @@ public:
 
     void draw(void) override;
     void setIndex(size_t i);
-    void push_back(color_t color, color_t colorMessage, const std::string& message) override;
+    void push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message) override;
     void resetIndex(void) override;
     void updateSelection(void) override;
 

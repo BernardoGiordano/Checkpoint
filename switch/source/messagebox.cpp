@@ -26,7 +26,7 @@
 
 #include "messagebox.hpp"
 
-MessageBox::MessageBox(color_t colorBg, color_t colorText)
+MessageBox::MessageBox(SDL_Color colorBg, SDL_Color colorText)
 {
     mColorBg = colorBg;
     mColorText = colorText;
@@ -52,7 +52,7 @@ void MessageBox::draw(void)
     u32 widths[mList.size()];
     for (size_t i = 0, sz = mList.size(); i < sz; i++)
     {
-        GetTextDimensions(6, mList.at(i).c_str(), &widths[i], &mh);
+        SDLH_GetTextDimensions(30, mList.at(i).c_str(), &widths[i], &mh);
         if (widths[i] > w)
         {
             w = widths[i];
@@ -65,11 +65,11 @@ void MessageBox::draw(void)
     const u32 x = (1280-w)/2;
     const u32 y = (720-h)/2;
 
-    rectangle(x - 2, y - 2, w + 4, h + 4, COLOR_BLACK);
-    rectangle(x, y, w, h, mColorBg);
+    SDLH_DrawRect(x - 2, y - 2, w + 4, h + 4, COLOR_BLACK);
+    SDLH_DrawRect(x, y, w, h, mColorBg);
     
     for (size_t i = 0, sz = mList.size(); i < sz; i++)
     {
-        DrawText(6, ceil((1280 - widths[i]) / 2), y + spacingFromEdges + mh*i, mColorText, mList.at(i).c_str());
+        SDLH_DrawText(30, ceil((1280 - widths[i]) / 2), y + spacingFromEdges + mh*i, mColorText, mList.at(i).c_str());
     }
 }

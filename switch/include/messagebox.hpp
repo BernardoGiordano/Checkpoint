@@ -31,13 +31,13 @@
 #include <string>
 #include <switch.h>
 #include <vector>
-#include "draw.hpp"
+#include "SDLHelper.hpp"
 #include "colors.hpp"
 
 class MessageBox
 {
 public:
-    MessageBox(color_t colorbg, color_t colormessage);
+    MessageBox(SDL_Color colorbg, SDL_Color colormessage);
     ~MessageBox() { };
 
     void push_message(const std::string& str);
@@ -47,8 +47,8 @@ public:
 private:
     std::vector
     <std::string> mList;
-    color_t       mColorBg;
-    color_t       mColorText;
+    SDL_Color       mColorBg;
+    SDL_Color       mColorText;
 };
 
 #endif

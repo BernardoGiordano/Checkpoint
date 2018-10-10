@@ -34,7 +34,6 @@ void servicesExit(void)
     nsExit();
     Account::exit();
     Gui::exit();
-    fontExit();
     plExit();
     romfsExit();
 }
@@ -54,11 +53,6 @@ Result servicesInit(void)
     if (R_FAILED(res = plInitialize()))
     {
         return res;
-    }
-
-    if (!fontInitialize())
-    {
-        return -1;
     }
 
     if (R_FAILED(res = Account::init()))
