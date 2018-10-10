@@ -71,23 +71,8 @@ static User getUser(u128 id)
             (buffer = (u8*)malloc(image_size)) != NULL &&
             R_SUCCEEDED(accountProfileLoadImage(&profile, buffer, image_size, &real_size)))
         {
-            SDL_LoadImage(&user.icon, buffer, image_size);
-
-            // njInit();
-            // size_t fullsize = 256*256*3;
-            // if (njDecode(buffer, real_size) == NJ_OK &&
-            //     njGetWidth() == 256 &&
-            //     njGetHeight() == 256 &&
-            //     (size_t)njGetImageSize() == fullsize &&
-            //     njIsColor() == 1)
-            // {
-            //     u8* decoded_buffer = njGetImage();
-            //     user.icon = (u8*)malloc(USER_ICON_SIZE*USER_ICON_SIZE*3);
-            //     downscaleRGBImg(decoded_buffer, user.icon, 256, 256, USER_ICON_SIZE, USER_ICON_SIZE);
-            //     decoded_buffer = NULL;
-            // }
+            SDLH_LoadImage(&user.icon, buffer, image_size);
             free(buffer);
-            //njDone();
         }
     }
 
@@ -119,6 +104,5 @@ SDL_Texture* Account::icon(u128 id)
         mUsers.insert({id, user});
         return user.icon;
     }
-
     return got->second.icon;
 }

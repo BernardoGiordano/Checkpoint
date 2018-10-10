@@ -52,7 +52,8 @@ ROMFS	:=	romfs
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE
 
-CFLAGS	:=	-g -Wall -O3 -ffunction-sections \
+CFLAGS	:=	-g -O3 -ffunction-sections \
+			-Wall -Wno-write-strings \
 			$(ARCH) $(DEFINES) \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
 			-DVERSION_MINOR=${VERSION_MINOR} \

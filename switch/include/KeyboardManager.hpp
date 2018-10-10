@@ -36,6 +36,8 @@
 #include "SDLHelper.hpp"
 #include "util.hpp"
 
+#define DELAY_TICKS 3500000
+
 class HbkbdButton : public Clickable 
 {
 public:
@@ -56,12 +58,12 @@ public:
         // outline
         if (mSelected)
         {
-            SDL_Color color = SDL_MakeColour(138, 138, 138, 255);
+            SDL_Color color = FC_MakeColor(138, 138, 138, 255);
             static const size_t size = 2;
-            SDL_DrawRect(mx - size, my - size, mw + 2*size, size, color); // top
-            SDL_DrawRect(mx - size, my, size, mh, color); // left
-            SDL_DrawRect(mx + mw, my, size, mh, color); // right
-            SDL_DrawRect(mx - size, my + mh, mw + 2*size, size, color); // bottom
+            SDLH_DrawRect(mx - size, my - size, mw + 2*size, size, color); // top
+            SDLH_DrawRect(mx - size, my, size, mh, color); // left
+            SDLH_DrawRect(mx + mw, my, size, mh, color); // right
+            SDLH_DrawRect(mx - size, my + mh, mw + 2*size, size, color); // bottom
         }
     }
 
@@ -106,6 +108,9 @@ private:
     const u32 margintb = 20;
     const u32 marginlr = 54;
     const u32 starty = 720 - 356 + margintb;
+
+    u64 currentTime = 0;
+    u64 lastTime = 0;
 
     const std::string letters = "1234567890@qwertyuiop+asdfghjkl_:zxcvbnm,.-/";
     std::vector<HbkbdButton*> buttons;

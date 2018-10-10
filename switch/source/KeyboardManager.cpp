@@ -31,7 +31,16 @@ void KeyboardManager::hid(size_t& currentEntry)
     static const size_t columns = 11;
 
     u64 kHeld = hidKeysHeld(CONTROLLER_P1_AUTO);
-    bool sleep = false;
+
+    currentTime = armGetSystemTick();
+    if ((currentTime > lastTime + DELAY_TICKS))
+    {
+        lastTime = currentTime;
+    }
+    else
+    {
+        kHeld &= 0;
+    }
 
     if (kHeld & KEY_LEFT)
     {
@@ -58,7 +67,6 @@ void KeyboardManager::hid(size_t& currentEntry)
             default:
                 currentEntry--;
         }
-        sleep = true;
     }
     else if (kHeld & KEY_RIGHT)
     {
@@ -85,7 +93,6 @@ void KeyboardManager::hid(size_t& currentEntry)
             default:
                 currentEntry++;
         }
-        sleep = true;
     }
     else if (kHeld & KEY_UP)
     {
@@ -109,7 +116,6 @@ void KeyboardManager::hid(size_t& currentEntry)
             default:
                 currentEntry -= 11;
         }
-        sleep = true;
     }
     else if (kHeld & KEY_DOWN)
     {
@@ -134,12 +140,6 @@ void KeyboardManager::hid(size_t& currentEntry)
             default:
                 currentEntry += 11;
         }
-        sleep = true;
-    }
-
-    if (sleep)
-    {
-        svcSleepThread(FASTSCROLL_WAIT);
     }
 }
 
@@ -312,23 +312,23 @@ std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& sugges
             }
         }
 
-        SDL_ClearScreen(COLOR_GREY_BG);
+        SDLH_ClearScreen(COLOR_GREY_BG);
 
-        SDL_DrawRect(marginlr, 140, 1280 - marginlr*2, 84, COLOR_GREY_MEDIUM);
-        SDL_DrawRect(0, starty - margintb, 1280, 356, COLOR_GREY_DARKER);
+        SDLH_DrawRect(marginlr, 140, 1280 - marginlr*2, 84, COLOR_GREY_MEDIUM);
+        SDLH_DrawRect(0, starty - margintb, 1280, 356, COLOR_GREY_DARKER);
 
         u32 texth, counter_width;
         std::string counter = StringUtils::format("Custom name length: %d/%d", str.empty() ? suggestion.length() : str.length(), CUSTOM_PATH_LEN);
-        GetTextDimensions(7, " ", NULL, &texth);
-        GetTextDimensions(4, counter.c_str(), &counter_width, NULL);
-        SDL_DrawText(4, 1280 - marginlr - counter_width, 236, COLOR_WHITE, counter.c_str());
+        SDLH_GetTextDimensions(30, " ", NULL, &texth);
+        SDLH_GetTextDimensions(20, counter.c_str(), &counter_width, NULL);
+        SDLH_DrawText(20, 1280 - marginlr - counter_width, 236, COLOR_WHITE, counter.c_str());
         if (str.empty())
         {
-            SDL_DrawText(7, marginlr*2, 140 + (84 - texth) / 2, COLOR_GREY_LIGHT, suggestion.c_str());            
+            SDLH_DrawTextBox(30, marginlr*2, 140 + (84 - texth) / 2, COLOR_GREY_LIGHT, 1280 - marginlr*2, suggestion.c_str());            
         }
         else
         {
-            SDL_DrawText(7, marginlr*2, 140 + (84 - texth) / 2, COLOR_WHITE, str.c_str());   
+            SDLH_DrawTextBox(30, marginlr*2, 140 + (84 - texth) / 2, COLOR_WHITE, 1280 - marginlr*2, str.c_str());   
         }
 
         for (size_t i = 0, sz = buttons.size(); i < sz; i++)
@@ -355,7 +355,7 @@ std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& sugges
             buttons.at(i)->draw();
         }
 
-        SDL_Render();
+        SDLH_Render();
     }
 
     return std::make_pair(false, suggestion);

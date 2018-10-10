@@ -5,12 +5,24 @@ static SDL_Renderer* s_renderer;
 static SDL_Texture* s_star;
 static SDL_Texture* s_checkbox;
 static SDL_Texture* s_flag;
-static FC_Font* font4;
-static FC_Font* font5;
-static FC_Font* font6;
-static FC_Font* font7;
 
-bool SDLHelperInit(void)
+static PlFontData fontData, fontExtData;
+static std::unordered_map<int, FC_Font*> s_fonts;
+
+static FC_Font* getFontFromMap(int size)
+{
+    std::unordered_map<int, FC_Font*>::const_iterator got = s_fonts.find(size);
+    if (got == s_fonts.end() || got->second == NULL)
+    {
+        FC_Font* f = FC_CreateFont();
+        FC_LoadFont_RW(f, s_renderer, SDL_RWFromMem((void*)fontData.address, fontData.size), SDL_RWFromMem((void*)fontExtData.address, fontExtData.size), 1, size, FC_MakeColor(0, 0, 0, 255), TTF_STYLE_NORMAL);
+        s_fonts.insert({size, f});
+        return f;
+    }
+    return got->second;
+}
+
+bool SDLH_Init(void)
 {
     bool ok = false;
     SDL_Init(SDL_INIT_EVERYTHING);
@@ -19,37 +31,24 @@ bool SDLHelperInit(void)
     SDL_SetRenderDrawBlendMode(s_renderer, SDL_BLENDMODE_BLEND);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
     IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG);
-    TTF_Init();
-    u64 languageCode = 0;
-    PlFontData fontData;
-    PlFontData fonts[PlSharedFontType_Total];
-    size_t total_fonts = 0;
-    plGetSharedFont(languageCode, fonts, PlSharedFontType_Total, &total_fonts);
+    
     plGetSharedFontByType(&fontData, PlSharedFontType_Standard);
+    plGetSharedFontByType(&fontExtData, PlSharedFontType_NintendoExt);
 
-    font4 = FC_CreateFont();
-    font5 = FC_CreateFont();
-    font6 = FC_CreateFont();
-    font7 = FC_CreateFont();
-
-    FC_LoadFont_RW(font4, s_renderer, SDL_RWFromMem((void*)fontData.address, fontData.size), 1, 20, FC_MakeColor(0, 0, 0, 255), TTF_STYLE_NORMAL);
-    FC_LoadFont_RW(font5, s_renderer, SDL_RWFromMem((void*)fontData.address, fontData.size), 1, 25, FC_MakeColor(0, 0, 0, 255), TTF_STYLE_NORMAL);
-    FC_LoadFont_RW(font6, s_renderer, SDL_RWFromMem((void*)fontData.address, fontData.size), 1, 30, FC_MakeColor(0, 0, 0, 255), TTF_STYLE_NORMAL);
-    FC_LoadFont_RW(font7, s_renderer, SDL_RWFromMem((void*)fontData.address, fontData.size), 1, 40, FC_MakeColor(0, 0, 0, 255), TTF_STYLE_NORMAL);
-
-    SDL_LoadImage(&s_flag, "romfs:/flag.png");
-    SDL_LoadImage(&s_star, "romfs:/star.png");
-    SDL_LoadImage(&s_checkbox, "romfs:/checkbox.png");
+    SDLH_LoadImage(&s_flag, "romfs:/flag.png");
+    SDLH_LoadImage(&s_star, "romfs:/star.png");
+    SDLH_LoadImage(&s_checkbox, "romfs:/checkbox.png");
     
     return true;
 }
 
-void SDLHelperExit(void)
+void SDLH_Exit(void)
 {
-    FC_FreeFont(font4);
-    FC_FreeFont(font5);
-    FC_FreeFont(font6);
-    FC_FreeFont(font7);
+    for (auto& value : s_fonts)
+    {
+        FC_FreeFont(value.second);
+    }
+
     TTF_Quit();
     SDL_DestroyTexture(s_flag);
     SDL_DestroyTexture(s_star);
@@ -60,45 +59,45 @@ void SDLHelperExit(void)
     SDL_Quit();
 }
 
-void SDL_ClearScreen(SDL_Color colour)
+void SDLH_ClearScreen(SDL_Color color)
 {
-    SDL_SetRenderDrawColor(s_renderer, colour.r, colour.g, colour.b, colour.a);
+    SDL_SetRenderDrawColor(s_renderer, color.r, color.g, color.b, color.a);
     SDL_RenderClear(s_renderer);
 }
 
-void SDL_Render(void)
+void SDLH_Render(void)
 {
     SDL_RenderPresent(s_renderer);
 }
 
-void SDL_DrawRect(int x, int y, int w, int h, SDL_Color colour)
+void SDLH_DrawRect(int x, int y, int w, int h, SDL_Color color)
 {
     SDL_Rect rect;
     rect.x = x; rect.y = y; rect.w = w; rect.h = h;
-    SDL_SetRenderDrawColor(s_renderer, colour.r, colour.g, colour.b, colour.a);
+    SDL_SetRenderDrawColor(s_renderer, color.r, color.g, color.b, color.a);
     SDL_RenderFillRect(s_renderer, &rect);
 }
 
-void SDL_DrawCircle(int x, int y, int r, SDL_Color colour)
+void SDLH_DrawCircle(int x, int y, int r, SDL_Color color)
 {
-    filledCircleRGBA(s_renderer, x, y, r, colour.r, colour.g, colour.b, colour.a);
+    filledCircleRGBA(s_renderer, x, y, r, color.r, color.g, color.b, color.a);
 }
 
-void SDL_DrawText(int size, int x, int y, SDL_Color colour, const char* text)
+void SDLH_DrawText(int size, int x, int y, SDL_Color color, const char* text)
 {
-    FC_Font* f = nullptr;
-    switch(size) {
-        case 4: f = font4; break;
-        case 5: f = font5; break;
-        case 6: f = font6; break;
-        case 7: f = font7; break;
-    }
-    if (f != nullptr) {
-        FC_DrawColor(f, s_renderer, x, y, colour, text);
-    }
+    FC_DrawColor(getFontFromMap(size), s_renderer, x, y, color, text);
 }
 
-void SDL_LoadImage(SDL_Texture** texture, char* path)
+void SDLH_DrawTextBox(int size, int x, int y, SDL_Color color, int max, const char* text)
+{
+    u32 h;
+    FC_Font* font = getFontFromMap(size);
+    SDLH_GetTextDimensions(size, text, NULL, &h);
+    FC_Rect rect = FC_MakeRect(x, y, max, h);
+    FC_DrawBoxColor(font, s_renderer, rect, color, text);
+}
+
+void SDLH_LoadImage(SDL_Texture** texture, char* path)
 {
     SDL_Surface* loaded_surface = NULL;
     loaded_surface = IMG_Load(path);
@@ -113,7 +112,7 @@ void SDL_LoadImage(SDL_Texture** texture, char* path)
     SDL_FreeSurface(loaded_surface);
 }
 
-void SDL_LoadImage(SDL_Texture** texture, u8* buff, size_t size)
+void SDLH_LoadImage(SDL_Texture** texture, u8* buff, size_t size)
 {
     SDL_Surface* loaded_surface = NULL;
     loaded_surface = IMG_Load_RW(SDL_RWFromMem(buff, size), 1);
@@ -128,7 +127,7 @@ void SDL_LoadImage(SDL_Texture** texture, u8* buff, size_t size)
     SDL_FreeSurface(loaded_surface);
 }
 
-void SDL_DrawImage(SDL_Texture* texture, int x, int y)
+void SDLH_DrawImage(SDL_Texture* texture, int x, int y)
 {
     SDL_Rect position;
     position.x = x; position.y = y;
@@ -136,29 +135,21 @@ void SDL_DrawImage(SDL_Texture* texture, int x, int y)
     SDL_RenderCopy(s_renderer, texture, NULL, &position);
 }
 
-void SDL_DrawImageScale(SDL_Texture* texture, int x, int y, int w, int h)
+void SDLH_DrawImageScale(SDL_Texture* texture, int x, int y, int w, int h)
 {
     SDL_Rect position;
     position.x = x; position.y = y; position.w = w; position.h = h;
     SDL_RenderCopy(s_renderer, texture, NULL, &position);
 }
 
-void GetTextDimensions(int size, const char* text, u32* w, u32* h)
+void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h)
 {
-    FC_Font* f = nullptr;
-    switch(size) {
-        case 4: f = font4; break;
-        case 5: f = font5; break;
-        case 6: f = font6; break;
-        case 7: f = font7; break;
-    }
-    if (f != nullptr) {
-        if (w != NULL) *w = FC_GetWidth(f, text);
-        if (h != NULL) *h = FC_GetHeight(f, text);
-    }
+    FC_Font* f = getFontFromMap(size);
+    if (w != NULL) *w = FC_GetWidth(f, text);
+    if (h != NULL) *h = FC_GetHeight(f, text);
 }
 
-void DrawIcon(std::string icon, int x, int y)
+void SDLH_DrawIcon(std::string icon, int x, int y)
 {
     SDL_Texture* t = nullptr;
     if (icon.compare("flag") == 0) {
@@ -170,6 +161,6 @@ void DrawIcon(std::string icon, int x, int y)
     }
 
     if (t != nullptr) {
-        SDL_DrawImage(t, x, y);
+        SDLH_DrawImage(t, x, y);
     }
 }

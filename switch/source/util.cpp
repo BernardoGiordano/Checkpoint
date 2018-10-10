@@ -35,6 +35,7 @@ void servicesExit(void)
     Account::exit();
     Gui::exit();
     plExit();
+    romfsExit();
 }
 
 Result servicesInit(void)

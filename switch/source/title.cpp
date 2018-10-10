@@ -43,42 +43,8 @@ static void loadIcon(u64 id, NsApplicationControlData* nsacd, size_t iconsize)
     if (it == icons.end())
     {
         SDL_Texture* texture;
-        SDL_LoadImage(&texture, nsacd->icon, iconsize);
+        SDLH_LoadImage(&texture, nsacd->icon, iconsize);
         icons.insert({id, texture});
-
-        // uint8_t* imageptr = NULL;
-        // size_t imagesize = 256*256*3;
-        
-        // njInit();
-        // if (njDecode(nsacd->icon, iconsize) != NJ_OK)
-        // {
-        //     njDone();
-        //     return;
-        // }
-
-        // if (njGetWidth() != 256 || njGetHeight() != 256 || (size_t)njGetImageSize() != imagesize || njIsColor() != 1)
-        // {
-        //     njDone();
-        //     return;
-        // }
-
-        // imageptr = njGetImage();
-        // if (imageptr == NULL)
-        // {
-        //     njDone();
-        //     return;   
-        // }
-
-        // u8* mIcon = (u8*)malloc(imagesize);
-        // std::copy(imageptr, imageptr + imagesize, mIcon);
-
-        // u8* mSmallIcon = (u8*)malloc(128*128*3);
-        // downscaleRGBImg(mIcon, mSmallIcon, 256, 256, 128, 128);
-
-        // icons.insert({id, std::make_pair(mIcon, mSmallIcon)});
-
-        // imageptr = NULL;
-        // njDone();
     }
 }
 

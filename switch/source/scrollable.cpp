@@ -68,10 +68,10 @@ void Scrollable::draw(void)
     const size_t sz = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
     for (size_t i = baseIndex; i < baseIndex + sz; i++)
     {
-        mCells.at(i)->draw(4);
+        mCells.at(i)->draw(20);
     }
 
     size_t blankRows = mVisibleEntries - sz;
     size_t rowHeight = mh / mVisibleEntries;
-    SDL_DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, COLOR_GREY_DARKER);
+    SDLH_DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, COLOR_GREY_DARKER);
 }
