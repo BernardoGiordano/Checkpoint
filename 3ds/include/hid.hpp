@@ -30,6 +30,8 @@
 #include <3ds.h>
 #include "ihid.hpp"
 
+#define DELAY_TICKS 50000000
+
 class Hid : public IHid
 {
 public:
@@ -50,10 +52,11 @@ public:
 
     void update(size_t count)
     {
-        IHid::update(count);
-        if (mSleep)
+        mCurrentTime = svcGetSystemTick();
+        if ((mCurrentTime > mLastTime + DELAY_TICKS))
         {
-            svcSleepThread(FASTSCROLL_WAIT);
+            IHid::update(count);
+            mLastTime = mCurrentTime;
         }
     }
 
