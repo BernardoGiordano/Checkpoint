@@ -55,12 +55,14 @@ int main(int argc, char** argv)
             ++g_currentUserIndex %= userIds.size();
             g_currentUId = userIds.at(g_currentUserIndex);
             Gui::index(TITLES, 0);
+            Gui::index(CELLS, 0);
         }
         if (kdown & KEY_ZR)
         {
             g_currentUserIndex = g_currentUserIndex - 1 < 0 ? userIds.size() - 1 : g_currentUserIndex - 1;
             g_currentUId = userIds.at(g_currentUserIndex);
             Gui::index(TITLES, 0);
+            Gui::index(CELLS, 0);
         }
 
         // handle touchscreen
