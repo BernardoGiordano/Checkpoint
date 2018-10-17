@@ -165,7 +165,7 @@ static void drawBackground(void)
     SDLH_GetTextDimensions(30, "checkpoint", &checkpoint_w, NULL);
     u32 h = (bar_height - ver_h) / 2 - 1;
     SDLH_DrawText(23, 10, h + 3, COLOR_GREY_LIGHT, DateTime::timeStr().c_str());
-    SDLH_DrawText(30, 1280 - 10 - ver_w - image_dim - 12 - checkpoint_w, h, COLOR_WHITE, "checkpoint");
+    SDLH_DrawText(30, 1280 - 10 - ver_w - image_dim - 12 - checkpoint_w, h - 2, COLOR_WHITE, "checkpoint");
     SDLH_DrawText(23, 1280 - 10 - ver_w, h + 3, COLOR_GREY_LIGHT, ver);
     SDLH_DrawIcon("flag", 1280 - 10 - ver_w - image_dim - 6, -2); 
     // shadow
@@ -232,9 +232,13 @@ bool Gui::askForConfirmation(const std::string& text)
     return ret;
 }
 
-void Gui::init(void)
+bool Gui::init(void)
 {
-    SDLH_Init();
+    if (!SDLH_Init())
+    {
+        return false;
+    }
+
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
     backupScrollEnabled = false;
     info = new Info();
@@ -254,6 +258,8 @@ void Gui::init(void)
     messageBox->push_message("Hold \ue003 to multiselect all titles.");
     messageBox->push_message("Press \ue041 to move between titles.");
     messageBox->push_message("Press \ue085/\ue086 to switch user.");
+    
+    return true;
 }
 
 void Gui::exit(void)

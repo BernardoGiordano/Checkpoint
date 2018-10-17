@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h> 
 #include <SDL2/SDL_image.h>
+// #include <SDL2/SDL_mixer.h>
 #include <string>
 #include <unordered_map>
 #include "SDL_FontCache.h"
@@ -24,5 +25,6 @@ void SDLH_DrawIcon(std::string icon, int x, int y);
 void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h);
 void SDLH_DrawTextBox(int size, int x, int y, SDL_Color color, int max, const char* text);
 void SDLH_Render(void);
+void SDLH_PlayClick(void);
 
 #endif

@@ -31,8 +31,8 @@ include $(DEVKITPRO)/libnx/switch_rules
 #     - <libnx folder>/default_icon.jpg
 #---------------------------------------------------------------------------------
 VERSION_MAJOR := 3
-VERSION_MINOR := 4
-VERSION_MICRO := 2
+VERSION_MINOR := 5
+VERSION_MICRO := 0
 
 APP_TITLE	:=	Checkpoint
 APP_AUTHOR	:=	Bernardo Giordano
@@ -68,7 +68,8 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-no-as-needed,-Map,$(notdir $*.map)
 
-LIBS	:= -lSDL2_ttf -lSDL2_gfx -lSDL2_image -lpng -ljpeg `sdl2-config --libs` `freetype-config --libs` -lnx
+LIBS	:=	-lSDL2_ttf -lSDL2_gfx -lSDL2_image -lpng -ljpeg `sdl2-config --libs` `freetype-config --libs` -lnx
+	
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

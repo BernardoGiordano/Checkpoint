@@ -45,7 +45,7 @@
 
 namespace Gui
 {
-    void        init(void);
+    bool        init(void);
     void        exit(void);
     void        draw(u128 uid);
 

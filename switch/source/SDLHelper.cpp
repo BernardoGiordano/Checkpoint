@@ -5,6 +5,7 @@ static SDL_Renderer* s_renderer;
 static SDL_Texture* s_star;
 static SDL_Texture* s_checkbox;
 static SDL_Texture* s_flag;
+// static Mix_Music* s_click;
 
 static PlFontData fontData, fontExtData;
 static std::unordered_map<int, FC_Font*> s_fonts;
@@ -24,20 +25,46 @@ static FC_Font* getFontFromMap(int size)
 
 bool SDLH_Init(void)
 {
-    bool ok = false;
-    SDL_Init(SDL_INIT_EVERYTHING);
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0)
+    {
+        fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
+        return false;
+    }
     s_window = SDL_CreateWindow("Checkpoint", 0, 0, 1280, 720, SDL_WINDOW_FULLSCREEN);
+    if (!s_window)
+    {
+        fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError());
+        return false;
+    }
     s_renderer = SDL_CreateRenderer(s_window, 0, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (!s_renderer)
+    {
+        fprintf(stderr, "SDL_CreateRenderer: %s\n", SDL_GetError());
+        return false;
+    }
     SDL_SetRenderDrawBlendMode(s_renderer, SDL_BLENDMODE_BLEND);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
-    IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG);
     
-    plGetSharedFontByType(&fontData, PlSharedFontType_Standard);
-    plGetSharedFontByType(&fontExtData, PlSharedFontType_NintendoExt);
-
+    const int img_flags = IMG_INIT_PNG | IMG_INIT_JPG;
+    if ((IMG_Init(img_flags) & img_flags) != img_flags)
+    {
+        fprintf(stderr, "IMG_Init: %s\n", IMG_GetError());
+        return false;
+    }
     SDLH_LoadImage(&s_flag, "romfs:/flag.png");
     SDLH_LoadImage(&s_star, "romfs:/star.png");
     SDLH_LoadImage(&s_checkbox, "romfs:/checkbox.png");
+
+    // const int mix_flags = MIX_INIT_OGG;
+    // if ((Mix_Init(mix_flags) & mix_flags) != mix_flags)
+    // {
+    //     fprintf(stderr, "Mix_Init: %s\n", Mix_GetError());
+    // }
+    // Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096);
+    // s_click = Mix_LoadMUS("romfs:/click.ogg");
+
+    plGetSharedFontByType(&fontData, PlSharedFontType_Standard);
+    plGetSharedFontByType(&fontExtData, PlSharedFontType_NintendoExt);
     
     return true;
 }
@@ -50,6 +77,9 @@ void SDLH_Exit(void)
     }
 
     TTF_Quit();
+    // Mix_FreeMusic(s_click);
+    // Mix_CloseAudio();
+    // Mix_Quit();
     SDL_DestroyTexture(s_flag);
     SDL_DestroyTexture(s_star);
     SDL_DestroyTexture(s_checkbox);
@@ -164,3 +194,8 @@ void SDLH_DrawIcon(std::string icon, int x, int y)
         SDLH_DrawImage(t, x, y);
     }
 }
+
+// void SDLH_PlayClick(void)
+// {
+//     Mix_PlayMusic(s_click, 1);
+// }

@@ -40,6 +40,12 @@ void servicesExit(void)
 
 Result servicesInit(void)
 {
+    // debug
+    // if (socketInitializeDefault() == 0)
+    // {
+    //     nxlinkStdio();
+    // }
+
     Result res = 0;
     romfsInit();
     res = io::createDirectory("sdmc:/switch");
@@ -65,13 +71,10 @@ Result servicesInit(void)
         return res;
     }  
     
-    Gui::init();
-
-    // debug
-    // if (socketInitializeDefault() == 0)
-    // {
-    //     nxlinkStdio();
-    // }
+    if (!Gui::init())
+    {
+        return -1;
+    }
 
     Configuration::getInstance();
 
