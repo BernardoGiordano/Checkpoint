@@ -36,7 +36,7 @@
 #include "SDLHelper.hpp"
 #include "util.hpp"
 
-#define DELAY_TICKS 3500000
+#define DELAY_TICKS 2500000
 
 class HbkbdButton : public Clickable 
 {

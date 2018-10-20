@@ -30,7 +30,7 @@
 #include <switch.h>
 #include "ihid.hpp"
 
-#define DELAY_TICKS 3500000
+#define DELAY_TICKS 2500000
 
 class Hid : public IHid
 {

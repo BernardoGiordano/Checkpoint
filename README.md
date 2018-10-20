@@ -33,7 +33,7 @@ Checkpoint relies on the following folders to store the files it generates. Note
 
 You can use Checkpoint for 3DS with both cfw and Rosalina-based Homebrew Launchers. *hax-based Homebrew Launchers are not supported by Checkpoint. 
 
-Checkpoint for Switch only runs on homebrew launcher. Make sure you're running up-to-date payloads.
+Checkpoint for Switch runs on homebrew launcher. Make sure you're running up-to-date payloads.
 
 The first launch will take considerably longer than usual (usually 1-2 minutes depending on how many titles you have installed), due to the working directories being created - Checkpoint will be significatively faster upon launch from then on.
 
@@ -94,7 +94,7 @@ This project is licensed under the GNU GPLv3. Additional Terms 7.b and 7.c of GP
 
 ## Credits
 
-Even though this is the result of independent research and work, Checkpoint for 3DS couldn't be possible without J-D-K's original [JKSM](https://github.com/J-D-K/JKSM) version, which is an incredible piece of software that you should all be using. Best regards JK, hope you're fine.
+Even though this is the result of independent research and work, Checkpoint for 3DS couldn't be possible without J-D-K's original [JKSM](https://github.com/J-D-K/JKSM) version, which is an incredible piece of software that you should all be using.
 
 TuxSH for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which SPI code has been taken.
 
@@ -108,4 +108,4 @@ Yellows8 and all the mantainers for [switch-examples](https://github.com/switchb
 
 Hikari-chin and all the other testers for their help with testing.
 
-If you like my work, **support me on [Patreon](https://www.patreon.com/bernardogiordano)**!
+If you like my work, **support FlagBrew on [Patreon](https://www.patreon.com/FlagBrew)**!

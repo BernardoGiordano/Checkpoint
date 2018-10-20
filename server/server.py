@@ -8,6 +8,13 @@ import hashlib
 import mysql.connector
 import os
 import traceback
+import argparse
+
+parser = argparse.ArgumentParser(description = "Checkpoint server")
+parser.add_argument("-hostname", help = "Hostname of the machine running the database", default = "localhost")
+parser.add_argument("-username", help = "Database username")
+parser.add_argument("-password", help = "Database password")
+parser.add_argument("-port", help = "Database port", default = 5000)
 
 # Couple variables and constants
 dictConfig({
@@ -26,7 +33,6 @@ dictConfig({
     }
 })
 app = Flask(__name__)
-connection_params_json = "connection.json"
 dbname_default = "checkpoint"
 directory_default = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saves")
 dao = None
@@ -199,65 +205,48 @@ def info(result):
 def createDatabase(hostname, username, password):
     connection = mysql.connector.connect(host=hostname, user=username, passwd=password, auth_plugin="mysql_native_password")
     try:
-        connection.cursor().execute("DROP DATABASE {}".format(dbname_default))
+        connection.cursor().execute("CREATE DATABASE {}".format(dbname_default))
+        connection.close()
+        connection = mysql.connector.connect(host=hostname, user=username, passwd=password, db=dbname_default, auth_plugin="mysql_native_password")
+        try:
+            connection.cursor().execute("""
+                CREATE TABLE saves (
+                id bigint NOT NULL AUTO_INCREMENT,
+                date datetime,
+                hash char(32) NOT NULL,
+                path varchar(255) NOT NULL,
+                private boolean,
+                product_code varchar(32),
+                serial char(64) NOT NULL,
+                title_id bigint,
+                type enum('DS', '3DS', 'Switch') NOT NULL,
+                username varchar(255),
+                PRIMARY KEY (id))
+            """)
+            print("Database created.")
+        except mysql.connector.errors.ProgrammingError as e:
+            print("Couldn't setup database. Closing...")
+            exit()
+        finally:
+            connection.close()
     except mysql.connector.errors.DatabaseError as e:
-        print("Assuring no databases are named {}...".format(dbname_default))
-    connection.cursor().execute("CREATE DATABASE {}".format(dbname_default))
-    connection.close()
-    
-    connection = mysql.connector.connect(host=hostname, user=username, passwd=password, db=dbname_default, auth_plugin="mysql_native_password")
-    try:
-        connection.cursor().execute("""
-            CREATE TABLE saves (
-            id bigint AUTO_INCREMENT,
-            date datetime,
-            hash char(32) NOT NULL,
-            path varchar(255) NOT NULL,
-            private boolean,
-            product_code varchar(32),
-            serial char(64) NOT NULL,
-            title_id bigint,
-            type enum('DS', 3DS', 'Switch') NOT NULL,
-            username varchar(255),
-            PRIMARY KEY (id))
-        """)
-    except mysql.connector.errors.ProgrammingError as e:
-        trace(e)
-        print("Couldn't setup database. Closing...")
-        exit()
+        print("Didn't create the database in this launch.")
     finally:
         connection.close()
 
 if __name__ == '__main__':
-    # create destination folder for the saves
-    if not os.path.exists(directory_default):
-        print("Creating save destination directory...")
-        os.makedirs(directory_default)
+    args = parser.parse_args()
+    hostname = args.hostname
+    username = args.username
+    password = args.password
+    port = args.port
 
-    # load connection parameters
-    connection_json = json.load(open(connection_params_json, "r"))
-    hostname = connection_json["hostname"]
-    port = connection_json["port"]
-    username = connection_json["username"]
-    password = connection_json["password"]
-    dbname = None
-
-    if not username or not password or not hostname or not port:
-        print("ERROR: Please setup username, password, hostname and port in connection.json.")
-        exit()
-    try:
-        dbname = connection_json["dbname"]
-    except KeyError as e:
-        print("Database name not found, creating a new database...")
-        createDatabase(hostname, username, password)
-        connection_json["dbname"] = dbname = dbname_default
-        with open(connection_params_json, "w") as f:
-            f.write(json.dumps(connection_json, indent=2))
+    createDatabase(hostname, username, password)
     
     # connect to mysql database
     print("Opening database connection...")
     try:
-        dao = mysql.connector.connect(host=hostname, user=username, passwd=password, db=dbname, auth_plugin="mysql_native_password")
+        dao = mysql.connector.connect(host=hostname, user=username, passwd=password, db=dbname_default, auth_plugin="mysql_native_password")
     except mysql.connector.errors.ProgrammingError as e:
         print("Can't connect to database. Closing...")
         exit()
@@ -270,5 +259,5 @@ if __name__ == '__main__':
     app.run(
         host='0.0.0.0',
         port=port,
-        debug=True
+        debug=False
     )

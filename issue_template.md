@@ -12,6 +12,7 @@ If you feel it's relevant, please attach screenshots or pictures that could deta
 
 * Entrypoint:
 * System version:
+* SD Card Filesystem:
 * Checkpoint version:
 * Expected behaviour:
 * Encountered behavior:
