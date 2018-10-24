@@ -39,9 +39,28 @@ Configuration::Configuration(void)
     i >> mJson;
     i.close();
 
-    if (mJson.find("version") == mJson.end() || mJson["version"] != CONFIG_VERSION)
+    bool updateJson = false;
+    if (mJson.find("version") == mJson.end())
     {
+        // if config is present but is < 3.4.2, override it
         store();
+    }
+    else 
+    {
+        // 3.4.2 -> 3.5.0
+        if (mJson["version"] < 2)
+        {
+            mJson["favorites"] = nlohmann::json::array();
+            updateJson = true;
+        }
+    }
+
+    if (updateJson) 
+    {
+        mJson["version"] = CONFIG_VERSION;
+        std::ofstream o(BASEPATH);
+        o << std::setw(2) << mJson << std::endl;
+        o.close();
     }
 
     // parse filters

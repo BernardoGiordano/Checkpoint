@@ -61,7 +61,8 @@ void servicesInit(void)
     
     Gui::init();
 
-    //consoleDebugInit(debugDevice_SVC);
+    // consoleDebugInit(debugDevice_SVC);
+    // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }
 
     Configuration::getInstance();
 }
