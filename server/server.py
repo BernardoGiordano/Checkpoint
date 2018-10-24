@@ -2,13 +2,14 @@
 from flask import Flask, request, jsonify
 from flask.logging import default_handler
 from logging.config import dictConfig
+from datetime import datetime
+import argparse
 import atexit
 import json
 import hashlib
 import mysql.connector
 import os
 import traceback
-import argparse
 
 parser = argparse.ArgumentParser(description = "Checkpoint server")
 parser.add_argument("-hostname", help = "Hostname of the machine running the database", default = "localhost")
@@ -103,15 +104,22 @@ def putSave():
         attachment = request.files.get('attachment')
         if not serial or not metadata or not attachment:
             return createAndLogResult("INVALID_PARAMETERS")
-        # TODO: check consistenza valori in metadata
-        if metadata.hash and len(metadata.hash) == 32 \
-            and metadata.name \
-            and metadata.serial and len(metadata.serial) == 64 \
-            and metadata.type:
-            print(metadata.name)
-        # mockRequest = "{hash, private, product_code, serial, title_id, type, username}"
-        result = createSave(metadata)
-        # TODO: se result positivo, salva file su disco
+        if metadata["hash"] and len(metadata["hash"]) == 32 \
+            and metadata["name"] \
+            and metadata["serial"] and len(metadata["serial"]) == 64 \
+            and not (metadata["title_id"] is None and (metadata["type"] is '3DS' or metadata["type"] is 'Switch')):
+            with open(os.path.join(directory_default, "{}_{}".format(os.path.basename(os.path.normpath(metadata["name"])), actualTime())), "wb") as f:
+                f.write(attachment.read())
+            result = createSave(metadata)
+            print(result)
+            if result is 0:
+                return createAndLogResult("INTERNAL_ERROR")
+            elif result is 1:
+                return createAndLogResult("OK_NO_CONTENT")
+            else:
+                return createAndLogResult("")
+        else:
+            return createAndLogResult("INVALID_PARAMETERS")
     except Exception as e:
         trace(e)
         return createAndLogResult("INTERNAL_ERROR")
@@ -155,15 +163,34 @@ def getSaveById(id, serial):
     """.format(id, serial))
 
 def deleteSaveById(id, serial):
-    return update("""
+    query = """
         DELETE FROM SAVES
         WHERE id={}
         AND serial='{}'
-    """.format(id, serial))
+    """.format(id, serial)
+    print(query)
+    return update(query)
 
 def createSave(metadata):
-    # TODO: query
-    return 0
+    mhash = "'{}'".format(metadata["hash"])
+    mname = "'{}'".format(os.path.basename(os.path.normpath(metadata["name"])))
+    mprivate = "true" if "private" in metadata and metadata["private"] is True else "false"
+    mproduct_code = "'{}'".format(metadata["product_code"]) if "product_code" in metadata else "NULL"
+    mserial = "'{}'".format(metadata["serial"])
+    mtitle_id = "'{}'".format(metadata["title_id"]) if "title_id" in metadata else "NULL"
+    mtype = "'{}'".format(metadata["type"])
+    musername = "'{}'".format(metadata["username"]) if "username" in metadata else "NULL"
+
+    query = """
+        INSERT INTO saves (
+            date, hash,
+            path, private,
+            product_code, serial,
+            title_id, type, username
+        ) VALUES (now(),{},{},{},{},{},{},{},{})
+    """.format(mhash, mname, mprivate, mproduct_code, mserial, mtitle_id, mtype, musername)
+    print(query)
+    return update(query)
 
 
 # Utils
@@ -172,6 +199,15 @@ def trace(err):
 
 def sha256(value):
     return hashlib.sha256(value.encode('utf-8')).hexdigest()
+
+def md5ForFile(f, block_size=2**20):
+    md5 = hashlib.md5()
+    while True:
+        data = f.read(block_size)
+        if not data:
+            break
+        md5.update(data)
+    return md5.digest()
 
 def exit_handler():
     print("Closing database connection...")
@@ -188,11 +224,7 @@ def createResult(argument):
         "INTERNAL_ERROR":     {'code': 500, 'message': 'Internal server error'},
         "GENERIC_ERROR":      {'code': 500, 'message': 'Generic server error'}
     }
-    value = switcher.get(argument)
-    if value is None:
-        return createResult("GENERIC_ERROR")
-    else:
-        return value
+    return switcher.get(argument, switcher["GENERIC_ERROR"])
 
 def createAndLogResult(argument):
     result = createResult(argument)
@@ -201,6 +233,9 @@ def createAndLogResult(argument):
 
 def info(result):
     app.logger.info("Served with result %d: %s", result['code'], result['message'])
+
+def actualTime():
+    return str(datetime.now()).replace(":", "")
 
 def createDatabase(hostname, username, password):
     connection = mysql.connector.connect(host=hostname, user=username, passwd=password, auth_plugin="mysql_native_password")
@@ -241,6 +276,9 @@ if __name__ == '__main__':
     password = args.password
     port = args.port
 
+    if not username or not password:
+        exit()
+    
     createDatabase(hostname, username, password)
     
     # connect to mysql database
@@ -259,5 +297,5 @@ if __name__ == '__main__':
     app.run(
         host='0.0.0.0',
         port=port,
-        debug=False
+        debug=True
     )
