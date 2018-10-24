@@ -53,12 +53,12 @@ void Gui::entryType(entryType_t type_)
 
 void Gui::createInfo(const std::string& title, const std::string& message)
 {
-    info->init(title, message, 100, TYPE_INFO);
+    info->init(title, message, 300, TYPE_INFO);
 }
 
 void Gui::createError(Result res, const std::string& message)
 {
-    info->init(res, message, 100, TYPE_ERROR);
+    info->init(res, message, 300, TYPE_ERROR);
 }
 
 size_t Gui::count(entryType_t type)

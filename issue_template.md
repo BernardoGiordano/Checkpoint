@@ -4,6 +4,8 @@ Please fill the fields with all the informations important for the maintainers t
 
 If you feel it's relevant, please attach screenshots or pictures that could detail the issue more.
 
+**NOTICE**: The issue tracker is meant for bug reports and not for troubleshooting. Please reach us out on our [Discord server](https://discord.gg/bGKEyfY) to receive help. By sending this issue report to us, you're aware that your submission may be closed without notice if invalid.
+
 * [x] Issue with Checkpoint for 3DS
 * [ ] Issue with Checkpoint for Switch
 * [ ] Feature request
