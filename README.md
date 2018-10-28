@@ -2,6 +2,9 @@
 
 A fast and simple homebrew save manager for 3DS and Switch written in C++.
 
+<p align="center"><img src="https://i.imgur.com/nwQtZhe.jpg" />
+<img src="https://i.imgur.com/29P9w61.png" /> <img src="https://i.imgur.com/CzDTcSf.png" /></p>
+
 ## Why use Checkpoint?
 
 Checkpoint is created following ideas of simplicity and efficiency. The UI has been designed to condense as many options as possible, while keeping it simple to work with.
@@ -11,6 +14,16 @@ Moreover, Checkpoint is extremely lightweight - while being packaged with a nice
 Checkpoint for 3DS natively supports 3DS and DS cartridges, digital standard titles and demo titles. It also automatically checks and filters homebrew titles which may not have a save archive to backup or restore, which is done without an external title list and filters. For this reason, Checkpoint doesn't need constant user maintenance to retain full functionality.
 
 Checkpoint for Switch natively supports NAND saves for the titles you have played. Title information are loaded automatically.
+
+## Usage
+
+You can use Checkpoint for 3DS with both cfw and Rosalina-based Homebrew Launchers. *hax-based Homebrew Launchers are not supported by Checkpoint. 
+
+Checkpoint for Switch runs on homebrew launcher. Make sure you're running up-to-date payloads.
+
+The first launch will take considerably longer than usual (usually 1-2 minutes depending on how many titles you have installed), due to the working directories being created - Checkpoint will be significatively faster upon launch from then on.
+
+You can scroll between the title list with the DPAD/LR and target a title with A when the selector is on it. Now, you can use the DPAD or the touchscreen to select a target backup to restore/overwrite.
 
 ## Working path
 
@@ -29,27 +42,20 @@ Checkpoint relies on the following folders to store the files it generates. Note
 * **`sdmc:/switch/Checkpoint/config.json`**: custom configuration file
 * **`sdmc:/switch/Checkpoint/saves/<title id> <game title>`**: root path for all the save backups for a generic game
 
-## Usage
-
-You can use Checkpoint for 3DS with both cfw and Rosalina-based Homebrew Launchers. *hax-based Homebrew Launchers are not supported by Checkpoint. 
-
-Checkpoint for Switch runs on homebrew launcher. Make sure you're running up-to-date payloads.
-
-The first launch will take considerably longer than usual (usually 1-2 minutes depending on how many titles you have installed), due to the working directories being created - Checkpoint will be significatively faster upon launch from then on.
-
-You can scroll between the title list with the DPAD/LR and target a title with A when the selector is on it. Now, you can use the DPAD or the touchscreen to select a target backup to restore/overwrite.
-
 ## Configuration file
 
-You can add and toggle features to Checkpoint for 3DS by editing the configuration file.
+You can add and toggle features to Checkpoint for 3DS by editing the **`config.json`** configuration file.
 
-Here's an example:
+### Sample configuration file:
 
 ```
 {
   "filter": [
     "0x000400000011C400",
     "0x000400000014F100"
+  ],
+  "favorites": [
+    "0x000400000011C400"
   ],
   "additional_save_folders": {
     "0x00040000001B5000": {
@@ -68,9 +74,7 @@ Here's an example:
 
   },
   "nand_saves": true,
-  "version_major": 3,
-  "version_minor": 1,
-  "version_micro": 1
+  "version": 2
 }
 ```
 
@@ -78,15 +82,19 @@ Here's an example:
 
 Checkpoint displays error codes when something weird happens or operations fail. If you have any issues, please ensure they haven't already been addressed, and report the error code and a summary of your operations to reproduce it.
 
-Additionally, you can receive real-time support by joining FlagBrew's discord server.
-
-[![Discord](https://discordapp.com/api/guilds/278222834633801728/widget.png?style=banner3&time-)](https://discord.gg/bGKEyfY)
+Additionally, you can receive real-time support by joining FlagBrew's Discord server (link below).
 
 ## Building
 
-Checkpoint for 3DS relies on latest [libctru](https://github.com/smealum/ctrulib), latest [citro3d](https://github.com/fincs/citro3d) and latest [citro2d](https://github.com/devkitPro/citro2d).
+devkitARM and devkitA64 are required to compile Checkpoint for 3DS and Switch, respectively. Learn more at [devkitpro.org](https://devkitpro.org/wiki/Getting_Started). Install or update dependencies as follows.
 
-Checkpoint for Switch relies on latest [libnx](https://github.com/switchbrew/libnx) and switch-freetype, available from [dkp-pacman](https://github.com/devkitPro/pacman/releases).
+### 3DS version
+
+`pacman -S libctru citro3d citro2d`
+
+### Switch version
+
+`pacman -S libnx switch-freetype switch-libpng switch-libjpeg-turbo switch-sdl2 switch-sdl2_image switch-sdl2_gfx switch-sdl2_ttf`
 
 ## License
 
@@ -104,8 +112,12 @@ All the maintainers for [nx-hbmenu](https://github.com/switchbrew/nx-hbmenu), fo
 
 Yellows8 and all the mantainers for [switch-examples](https://github.com/switchbrew/switch-examples).
 
-[rakujira](https://twitter.com/rakujira) for the awesome Checkpoint logos!
+[rakujira](https://twitter.com/rakujira) for the awesome Checkpoint logo.
 
 Hikari-chin and all the other testers for their help with testing.
 
-If you like my work, **support FlagBrew on [Patreon](https://www.patreon.com/FlagBrew)**!
+---
+
+If you like the work FlagBrew puts into this project and more others, **support FlagBrew on [Patreon](https://www.patreon.com/FlagBrew)**!
+
+[![Discord](https://discordapp.com/api/guilds/278222834633801728/widget.png?style=banner3&time-)](https://discord.gg/bGKEyfY)
