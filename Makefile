@@ -6,8 +6,10 @@ all:
 clean:
 	@for dir in $(SUBDIRS); do $(MAKE) clean -C $$dir; done
 
-nds:
+3ds:
 	$(MAKE) -C 3ds
 
-nx:
+switch:
 	$(MAKE) -C switch
+
+.PHONY: $(SUBDIRS)
