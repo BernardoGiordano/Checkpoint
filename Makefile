@@ -5,3 +5,9 @@ all:
 
 clean:
 	@for dir in $(SUBDIRS); do $(MAKE) clean -C $$dir; done
+
+nds:
+	$(MAKE) -C 3ds
+
+nx:
+	$(MAKE) -C switch
