@@ -43,6 +43,7 @@ public:
         mMaxPages = 0;
         mCurrentTime = 0;
         mLastTime = 0;
+        mDelayTicks = 1e10;
     }
 
     virtual ~IHid(void) { }
@@ -55,14 +56,15 @@ public:
     int    page(void);
     void   page(int v);
     void   reset(void);
-    void   update(size_t count);
 
 protected:
-    void   page_back(void);
-    void   page_forward(void);
+    void page_back(void);
+    void page_forward(void);
+    virtual void update(size_t count) = 0;
 
     virtual u64 down(void) = 0;
     virtual u64 held(void) = 0;
+    virtual u64 tick(void) = 0;
     virtual u64 _KEY_ZL(void) = 0;
     virtual u64 _KEY_ZR(void) = 0;
     virtual u64 _KEY_LEFT(void) = 0;
@@ -77,6 +79,29 @@ protected:
     size_t mColumns;
     u64    mCurrentTime;
     u64    mLastTime;
+    u64    mDelayTicks;
+};
+
+class IHidVertical : public IHid
+{
+public:
+    IHidVertical(size_t entries, size_t columns)
+    : IHid(entries, columns) { }
+
+    virtual ~IHidVertical(void) { }
+
+    void update(size_t count) override;
+};
+
+class IHidHorizontal : public IHid
+{
+public:
+    IHidHorizontal(size_t entries, size_t columns)
+    : IHid(entries, columns) { }
+
+    virtual ~IHidHorizontal(void) { }
+
+    void update(size_t count) override;
 };
 
 #endif

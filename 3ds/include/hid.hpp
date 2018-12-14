@@ -30,15 +30,13 @@
 #include <3ds.h>
 #include "ihid.hpp"
 
-#define DELAY_TICKS 50000000
-
-class Hid : public IHid
+class HidHorizontal : public IHidHorizontal
 {
 public:
-    Hid(size_t entries, size_t columns)
-    : IHid(entries, columns) { }
+    HidHorizontal(size_t entries, size_t columns)
+    : IHidHorizontal(entries, columns) { mDelayTicks = 50000000; }
 
-    virtual ~Hid(void) { }
+    virtual ~HidHorizontal(void) { }
 
     u64 down(void) override
     {
@@ -50,14 +48,40 @@ public:
         return (u64)hidKeysHeld();
     }
 
-    void update(size_t count)
+    u64 tick(void) override
     {
-        mCurrentTime = svcGetSystemTick();
-        if ((mCurrentTime > mLastTime + DELAY_TICKS))
-        {
-            IHid::update(count);
-            mLastTime = mCurrentTime;
-        }
+        return svcGetSystemTick();
+    }
+
+    u64 _KEY_ZL(void) override { return KEY_ZL; }
+    u64 _KEY_ZR(void) override { return KEY_ZR; }
+    u64 _KEY_LEFT(void) override { return KEY_LEFT; }
+    u64 _KEY_RIGHT(void) override { return KEY_RIGHT; }
+    u64 _KEY_UP(void) override { return KEY_UP; }
+    u64 _KEY_DOWN(void) override { return KEY_DOWN; }
+};
+
+class HidVertical : public IHidVertical
+{
+public:
+    HidVertical(size_t entries, size_t columns)
+    : IHidVertical(entries, columns) { mDelayTicks = 50000000; }
+
+    virtual ~HidVertical(void) { }
+
+    u64 down(void) override
+    {
+        return (u64)hidKeysDown();
+    }
+
+    u64 held(void) override
+    {
+        return (u64)hidKeysHeld();
+    }
+
+    u64 tick(void) override
+    {
+        return svcGetSystemTick();
     }
 
     u64 _KEY_ZL(void) override { return KEY_ZL; }

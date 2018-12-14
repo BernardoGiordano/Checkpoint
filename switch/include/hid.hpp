@@ -30,15 +30,13 @@
 #include <switch.h>
 #include "ihid.hpp"
 
-#define DELAY_TICKS 2500000
-
-class Hid : public IHid
+class HidVertical : public IHidVertical
 {
 public:
-    Hid(size_t entries, size_t columns)
-    : IHid(entries, columns) { }
+    HidVertical(size_t entries, size_t columns)
+    : IHidVertical(entries, columns) { mDelayTicks = 2500000; }
 
-    virtual ~Hid(void) { }
+    virtual ~HidVertical(void) { }
 
     u64 down(void) override
     {
@@ -50,14 +48,40 @@ public:
         return hidKeysHeld(CONTROLLER_P1_AUTO);
     }
 
-    void update(size_t count)
+    u64 tick(void) override
     {
-        mCurrentTime = armGetSystemTick();
-        if ((mCurrentTime > mLastTime + DELAY_TICKS))
-        {
-            IHid::update(count);
-            mLastTime = mCurrentTime;
-        }
+        return armGetSystemTick();
+    }
+
+    u64 _KEY_ZL(void) override { return 0; }
+    u64 _KEY_ZR(void) override { return 0; }
+    u64 _KEY_LEFT(void) override { return KEY_LEFT; }
+    u64 _KEY_RIGHT(void) override { return KEY_RIGHT; }
+    u64 _KEY_UP(void) override { return KEY_UP; }
+    u64 _KEY_DOWN(void) override { return KEY_DOWN; }
+};
+
+class HidHorizontal : public IHidHorizontal
+{
+public:
+    HidHorizontal(size_t entries, size_t columns)
+    : IHidHorizontal(entries, columns) { mDelayTicks = 2500000; }
+
+    virtual ~HidHorizontal(void) { }
+
+    u64 down(void) override
+    {
+        return hidKeysDown(CONTROLLER_P1_AUTO);
+    }
+
+    u64 held(void) override
+    {
+        return hidKeysHeld(CONTROLLER_P1_AUTO);
+    }
+
+    u64 tick(void) override
+    {
+        return armGetSystemTick();
     }
 
     u64 _KEY_ZL(void) override { return 0; }

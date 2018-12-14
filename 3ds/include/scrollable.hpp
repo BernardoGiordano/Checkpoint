@@ -40,7 +40,7 @@ public:
     Scrollable(int x, int y, u32 w, u32 h, size_t visibleEntries)
     : IScrollable(x, y, w, h, visibleEntries)
     {
-        mHid = new Hid(visibleEntries, 1);
+        mHid = new HidVertical(visibleEntries, 1);
     }
     
     virtual ~Scrollable(void)
@@ -55,7 +55,7 @@ public:
     void updateSelection(void) override;
 
 protected:
-    Hid* mHid;
+    HidVertical* mHid;
 };
 
 #endif

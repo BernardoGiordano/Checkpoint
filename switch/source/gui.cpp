@@ -37,7 +37,7 @@ static const size_t rowlen = 5;
 static const size_t collen = 4;
 static const size_t cols = 6;
 static bool backupScrollEnabled;
-static Hid* hid;
+static HidHorizontal* hid;
 static entryType_t type;
 
 static float currentTime = 0;
@@ -245,7 +245,7 @@ bool Gui::init(void)
     backupScrollEnabled = false;
     info = new Info();
     info->init("", "", 0, TYPE_INFO);
-    hid = new Hid(rowlen * collen, collen);
+    hid = new HidHorizontal(rowlen * collen, collen);
     backupList = new Scrollable(540, 462, 506, 222, cols);
     buttonBackup = new Clickable(1050, 462, 220, 109, COLOR_WHITE, COLOR_GREY_LIGHT, "Backup \ue004", true);
     buttonRestore = new Clickable(1050, 575, 220, 109, COLOR_WHITE, COLOR_GREY_LIGHT, "Restore \ue005", true);

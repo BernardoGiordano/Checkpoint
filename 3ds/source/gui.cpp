@@ -51,7 +51,7 @@ static Scrollable* directoryList;
 static const size_t rowlen = 4;
 static const size_t collen = 8;
 static bool bottomScrollEnabled;
-static Hid* hid;
+static HidHorizontal* hid;
 
 static void drawBackground(gfxScreen_t screen);
 static void drawSelector(void);
@@ -250,7 +250,7 @@ void Gui::init(void)
     bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
     bottomScrollEnabled = false;
-    hid = new Hid(rowlen * collen, collen);
+    hid = new HidHorizontal(rowlen * collen, collen);
 
     info = new Info();
     info->init("", "", 0, TYPE_INFO);
@@ -259,16 +259,16 @@ void Gui::init(void)
     copyList = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE, GFX_TOP);
     directoryList = new Scrollable(6, 102, 196, 110, 5);
     messageBox = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE, GFX_TOP);
-    messageBox->push_message("Press \uE000 to enter target.");
-    messageBox->push_message("Press \uE004 to backup target.");
-    messageBox->push_message("Press \uE005 to restore target.");
-    messageBox->push_message("Press \uE001 to exit target or deselect all titles.");
-    messageBox->push_message("Press \uE002 to delete a backup.");
-    messageBox->push_message("Press \uE003 to multiselect a title.");
-    messageBox->push_message("Hold \uE003 to multiselect all titles.");
-    messageBox->push_message("Press \uE006 to move between titles.");
-    messageBox->push_message("Press \uE054\uE055 to switch page.");
-    messageBox->push_message("Hold \uE001 to refresh titles.");
+    messageBox->push_message("Press \uE000 to enter target");
+    messageBox->push_message("Press \uE004 to backup target");
+    messageBox->push_message("Press \uE005 to restore target");
+    messageBox->push_message("Press \uE001 to exit target or deselect all titles");
+    messageBox->push_message("Press \uE002 to delete a backup");
+    messageBox->push_message("Press \uE003 to multiselect a title");
+    messageBox->push_message("Hold \uE003 to multiselect all titles");
+    messageBox->push_message("Press \uE006 to move between titles");
+    messageBox->push_message("Press \uE054\uE055 to switch page");
+    messageBox->push_message("Hold \uE001 to refresh titles");
 
     spritesheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");
     flag = C2D_SpriteSheetGetImage(spritesheet, sprites_checkpoint_idx);
