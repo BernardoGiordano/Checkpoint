@@ -54,6 +54,7 @@ bool SDLH_Init(void)
     SDLH_LoadImage(&s_flag, "romfs:/flag.png");
     SDLH_LoadImage(&s_star, "romfs:/star.png");
     SDLH_LoadImage(&s_checkbox, "romfs:/checkbox.png");
+    SDL_SetTextureColorMod(s_checkbox, COLOR_GREY_BG.r, COLOR_GREY_BG.g, COLOR_GREY_BG.b);
 
     // const int mix_flags = MIX_INIT_OGG;
     // if ((Mix_Init(mix_flags) & mix_flags) != mix_flags)
@@ -186,6 +187,7 @@ void SDLH_DrawIcon(std::string icon, int x, int y)
         t = s_flag;
     } else if (icon.compare("checkbox") == 0) {
         t = s_checkbox;
+        SDLH_DrawRect(x + 8, y + 8, 24, 24, COLOR_WHITE);
     } else if (icon.compare("star") == 0) {
         t = s_star;
     }
