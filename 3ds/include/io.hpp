@@ -45,6 +45,7 @@ namespace io
     void   copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
     Result createDirectory(FS_Archive archive, const std::u16string& path);
     void   deleteBackupFolder(const std::u16string& path);
+    Result deleteFolderRecursively(FS_Archive arch, const std::u16string& path);
     bool   directoryExists(FS_Archive archive, const std::u16string& path);
     bool   fileExists(FS_Archive archive, const std::u16string& path);
 }
