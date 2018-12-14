@@ -922,13 +922,9 @@ Uint8 FC_LoadFontFromTTF(FC_Font* font, SDL_Renderer* renderer, TTF_Font* ttf, T
     font->ttf_ext = ext;
 
     //font->line_height = TTF_FontLineSkip(ttf);
-    font->height = TTF_FontHeight(ttf);
+    font->height = TTF_FontHeight(ttf) + 0.16666666666 * TTF_FontHeight(ttf);
     font->ascent = TTF_FontAscent(ttf);
     font->descent = -TTF_FontDescent(ttf);
-    
-    // Some bug for certain fonts can result in an incorrect height.
-    if(font->height < font->ascent - font->descent)
-        font->height = font->ascent - font->descent;
 
     font->baseline = font->height - font->descent;
     font->default_color = color;

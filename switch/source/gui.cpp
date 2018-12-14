@@ -163,13 +163,15 @@ static void drawBackground(void)
     u32 ver_w, ver_h, checkpoint_w; 
     SDLH_GetTextDimensions(23, ver, &ver_w, &ver_h);
     SDLH_GetTextDimensions(30, "checkpoint", &checkpoint_w, NULL);
-    u32 h = (bar_height - ver_h) / 2 - 1;
-    SDLH_DrawText(23, 10, h + 3, COLOR_GREY_LIGHT, DateTime::timeStr().c_str());
+    u32 h = (bar_height - ver_h) / 2;
+    SDLH_DrawText(23, 8, h + 3, COLOR_GREY_LIGHT, DateTime::timeStr().c_str());
     SDLH_DrawText(30, 1280 - 10 - ver_w - image_dim - 12 - checkpoint_w, h - 2, COLOR_WHITE, "checkpoint");
     SDLH_DrawText(23, 1280 - 10 - ver_w, h + 3, COLOR_GREY_LIGHT, ver);
     SDLH_DrawIcon("flag", 1280 - 10 - ver_w - image_dim - 6, -2); 
     // shadow
     SDLH_DrawRect(0, bar_height, 1280, 2, COLOR_GREY_DARKER);
+    // patch the p
+    SDLH_DrawRect(1080, bar_height + 2, 8, 8, COLOR_GREY_BG);
 }
 
 void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
@@ -249,15 +251,15 @@ bool Gui::init(void)
     buttonRestore = new Clickable(1050, 575, 220, 109, COLOR_WHITE, COLOR_GREY_LIGHT, "Restore \ue005", true);
     copyList = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);
     messageBox = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);        
-    messageBox->push_message("Press \ue000 to enter target.");
-    messageBox->push_message("Press \ue001 to exit target or deselect all titles.");
-    messageBox->push_message("Press \ue004 to backup target.");
-    messageBox->push_message("Press \ue005 to restore target.");
-    messageBox->push_message("Press \ue002 to delete a backup.");
-    messageBox->push_message("Press \ue003 to multiselect a title.");
-    messageBox->push_message("Hold \ue003 to multiselect all titles.");
-    messageBox->push_message("Press \ue041 to move between titles.");
-    messageBox->push_message("Press \ue085/\ue086 to switch user.");
+    messageBox->push_message("Press \ue000 to enter target");
+    messageBox->push_message("Press \ue001 to exit target or deselect all titles");
+    messageBox->push_message("Press \ue004 to backup target");
+    messageBox->push_message("Press \ue005 to restore target");
+    messageBox->push_message("Press \ue002 to delete a backup");
+    messageBox->push_message("Press \ue003 to multiselect a title");
+    messageBox->push_message("Hold \ue003 to multiselect all titles");
+    messageBox->push_message("Press \ue041 to move between titles");
+    messageBox->push_message("Press \ue085/\ue086 to switch user");
     
     return true;
 }
@@ -413,7 +415,7 @@ void Gui::draw(u128 uid)
     u32 ins_w, ins_h;
     const char* instructions = "Hold \ue046 to see commands. Press \ue045 to exit.";
     SDLH_GetTextDimensions(23, instructions, &ins_w, &ins_h);
-    SDLH_DrawText(23, ceil((1280 - ins_w) / 2), 720 - bar_height + (bar_height - ins_h) / 2, COLOR_WHITE, instructions);
+    SDLH_DrawText(23, ceil((1280 - ins_w) / 2), 720 - bar_height + (bar_height - ins_h) / 2 + 2, COLOR_WHITE, instructions);
 
     // increase currentTime
     currentTime = SDL_GetTicks() / 1000.f;

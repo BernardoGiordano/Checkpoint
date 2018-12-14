@@ -228,7 +228,7 @@ void io::backup(size_t index, u128 uid)
         if (ret != 0)
         {
             FileSystem::unmount();
-            Gui::createError((Result)ret, "Failed to delete the existing backup directory recursively.");
+            Gui::createError((Result)ret, "Failed to delete the existing backup \nirectory recursively.");
             return;
         }
     }
@@ -306,7 +306,7 @@ void io::restore(size_t index, u128 uid)
     }
     else
     {
-        Gui::createInfo("Success!", Gui::nameFromCell(cellIndex) + " has been restored\nsuccessfully.");
+        Gui::createInfo("Success!", Gui::nameFromCell(cellIndex) + "\nhas been restored successfully.");
     }
     
     FileSystem::unmount();
