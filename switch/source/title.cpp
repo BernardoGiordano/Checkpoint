@@ -44,6 +44,7 @@ static void loadIcon(u64 id, NsApplicationControlData* nsacd, size_t iconsize)
     {
         SDL_Texture* texture;
         SDLH_LoadImage(&texture, nsacd->icon, iconsize);
+        SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
         icons.insert({id, texture});
     }
 }
