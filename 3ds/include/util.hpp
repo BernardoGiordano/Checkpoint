@@ -39,7 +39,7 @@ extern "C" {
 
 void calculateTitleDBHash(u8* hash);
 void servicesExit(void);
-void servicesInit(void);
+Result servicesInit(void);
 
 namespace StringUtils
 {

@@ -28,7 +28,10 @@
 #include "util.hpp"
 
 int main() {
-    servicesInit();
+    if (R_FAILED(servicesInit())) {
+        servicesExit();
+        return -1;
+    }
 
     int selectionTimer = 0;
     int refreshTimer = 0;

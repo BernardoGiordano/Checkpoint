@@ -38,9 +38,13 @@ void servicesExit(void)
     romfsExit();
 }
 
-void servicesInit(void)
+Result servicesInit(void)
 {
     Result res = 0;
+
+    Handle hbldrHandle;
+    if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) return res;
+
     romfsInit();
     sdmcInit();
     hidInit();
@@ -48,11 +52,7 @@ void servicesInit(void)
     amInit();
     pxiDevInit();
     
-    res = Archive::init();
-    if (R_FAILED(res))
-    {
-        Gui::createError(res, "SDMC archive init failed.");
-    }
+    if (R_FAILED(res = Archive::init())) return res;
     
     mkdir("sdmc:/3ds", 777);
     mkdir("sdmc:/3ds/Checkpoint", 777);
@@ -65,6 +65,8 @@ void servicesInit(void)
     // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }
 
     Configuration::getInstance();
+
+    return 0;
 }
 
 void calculateTitleDBHash(u8* hash)
