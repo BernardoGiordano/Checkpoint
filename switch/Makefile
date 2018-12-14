@@ -32,7 +32,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 VERSION_MAJOR := 3
 VERSION_MINOR := 5
-VERSION_MICRO := 0
+VERSION_MICRO := 1
 
 APP_TITLE	:=	Checkpoint
 APP_AUTHOR	:=	Bernardo Giordano
@@ -53,7 +53,7 @@ ROMFS	:=	romfs
 ARCH	:=	-march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE
 
 CFLAGS	:=	-g -O3 -ffunction-sections \
-			-Wall -Wno-write-strings \
+			-Wall -Wno-write-strings -Wno-unused-value \
 			$(ARCH) $(DEFINES) \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
 			-DVERSION_MINOR=${VERSION_MINOR} \
