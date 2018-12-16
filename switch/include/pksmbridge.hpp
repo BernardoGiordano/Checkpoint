@@ -43,3 +43,4 @@
 
 bool isPKSMBridgeTitle(u64 id);
 void sendToPKSMBrigde(size_t index, u128 uid);
+void recvFromPKSMBridge(size_t index, u128 uid);

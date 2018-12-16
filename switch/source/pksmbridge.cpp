@@ -59,7 +59,7 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     save.read(data, size);
 
     // get server address
-    std::pair<bool, std::string> ipaddress = KeyboardManager::get().keyboard("192.168.1.16");
+    std::pair<bool, std::string> ipaddress = KeyboardManager::get().keyboard("Input PKSM IP address");
     if (!ipaddress.first || !validateIpAddress(ipaddress.second))
     {
         Gui::createError(-1, "Invalid IP address.");
@@ -72,7 +72,7 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     struct sockaddr_in servaddr;
     if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
-        Gui::createError((Result)fd, "Socket creation failed.");
+        Gui::createError(errno, "Socket creation failed.");
         delete[] data;
         return;
     }
@@ -83,7 +83,7 @@ void sendToPKSMBrigde(size_t index, u128 uid)
 
     if (connect(fd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)
     {
-        Gui::createError((Result)fd, "Socket connection failed.");
+        Gui::createError(errno, "Socket connection failed.");
         close(fd);
         delete[] data;
         return;
@@ -105,9 +105,85 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     }
     else
     {
-        Gui::createError(-1, "Failed to send data.");
+        Gui::createError(errno, "Failed to send data.");
     }
 
     close(fd);
+    delete[] data;
+}
+
+void recvFromPKSMBridge(size_t index, u128 uid)
+{
+    const size_t cellIndex = Gui::index(CELLS);
+    if (cellIndex == 0 || !Gui::askForConfirmation("Receive save to PKSM?"))
+    {
+        return;
+    }
+
+    int fd;
+    struct sockaddr_in servaddr;
+    if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_IP)) < 0)
+    {
+        Gui::createError(errno, "Socket creation failed.");
+        return;
+    }
+
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_port = htons(PKSM_PORT);
+    servaddr.sin_addr.s_addr = INADDR_ANY;
+    
+    if (bind(fd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)
+    {
+        Gui::createError(errno, "Socket bind failed.");
+        close(fd);
+        return;
+    }
+    if (listen(fd, 5) < 0)
+    {
+        Gui::createError(errno, "Socket listen failed.");
+        close(fd);
+        return;
+    }
+
+    int fdconn;
+    int addrlen = sizeof(servaddr);
+    if ((fdconn = accept(fd, (struct sockaddr*)&servaddr, (socklen_t*)&addrlen)) < 0)
+    {
+        Gui::createError(errno, "Socket accept failed.");
+        close(fd);
+        return;
+    }
+
+    size_t size = 0x100000;
+    Title title;
+    getTitle(title, uid, index);
+    std::string srcPath = title.fullPath(cellIndex) + "/";
+    std::ofstream save(srcPath + "savedata.bin", std::ios::binary);
+    char* data = new char[size];
+
+    size_t total = 0;
+    size_t chunk = 1024;
+    int n;
+    while (total < size) {
+        size_t torecv = size - total > chunk ? chunk : size - total;
+        n = recv(fdconn, data + total, torecv, 0);
+        if (n == -1) { break; }
+        total += n;
+        fprintf(stderr, "Recv %lu bytes, %lu still missing\n", total, size - total);
+    }
+    if (total == size)
+    {
+        Gui::createInfo("Success!", "Data received correctly.");
+        save << data;
+        save.close();
+    }
+    else
+    {
+        Gui::createError(errno, "Failed to receive data.");
+    }
+
+    close(fd);
+    close(fdconn);
     delete[] data;
 }

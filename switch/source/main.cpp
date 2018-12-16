@@ -128,11 +128,21 @@ int main(int argc, char** argv)
                 // If the "New..." entry is selected...
                 if (0 == Gui::index(CELLS))
                 {
-                    io::backup(Gui::index(TITLES), g_currentUId);
+                    if (!Gui::getPKSMBridgeFlag())
+                    {
+                        io::backup(Gui::index(TITLES), g_currentUId);
+                    }
                 }
                 else
                 {
-                    io::restore(Gui::index(TITLES), g_currentUId);
+                    if (Gui::getPKSMBridgeFlag())
+                    {
+                        recvFromPKSMBridge(Gui::index(TITLES), g_currentUId);
+                    }
+                    else
+                    {
+                         io::restore(Gui::index(TITLES), g_currentUId);
+                    }
                 }
             }
             else
@@ -255,7 +265,14 @@ int main(int argc, char** argv)
             }
             else if (Gui::backupScroll())
             {
-                io::restore(Gui::index(TITLES), g_currentUId);
+                if (Gui::getPKSMBridgeFlag())
+                {
+                    recvFromPKSMBridge(Gui::index(TITLES), g_currentUId);
+                }
+                else
+                {
+                        io::restore(Gui::index(TITLES), g_currentUId);
+                }
             }
         }
 
