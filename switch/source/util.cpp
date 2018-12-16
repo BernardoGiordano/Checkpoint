@@ -29,7 +29,7 @@
 void servicesExit(void)
 {
     // debug
-    // socketExit();
+    socketExit();
     freeIcons();
     nsExit();
     Account::exit();
@@ -41,10 +41,10 @@ void servicesExit(void)
 Result servicesInit(void)
 {
     // debug
-    // if (socketInitializeDefault() == 0)
-    // {
-    //     nxlinkStdio();
-    // }
+    if (socketInitializeDefault() == 0)
+    {
+        //nxlinkStdio();
+    }
 
     Result res = 0;
     romfsInit();

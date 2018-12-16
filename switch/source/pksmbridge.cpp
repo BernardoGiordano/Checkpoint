@@ -53,7 +53,7 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     getTitle(title, uid, index);
     std::string srcPath = title.fullPath(cellIndex) + "/";
     std::ifstream save(srcPath + "savedata.bin", std::ios::binary | std::ios::ate);
-    std::streamsize size = save.tellg();
+    size_t size = save.tellg();
     save.seekg(0, std::ios::beg);
     char* data = new char[size];
     save.read(data, size);
@@ -64,21 +64,16 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     {
         Gui::createError(-1, "Invalid IP address.");
         delete[] data;
-        socketExit();
         return;
     }
 
-    // send via UDP
-    socketInitializeDefault();
-    
+    // send via TCP
     int fd;
     struct sockaddr_in servaddr;
     if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         Gui::createError((Result)fd, "Socket creation failed.");
-        close(fd);
         delete[] data;
-        socketExit();
         return;
     }
     memset(&servaddr, 0, sizeof(servaddr));
@@ -91,18 +86,18 @@ void sendToPKSMBrigde(size_t index, u128 uid)
         Gui::createError((Result)fd, "Socket connection failed.");
         close(fd);
         delete[] data;
-        socketExit();
         return;
     }
 
-    int total = 0;
-    int chunk = 1024;
+    size_t total = 0;
+    size_t chunk = 1024;
     int n;
     while (total < size) {
-        int tosend = size - total > chunk ? chunk : size - total;
+        size_t tosend = size - total > chunk ? chunk : size - total;
         n = send(fd, data + total, tosend, 0);
-        if (n == -1) break;
+        if (n == -1) { break; }
         total += n;
+        fprintf(stderr, "Sent %lu bytes, %lu still missing\n", total, size - total);
     }
     if (total == size)
     {
@@ -115,5 +110,4 @@ void sendToPKSMBrigde(size_t index, u128 uid)
 
     close(fd);
     delete[] data;
-    socketExit();
 }
