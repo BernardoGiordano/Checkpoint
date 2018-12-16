@@ -48,6 +48,7 @@ public:
 
     bool filter(u64 id);
     bool favorite(u64 id);
+    bool isPKSMBridgeEnabled(void);
     std::vector<std::string> additionalSaveFolders(u64 id);
 
 private:
@@ -60,6 +61,7 @@ private:
     void operator=(Configuration const&) = delete;
 
     nlohmann::json mJson;
+    bool PKSMBridgeEnabled;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders;
     std::string BASEPATH = "/switch/Checkpoint/config.json";

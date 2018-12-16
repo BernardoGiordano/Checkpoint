@@ -50,12 +50,14 @@ int main(int argc, char** argv)
 
         hidScanInput();
         u32 kdown = hidKeysDown(CONTROLLER_P1_AUTO);
+        u32 kheld = hidKeysHeld(CONTROLLER_P1_AUTO);
         if (kdown & KEY_ZL)
         {
             ++g_currentUserIndex %= userIds.size();
             g_currentUId = userIds.at(g_currentUserIndex);
             Gui::index(TITLES, 0);
             Gui::index(CELLS, 0);
+            Gui::setPKSMBridgeFlag(false);
         }
         if (kdown & KEY_ZR)
         {
@@ -63,6 +65,21 @@ int main(int argc, char** argv)
             g_currentUId = userIds.at(g_currentUserIndex);
             Gui::index(TITLES, 0);
             Gui::index(CELLS, 0);
+            Gui::setPKSMBridgeFlag(false);
+        }
+        // handle PKSM bridge
+        if (Configuration::getInstance().isPKSMBridgeEnabled())
+        {
+            Title title;
+            getTitle(title, g_currentUId, Gui::index(TITLES));
+            if (!Gui::getPKSMBridgeFlag())
+            {
+                if ((kheld & KEY_L) && (kheld & KEY_R) && isPKSMBridgeTitle(title.id()))
+                {
+                    Gui::setPKSMBridgeFlag(true);
+                    Gui::updateButtonsColor();
+                }
+            }
         }
 
         // handle touchscreen
@@ -79,6 +96,7 @@ int main(int argc, char** argv)
                 g_currentUserIndex = i;
                 g_currentUId = userIds.at(g_currentUserIndex);
                 Gui::index(TITLES, 0);
+                Gui::setPKSMBridgeFlag(false);
             }
         }
 
@@ -141,6 +159,7 @@ int main(int argc, char** argv)
             Gui::backupScroll(false);
             Gui::entryType(TITLES);
             Gui::clearSelectedEntries();
+            Gui::setPKSMBridgeFlag(false);
             Gui::updateButtonsColor(); // Do this last
         }
 
@@ -175,6 +194,7 @@ int main(int argc, char** argv)
             }
             Gui::entryType(TITLES);
             Gui::addSelectedEntry(Gui::index(TITLES));
+            Gui::setPKSMBridgeFlag(false);
             Gui::updateButtonsColor(); // Do this last
         }
 
@@ -214,7 +234,14 @@ int main(int argc, char** argv)
             }
             else if (Gui::backupScroll())
             {
-                io::backup(Gui::index(TITLES), g_currentUId);
+                if (Gui::getPKSMBridgeFlag())
+                {
+                    sendToPKSMBrigde(Gui::index(TITLES), g_currentUId);
+                }
+                else
+                {
+                    io::backup(Gui::index(TITLES), g_currentUId);
+                }
             }
         }
 

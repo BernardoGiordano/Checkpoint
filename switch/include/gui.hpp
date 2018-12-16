@@ -73,6 +73,9 @@ namespace Gui
     bool        multipleSelectionEnabled(void);
     std::vector
     <size_t>    selectedEntries(void);
+
+    bool        getPKSMBridgeFlag(void);
+    void        setPKSMBridgeFlag(bool f);
 }
 
 #endif

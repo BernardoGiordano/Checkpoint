@@ -5,6 +5,7 @@ static SDL_Renderer* s_renderer;
 static SDL_Texture* s_star;
 static SDL_Texture* s_checkbox;
 static SDL_Texture* s_flag;
+static SDL_Texture* s_pokeball;
 // static Mix_Music* s_click;
 
 static PlFontData fontData, fontExtData;
@@ -53,8 +54,9 @@ bool SDLH_Init(void)
     }
     SDLH_LoadImage(&s_flag, "romfs:/flag.png");
     SDLH_LoadImage(&s_star, "romfs:/star.png");
+    SDLH_LoadImage(&s_pokeball, "romfs:/pokeball.png");
     SDLH_LoadImage(&s_checkbox, "romfs:/checkbox.png");
-    SDL_SetTextureColorMod(s_checkbox, COLOR_GREY_BG.r, COLOR_GREY_BG.g, COLOR_GREY_BG.b);
+    SDL_SetTextureColorMod(s_checkbox, theme().c1.r, theme().c1.g, theme().c1.b);
 
     // const int mix_flags = MIX_INIT_OGG;
     // if ((Mix_Init(mix_flags) & mix_flags) != mix_flags)
@@ -187,9 +189,11 @@ void SDLH_DrawIcon(std::string icon, int x, int y)
         t = s_flag;
     } else if (icon.compare("checkbox") == 0) {
         t = s_checkbox;
-        SDLH_DrawRect(x + 8, y + 8, 24, 24, COLOR_WHITE);
+        SDLH_DrawRect(x + 8, y + 8, 24, 24, theme().c6);
     } else if (icon.compare("star") == 0) {
         t = s_star;
+    } else if (icon.compare("pokeball") == 0) {
+        t = s_pokeball;
     }
 
     if (t != nullptr) {

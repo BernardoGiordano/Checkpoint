@@ -157,8 +157,8 @@ KeyboardManager::KeyboardManager(void)
                 starty + (buttonSpacing + height) * i,
                 normalWidth,
                 height, 
-                COLOR_GREY_DARK, 
-                COLOR_WHITE, 
+                dtheme().c3, 
+                dtheme().c6, 
                 letters.substr(i*11+j, 1),
                 true
             );
@@ -171,8 +171,8 @@ KeyboardManager::KeyboardManager(void)
         starty,
         bigWidth,
         height, 
-        COLOR_WHITE,
-        COLOR_BLACK,
+        dtheme().c6,
+        dtheme().c0,
         "back",
         true
     );
@@ -183,8 +183,8 @@ KeyboardManager::KeyboardManager(void)
         starty + height + 4,
         bigWidth,
         height * 2 + 4, 
-        COLOR_GREY_MEDIUM, 
-        COLOR_GREY_LIGHT,  
+        dtheme().c4, 
+        dtheme().c5,  
         "return",
         true
     );
@@ -196,7 +196,7 @@ KeyboardManager::KeyboardManager(void)
         bigWidth,
         height * 2 + 4, 
         COLOR_GREEN, 
-        COLOR_BLACK, 
+        dtheme().c0, 
         "OK",
         true
     );
@@ -207,8 +207,8 @@ KeyboardManager::KeyboardManager(void)
         starty + height*4 + 4*4,
         normalWidth,
         height, 
-        COLOR_GREY_MEDIUM, 
-        COLOR_WHITE, 
+        dtheme().c4, 
+        dtheme().c6, 
         "caps",
         true
     );
@@ -219,8 +219,8 @@ KeyboardManager::KeyboardManager(void)
         starty + height*4 + 4*4,
         normalWidth*8 + buttonSpacing*7,
         height, 
-        COLOR_GREY_MEDIUM, 
-        COLOR_WHITE, 
+        dtheme().c4, 
+        dtheme().c6, 
         "space",
         true
     );
@@ -312,23 +312,23 @@ std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& sugges
             }
         }
 
-        SDLH_ClearScreen(COLOR_GREY_BG);
+        SDLH_ClearScreen(dtheme().c1);
 
-        SDLH_DrawRect(marginlr, 140, 1280 - marginlr*2, 84, COLOR_GREY_MEDIUM);
-        SDLH_DrawRect(0, starty - margintb, 1280, 356, COLOR_GREY_DARKER);
+        SDLH_DrawRect(marginlr, 140, 1280 - marginlr*2, 84, dtheme().c4);
+        SDLH_DrawRect(0, starty - margintb, 1280, 356, dtheme().c2);
 
         u32 texth, counter_width;
         std::string counter = StringUtils::format("Custom name length: %d/%d", str.empty() ? suggestion.length() : str.length(), CUSTOM_PATH_LEN);
         SDLH_GetTextDimensions(30, " ", NULL, &texth);
         SDLH_GetTextDimensions(20, counter.c_str(), &counter_width, NULL);
-        SDLH_DrawText(20, 1280 - marginlr - counter_width, 236, COLOR_WHITE, counter.c_str());
+        SDLH_DrawText(20, 1280 - marginlr - counter_width, 236, dtheme().c6, counter.c_str());
         if (str.empty())
         {
-            SDLH_DrawTextBox(30, marginlr*2, 140 + (84 - texth) / 2, COLOR_GREY_LIGHT, 1280 - marginlr*2, suggestion.c_str());            
+            SDLH_DrawTextBox(30, marginlr*2, 140 + (84 - texth) / 2, dtheme().c5, 1280 - marginlr*2, suggestion.c_str());            
         }
         else
         {
-            SDLH_DrawTextBox(30, marginlr*2, 140 + (84 - texth) / 2, COLOR_WHITE, 1280 - marginlr*2, str.c_str());   
+            SDLH_DrawTextBox(30, marginlr*2, 140 + (84 - texth) / 2, dtheme().c6, 1280 - marginlr*2, str.c_str());   
         }
 
         for (size_t i = 0, sz = buttons.size(); i < sz; i++)

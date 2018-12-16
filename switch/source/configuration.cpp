@@ -53,6 +53,12 @@ Configuration::Configuration(void)
             mJson["favorites"] = nlohmann::json::array();
             updateJson = true;
         }
+        // 3.5.0 -> 3.5.1
+        if (mJson["version"] < 3)
+        {
+            mJson["pksm-bridge"] = true;
+            updateJson= true;
+        }
     }
 
     if (updateJson) 
@@ -89,6 +95,9 @@ Configuration::Configuration(void)
         }
         mAdditionalSaveFolders.emplace(strtoull(it.key().c_str(), NULL, 16), sfolders);
     }
+
+    // parse PKSM Bridge flag
+    PKSMBridgeEnabled = mJson["pksm-bridge"];
 }
 
 void Configuration::store(void)
@@ -115,4 +124,9 @@ std::vector<std::string> Configuration::additionalSaveFolders(u64 id)
     std::vector<std::string> emptyvec;
     auto folders = mAdditionalSaveFolders.find(id);
     return folders == mAdditionalSaveFolders.end() ? emptyvec : folders->second;
+}
+
+bool Configuration::isPKSMBridgeEnabled(void)
+{
+    return PKSMBridgeEnabled;
 }

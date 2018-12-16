@@ -8,5 +8,6 @@
   "additional_save_folders": {
 
   },
-  "version": 2
+  "pksm-bridge": false,
+  "version": 3
 }

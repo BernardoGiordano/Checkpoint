@@ -24,52 +24,44 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "messagebox.hpp"
+#include "colors.hpp"
 
-MessageBox::MessageBox(SDL_Color colorBg, SDL_Color colorText)
+static const struct Theme defaultTheme = {
+    COLOR_BLACK,
+    COLOR_GREY_BG,
+    COLOR_GREY_DARKER,
+    COLOR_GREY_DARK,
+    COLOR_GREY_MEDIUM,
+    COLOR_GREY_LIGHT,
+    COLOR_WHITE
+};
+
+static const struct Theme pkmsTheme = {
+    {17, 38, 85, 255},
+    COLOR_HIGHBLUE,
+    COLOR_DARKBLUE,
+    COLOR_MENUBLUE,
+    COLOR_PALEBLUE,
+    COLOR_LIGHTBLUE,
+    COLOR_WHITE
+};
+
+static struct Theme currentTheme = defaultTheme;
+
+void theme(int t)
 {
-    mColorBg = colorBg;
-    mColorText = colorText;
-    mList.clear();
-}
-
-void MessageBox::push_message(const std::string& newmessage)
-{
-    mList.push_back(newmessage);
-}
-
-void MessageBox::clear(void)
-{
-    mList.clear();
-}
-
-void MessageBox::draw(void)
-{
-    static const u32 spacingFromEdges = 20;
-    static const u32 offset = 10;
-
-    u32 w = 0, mh;
-    u32 widths[mList.size()];
-    for (size_t i = 0, sz = mList.size(); i < sz; i++)
-    {
-        SDLH_GetTextDimensions(30, mList.at(i).c_str(), &widths[i], &mh);
-        if (widths[i] > w)
-        {
-            w = widths[i];
-        }
+    switch(t) {
+        case THEME_PKSM: currentTheme = pkmsTheme; break;
+        default: currentTheme = defaultTheme; break;
     }
-    mh += offset;
-    w += 2*spacingFromEdges; 
+}
 
-    const u32 h = mh*mList.size() + 2*spacingFromEdges - offset;
-    const u32 x = (1280-w)/2;
-    const u32 y = (720-h)/2;
+struct Theme theme(void)
+{
+    return currentTheme;
+}
 
-    SDLH_DrawRect(x - 2, y - 2, w + 4, h + 4, theme().c0);
-    SDLH_DrawRect(x, y, w, h, mColorBg);
-    
-    for (size_t i = 0, sz = mList.size(); i < sz; i++)
-    {
-        SDLH_DrawText(30, ceil((1280 - widths[i]) / 2), y + spacingFromEdges + mh*i, mColorText, mList.at(i).c_str());
-    }
+struct Theme dtheme(void)
+{
+    return defaultTheme;
 }

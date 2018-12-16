@@ -36,8 +36,8 @@ APP_DESCRIPTION	:=	Fast and simple save manager
 APP_AUTHOR		:=	Bernardo Giordano
 
 VERSION_MAJOR := 3
-VERSION_MINOR := 5
-VERSION_MICRO := 1
+VERSION_MINOR := 6
+VERSION_MICRO := 0
 
 TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out

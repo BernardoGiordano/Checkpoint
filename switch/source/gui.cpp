@@ -46,6 +46,8 @@ static int selectorY(size_t i);
 
 static char ver[8];
 
+static bool PKSMBridge = false;
+
 void Gui::entryType(entryType_t type_)
 {
     type = type_;
@@ -153,25 +155,32 @@ static void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
 
 static void drawBackground(void)
 {
-    SDLH_ClearScreen(COLOR_GREY_BG);
-
     const u8 bar_height = 28;
     const u8 image_dim = 32;
-    SDLH_DrawRect(0, 0, 1280, bar_height, COLOR_GREY_DARK);
-    SDLH_DrawRect(0, 720 - bar_height, 1280, bar_height, COLOR_GREY_DARK);
-
     u32 ver_w, ver_h, checkpoint_w; 
     SDLH_GetTextDimensions(23, ver, &ver_w, &ver_h);
     SDLH_GetTextDimensions(30, "checkpoint", &checkpoint_w, NULL);
-    u32 h = (bar_height - ver_h) / 2;
-    SDLH_DrawText(23, 8, h + 3, COLOR_GREY_LIGHT, DateTime::timeStr().c_str());
-    SDLH_DrawText(30, 1280 - 10 - ver_w - image_dim - 12 - checkpoint_w, h - 2, COLOR_WHITE, "checkpoint");
-    SDLH_DrawText(23, 1280 - 10 - ver_w, h + 3, COLOR_GREY_LIGHT, ver);
-    SDLH_DrawIcon("flag", 1280 - 10 - ver_w - image_dim - 6, -2); 
+    u32 h = (bar_height - ver_h) / 2 + 1;
+
+    SDLH_ClearScreen(theme().c1);
+    SDLH_DrawRect(0, 0, 1280, bar_height, theme().c3);
+    SDLH_DrawRect(0, 720 - bar_height, 1280, bar_height, theme().c3);
+    SDLH_DrawText(23, 8, h + 3, theme().c5, DateTime::timeStr().c_str());
+    SDLH_DrawText(30, 1280 - 10 - ver_w - image_dim - 12 - checkpoint_w, h - 2, theme().c6, "checkpoint");
+    SDLH_DrawText(23, 1280 - 10 - ver_w, h + 3, theme().c5, ver);
     // shadow
-    SDLH_DrawRect(0, bar_height, 1280, 2, COLOR_GREY_DARKER);
+    SDLH_DrawRect(0, bar_height, 1280, 2, theme().c2);
     // patch the p
-    SDLH_DrawRect(1080, bar_height + 2, 8, 8, COLOR_GREY_BG);
+    SDLH_DrawRect(1080, bar_height + 2, 8, 8, theme().c1);
+
+    if (Gui::getPKSMBridgeFlag())
+    {
+        SDLH_DrawIcon("pokeball", 1280 - 20 - ver_w - image_dim, -5); 
+    }
+    else
+    {
+        SDLH_DrawIcon("flag", 1280 - 10 - ver_w - image_dim - 6, -2); 
+    }
 }
 
 void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
@@ -188,24 +197,24 @@ void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
     static const int spacingFromBars = 220 + (720 - barHeight * 2 - progressBarHeight) / 2;
     static const int width = 1280 - spacingFromSides * 2;
     
-    SDLH_DrawRect(spacingFromSides - 2, barHeight + spacingFromBars - 2, width + 4, progressBarHeight + 4, COLOR_GREY_LIGHT);
-    SDLH_DrawRect(spacingFromSides, barHeight + spacingFromBars, width, progressBarHeight, COLOR_WHITE);
+    SDLH_DrawRect(spacingFromSides - 2, barHeight + spacingFromBars - 2, width + 4, progressBarHeight + 4, theme().c5);
+    SDLH_DrawRect(spacingFromSides, barHeight + spacingFromBars, width, progressBarHeight, theme().c6);
     SDLH_DrawRect(spacingFromSides, barHeight + spacingFromBars, (float)offset / (float)size * width, progressBarHeight, FC_MakeColor(116, 222, 126, 255));
     
     std::string sizeString = StringUtils::sizeString(offset) + " of " + StringUtils::sizeString(size);
     
     u32 textw, texth;
     SDLH_GetTextDimensions(30, sizeString.c_str(), &textw, &texth);
-    SDLH_DrawText(30, ceilf((1280 - textw)/2), spacingFromBars + barHeight + (progressBarHeight - texth) / 2, COLOR_BLACK, sizeString.c_str());
+    SDLH_DrawText(30, ceilf((1280 - textw)/2), spacingFromBars + barHeight + (progressBarHeight - texth) / 2, theme().c0, sizeString.c_str());
     SDLH_Render();
 }
 
 bool Gui::askForConfirmation(const std::string& text)
 {
     bool ret = false;
-    Clickable* buttonYes = new Clickable(293, 540, 200, 80, COLOR_WHITE, COLOR_BLACK, "Yes \ue000", true);
-    Clickable* buttonNo = new Clickable(786, 540, 200, 80, COLOR_WHITE, COLOR_BLACK, "No \ue001", true);
-    MessageBox* message = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);
+    Clickable* buttonYes = new Clickable(293, 540, 200, 80, theme().c6, theme().c0, "Yes \ue000", true);
+    Clickable* buttonNo = new Clickable(786, 540, 200, 80, theme().c6, theme().c0, "No \ue001", true);
+    MessageBox* message = new MessageBox(theme().c3, theme().c6);
     message->push_message(text);
     
     while(appletMainLoop() && !(buttonNo->released() || hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B))
@@ -220,8 +229,8 @@ bool Gui::askForConfirmation(const std::string& text)
         drawBackground();
         message->draw();
 
-        drawOutline(293, 540, 200, 80, 4, COLOR_GREY_LIGHT);
-        drawOutline(786, 540, 200, 80, 4, COLOR_GREY_LIGHT);
+        drawOutline(293, 540, 200, 80, 4, theme().c5);
+        drawOutline(786, 540, 200, 80, 4, theme().c5);
         buttonYes->draw();
         buttonNo->draw();
 
@@ -247,10 +256,10 @@ bool Gui::init(void)
     info->init("", "", 0, TYPE_INFO);
     hid = new HidHorizontal(rowlen * collen, collen);
     backupList = new Scrollable(540, 462, 506, 222, cols);
-    buttonBackup = new Clickable(1050, 462, 220, 109, COLOR_WHITE, COLOR_GREY_LIGHT, "Backup \ue004", true);
-    buttonRestore = new Clickable(1050, 575, 220, 109, COLOR_WHITE, COLOR_GREY_LIGHT, "Restore \ue005", true);
-    copyList = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);
-    messageBox = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE);        
+    buttonBackup = new Clickable(1050, 462, 220, 109, theme().c6, theme().c5, "Backup \ue004", true);
+    buttonRestore = new Clickable(1050, 575, 220, 109, theme().c6, theme().c5, "Restore \ue005", true);
+    copyList = new MessageBox(theme().c3, theme().c6);
+    messageBox = new MessageBox(theme().c3, theme().c6);        
     messageBox->push_message("Press \ue000 to enter target");
     messageBox->push_message("Press \ue001 to exit target or deselect all titles");
     messageBox->push_message("Press \ue004 to backup target");
@@ -260,6 +269,10 @@ bool Gui::init(void)
     messageBox->push_message("Hold \ue003 to multiselect all titles");
     messageBox->push_message("Press \ue041 to move between titles");
     messageBox->push_message("Press \ue085/\ue086 to switch user");
+    if (Configuration::getInstance().isPKSMBridgeEnabled())
+    {
+        messageBox->push_message("Hold \ue004 + \ue005 to enable PKSM-Bridge");
+    }
     
     return true;
 }
@@ -285,7 +298,7 @@ void Gui::draw(u128 uid)
 
     // draw
     drawBackground();
-    SDLH_DrawRect(0, bar_height + 2, 532, 720 - 2*bar_height - 2, FC_MakeColor(55, 55, 55, 255));
+    SDLH_DrawRect(0, bar_height + 2, 532, 720 - 2*bar_height - 2, FC_MakeColor(theme().c1.r + 5, theme().c1.g + 5, theme().c1.b + 5, 255));
 
     // user icons
     std::vector<u128> userIds = Account::ids();
@@ -307,7 +320,7 @@ void Gui::draw(u128 uid)
         }
         else
         {
-            SDLH_DrawRect(x, y, USER_ICON_SIZE, USER_ICON_SIZE, COLOR_BLACK);
+            SDLH_DrawRect(x, y, USER_ICON_SIZE, USER_ICON_SIZE, theme().c0);
         }
     }
 
@@ -322,7 +335,7 @@ void Gui::draw(u128 uid)
         }
         else
         {
-            SDLH_DrawRect(selectorx, selectory, 128, 128, COLOR_BLACK);
+            SDLH_DrawRect(selectorx, selectory, 128, 128, theme().c0);
         }
 
         if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end())
@@ -359,7 +372,7 @@ void Gui::draw(u128 uid)
         
         for (size_t i = 0; i < dirs.size(); i++)
         {
-            backupList->push_back(COLOR_WHITE, backupScrollEnabled ? COLOR_BLUE : COLOR_GREY_LIGHT, dirs.at(i));
+            backupList->push_back(theme().c6, backupScrollEnabled ? COLOR_BLUE : theme().c5, dirs.at(i));
             if (i == backupList->index())
             {
                 backupList->invertCellColors(i);
@@ -368,7 +381,7 @@ void Gui::draw(u128 uid)
 
         if (title.icon() != NULL)
         {
-            drawOutline(1016, 157, 256, 256, 4, COLOR_BLACK);
+            drawOutline(1016, 157, 256, 256, 4, theme().c0);
             SDLH_DrawImage(title.icon(), 1016, 157);
         }
 
@@ -383,23 +396,23 @@ void Gui::draw(u128 uid)
         h += 12;
         u32 offset = 159 + 16 + info_h + h/2;
         
-        SDLH_DrawRect(536, 159, 468, 16 + info_h, COLOR_GREY_DARK);
-        SDLH_DrawRect(536, offset - h/2, 468, h*4 + h/2, COLOR_GREY_DARKER);
+        SDLH_DrawRect(536, 159, 468, 16 + info_h, theme().c3);
+        SDLH_DrawRect(536, offset - h/2, 468, h*4 + h/2, theme().c2);
         
-        SDLH_DrawText(36, 540 - 12 + 468 - info_w, 169, COLOR_GREY_LIGHT, "Title Information");
-        SDLH_DrawText(23, 540, offset, COLOR_GREY_LIGHT, "Title: ");
-        SDLH_DrawText(23, 540, offset + h, COLOR_GREY_LIGHT, "Title ID: ");
-        SDLH_DrawText(23, 540, offset + h*2, COLOR_GREY_LIGHT, "Author: ");
-        SDLH_DrawText(23, 540, offset + h*3, COLOR_GREY_LIGHT, "User: ");
+        SDLH_DrawText(36, 540 - 12 + 468 - info_w, 169, theme().c5, "Title Information");
+        SDLH_DrawText(23, 540, offset, theme().c5, "Title: ");
+        SDLH_DrawText(23, 540, offset + h, theme().c5, "Title ID: ");
+        SDLH_DrawText(23, 540, offset + h*2, theme().c5, "Author: ");
+        SDLH_DrawText(23, 540, offset + h*3, theme().c5, "User: ");
 
-        SDLH_DrawTextBox(23, 540 + title_w, offset, COLOR_WHITE, 1012 - 540 - title_w - 4*2, title.name().c_str());
-        SDLH_DrawTextBox(23, 540 + titleid_w, offset + h, COLOR_WHITE, 1012 - 540 - titleid_w - 4*2, StringUtils::format("0x%016llX", title.id()).c_str());
-        SDLH_DrawTextBox(23, 540 + producer_w, offset + h*2, COLOR_WHITE, 1012 - 540 - producer_w - 4*2, title.author().c_str());
-        SDLH_DrawTextBox(23, 540 + user_w, offset + h*3, COLOR_WHITE, 1012 - 540 - user_w - 4*2, title.userName().c_str());
+        SDLH_DrawTextBox(23, 540 + title_w, offset, theme().c6, 1012 - 540 - title_w - 4*2, StringUtils::removeAccents(title.name()).c_str());
+        SDLH_DrawTextBox(23, 540 + titleid_w, offset + h, theme().c6, 1012 - 540 - titleid_w - 4*2, StringUtils::format("0x%016llX", title.id()).c_str());
+        SDLH_DrawTextBox(23, 540 + producer_w, offset + h*2, theme().c6, 1012 - 540 - producer_w - 4*2, title.author().c_str());
+        SDLH_DrawTextBox(23, 540 + user_w, offset + h*3, theme().c6, 1012 - 540 - user_w - 4*2, title.userName().c_str());
 
-        drawOutline(540, 462, 730, 222, 4, COLOR_GREY_LIGHT);
-        SDLH_DrawRect(1046, 462, 4, 222, COLOR_GREY_LIGHT);
-        SDLH_DrawRect(1048, 571, 222, 4, COLOR_GREY_LIGHT);
+        drawOutline(540, 462, 730, 222, 4, theme().c5);
+        SDLH_DrawRect(1046, 462, 4, 222, theme().c5);
+        SDLH_DrawRect(1048, 571, 222, 4, theme().c5);
         backupList->draw();
         buttonBackup->draw();
         buttonRestore->draw();
@@ -415,7 +428,7 @@ void Gui::draw(u128 uid)
     u32 ins_w, ins_h;
     const char* instructions = "Hold \ue046 to see commands. Press \ue045 to exit.";
     SDLH_GetTextDimensions(23, instructions, &ins_w, &ins_h);
-    SDLH_DrawText(23, ceil((1280 - ins_w) / 2), 720 - bar_height + (bar_height - ins_h) / 2 + 2, COLOR_WHITE, instructions);
+    SDLH_DrawText(23, ceil((1280 - ins_w) / 2), 720 - bar_height + (bar_height - ins_h) / 2 + 2, theme().c6, instructions);
 
     // increase currentTime
     currentTime = SDL_GetTicks() / 1000.f;
@@ -447,18 +460,38 @@ void Gui::updateButtonsColor(void)
 {
     if (Gui::multipleSelectionEnabled())
     {
-        buttonBackup->setColors(COLOR_WHITE, COLOR_BLACK);
-        buttonRestore->setColors(COLOR_WHITE, COLOR_GREY_LIGHT);
+        buttonBackup->setColors(theme().c6, theme().c0);
+        buttonRestore->setColors(theme().c6, theme().c5);
     }
     else if (backupScrollEnabled)
     {
-        buttonBackup->setColors(COLOR_WHITE, COLOR_BLACK);
-        buttonRestore->setColors(COLOR_WHITE, COLOR_BLACK);
+        if (getPKSMBridgeFlag())
+        {
+            buttonBackup->text("Send \ue004");
+            buttonRestore->text("Receive \ue005");
+        }
+        else
+        {
+            buttonBackup->text("Backup \ue004");
+            buttonRestore->text("Restore \ue005");            
+        }
+        buttonBackup->setColors(theme().c6, theme().c0);
+        buttonRestore->setColors(theme().c6, theme().c0);
     }
     else
     {
-        buttonBackup->setColors(COLOR_WHITE, COLOR_GREY_LIGHT);
-        buttonRestore->setColors(COLOR_WHITE, COLOR_GREY_LIGHT);
+        if (getPKSMBridgeFlag())
+        {
+            buttonBackup->text("Send \ue004");
+            buttonRestore->text("Receive \ue005");
+        }
+        else
+        {
+            buttonBackup->text("Backup \ue004");
+            buttonRestore->text("Restore \ue005");            
+        }
+        buttonBackup->setColors(theme().c6, theme().c5);
+        buttonRestore->setColors(theme().c6, theme().c5);
     }
 }
 
@@ -466,6 +499,7 @@ void Gui::updateSelector(void)
 {
     if (!backupScrollEnabled)
     {
+        size_t oldindex = hid->index();
         hid->update(getTitleCount(g_currentUId));
         
         // loop through every rendered title
@@ -491,6 +525,10 @@ void Gui::updateSelector(void)
         }
 
         backupList->resetIndex();
+        if (hid->index() != oldindex)
+        {
+            Gui::setPKSMBridgeFlag(false);
+        }
     }
     else
     {
@@ -506,4 +544,15 @@ static int selectorX(size_t i)
 static int selectorY(size_t i)
 {
     return 28 + 128*((i % (rowlen*collen)) / collen) + 4 * (((i % (rowlen*collen)) / collen) + 1);
+}
+
+bool Gui::getPKSMBridgeFlag(void)
+{
+    return Configuration::getInstance().isPKSMBridgeEnabled() ? PKSMBridge : false;
+}
+
+void Gui::setPKSMBridgeFlag(bool f)
+{
+    PKSMBridge = f;
+    theme(f ? THEME_PKSM : THEME_DEFAULT);
 }
