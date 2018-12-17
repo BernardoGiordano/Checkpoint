@@ -115,7 +115,7 @@ void sendToPKSMBrigde(size_t index, u128 uid)
 void recvFromPKSMBridge(size_t index, u128 uid)
 {
     const size_t cellIndex = Gui::index(CELLS);
-    if (cellIndex == 0 || !Gui::askForConfirmation("Receive save to PKSM?"))
+    if (cellIndex == 0 || !Gui::askForConfirmation("Receive save from PKSM?"))
     {
         return;
     }
@@ -175,7 +175,7 @@ void recvFromPKSMBridge(size_t index, u128 uid)
     if (total == size)
     {
         Gui::createInfo("Success!", "Data received correctly.");
-        save << data;
+        save.write(data, size);
         save.close();
     }
     else

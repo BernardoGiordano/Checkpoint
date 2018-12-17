@@ -77,7 +77,7 @@ int main(int argc, char** argv)
                 if ((kheld & KEY_L) && (kheld & KEY_R) && isPKSMBridgeTitle(title.id()))
                 {
                     Gui::setPKSMBridgeFlag(true);
-                    Gui::updateButtonsColor();
+                    Gui::updateButtons();
                 }
             }
         }
@@ -111,7 +111,7 @@ int main(int argc, char** argv)
             if (!Gui::multipleSelectionEnabled())
             {
                 Gui::backupScroll(true);
-                Gui::updateButtonsColor();
+                Gui::updateButtons();
                 Gui::entryType(CELLS);
             }
         }
@@ -151,7 +151,7 @@ int main(int argc, char** argv)
                 if (!Gui::multipleSelectionEnabled())
                 {
                     Gui::backupScroll(true);
-                    Gui::updateButtonsColor();
+                    Gui::updateButtons();
                     Gui::entryType(CELLS);
                 }
             }
@@ -170,7 +170,7 @@ int main(int argc, char** argv)
             Gui::entryType(TITLES);
             Gui::clearSelectedEntries();
             Gui::setPKSMBridgeFlag(false);
-            Gui::updateButtonsColor(); // Do this last
+            Gui::updateButtons(); // Do this last
         }
 
          // Handle pressing X
@@ -205,7 +205,7 @@ int main(int argc, char** argv)
             Gui::entryType(TITLES);
             Gui::addSelectedEntry(Gui::index(TITLES));
             Gui::setPKSMBridgeFlag(false);
-            Gui::updateButtonsColor(); // Do this last
+            Gui::updateButtons(); // Do this last
         }
 
         // Handle holding Y
@@ -240,7 +240,7 @@ int main(int argc, char** argv)
                     io::backup(list.at(i), g_currentUId);
                 }
                 Gui::clearSelectedEntries();
-                Gui::updateButtonsColor();
+                Gui::updateButtons();
             }
             else if (Gui::backupScroll())
             {
@@ -261,7 +261,7 @@ int main(int argc, char** argv)
             if (Gui::multipleSelectionEnabled())
             {
                 Gui::clearSelectedEntries();
-                Gui::updateButtonsColor();
+                Gui::updateButtons();
             }
             else if (Gui::backupScroll())
             {

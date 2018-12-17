@@ -62,7 +62,7 @@ namespace Gui
     bool        isRestoreReleased(void);
     std::string nameFromCell(size_t index);
     void        resetIndex(entryType_t type);
-    void        updateButtonsColor(void);
+    void        updateButtons(void);
     void        updateSelector(void);
 
     bool        askForConfirmation(const std::string& text);

@@ -456,7 +456,7 @@ void Gui::backupScroll(bool enable)
     backupScrollEnabled = enable;
 }
 
-void Gui::updateButtonsColor(void)
+void Gui::updateButtons(void)
 {
     if (Gui::multipleSelectionEnabled())
     {
@@ -555,4 +555,5 @@ void Gui::setPKSMBridgeFlag(bool f)
 {
     PKSMBridge = f;
     theme(f ? THEME_PKSM : THEME_DEFAULT);
+    Gui::updateButtons();
 }
