@@ -26,13 +26,13 @@
 
 #include "smdh.hpp"
 
-smdh_s *loadSMDH(u32 low, u32 high, u8 media)
+smdh_s* loadSMDH(u32 low, u32 high, u8 media)
 {
     Handle fileHandle;
 
     u32 archPath[] = {low, high, media, 0x0};
     static const u32 filePath[] = {0x0, 0x0, 0x2, 0x6E6F6369, 0x0};
-    smdh_s *smdh = new smdh_s;
+    smdh_s* smdh = new smdh_s;
 
     FS_Path binArchPath = {PATH_BINARY, 0x10, archPath};
     FS_Path binFilePath = {PATH_BINARY, 0x14, filePath};
@@ -51,4 +51,17 @@ smdh_s *loadSMDH(u32 low, u32 high, u8 media)
 
     FSFILE_Close(fileHandle);
     return smdh;
+}
+
+smdh_s* loadSMDH(const std::string& path)
+{
+    std::ifstream is(path, std::ios::binary);
+    if (is)
+    {
+        smdh_s* smdh = new smdh_s;
+        is.read((char*)smdh, sizeof(smdh_s));
+        is.close();
+        return smdh;
+    }
+    return NULL;
 }

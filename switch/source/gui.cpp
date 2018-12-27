@@ -465,33 +465,24 @@ void Gui::updateButtons(void)
     }
     else if (backupScrollEnabled)
     {
-        if (getPKSMBridgeFlag())
-        {
-            buttonBackup->text("Send \ue004");
-            buttonRestore->text("Receive \ue005");
-        }
-        else
-        {
-            buttonBackup->text("Backup \ue004");
-            buttonRestore->text("Restore \ue005");            
-        }
         buttonBackup->setColors(theme().c6, theme().c0);
         buttonRestore->setColors(theme().c6, theme().c0);
     }
     else
     {
-        if (getPKSMBridgeFlag())
-        {
-            buttonBackup->text("Send \ue004");
-            buttonRestore->text("Receive \ue005");
-        }
-        else
-        {
-            buttonBackup->text("Backup \ue004");
-            buttonRestore->text("Restore \ue005");            
-        }
         buttonBackup->setColors(theme().c6, theme().c5);
         buttonRestore->setColors(theme().c6, theme().c5);
+    }
+    
+    if (getPKSMBridgeFlag())
+    {
+        buttonBackup->text("Send \ue004");
+        buttonRestore->text("Receive \ue005");
+    }
+    else
+    {
+        buttonBackup->text("Backup \ue004");
+        buttonRestore->text("Restore \ue005");            
     }
 }
 

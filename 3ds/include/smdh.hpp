@@ -28,6 +28,8 @@
 #define SMDH_HPP
 
 #include <3ds.h>
+#include <fstream>
+#include <string>
 
 typedef struct {
     u32 magic;
@@ -62,5 +64,6 @@ typedef struct {
 } smdh_s;
 
 smdh_s* loadSMDH(u32 low, u32 high, u8 media);
+smdh_s* loadSMDH(const std::string& path);
 
 #endif

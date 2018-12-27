@@ -160,7 +160,7 @@ void recvFromPKSMBridge(size_t index, u128 uid)
     getTitle(title, uid, index);
     std::string srcPath = title.fullPath(cellIndex) + "/";
     std::ofstream save(srcPath + "savedata.bin", std::ios::binary);
-    char* data = new char[size];
+    char* data = new char[size]();
 
     size_t total = 0;
     size_t chunk = 1024;

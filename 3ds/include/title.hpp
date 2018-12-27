@@ -45,6 +45,8 @@ extern "C" {
 #include "sha256.h"
 }
 
+#define TID_PKSM 0x000400000EC10000
+
 class Title
 {
 public:

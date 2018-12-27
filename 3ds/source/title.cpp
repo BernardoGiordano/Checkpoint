@@ -78,7 +78,15 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 
     if (mCard == CARD_CTR)
     {
-        smdh_s *smdh = loadSMDH(lowId(), highId(), mMedia);
+        smdh_s* smdh;
+        if (mId == TID_PKSM)
+        {
+            smdh = loadSMDH("romfs:/PKSM.smdh");
+        }
+        else
+        {
+            smdh = loadSMDH(lowId(), highId(), mMedia);
+        }
         if (smdh == NULL)
         {
             return false;
@@ -565,6 +573,28 @@ void loadTitles(bool forceRefresh)
                     }
                 }
             }
+        }
+
+        // always check for PKSM's extdata archive
+        bool isPKSMIdAlreadyHere = false;
+        for (u32 i = 0; i < count; i++)
+        {
+            if (ids[i] == TID_PKSM)
+            {
+                isPKSMIdAlreadyHere = true;
+                break;
+            }
+        }
+        if (!isPKSMIdAlreadyHere)
+        {
+            Title title;
+            if (title.load(TID_PKSM, MEDIATYPE_SD, CARD_CTR))
+            {            
+                if (title.accessibleExtdata())
+                {
+                    titleExtdatas.push_back(title);
+                }
+            }         
         }
         
         std::sort(titleSaves.begin(), titleSaves.end(), [](Title& l, Title& r) {
