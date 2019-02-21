@@ -73,35 +73,8 @@ void calculateTitleDBHash(u8* hash)
 {
     u32 titleCount, titlesRead;
     AM_GetTitleCount(MEDIATYPE_SD, &titleCount);
-    u64 buf[titleCount + 1];
+    u64 buf[titleCount];
     AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, buf);
-    
-    u64 cardID;
-    FS_CardType cardType;
-    Result res = FSUSER_GetCardType(&cardType);
-    if (R_FAILED(res))
-    {
-        buf[titleCount] = 0xFFFFFFFFFFFFFFFF;
-    }
-    else if (cardType == CARD_CTR)
-    {
-        AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, 1, &cardID);
-        buf[titleCount] = cardID;
-    }
-    else
-    {
-        u8 headerData[0x3B4];
-        Result res = FSUSER_GetLegacyRomHeader(MEDIATYPE_GAME_CARD, 0LL, headerData);
-        if (R_SUCCEEDED(res))
-        {
-            memcpy(&cardID, headerData + 3, sizeof(u64));
-            buf[titleCount] = cardID;
-        }
-        else
-        {
-            buf[titleCount] = 0LL;
-        }
-    }
     
     sha256(hash, (u8*)buf, (titleCount + 1) * sizeof(u64));
 }
