@@ -28,6 +28,7 @@
 #define CONFIGHANDLER_HPP
 
 #include <fstream>
+#include <iomanip>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
