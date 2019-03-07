@@ -1001,7 +1001,7 @@ static void scanCard(void)
             Title title;
             if (title.load(0, MEDIATYPE_GAME_CARD, cardType))
             {
-                if (titleSaves.at(0).cardType() != MEDIATYPE_GAME_CARD)
+                if (titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD)
                 {
                     titleSaves.insert(titleSaves.begin(), title);
                 }
