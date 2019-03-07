@@ -1,5 +1,7 @@
 3ds/build/
 3ds/out/
 3ds/assets/romfs/gfx/
+3ds/assets/romfs/cheats/
 switch/build/
 switch/out/
+switch/romfs/cheats/

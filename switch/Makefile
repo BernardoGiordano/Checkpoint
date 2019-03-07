@@ -160,7 +160,7 @@ endif
 all: $(BUILD)
 
 $(BUILD):
-	@[ -d $@ ] || mkdir -p $@ $(BUILD) $(OUTDIR)
+	@[ -d $@ ] || mkdir -p $@ $(BUILD) $(OUTDIR) $(ROMFS)/cheats
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #---------------------------------------------------------------------------------
