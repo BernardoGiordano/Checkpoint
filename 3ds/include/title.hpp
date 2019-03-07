@@ -113,5 +113,6 @@ bool      favorite(int i);
 void      loadFilter(void);
 void      loadTitles(bool forceRefresh);
 void      refreshDirectories(u64 id);
+void      updateCard(void);
 
 #endif

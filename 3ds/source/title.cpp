@@ -947,3 +947,112 @@ static void importTitleListCache(void)
     delete[] cachesaves;
     delete[] cacheextdatas;
 }
+
+static void scanCard(void)
+{
+    static bool isScanning = false;
+    if (isScanning)
+    {
+        return;
+    }
+    else
+    {
+        isScanning = true;
+    }
+
+    Result res = 0;
+    u32 count = 0;
+    FS_CardType cardType;
+    res = FSUSER_GetCardType(&cardType);
+    if (R_SUCCEEDED(res))
+    {
+        if (cardType == CARD_CTR)
+        {
+            res = AM_GetTitleCount(MEDIATYPE_GAME_CARD, &count);
+            if (R_SUCCEEDED(res) && count > 0)
+            {
+                u64 id;
+                res = AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, &id);
+                if (validId(id))
+                {
+                    Title title;
+                    if (title.load(id, MEDIATYPE_GAME_CARD, cardType))
+                    {
+                        if (title.accessibleSave())
+                        {
+                            if (titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD)
+                            {
+                                titleSaves.insert(titleSaves.begin(), title);
+                            }
+                        }
+                        if (title.accessibleExtdata())
+                        {
+                            if (titleExtdatas.at(0).mediaType() != MEDIATYPE_GAME_CARD)
+                            {
+                                titleExtdatas.insert(titleExtdatas.begin(), title);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else
+        {
+            Title title;
+            if (title.load(0, MEDIATYPE_GAME_CARD, cardType))
+            {
+                if (titleSaves.at(0).cardType() != MEDIATYPE_GAME_CARD)
+                {
+                    titleSaves.insert(titleSaves.begin(), title);
+                }
+            }
+        }
+    }
+    isScanning = false;
+}
+
+void updateCard(void)
+{
+    static bool first = true;
+    static bool oldCardIn = false;
+    if (first)
+    {
+        FSUSER_CardSlotIsInserted(&oldCardIn);
+        first = false;
+        return;
+    }
+    bool cardIn = false;
+
+    FSUSER_CardSlotIsInserted(&cardIn);
+    if (cardIn != oldCardIn)
+    {
+        bool power;
+        if (cardIn)
+        {
+            FSUSER_CardSlotPowerOn(&power);
+            while (!power)
+            {
+                FSUSER_CardSlotGetCardIFPowerStatus(&power);
+            }
+            svcSleepThread(1000000000);
+            scanCard();
+        }
+        else
+        {
+            FSUSER_CardSlotPowerOff(&power);
+            while (power)
+            {
+                FSUSER_CardSlotGetCardIFPowerStatus(&power);
+            }
+            if (titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD)
+            {
+                titleSaves.erase(titleSaves.begin());
+            }
+            if (titleExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD)
+            {
+                titleExtdatas.erase(titleExtdatas.begin());
+            }
+        }
+        oldCardIn = cardIn;
+    }
+}

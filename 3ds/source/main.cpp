@@ -43,6 +43,8 @@ int main() {
         kDown = hidKeysDown();
         kHeld = hidKeysHeld();
 
+        updateCard();
+
         // Handle pressing A
         // Backup list active:   Backup/Restore
         // Backup list inactive: Activate backup list only if multiple
