@@ -48,6 +48,8 @@ INCLUDES		:=	include ../common
 GRAPHICS		:=	assets/gfx
 ROMFS			:=	assets/romfs
 GFXBUILD		:=	$(ROMFS)/gfx
+SHARKIVE 		:=	../sharkive
+CHEATS 			:=	cheats
 
 # If left blank, will try to use "icon.png", "$(TARGET).png", or the default ctrulib icon, in that order
 ICON			:=	assets/icon.png
@@ -179,7 +181,13 @@ endif
 
 #---------------------------------------------------------------------------------
 all:
-	@mkdir -p $(BUILD) $(GFXBUILD) $(OUTDIR) $(ROMFS)/cheats
+	@mkdir -p $(BUILD) $(GFXBUILD) $(OUTDIR) $(ROMFS)/$(CHEATS)
+ifeq ($(OS),Windows_NT)
+	@cd $(SHARKIVE) && py -3 joiner.py 3ds
+else
+	@cd $(SHARKIVE) && python3 joiner.py 3ds
+endif
+	@cd $(SHARKIVE)/$(BUILD) && mv 3ds.json ../../3ds/$(ROMFS)/$(CHEATS)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $(OUTPUT).3dsx
 	@bannertool makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o $(BUILD)/banner.bnr
 	@bannertool makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i "$(APP_ICON)" -f "$(ICON_FLAGS)" -o $(BUILD)/icon.icn
