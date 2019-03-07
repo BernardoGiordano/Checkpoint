@@ -35,7 +35,7 @@ VERSION_MINOR := 6
 VERSION_MICRO := 0
 
 APP_TITLE	:=	Checkpoint
-APP_AUTHOR	:=	Bernardo Giordano
+APP_AUTHOR	:=	Bernardo Giordano, FlagBrew
 APP_VERSION	:=	${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
 
 TARGET		:=	$(subst $e ,_,$(notdir $(APP_TITLE)))

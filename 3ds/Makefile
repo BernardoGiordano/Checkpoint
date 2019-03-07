@@ -33,7 +33,7 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 APP_TITLE		:= 	Checkpoint
 APP_DESCRIPTION	:=	Fast and simple save manager
-APP_AUTHOR		:=	Bernardo Giordano
+APP_AUTHOR		:=	Bernardo Giordano, FlagBrew
 
 VERSION_MAJOR := 3
 VERSION_MINOR := 6
