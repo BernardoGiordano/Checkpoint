@@ -606,42 +606,44 @@ void loadTitles(bool forceRefresh)
             return l.shortDescription() < r.shortDescription() &&
                 Configuration::getInstance().favorite(l.id()) > Configuration::getInstance().favorite(r.id());
         });
-        
-        FS_CardType cardType;
-        Result res = FSUSER_GetCardType(&cardType);
-        if (R_SUCCEEDED(res))
+    }
+    
+    FS_CardType cardType;
+    Result res = FSUSER_GetCardType(&cardType);
+    if (R_SUCCEEDED(res))
+    {
+        if (cardType == CARD_CTR)
         {
-            if (cardType == CARD_CTR)
+            u32 count = 0;
+            AM_GetTitleCount(MEDIATYPE_GAME_CARD, &count);
+            if (count > 0)
             {
-                AM_GetTitleCount(MEDIATYPE_GAME_CARD, &count);
-                if (count > 0)
+                u64 ids[count];
+                AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, ids);	
+                if (validId(ids[0]))
                 {
-                    AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, ids);	
-                    if (validId(ids[0]))
+                    Title title;
+                    if (title.load(ids[0], MEDIATYPE_GAME_CARD, cardType))
                     {
-                        Title title;
-                        if (title.load(ids[0], MEDIATYPE_GAME_CARD, cardType))
+                        if (title.accessibleSave())
                         {
-                            if (title.accessibleSave())
-                            {
-                                titleSaves.insert(titleSaves.begin(), title);
-                            }
-                            
-                            if (title.accessibleExtdata())
-                            {
-                                titleExtdatas.insert(titleExtdatas.begin(), title);
-                            }
+                            titleSaves.insert(titleSaves.begin(), title);
+                        }
+                        
+                        if (title.accessibleExtdata())
+                        {
+                            titleExtdatas.insert(titleExtdatas.begin(), title);
                         }
                     }
                 }
             }
-            else
+        }
+        else
+        {
+            Title title;
+            if (title.load(0, MEDIATYPE_GAME_CARD, cardType))
             {
-                Title title;
-                if (title.load(0, MEDIATYPE_GAME_CARD, cardType))
-                {
-                    titleSaves.insert(titleSaves.begin(), title);
-                }
+                titleSaves.insert(titleSaves.begin(), title);
             }
         }
     }
@@ -754,6 +756,10 @@ static const size_t ENTRYSIZE = 5341;
 
 static void exportTitleListCache(std::vector<Title> list, const std::u16string path)
 {
+    if (list.front().mediaType() == MEDIATYPE_GAME_CARD)
+    {
+        list.erase(list.begin());
+    }
     u8* cache = new u8[list.size() * ENTRYSIZE]();
     for (size_t i = 0; i < list.size(); i++)
     {
