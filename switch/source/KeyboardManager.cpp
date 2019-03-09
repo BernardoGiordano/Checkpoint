@@ -147,96 +147,111 @@ KeyboardManager::KeyboardManager(void)
 {
     buttons.clear();
 
-    // fill with the above characters
-    for (size_t i = 0; i < 4; i++)
+    SwkbdConfig kbd;
+    Result res = swkbdCreate(&kbd, 0);
+    if (R_SUCCEEDED(res))
     {
-        for (size_t j = 0; j < 11; j++)
-        {
-            HbkbdButton* button = new HbkbdButton(
-                marginlr + (buttonSpacing + normalWidth) * j, 
-                starty + (buttonSpacing + height) * i,
-                normalWidth,
-                height, 
-                dtheme().c3, 
-                dtheme().c6, 
-                letters.substr(i*11+j, 1),
-                true
-            );
-            buttons.push_back(button);
-        }
+        isSystemKeyboardAvailable = true;
+        swkbdClose(&kbd);
     }
+    else
+    {
+        // fallback to custom keyboard
+        isSystemKeyboardAvailable = false;
+        // fill with the above characters
+        for (size_t i = 0; i < 4; i++)
+        {
+            for (size_t j = 0; j < 11; j++)
+            {
+                HbkbdButton* button = new HbkbdButton(
+                    marginlr + (buttonSpacing + normalWidth) * j, 
+                    starty + (buttonSpacing + height) * i,
+                    normalWidth,
+                    height, 
+                    dtheme().c3, 
+                    dtheme().c6, 
+                    letters.substr(i*11+j, 1),
+                    true
+                );
+                buttons.push_back(button);
+            }
+        }
 
-    HbkbdButton* backspace = new HbkbdButton(
-        marginlr + (buttonSpacing + normalWidth) * 11, 
-        starty,
-        bigWidth,
-        height, 
-        dtheme().c6,
-        dtheme().c0,
-        "back",
-        true
-    );
-    buttons.push_back(backspace);
+        HbkbdButton* backspace = new HbkbdButton(
+            marginlr + (buttonSpacing + normalWidth) * 11, 
+            starty,
+            bigWidth,
+            height, 
+            dtheme().c6,
+            dtheme().c0,
+            "back",
+            true
+        );
+        buttons.push_back(backspace);
 
-    HbkbdButton* returnb = new HbkbdButton(
-        marginlr + (buttonSpacing + normalWidth) * 11, 
-        starty + height + 4,
-        bigWidth,
-        height * 2 + 4, 
-        dtheme().c4, 
-        dtheme().c5,  
-        "return",
-        true
-    );
-    buttons.push_back(returnb);
+        HbkbdButton* returnb = new HbkbdButton(
+            marginlr + (buttonSpacing + normalWidth) * 11, 
+            starty + height + 4,
+            bigWidth,
+            height * 2 + 4, 
+            dtheme().c4, 
+            dtheme().c5,  
+            "return",
+            true
+        );
+        buttons.push_back(returnb);
 
-    HbkbdButton* ok = new HbkbdButton(
-        marginlr + (buttonSpacing + normalWidth) * 11, 
-        starty + height*3 + 4*3,
-        bigWidth,
-        height * 2 + 4, 
-        COLOR_GREEN, 
-        dtheme().c0, 
-        "OK",
-        true
-    );
-    buttons.push_back(ok);
+        HbkbdButton* ok = new HbkbdButton(
+            marginlr + (buttonSpacing + normalWidth) * 11, 
+            starty + height*3 + 4*3,
+            bigWidth,
+            height * 2 + 4, 
+            COLOR_GREEN, 
+            dtheme().c0, 
+            "OK",
+            true
+        );
+        buttons.push_back(ok);
 
-    HbkbdButton* caps = new HbkbdButton(
-        marginlr + buttonSpacing + normalWidth, 
-        starty + height*4 + 4*4,
-        normalWidth,
-        height, 
-        dtheme().c4, 
-        dtheme().c6, 
-        "caps",
-        true
-    );
-    buttons.push_back(caps);
+        HbkbdButton* caps = new HbkbdButton(
+            marginlr + buttonSpacing + normalWidth, 
+            starty + height*4 + 4*4,
+            normalWidth,
+            height, 
+            dtheme().c4, 
+            dtheme().c6, 
+            "caps",
+            true
+        );
+        buttons.push_back(caps);
 
-    HbkbdButton* spacebar = new HbkbdButton(
-        marginlr + (buttonSpacing + normalWidth) * 3, 
-        starty + height*4 + 4*4,
-        normalWidth*8 + buttonSpacing*7,
-        height, 
-        dtheme().c4, 
-        dtheme().c6, 
-        "space",
-        true
-    );
-    buttons.push_back(spacebar);
+        HbkbdButton* spacebar = new HbkbdButton(
+            marginlr + (buttonSpacing + normalWidth) * 3, 
+            starty + height*4 + 4*4,
+            normalWidth*8 + buttonSpacing*7,
+            height, 
+            dtheme().c4, 
+            dtheme().c6, 
+            "space",
+            true
+        );
+        buttons.push_back(spacebar);
 
-    // set OK button as selected
-    buttons.at(INDEX_OK)->selected(true);
-    buttons.at(INDEX_OK)->invertColors();
-    prevSelectedButtonIndex = INDEX_OK;
+        // set OK button as selected
+        buttons.at(INDEX_OK)->selected(true);
+        buttons.at(INDEX_OK)->invertColors();
+        prevSelectedButtonIndex = INDEX_OK;
+    }
 }
 
 KeyboardManager::~KeyboardManager(void)
 {
-    for (size_t i = 0; i < buttons.size(); i++)
+    if (!isSystemKeyboardAvailable)
     {
-        delete buttons[i];
+        for (size_t i = 0; i < buttons.size(); i++)
+        {
+            delete buttons[i];
+        }
     }
 }
 
@@ -284,78 +299,97 @@ bool KeyboardManager::logic(std::string& str, size_t i)
 
 std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& suggestion)
 {
-    size_t index;
-    std::string str;
-
-    while (appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B))
+    if (isSystemKeyboardAvailable)
     {
-        hidScanInput();
-        index = prevSelectedButtonIndex;
-
-        // handle keys
-        hid(index);
-        if (index != prevSelectedButtonIndex)
+        char tmpoutstr[CUSTOM_PATH_LEN] = {0};
+        SwkbdConfig kbd;
+        if (R_SUCCEEDED(swkbdCreate(&kbd, 0)))
         {
-            buttons.at(prevSelectedButtonIndex)->selected(false);
-            buttons.at(prevSelectedButtonIndex)->invertColors();
-            prevSelectedButtonIndex = index;
-            buttons.at(index)->selected(true);
-            buttons.at(prevSelectedButtonIndex)->invertColors();          
-        }
-
-        if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A)
-        {
-            bool ret = logic(str, index);
-            if (ret)
+            swkbdConfigMakePresetDefault(&kbd);
+            swkbdConfigSetInitialText(&kbd, suggestion.c_str());
+            Result res = swkbdShow(&kbd, tmpoutstr, CUSTOM_PATH_LEN);
+            swkbdClose(&kbd);
+            if (R_SUCCEEDED(res))
             {
-                return str.empty() ? std::make_pair(true, suggestion) : std::make_pair(true, str);
+                return std::make_pair(true, std::string(tmpoutstr));
             }
         }
+    }
+    else
+    {
+        size_t index;
+        std::string str;
 
-        SDLH_ClearScreen(dtheme().c1);
-
-        SDLH_DrawRect(marginlr, 140, 1280 - marginlr*2, 84, dtheme().c4);
-        SDLH_DrawRect(0, starty - margintb, 1280, 356, dtheme().c2);
-
-        u32 texth, counter_width;
-        std::string counter = StringUtils::format("Custom name length: %d/%d", str.empty() ? suggestion.length() : str.length(), CUSTOM_PATH_LEN);
-        SDLH_GetTextDimensions(30, " ", NULL, &texth);
-        SDLH_GetTextDimensions(20, counter.c_str(), &counter_width, NULL);
-        SDLH_DrawText(20, 1280 - marginlr - counter_width, 236, dtheme().c6, counter.c_str());
-        if (str.empty())
+        while (appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B))
         {
-            SDLH_DrawTextBox(30, marginlr*2, 140 + (84 - texth) / 2, dtheme().c5, 1280 - marginlr*2, suggestion.c_str());            
-        }
-        else
-        {
-            SDLH_DrawTextBox(30, marginlr*2, 140 + (84 - texth) / 2, dtheme().c6, 1280 - marginlr*2, str.c_str());   
-        }
+            hidScanInput();
+            index = prevSelectedButtonIndex;
 
-        for (size_t i = 0, sz = buttons.size(); i < sz; i++)
-        {
-            if (buttons.at(i)->released())
+            // handle keys
+            hid(index);
+            if (index != prevSelectedButtonIndex)
             {
-                bool ret = logic(str, i);
+                buttons.at(prevSelectedButtonIndex)->selected(false);
+                buttons.at(prevSelectedButtonIndex)->invertColors();
+                prevSelectedButtonIndex = index;
+                buttons.at(index)->selected(true);
+                buttons.at(prevSelectedButtonIndex)->invertColors();          
+            }
+
+            if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A)
+            {
+                bool ret = logic(str, index);
                 if (ret)
                 {
                     return str.empty() ? std::make_pair(true, suggestion) : std::make_pair(true, str);
                 }
             }
 
-            // selection logic
-            if (buttons.at(i)->held() && i != prevSelectedButtonIndex)
+            SDLH_ClearScreen(dtheme().c1);
+
+            SDLH_DrawRect(marginlr, 140, 1280 - marginlr*2, 84, dtheme().c4);
+            SDLH_DrawRect(0, starty - margintb, 1280, 356, dtheme().c2);
+
+            u32 texth, counter_width;
+            std::string counter = StringUtils::format("Custom name length: %d/%d", str.empty() ? suggestion.length() : str.length(), CUSTOM_PATH_LEN);
+            SDLH_GetTextDimensions(30, " ", NULL, &texth);
+            SDLH_GetTextDimensions(20, counter.c_str(), &counter_width, NULL);
+            SDLH_DrawText(20, 1280 - marginlr - counter_width, 236, dtheme().c6, counter.c_str());
+            if (str.empty())
             {
-                buttons.at(prevSelectedButtonIndex)->selected(false);
-                buttons.at(prevSelectedButtonIndex)->invertColors();
-                prevSelectedButtonIndex = i;
-                buttons.at(i)->selected(true);
-                buttons.at(i)->invertColors();
+                SDLH_DrawTextBox(30, marginlr*2, 140 + (84 - texth) / 2, dtheme().c5, 1280 - marginlr*2, suggestion.c_str());            
+            }
+            else
+            {
+                SDLH_DrawTextBox(30, marginlr*2, 140 + (84 - texth) / 2, dtheme().c6, 1280 - marginlr*2, str.c_str());   
             }
 
-            buttons.at(i)->draw();
-        }
+            for (size_t i = 0, sz = buttons.size(); i < sz; i++)
+            {
+                if (buttons.at(i)->released())
+                {
+                    bool ret = logic(str, i);
+                    if (ret)
+                    {
+                        return str.empty() ? std::make_pair(true, suggestion) : std::make_pair(true, str);
+                    }
+                }
 
-        SDLH_Render();
+                // selection logic
+                if (buttons.at(i)->held() && i != prevSelectedButtonIndex)
+                {
+                    buttons.at(prevSelectedButtonIndex)->selected(false);
+                    buttons.at(prevSelectedButtonIndex)->invertColors();
+                    prevSelectedButtonIndex = i;
+                    buttons.at(i)->selected(true);
+                    buttons.at(i)->invertColors();
+                }
+
+                buttons.at(i)->draw();
+            }
+
+            SDLH_Render();
+        }
     }
 
     return std::make_pair(false, suggestion);

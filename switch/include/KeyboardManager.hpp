@@ -115,6 +115,8 @@ private:
     const std::string letters = "1234567890@qwertyuiop+asdfghjkl_:zxcvbnm,.-/";
     std::vector<HbkbdButton*> buttons;
     size_t prevSelectedButtonIndex;
+
+    bool isSystemKeyboardAvailable;
 };
 
 #endif
