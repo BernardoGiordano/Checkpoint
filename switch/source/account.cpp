@@ -96,9 +96,7 @@ std::string Account::username(u128 id)
 SDL_Texture* Account::icon(u128 id)
 {
     std::map<u128, User>::const_iterator got = mUsers.find(id);
-    // TODO: remove the null check
-    // the null check in the icon is to handle the bad memory issue that isn't yet fixed
-    if (got == mUsers.end() || got->second.icon == NULL)
+    if (got == mUsers.end())
     {
         User user = getUser(id);
         mUsers.insert({id, user});

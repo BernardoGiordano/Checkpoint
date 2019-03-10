@@ -45,7 +45,9 @@ SOURCES		:=	source ../common
 DATA		:=	data
 INCLUDES	:=	include ../common
 EXEFS_SRC	:=	exefs_src
-ROMFS	:=	romfs
+ROMFS		:=	romfs
+SHARKIVE	:=	../sharkive
+CHEATS		:=	cheats
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -160,14 +162,19 @@ endif
 all: $(BUILD)
 
 $(BUILD):
-	@[ -d $@ ] || mkdir -p $@ $(BUILD) $(OUTDIR) $(ROMFS)/cheats
+	@[ -d $@ ] || mkdir -p $@ $(BUILD) $(OUTDIR) $(ROMFS)/$(CHEATS)
+ifeq ($(OS),Windows_NT)
+	@cd $(SHARKIVE) && py -3 joiner.py switch
+else
+	@cd $(SHARKIVE) && python3 joiner.py switch
+endif
+	@cd $(SHARKIVE)/$(BUILD) && mv switch.json ../../switch/$(ROMFS)/$(CHEATS)/$(CHEATS).json
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(OUTDIR)
-
 
 #---------------------------------------------------------------------------------
 else

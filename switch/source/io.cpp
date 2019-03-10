@@ -118,7 +118,6 @@ bool io::directoryExists(const std::string& path)
     return (stat(path.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode));
 }
 
-// https://stackoverflow.com/questions/2256945/removing-a-non-empty-directory-programmatically-in-c-or-c
 Result io::deleteFolderRecursively(const std::string& path)
 {
     Directory dir(path);

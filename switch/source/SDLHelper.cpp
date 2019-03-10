@@ -6,7 +6,6 @@ static SDL_Texture* s_star;
 static SDL_Texture* s_checkbox;
 static SDL_Texture* s_flag;
 static SDL_Texture* s_pokeball;
-// static Mix_Music* s_click;
 
 static PlFontData fontData, fontExtData;
 static std::unordered_map<int, FC_Font*> s_fonts;
@@ -58,14 +57,6 @@ bool SDLH_Init(void)
     SDLH_LoadImage(&s_checkbox, "romfs:/checkbox.png");
     SDL_SetTextureColorMod(s_checkbox, theme().c1.r, theme().c1.g, theme().c1.b);
 
-    // const int mix_flags = MIX_INIT_OGG;
-    // if ((Mix_Init(mix_flags) & mix_flags) != mix_flags)
-    // {
-    //     fprintf(stderr, "Mix_Init: %s\n", Mix_GetError());
-    // }
-    // Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096);
-    // s_click = Mix_LoadMUS("romfs:/click.ogg");
-
     plGetSharedFontByType(&fontData, PlSharedFontType_Standard);
     plGetSharedFontByType(&fontExtData, PlSharedFontType_NintendoExt);
     
@@ -80,9 +71,6 @@ void SDLH_Exit(void)
     }
 
     TTF_Quit();
-    // Mix_FreeMusic(s_click);
-    // Mix_CloseAudio();
-    // Mix_Quit();
     SDL_DestroyTexture(s_flag);
     SDL_DestroyTexture(s_star);
     SDL_DestroyTexture(s_checkbox);
@@ -200,8 +188,3 @@ void SDLH_DrawIcon(std::string icon, int x, int y)
         SDLH_DrawImage(t, x, y);
     }
 }
-
-// void SDLH_PlayClick(void)
-// {
-//     Mix_PlayMusic(s_click, 1);
-// }

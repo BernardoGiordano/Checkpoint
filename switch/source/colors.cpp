@@ -36,7 +36,7 @@ static const struct Theme defaultTheme = {
     COLOR_WHITE
 };
 
-static const struct Theme pkmsTheme = {
+static const struct Theme pksmTheme = {
     {17, 38, 85, 255},
     COLOR_HIGHBLUE,
     COLOR_DARKBLUE,
@@ -51,7 +51,7 @@ static struct Theme currentTheme = defaultTheme;
 void theme(int t)
 {
     switch(t) {
-        case THEME_PKSM: currentTheme = pkmsTheme; break;
+        case THEME_PKSM: currentTheme = pksmTheme; break;
         default: currentTheme = defaultTheme; break;
     }
 }
