@@ -105,12 +105,34 @@ Configuration::Configuration(void)
         }
         mAdditionalExtdataFolders.emplace(strtoull(it.key().c_str(), NULL, 16), u16folders);
     }
+    
+    if (!io::fileExists(Archive::sdmc(), StringUtils::UTF8toUTF16(EXTCONFIGPATH.c_str())))
+    {
+        storeExtdata();
+    }
+    std::ifstream i2(EXTCONFIGPATH);
+    i2 >> extJson;
+    i2.close();
+    for (nlohmann::json::iterator it = extJson.begin(); it != extJson.end(); ++it) {
+        u32 key = std::stoul(((std::string) it.key()).c_str(), nullptr, 16);
+        u32 value = std::stoul(((std::string) it.value()).c_str(), nullptr, 16);
+        extdataLocations.emplace(key, value);
+    }
 }
 
 void Configuration::store(void)
 {
     std::ifstream src("romfs:/config.json");
     std::ofstream dst(BASEPATH);
+    dst << src.rdbuf();
+    src.close();
+    dst.close();
+}
+
+void Configuration::storeExtdata(void)
+{
+    std::ifstream src("romfs:/extdata.json");
+    std::ofstream dst(EXTCONFIGPATH);
     dst << src.rdbuf();
     src.close();
     dst.close();
@@ -143,4 +165,12 @@ std::vector<std::u16string> Configuration::additionalExtdataFolders(u64 id)
     std::vector<std::u16string> emptyvec;
     auto folders = mAdditionalExtdataFolders.find(id);
     return folders == mAdditionalExtdataFolders.end() ? emptyvec : folders->second;
+}
+
+bool Configuration::hasAlternateExtdataLocation(u32 id) {
+  return extdataLocations.find(id) != extdataLocations.end();
+}
+
+u32 Configuration::getAlternateExtdataLocation(u32 id) {
+  return extdataLocations.find(id)->second;
 }

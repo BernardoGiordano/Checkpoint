@@ -52,21 +52,27 @@ public:
     bool nandSaves(void);
     std::vector<std::u16string> additionalSaveFolders(u64 id);
     std::vector<std::u16string> additionalExtdataFolders(u64 id);
+    bool hasAlternateExtdataLocation(u32 id);
+    u32 getAlternateExtdataLocation(u32 id);
 
 private:
     Configuration(void);
     ~Configuration(void) { };
 
     void store(void);
+    void storeExtdata(void);
 
     Configuration(Configuration const&) = delete;
     void operator=(Configuration const&) = delete;
 
     nlohmann::json mJson;
+    nlohmann::json extJson;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::u16string>> mAdditionalSaveFolders, mAdditionalExtdataFolders;
+    std::unordered_map<u32, u32> extdataLocations;
     bool mNandSaves;
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
+    std::string EXTCONFIGPATH = "/3ds/Checkpoint/extdata.json";
 };
 
 #endif

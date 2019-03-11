@@ -386,18 +386,8 @@ u64 Title::id(void)
 u32 Title::extdataId(void)
 {
     u32 low = lowId();
-    switch(low)
-    {
-        case 0x00055E00: return 0x055D; // Pokémon Y
-        case 0x0011C400: return 0x11C5; // Pokémon Omega Ruby
-        case 0x00175E00: return 0x1648; // Pokémon Moon
-        case 0x00179600:
-        case 0x00179800: return 0x1794; // Fire Emblem Conquest SE NA
-        case 0x00179700:
-        case 0x0017A800: return 0x1795; // Fire Emblem Conquest SE EU
-        case 0x0012DD00:
-        case 0x0012DE00: return 0x12DC; // Fire Emblem If JP
-        case 0x001B5100: return 0x1B50; // Pokémon Ultramoon
+    if (Configuration::getInstance().hasAlternateExtdataLocation(low)) {
+      return Configuration::getInstance().getAlternateExtdataLocation(low);
     }
     
     return low >> 8;
