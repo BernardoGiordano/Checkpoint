@@ -113,7 +113,8 @@ Configuration::Configuration(void)
     std::ifstream i2(EXTCONFIGPATH);
     i2 >> extJson;
     i2.close();
-    for (nlohmann::json::iterator it = extJson.begin(); it != extJson.end(); ++it) {
+    for (nlohmann::json::iterator it = extJson.begin(); it != extJson.end(); ++it)
+    {
         u32 key = std::stoul(((std::string) it.key()).c_str(), nullptr, 16);
         u32 value = std::stoul(((std::string) it.value()).c_str(), nullptr, 16);
         extdataLocations.emplace(key, value);
@@ -167,10 +168,12 @@ std::vector<std::u16string> Configuration::additionalExtdataFolders(u64 id)
     return folders == mAdditionalExtdataFolders.end() ? emptyvec : folders->second;
 }
 
-bool Configuration::hasAlternateExtdataLocation(u32 id) {
-  return extdataLocations.find(id) != extdataLocations.end();
+bool Configuration::hasAlternateExtdataLocation(u32 id)
+{
+    return extdataLocations.find(id) != extdataLocations.end();
 }
 
-u32 Configuration::getAlternateExtdataLocation(u32 id) {
-  return extdataLocations.find(id)->second;
+u32 Configuration::getAlternateExtdataLocation(u32 id)
+{
+    return extdataLocations.find(id)->second;
 }

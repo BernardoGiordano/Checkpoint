@@ -386,10 +386,10 @@ u64 Title::id(void)
 u32 Title::extdataId(void)
 {
     u32 low = lowId();
-    if (Configuration::getInstance().hasAlternateExtdataLocation(low)) {
-      return Configuration::getInstance().getAlternateExtdataLocation(low);
+    if (Configuration::getInstance().hasAlternateExtdataLocation(low))
+    {
+        return Configuration::getInstance().getAlternateExtdataLocation(low);
     }
-    
     return low >> 8;
 }
 
