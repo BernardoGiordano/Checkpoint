@@ -53,6 +53,24 @@ Configuration::Configuration(void)
             mJson["favorites"] = nlohmann::json::array();
             updateJson = true;
         }
+        if (mJson.find("extdata_locations") == mJson.end())
+        {
+            mJson["extdata_locations"] = {
+                {"0x00055E00", "0x055D"},
+                {"0x0011C400", "0x11C5"},
+                {"0x00175E00", "0x1648"},
+                {"0x00179600", "0x1794"},
+                {"0x00179800", "0x1794"},
+                {"0x00179700", "0x1795"},
+                {"0x0017A800", "0x1795"},
+                {"0x0012DD00", "0x12DC"},
+                {"0x0012DE00", "0x12DC"},
+                {"0x001B5100", "0x1B50"},
+                {"0x001C5100", "0x0BD3"},
+                {"0x001D4E00", "0x0BD3"}
+            };
+            updateJson = true;
+        }
     }
 
     if (updateJson) 
@@ -106,15 +124,8 @@ Configuration::Configuration(void)
         mAdditionalExtdataFolders.emplace(strtoull(it.key().c_str(), NULL, 16), u16folders);
     }
     
-    if (!io::fileExists(Archive::sdmc(), StringUtils::UTF8toUTF16(EXTCONFIGPATH.c_str())))
-    {
-        storeExtdata();
-    }
-    std::ifstream i2(EXTCONFIGPATH);
-    i2 >> extJson;
-    i2.close();
-    for (nlohmann::json::iterator it = extJson.begin(); it != extJson.end(); ++it)
-    {
+    auto extdata = mJson["extdata_locations"];
+    for (auto it = extdata.begin(); it != extdata.end(); ++it) {
         u32 key = std::stoul(((std::string) it.key()).c_str(), nullptr, 16);
         u32 value = std::stoul(((std::string) it.value()).c_str(), nullptr, 16);
         extdataLocations.emplace(key, value);
@@ -125,15 +136,6 @@ void Configuration::store(void)
 {
     std::ifstream src("romfs:/config.json");
     std::ofstream dst(BASEPATH);
-    dst << src.rdbuf();
-    src.close();
-    dst.close();
-}
-
-void Configuration::storeExtdata(void)
-{
-    std::ifstream src("romfs:/extdata.json");
-    std::ofstream dst(EXTCONFIGPATH);
     dst << src.rdbuf();
     src.close();
     dst.close();

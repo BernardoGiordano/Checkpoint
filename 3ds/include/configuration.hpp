@@ -60,19 +60,16 @@ private:
     ~Configuration(void) { };
 
     void store(void);
-    void storeExtdata(void);
 
     Configuration(Configuration const&) = delete;
     void operator=(Configuration const&) = delete;
 
     nlohmann::json mJson;
-    nlohmann::json extJson;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::u16string>> mAdditionalSaveFolders, mAdditionalExtdataFolders;
     std::unordered_map<u32, u32> extdataLocations;
     bool mNandSaves;
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
-    std::string EXTCONFIGPATH = "/3ds/Checkpoint/extdata.json";
 };
 
 #endif
