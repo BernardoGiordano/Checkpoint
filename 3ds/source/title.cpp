@@ -1038,17 +1038,10 @@ void updateCard(void)
             {
                 FSUSER_CardSlotGetCardIFPowerStatus(&power);
             }
-            svcSleepThread(1000000000);
             oldCardIn = scanCard();
-            // oldCardIn = titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD || titleExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD;
         }
         else
         {
-            FSUSER_CardSlotPowerOff(&power);
-            while (power)
-            {
-                FSUSER_CardSlotGetCardIFPowerStatus(&power);
-            }
             if (titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD)
             {
                 titleSaves.erase(titleSaves.begin());
