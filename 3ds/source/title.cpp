@@ -948,18 +948,19 @@ static void importTitleListCache(void)
     delete[] cacheextdatas;
 }
 
-static void scanCard(void)
+static bool scanCard(void)
 {
     static bool isScanning = false;
     if (isScanning)
     {
-        return;
+        return false;
     }
     else
     {
         isScanning = true;
     }
 
+    bool ret;
     Result res = 0;
     u32 count = 0;
     FS_CardType cardType;
@@ -978,6 +979,7 @@ static void scanCard(void)
                     Title title;
                     if (title.load(id, MEDIATYPE_GAME_CARD, cardType))
                     {
+                        ret = true;
                         if (title.accessibleSave())
                         {
                             if (titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD)
@@ -1001,6 +1003,7 @@ static void scanCard(void)
             Title title;
             if (title.load(0, MEDIATYPE_GAME_CARD, cardType))
             {
+                ret = true;
                 if (titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD)
                 {
                     titleSaves.insert(titleSaves.begin(), title);
@@ -1009,6 +1012,7 @@ static void scanCard(void)
         }
     }
     isScanning = false;
+    return ret;
 }
 
 void updateCard(void)
@@ -1035,7 +1039,8 @@ void updateCard(void)
                 FSUSER_CardSlotGetCardIFPowerStatus(&power);
             }
             svcSleepThread(1000000000);
-            scanCard();
+            oldCardIn = scanCard();
+            // oldCardIn = titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD || titleExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD;
         }
         else
         {
@@ -1052,7 +1057,7 @@ void updateCard(void)
             {
                 titleExtdatas.erase(titleExtdatas.begin());
             }
+            oldCardIn = false;
         }
-        oldCardIn = cardIn;
     }
 }
