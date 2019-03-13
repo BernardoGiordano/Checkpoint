@@ -125,9 +125,10 @@ Configuration::Configuration(void)
     }
     
     auto extdata = mJson["extdata_locations"];
-    for (auto it = extdata.begin(); it != extdata.end(); ++it) {
-        u32 key = std::stoul(((std::string) it.key()).c_str(), nullptr, 16);
-        u32 value = std::stoul(((std::string) it.value()).c_str(), nullptr, 16);
+    for (auto it = extdata.begin(); it != extdata.end(); ++it)
+    {
+        u32 key = std::stoul((std::string) it.key(), nullptr, 16);
+        u32 value = std::stoul((std::string) it.value(), nullptr, 16);
         extdataLocations.emplace(key, value);
     }
 }
