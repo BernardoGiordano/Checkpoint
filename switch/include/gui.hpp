@@ -34,11 +34,10 @@
 #include "colors.hpp"
 #include "clickable.hpp"
 #include "SDLHelper.hpp"
-#include "info.hpp"
 #include "hid.hpp"
 #include "main.hpp"
-#include "messagebox.hpp"
 #include "scrollable.hpp"
+#include "status.hpp"
 #include "title.hpp"
 #include "types.hpp"
 #include "util.hpp"
@@ -49,17 +48,16 @@ namespace Gui
     void        exit(void);
     void        draw(u128 uid);
 
-    void        createInfo(const std::string& title, const std::string& message);
-    void        createError(Result res, const std::string& message);
+    void        showInfo(const std::string& message);
+    void        showError(Result res, const std::string& message);
 
-    bool        backupScroll(void);
-    void        backupScroll(bool enable);
     size_t      count(entryType_t type);
     void        entryType(entryType_t type);
     size_t      index(entryType_t type);
     void        index(entryType_t type, size_t i);
     bool        isBackupReleased(void);
     bool        isRestoreReleased(void);
+    bool        isCheatReleased(void);
     std::string nameFromCell(size_t index);
     void        resetIndex(entryType_t type);
     void        updateButtons(void);

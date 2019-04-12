@@ -51,7 +51,8 @@ public:
 
     void draw(void) override;
     void setIndex(size_t i);
-    void push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message) override;
+    void push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message);
+    void push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message, bool selected);
     void resetIndex(void) override;
     void updateSelection(void) override;
 

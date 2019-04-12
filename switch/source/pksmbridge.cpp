@@ -48,6 +48,12 @@ void sendToPKSMBrigde(size_t index, u128 uid)
         return;
     }
 
+    auto systemKeyboardAvailable = KeyboardManager::get().isSystemKeyboardAvailable();
+    if (!systemKeyboardAvailable.first)
+    {
+        Gui::showError(systemKeyboardAvailable.second, "System keyboard not accessible.");
+    }
+
     // load data
     Title title;
     getTitle(title, uid, index);
@@ -59,10 +65,10 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     save.read(data, size);
 
     // get server address
-    std::pair<bool, std::string> ipaddress = KeyboardManager::get().keyboard("Input PKSM IP address");
+    auto ipaddress = KeyboardManager::get().keyboard("Input PKSM IP address");
     if (!ipaddress.first || !validateIpAddress(ipaddress.second))
     {
-        Gui::createError(-1, "Invalid IP address.");
+        Gui::showError(-1, "Invalid IP address.");
         delete[] data;
         return;
     }
@@ -72,7 +78,7 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     struct sockaddr_in servaddr;
     if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
-        Gui::createError(errno, "Socket creation failed.");
+        Gui::showError(errno, "Socket creation failed.");
         delete[] data;
         return;
     }
@@ -83,7 +89,7 @@ void sendToPKSMBrigde(size_t index, u128 uid)
 
     if (connect(fd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)
     {
-        Gui::createError(errno, "Socket connection failed.");
+        Gui::showError(errno, "Socket connection failed.");
         close(fd);
         delete[] data;
         return;
@@ -101,11 +107,11 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     }
     if (total == size)
     {
-        Gui::createInfo("Success!", "Data sent correctly.");
+        Gui::showInfo("Data sent correctly.");
     }
     else
     {
-        Gui::createError(errno, "Failed to send data.");
+        Gui::showError(errno, "Failed to send data.");
     }
 
     close(fd);
@@ -124,7 +130,7 @@ void recvFromPKSMBridge(size_t index, u128 uid)
     struct sockaddr_in servaddr;
     if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_IP)) < 0)
     {
-        Gui::createError(errno, "Socket creation failed.");
+        Gui::showError(errno, "Socket creation failed.");
         return;
     }
 
@@ -135,13 +141,13 @@ void recvFromPKSMBridge(size_t index, u128 uid)
     
     if (bind(fd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0)
     {
-        Gui::createError(errno, "Socket bind failed.");
+        Gui::showError(errno, "Socket bind failed.");
         close(fd);
         return;
     }
     if (listen(fd, 5) < 0)
     {
-        Gui::createError(errno, "Socket listen failed.");
+        Gui::showError(errno, "Socket listen failed.");
         close(fd);
         return;
     }
@@ -150,7 +156,7 @@ void recvFromPKSMBridge(size_t index, u128 uid)
     int addrlen = sizeof(servaddr);
     if ((fdconn = accept(fd, (struct sockaddr*)&servaddr, (socklen_t*)&addrlen)) < 0)
     {
-        Gui::createError(errno, "Socket accept failed.");
+        Gui::showError(errno, "Socket accept failed.");
         close(fd);
         return;
     }
@@ -174,13 +180,13 @@ void recvFromPKSMBridge(size_t index, u128 uid)
     }
     if (total == size)
     {
-        Gui::createInfo("Success!", "Data received correctly.");
+        Gui::showInfo("Data received correctly.");
         save.write(data, size);
         save.close();
     }
     else
     {
-        Gui::createError(errno, "Failed to receive data.");
+        Gui::showError(errno, "Failed to receive data.");
     }
 
     close(fd);

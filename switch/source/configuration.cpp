@@ -26,6 +26,60 @@
 
 #include "configuration.hpp"
 
+static struct mg_mgr mgr;
+static struct mg_connection *nc;
+static struct mg_serve_http_opts s_http_server_opts;
+static const char *s_http_port = "8000";
+
+static void handle_populate(struct mg_connection *nc, struct http_message *hm)
+{
+    auto json = Configuration::getInstance().getJson();
+    auto map = getCompleteTitleList();
+    json["title_list"] = map;
+    std::string body = json.dump();
+    mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%.*s",
+        (unsigned long)body.length(), (int)body.length(), body.c_str());
+}
+
+static void handle_save(struct mg_connection *nc, struct http_message *hm)
+{
+    FILE* f = fopen(Configuration::getInstance().BASEPATH.c_str(), "w");
+    fwrite(hm->body.p, 1, hm->body.len, f);
+    fclose(f);
+    Configuration::getInstance().load();
+    Configuration::getInstance().parse();
+    // Send response
+    mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%.*s",
+            (unsigned long) hm->body.len, (int) hm->body.len, hm->body.p);
+}
+
+static void handle_ssi_call(struct mg_connection *nc, const char *param)
+{
+
+}
+
+static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
+{
+    struct http_message *hm = (struct http_message *) ev_data;
+
+    switch (ev) {
+        case MG_EV_HTTP_REQUEST:
+            if (mg_vcmp(&hm->uri, "/save") == 0) {
+                handle_save(nc, hm);
+            } else if (mg_vcmp(&hm->uri, "/populate") == 0) {
+                handle_populate(nc, hm);
+            } else {
+                mg_serve_http(nc, hm, s_http_server_opts);
+            }
+            break;
+        case MG_EV_SSI_CALL:
+            handle_ssi_call(nc, (const char*)ev_data);
+            break;
+        default:
+            break;
+    }
+}
+
 Configuration::Configuration(void)
 {
     // check for existing config.json files on the sd card, BASEPATH
@@ -35,9 +89,7 @@ Configuration::Configuration(void)
     }
 
     // load json config file
-    std::ifstream i(BASEPATH);
-    i >> mJson;
-    i.close();
+    load();
 
     bool updateJson = false;
     if (mJson.find("version") == mJson.end())
@@ -57,17 +109,86 @@ Configuration::Configuration(void)
         if (mJson["version"] < 3)
         {
             mJson["pksm-bridge"] = true;
-            updateJson= true;
+            updateJson = true;
         }
     }
 
     if (updateJson) 
     {
         mJson["version"] = CONFIG_VERSION;
-        std::ofstream o(BASEPATH);
-        o << std::setw(2) << mJson << std::endl;
-        o.close();
+        save();
     }
+
+    parse();
+
+    // load server
+    mg_mgr_init(&mgr, NULL);
+    nc = mg_bind(&mgr, s_http_port, ev_handler);
+    mg_set_protocol_http_websocket(nc);
+    s_http_server_opts.document_root = "romfs:/web_root";
+    s_http_server_opts.auth_domain = "flagbrew.org";
+}
+
+Configuration::~Configuration(void)
+{
+    mg_mgr_free(&mgr);
+}
+
+void Configuration::store(void)
+{
+    std::ifstream src("romfs:/config.json");
+    std::ofstream dst(BASEPATH);
+    dst << src.rdbuf();
+    src.close();
+    dst.close();
+}
+
+bool Configuration::filter(u64 id)
+{
+    return mFilterIds.find(id) != mFilterIds.end();
+}
+
+bool Configuration::favorite(u64 id)
+{
+    return mFavoriteIds.find(id) != mFavoriteIds.end();
+}
+
+std::vector<std::string> Configuration::additionalSaveFolders(u64 id)
+{
+    std::vector<std::string> emptyvec;
+    auto folders = mAdditionalSaveFolders.find(id);
+    return folders == mAdditionalSaveFolders.end() ? emptyvec : folders->second;
+}
+
+bool Configuration::isPKSMBridgeEnabled(void)
+{
+    return PKSMBridgeEnabled;
+}
+
+void Configuration::pollServer(void)
+{
+    mg_mgr_poll(&mgr, 1000/60);
+}
+
+void Configuration::save(void)
+{
+    std::ofstream o(BASEPATH);
+    o << std::setw(2) << mJson << std::endl;
+    o.close();
+}
+
+void Configuration::load(void)
+{
+    std::ifstream i(BASEPATH);
+    i >> mJson;
+    i.close();
+}
+
+void Configuration::parse(void)
+{
+    mFilterIds.clear();
+    mFavoriteIds.clear();
+    mAdditionalSaveFolders.clear();
 
     // parse filters
     std::vector<std::string> filter = mJson["filter"];
@@ -100,33 +221,12 @@ Configuration::Configuration(void)
     PKSMBridgeEnabled = mJson["pksm-bridge"];
 }
 
-void Configuration::store(void)
+const char* Configuration::c_str(void)
 {
-    std::ifstream src("romfs:/config.json");
-    std::ofstream dst(BASEPATH);
-    dst << src.rdbuf();
-    src.close();
-    dst.close();
+    return mJson.dump().c_str();
 }
 
-bool Configuration::filter(u64 id)
+nlohmann::json Configuration::getJson(void)
 {
-    return mFilterIds.find(id) != mFilterIds.end();
-}
-
-bool Configuration::favorite(u64 id)
-{
-    return mFavoriteIds.find(id) != mFavoriteIds.end();
-}
-
-std::vector<std::string> Configuration::additionalSaveFolders(u64 id)
-{
-    std::vector<std::string> emptyvec;
-    auto folders = mAdditionalSaveFolders.find(id);
-    return folders == mAdditionalSaveFolders.end() ? emptyvec : folders->second;
-}
-
-bool Configuration::isPKSMBridgeEnabled(void)
-{
-    return PKSMBridgeEnabled;
+    return mJson;
 }

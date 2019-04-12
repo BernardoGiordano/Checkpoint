@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en" class="h-100">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="">
+  <meta name="author" content="Bernardo Giordano, FlagBrew">
+  <title>Checkpoint Configuration Panel</title>
+
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/bootstrap.4.3.1.min.css">
+  <link rel="stylesheet" href="css/toastr.min.css">
+  <script src="js/jquery-3.3.1.min.js"></script>
+  <script src="js/bootstrap.4.3.1.min.js"></script>
+  <script src="js/toastr.min.js"></script>
+  <script src="js/script.js"></script>
+</head>
+
+<body class="d-flex flex-column h-100">
+  <header>
+    <nav class="navbar navbar-dark fixed-top bg-dark">
+      <span class="navbar-brand mb-0 h1">Checkpoint Configuration</span>
+      <button id="button-save" onclick="saveSettings();" class="btn btn-outline-success" type="submit">Save</button>
+    </nav>
+  </header>
+
+  <main role="main" class="flex-shrink-0">
+    <div class="container">
+      <div class="custom-control custom-checkbox topSpacing">
+        <input id="enable-pksm-bridge" type="checkbox" class="custom-control-input">
+        <label class="custom-control-label" for="enable-pksm-bridge">Enable PKSM-Bridge</label>
+      </div>
+      <div class="row topSpacing">
+        <div class="col-md-4 order-md-2 mb-4">
+          <h4 class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text">Filter titles</span>
+            <span id="filter-badge" class="badge badge-secondary badge-pill">0</span>
+          </h4>
+          <ul id="filter-list" class="list-group mb-3">
+          </ul>
+          <div class="input-group">
+            <input id="input-filter" type="text" class="form-control" placeholder="Title ID">
+            <div class="input-group-append">
+              <button id="button-filter" type="submit" onclick="pushToFilter();"
+                class="btn btn-secondary">Filter</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4 order-md-2 mb-4">
+          <h4 class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text">Favorites</span>
+            <span id="favorites-badge" class="badge badge-warning badge-pill">0</span>
+          </h4>
+          <ul id="favorites-list" class="list-group mb-3">
+          </ul>
+
+          <div class="input-group">
+            <input id="input-favorites" type="text" class="form-control" placeholder="Title ID">
+            <div class="input-group-append">
+              <button type="submit" onclick="pushToFavorites();" class="btn btn-warning">Favorite</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-4 order-md-2 mb-4">
+          <h4 class="d-flex justify-content-between align-items-center mb-3">
+            <span class="text">Additional folders</span>
+          </h4>
+          <ul id="folders-list" class="list-group mb-3">
+          </ul>
+
+          <div class="panel-group list-group mb-3" id="accordion">
+            <div id="additional-saves-list" class="panel panel-default">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+</html>

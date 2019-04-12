@@ -35,7 +35,7 @@
 #include "SDLHelper.hpp"
 #include "types.hpp"
 
-#define USER_ICON_SIZE 80
+#define USER_ICON_SIZE 64
 
 struct User {
     u128         id;
@@ -51,6 +51,7 @@ namespace Account
     std::vector
     <u128>       ids(void);
     SDL_Texture* icon(u128 id);
+    u128         selectAccount(void);
     std::string  username(u128 id);
 }
 

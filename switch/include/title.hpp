@@ -46,6 +46,7 @@ public:
     ~Title(void) { };
 
     std::string   author(void);
+    std::pair<std::string, std::string> displayName(void);
     SDL_Texture*  icon(void);
     u64           id(void);
     std::string   name(void);
@@ -63,7 +64,7 @@ private:
     u64           mId;
     u128          mUserId;
     std::string   mUserName;
-    std::string   mDisplayName;
+    std::string   mName;
     std::string   mSafeName;
     std::string   mAuthor;
     std::string   mPath;
@@ -81,5 +82,6 @@ void   refreshDirectories(u64 id);
 bool   favorite(u128 uid, int i);
 void   freeIcons(void);
 SDL_Texture* smallIcon(u128 uid, size_t i);
+std::unordered_map<std::string, std::string> getCompleteTitleList(void);
 
 #endif

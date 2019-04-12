@@ -30,8 +30,8 @@ include $(DEVKITPRO)/libnx/switch_rules
 #     - icon.jpg
 #     - <libnx folder>/default_icon.jpg
 #---------------------------------------------------------------------------------
-VERSION_MAJOR := 3
-VERSION_MINOR := 6
+VERSION_MAJOR := 4
+VERSION_MINOR := 0
 VERSION_MICRO := 0
 
 APP_TITLE	:=	Checkpoint
@@ -41,9 +41,9 @@ APP_VERSION	:=	${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
 TARGET		:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR		:=	out
 BUILD		:=	build
-SOURCES		:=	source ../common
+SOURCES		:=	source ../common ../3rd-party/mongoose
 DATA		:=	data
-INCLUDES	:=	include ../common
+INCLUDES	:=	include ../common ../3rd-party/mongoose ../3rd-party/json
 EXEFS_SRC	:=	exefs_src
 ROMFS		:=	romfs
 SHARKIVE	:=	../sharkive
@@ -60,8 +60,10 @@ CFLAGS	:=	-g -O3 -ffunction-sections \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
 			-DVERSION_MINOR=${VERSION_MINOR} \
 			-DVERSION_MICRO=${VERSION_MICRO} \
+			-DCS_PLATFORM=CS_P_CUSTOM \
 			`freetype-config --cflags` \
-			`sdl2-config --cflags`
+			`sdl2-config --cflags` \
+			-DMG_ENABLE_FILESYSTEM
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D_GNU_SOURCE=1
 
@@ -70,8 +72,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-no-as-needed,-Map,$(notdir $*.map)
 
-LIBS	:=	-lSDL2_ttf -lSDL2_gfx -lSDL2_image -lpng -ljpeg `sdl2-config --libs` `freetype-config --libs` -lnx
-	
+LIBS	:=	-lSDL2_ttf -lSDL2_image -lpng -ljpeg `sdl2-config --libs` `freetype-config --libs` -lnx
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

@@ -94,7 +94,7 @@ devkitARM and devkitA64 are required to compile Checkpoint for 3DS and Switch, r
 
 ### Switch version
 
-`pacman -S libnx switch-freetype switch-libpng switch-libjpeg-turbo switch-sdl2 switch-sdl2_image switch-sdl2_gfx switch-sdl2_ttf`
+`pacman -S libnx switch-freetype switch-libpng switch-libjpeg-turbo switch-sdl2 switch-sdl2_image switch-sdl2_ttf`
 
 ## License
 

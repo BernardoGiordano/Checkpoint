@@ -35,6 +35,9 @@
 #include "json.hpp"
 #include "io.hpp"
 #include "util.hpp"
+extern "C" {
+#include "mongoose.h"
+}
 
 #define CONFIG_VERSION 2
 
@@ -51,10 +54,18 @@ public:
     bool favorite(u64 id);
     bool isPKSMBridgeEnabled(void);
     std::vector<std::string> additionalSaveFolders(u64 id);
+    void pollServer(void);
+    void save(void);
+    void load(void);
+    void parse(void);
+    const char* c_str(void);
+    nlohmann::json getJson(void);
+
+    const std::string BASEPATH = "/switch/Checkpoint/config.json";
 
 private:
     Configuration(void);
-    ~Configuration(void) { };
+    ~Configuration(void);
 
     void store(void);
 
@@ -65,7 +76,6 @@ private:
     bool PKSMBridgeEnabled;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders;
-    std::string BASEPATH = "/switch/Checkpoint/config.json";
 };
 
 #endif

@@ -46,6 +46,14 @@ void Scrollable::push_back(SDL_Color color, SDL_Color colorMessage, const std::s
     mCells.push_back(cell);
 }
 
+void Scrollable::push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message, bool selected)
+{
+    static const float spacing = mh / mVisibleEntries;
+    Clickable* cell = new Clickable(mx, my + (size() % mVisibleEntries)*spacing, mw, spacing, color, colorMessage, message, false);
+    cell->selected(selected);
+    mCells.push_back(cell);
+}
+
 void Scrollable::updateSelection(void)
 {
     touchPosition touch;
@@ -68,10 +76,20 @@ void Scrollable::draw(void)
     const size_t sz = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
     for (size_t i = baseIndex; i < baseIndex + sz; i++)
     {
-        mCells.at(i)->draw(20);
+        mCells.at(i)->draw(20, g_backupScrollEnabled ? COLOR_BLUE : theme().c0);
     }
 
     size_t blankRows = mVisibleEntries - sz;
     size_t rowHeight = mh / mVisibleEntries;
     SDLH_DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, theme().c2);
+    
+    // draw selector
+    for (size_t i = baseIndex; i < baseIndex + sz; i++)
+    {
+        if (mCells.at(i)->selected())
+        {
+            mCells.at(i)->drawOutline(g_backupScrollEnabled ? COLOR_BLUE : theme().c5);
+            break;
+        }
+    }
 }

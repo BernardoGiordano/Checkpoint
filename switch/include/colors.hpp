@@ -41,12 +41,7 @@
 #define COLOR_GREY_DARK   FC_MakeColor(79, 79, 79, 255)
 #define COLOR_GREY_MEDIUM FC_MakeColor(94, 94, 94, 255)
 #define COLOR_GREY_LIGHT  FC_MakeColor(138, 138, 138, 255)
-
-#define COLOR_LIGHTBLUE FC_MakeColor(187, 208, 254, 255)
-#define COLOR_DARKBLUE  FC_MakeColor( 55,  89, 187, 255)
 #define COLOR_HIGHBLUE  FC_MakeColor( 48,  65, 106, 255)
-#define COLOR_PALEBLUE  FC_MakeColor( 90, 115, 164, 255)
-#define COLOR_MENUBLUE  FC_MakeColor( 55,  89, 157, 255)
 
 struct Theme {
     SDL_Color c0;
@@ -59,10 +54,8 @@ struct Theme {
 };
 
 #define THEME_DEFAULT 0
-#define THEME_PKSM    1
 
 void theme(int t);
 struct Theme theme(void);
-struct Theme dtheme(void);
 
 #endif

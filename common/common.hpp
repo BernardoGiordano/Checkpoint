@@ -27,6 +27,7 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
+#include <algorithm>
 #include <codecvt>
 #include <cstdio>
 #include <locale>
@@ -45,10 +46,14 @@ namespace DateTime
 namespace StringUtils
 {
     bool        containsInvalidChar(const std::string& str);
+    std::string escapeJson(const std::string &s);
     std::string format(const std::string fmt_str, ...);
     std::string removeForbiddenCharacters(std::string src);
     std::string sizeString(double size);
     std::string UTF16toUTF8(const std::u16string& src);
+    void ltrim(std::string &s);
+    void rtrim(std::string &s);
+    void trim(std::string &s);
 }
 
 #endif

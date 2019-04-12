@@ -68,6 +68,6 @@ void Scrollable::draw(void)
     const size_t sz = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
     for (size_t i = baseIndex; i < baseIndex + sz; i++)
     {
-        mCells.at(i)->draw(0.5f);
+        mCells.at(i)->draw(0.5f, 0);
     }
 }

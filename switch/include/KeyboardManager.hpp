@@ -31,52 +31,6 @@
 #include <string>
 #include <switch.h>
 #include <utility>
-#include <vector>
-#include "clickable.hpp"
-#include "SDLHelper.hpp"
-#include "util.hpp"
-
-#define DELAY_TICKS 2500000
-
-class HbkbdButton : public Clickable 
-{
-public:
-    HbkbdButton(u32 x, u32 y, u16 w, u16 h, SDL_Color colorBg, SDL_Color colorText, const std::string& message, bool centered)
-    : Clickable(x, y, w, h, colorBg, colorText, message, centered)
-    {
-        mSelected = false;
-    }
-
-    void selected(bool v)
-    {
-        mSelected = v;
-    }
-
-    void draw(void)
-    {
-        Clickable::draw();
-        // outline
-        if (mSelected)
-        {
-            SDL_Color color = FC_MakeColor(138, 138, 138, 255);
-            static const size_t size = 2;
-            SDLH_DrawRect(mx - size, my - size, mw + 2*size, size, color); // top
-            SDLH_DrawRect(mx - size, my, size, mh, color); // left
-            SDLH_DrawRect(mx + mw, my, size, mh, color); // right
-            SDLH_DrawRect(mx - size, my + mh, mw + 2*size, size, color); // bottom
-        }
-    }
-
-protected:
-    bool mSelected;
-};
-
-// hardcoded, but it's not going to change often
-#define INDEX_BACK 44
-#define INDEX_RETURN 45
-#define INDEX_OK 46
-#define INDEX_CAPS 47
-#define INDEX_SPACE 48
 
 class KeyboardManager
 {
@@ -91,32 +45,20 @@ public:
     void operator=(KeyboardManager const&) = delete;
 
     std::pair<bool, std::string> keyboard(const std::string& suggestion);
+    
+    std::pair<bool, Result> isSystemKeyboardAvailable(void)
+    {
+        return std::make_pair(systemKeyboardAvailable, res);
+    }
 
     static const size_t CUSTOM_PATH_LEN = 49;
 
 private:
     KeyboardManager(void);
-    virtual ~KeyboardManager(void);
+    virtual ~KeyboardManager(void) { };
 
-    void hid(size_t& currentEntry);
-    bool logic(std::string& str, size_t i);
-
-    const u32 buttonSpacing = 4;
-    const u32 normalWidth = 92;
-    const u32 bigWidth = 116;
-    const u32 height = 60;
-    const u32 margintb = 20;
-    const u32 marginlr = 54;
-    const u32 starty = 720 - 356 + margintb;
-
-    u64 currentTime = 0;
-    u64 lastTime = 0;
-
-    const std::string letters = "1234567890@qwertyuiop+asdfghjkl_:zxcvbnm,.-/";
-    std::vector<HbkbdButton*> buttons;
-    size_t prevSelectedButtonIndex;
-
-    bool isSystemKeyboardAvailable;
+    Result res;
+    bool systemKeyboardAvailable;
 };
 
 #endif

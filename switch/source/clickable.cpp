@@ -56,25 +56,26 @@ bool Clickable::released(void)
     return false;
 }
 
-void Clickable::draw(void)
-{
-    u32 textw, texth;
-    SDLH_GetTextDimensions(36, mText.c_str(), &textw, &texth);
-    const u32 messageWidth = mCentered ? textw : mw - 8;
-    bool hld = held();
-    const SDL_Color bgColor = hld ? mColorText : mColorBg;
-    const SDL_Color msgColor = hld ? mColorBg : mColorText;
-    
-    SDLH_DrawRect(mx, my, mw, mh, bgColor);
-    SDLH_DrawText(36, mx + (mw - messageWidth)/2, my + (mh - texth)/2, msgColor, mText.c_str());	
-}
-
-void Clickable::draw(float font)
+void Clickable::draw(float font, SDL_Color overlay)
 {
     u32 textw, texth;
     SDLH_GetTextDimensions(font, mText.c_str(), &textw, &texth);
-    const u32 messageWidth = mCentered ? textw : mw - 8;
-    
+    const u32 messageWidth = mCentered ? textw : mw - (mSelected ? 20 : 8);
+
     SDLH_DrawRect(mx, my, mw, mh, mColorBg);
-    SDLH_DrawTextBox(font, mx + (mw - messageWidth)/2, my + (mh - texth)/2, mColorText, mw - 4*2, mText.c_str());
+    if (mCanInvertColor && held())
+    {
+        SDLH_DrawRect(mx, my, mw, mh, FC_MakeColor(overlay.r, overlay.g, overlay.b, 100));
+    }
+    if (mSelected)
+    {
+        SDLH_DrawRect(mx + 4, my + 6, 4, mh - 12, COLOR_WHITE);
+        SDLH_DrawRect(mx, my, mw, mh, FC_MakeColor(overlay.r, overlay.g, overlay.b, 100));
+    }
+    SDLH_DrawTextBox(font, mx + (mSelected ? 8 : 0) + (mw - messageWidth)/2, my + (mh - texth)/2 + 2, mColorText, mw - 4*2, mText.c_str());
+}
+
+void Clickable::drawOutline(SDL_Color color)
+{
+    drawPulsingOutline(mx, my, mw, mh, 4, color);
 }

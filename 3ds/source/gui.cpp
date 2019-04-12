@@ -203,8 +203,8 @@ bool Gui::askForConfirmation(const std::string& text)
         drawBackground(GFX_BOTTOM);
         C2D_DrawRectSolid(38, 88, 0.5f, 104, 64, COLOR_GREY_LIGHT);
         C2D_DrawRectSolid(178, 88, 0.5f, 104, 64, COLOR_GREY_LIGHT);
-        buttonYes->draw();
-        buttonNo->draw();
+        buttonYes->draw(0.7, 0);
+        buttonNo->draw(0.7, 0);
         C3D_FrameEnd(0);
     }
 
@@ -508,8 +508,8 @@ void Gui::draw(void)
         C2D_DrawRectSolid(6, 102, 0.5f, 308, 110, COLOR_GREY_DARK);
 
         directoryList->draw();
-        buttonBackup->draw();
-        buttonRestore->draw();
+        buttonBackup->draw(0.7, 0);
+        buttonRestore->draw(0.7, 0);
 
         C2D_DrawRectSolid(202, 102, 0.5f, 2, 110, COLOR_GREY_LIGHT);
         C2D_DrawRectSolid(204, 156, 0.5f, 110, 2, COLOR_GREY_LIGHT);

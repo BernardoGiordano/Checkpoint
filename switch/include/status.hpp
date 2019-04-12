@@ -24,39 +24,5 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef INFO_HPP
-#define INFO_HPP
-
-#include <switch.h>
-#include <string>
-#include "SDLHelper.hpp"
-#include "util.hpp"
-
-typedef enum {
-    TYPE_INFO,
-    TYPE_ERROR
-} Info_t;
-
-class Info
-{
-public:
-    Info(void);
-    ~Info(void) { };
-
-    void draw(void);
-    void init(std::string title, std::string message, int ttl, Info_t type);
-    void init(Result res, std::string message, int ttl, Info_t type);
-
-private:
-    size_t      mw;
-    size_t      mh;
-    u32         mx;
-    u32         my;
-    int         mTTL;
-    Result      mRes;
-    Info_t      mType;
-    std::string mTitle;
-    std::string mMessage;
-};
-
-#endif
+extern bool g_backupScrollEnabled;
+extern float g_currentTime;

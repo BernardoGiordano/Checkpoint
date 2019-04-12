@@ -35,16 +35,16 @@ APP_TITLE		:= 	Checkpoint
 APP_DESCRIPTION	:=	Fast and simple save manager
 APP_AUTHOR		:=	Bernardo Giordano, FlagBrew
 
-VERSION_MAJOR := 3
-VERSION_MINOR := 6
+VERSION_MAJOR := 4
+VERSION_MINOR := 0
 VERSION_MICRO := 0
 
 TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out
 BUILD			:=	build
-SOURCES			:=	source ../common
+SOURCES			:=	source ../common ../3rd-party/sha256
 DATA			:=	data
-INCLUDES		:=	include ../common
+INCLUDES		:=	include ../common ../3rd-party/json ../3rd-party/sha256
 GRAPHICS		:=	assets/gfx
 ROMFS			:=	assets/romfs
 GFXBUILD		:=	$(ROMFS)/gfx

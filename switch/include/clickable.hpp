@@ -30,6 +30,7 @@
 #include <string>
 #include <switch.h>
 #include "iclickable.hpp"
+#include "status.hpp"
 #include "SDLHelper.hpp"
 
 class Clickable : public IClickable<SDL_Color>
@@ -39,10 +40,10 @@ public:
     : IClickable(x, y, w, h, colorBg, colorText, message, centered) { }
     virtual ~Clickable(void) { };
 
-    void draw(void) override;
-    void draw(float font) override;
+    void draw(float font, SDL_Color overlay) override;
     bool held(void) override;
     bool released(void) override;
+    void drawOutline(SDL_Color color) override;
 };
 
 #endif

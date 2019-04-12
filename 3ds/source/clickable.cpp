@@ -56,23 +56,24 @@ bool Clickable::released(void)
     return false;
 }
 
-void Clickable::draw(void)
+void Clickable::draw(float size, u32 overlay)
 {
-    static const float size = 0.7f;
     static const float messageHeight = ceilf(size*fontGetInfo()->lineFeed);
     const float messageWidth = mCentered ? mC2dText.width * size : mw - 8;
-    const u32 bgColor = held() ? mColorText : mColorBg;
-    const u32 msgColor = bgColor == mColorBg ? mColorText : mColorBg;
+    u32 bgColor = held() ? mColorText : mColorBg;
+    u32 msgColor = bgColor == mColorBg ? mColorText : mColorBg;
+
+    if (mCanInvertColor)
+    {
+        bool hld = held();
+        bgColor = hld ? mColorText : mColorBg;
+        msgColor = hld ? mColorBg : mColorText;
+    }
     
     C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, bgColor);
-    C2D_DrawText(&mC2dText, C2D_WithColor, mx + (mw - messageWidth)/2, my + (mh - messageHeight)/2, 0.5f, size, size, msgColor);	
-}
+    if (mSelected)
+    {
 
-void Clickable::draw(float size)
-{
-    static const float messageHeight = ceilf(size*fontGetInfo()->lineFeed);
-    const float messageWidth = mCentered ? mC2dText.width * size : mw - 8;
-    
-    C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, mColorBg);
-    C2D_DrawText(&mC2dText, C2D_WithColor, mx + (mw - messageWidth)/2, my + (mh - messageHeight)/2, 0.5f, size, size, mColorText);	
+    }
+    C2D_DrawText(&mC2dText, C2D_WithColor, mx + (mw - messageWidth)/2, my + (mh - messageHeight)/2, 0.5f, size, size, msgColor);	
 }

@@ -4,8 +4,6 @@ static SDL_Window* s_window;
 static SDL_Renderer* s_renderer;
 static SDL_Texture* s_star;
 static SDL_Texture* s_checkbox;
-static SDL_Texture* s_flag;
-static SDL_Texture* s_pokeball;
 
 static PlFontData fontData, fontExtData;
 static std::unordered_map<int, FC_Font*> s_fonts;
@@ -51,9 +49,7 @@ bool SDLH_Init(void)
         fprintf(stderr, "IMG_Init: %s\n", IMG_GetError());
         return false;
     }
-    SDLH_LoadImage(&s_flag, "romfs:/flag.png");
     SDLH_LoadImage(&s_star, "romfs:/star.png");
-    SDLH_LoadImage(&s_pokeball, "romfs:/pokeball.png");
     SDLH_LoadImage(&s_checkbox, "romfs:/checkbox.png");
     SDL_SetTextureColorMod(s_checkbox, theme().c1.r, theme().c1.g, theme().c1.b);
 
@@ -71,7 +67,6 @@ void SDLH_Exit(void)
     }
 
     TTF_Quit();
-    SDL_DestroyTexture(s_flag);
     SDL_DestroyTexture(s_star);
     SDL_DestroyTexture(s_checkbox);
     IMG_Quit();
@@ -88,6 +83,8 @@ void SDLH_ClearScreen(SDL_Color color)
 
 void SDLH_Render(void)
 {
+    // increase g_currentTime
+    g_currentTime = SDL_GetTicks() / 1000.f;
     SDL_RenderPresent(s_renderer);
 }
 
@@ -97,11 +94,6 @@ void SDLH_DrawRect(int x, int y, int w, int h, SDL_Color color)
     rect.x = x; rect.y = y; rect.w = w; rect.h = h;
     SDL_SetRenderDrawColor(s_renderer, color.r, color.g, color.b, color.a);
     SDL_RenderFillRect(s_renderer, &rect);
-}
-
-void SDLH_DrawCircle(int x, int y, int r, SDL_Color color)
-{
-    filledCircleRGBA(s_renderer, x, y, r, color.r, color.g, color.b, color.a);
 }
 
 void SDLH_DrawText(int size, int x, int y, SDL_Color color, const char* text)
@@ -173,18 +165,31 @@ void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h)
 void SDLH_DrawIcon(std::string icon, int x, int y)
 {
     SDL_Texture* t = nullptr;
-    if (icon.compare("flag") == 0) {
-        t = s_flag;
-    } else if (icon.compare("checkbox") == 0) {
+    if (icon.compare("checkbox") == 0) {
         t = s_checkbox;
         SDLH_DrawRect(x + 8, y + 8, 24, 24, theme().c6);
     } else if (icon.compare("star") == 0) {
         t = s_star;
-    } else if (icon.compare("pokeball") == 0) {
-        t = s_pokeball;
     }
 
     if (t != nullptr) {
         SDLH_DrawImage(t, x, y);
     }
+}
+
+void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
+{
+    float highlight_multiplier = fmax(0.0, fabs(fmod(g_currentTime, 1.0) - 0.5) / 0.5);
+    color = FC_MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier, color.b + (255 - color.b) * highlight_multiplier, 255);
+    SDLH_DrawRect(x - size, y - size, w + 2*size, size, color); // top
+    SDLH_DrawRect(x - size, y, size, h, color); // left
+    SDLH_DrawRect(x + w, y, size, h, color); // right
+    SDLH_DrawRect(x - size, y + h, w + 2*size, size, color); // bottom
+}
+
+void drawPulsingRect(int x, int y, int w, int h, SDL_Color color)
+{
+    float highlight_multiplier = fmax(0.0, fabs(fmod(g_currentTime, 1.0) - 0.5) / 0.5);
+    color = FC_MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier, color.b + (255 - color.b) * highlight_multiplier, 255);
+    SDLH_DrawRect(x, y, w, h, color);
 }

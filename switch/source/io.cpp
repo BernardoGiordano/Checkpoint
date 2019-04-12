@@ -172,13 +172,13 @@ void io::backup(size_t index, u128 uid)
         if (ret == -1)
         {
             FileSystem::unmount();
-            Gui::createError(-2, "Failed to mount save.");
+            Gui::showError(-2, "Failed to mount save.");
             return;
         }
     }
     else
     {
-        Gui::createError(res, "Failed to mount save.");
+        Gui::showError(res, "Failed to mount save.");
         return;
     }
 
@@ -227,7 +227,7 @@ void io::backup(size_t index, u128 uid)
         if (ret != 0)
         {
             FileSystem::unmount();
-            Gui::createError((Result)ret, "Failed to delete the existing backup\ndirectory recursively.");
+            Gui::showError((Result)ret, "Failed to delete the existing backup\ndirectory recursively.");
             return;
         }
     }
@@ -238,14 +238,22 @@ void io::backup(size_t index, u128 uid)
     {
         FileSystem::unmount();
         io::deleteFolderRecursively((dstPath + "/").c_str());
-        Gui::createError(res, "Failed to backup save.");
+        Gui::showError(res, "Failed to backup save.");
         return;
     }
     
     refreshDirectories(title.id());
     
     FileSystem::unmount();
-    Gui::createInfo("Success!", "Progress correctly saved to disk.");
+    if (!Gui::multipleSelectionEnabled())
+    {
+        Gui::showInfo("Progress correctly saved to disk.");
+    }
+    auto systemKeyboardAvailable = KeyboardManager::get().isSystemKeyboardAvailable();
+    if (!systemKeyboardAvailable.first)
+    {
+        Gui::showError(systemKeyboardAvailable.second, "System keyboard applet not accessible.\nThe suggested destination folder was used\ninstead.");
+    }
 }
 
 void io::restore(size_t index, u128 uid)
@@ -269,13 +277,13 @@ void io::restore(size_t index, u128 uid)
         if (ret == -1)
         {
             FileSystem::unmount();
-            Gui::createError(-2, "Failed to mount save.");
+            Gui::showError(-2, "Failed to mount save.");
             return;
         }
     }
     else
     {
-        Gui::createError(res, "Failed to mount save.");
+        Gui::showError(res, "Failed to mount save.");
         return;        
     }
 
@@ -286,7 +294,7 @@ void io::restore(size_t index, u128 uid)
     if (R_FAILED(res))
     {
         FileSystem::unmount();
-        Gui::createError(res, "Failed to delete save.");
+        Gui::showError(res, "Failed to delete save.");
         return;
     }
     
@@ -294,18 +302,18 @@ void io::restore(size_t index, u128 uid)
     if (R_FAILED(res))
     {
         FileSystem::unmount();
-        Gui::createError(res, "Failed to restore save.");
+        Gui::showError(res, "Failed to restore save.");
         return;
     }
     
     res = fsdevCommitDevice("save");
     if (R_FAILED(res))
     {
-        Gui::createError(res, "Failed to commit to save device.");
+        Gui::showError(res, "Failed to commit to save device.");
     }
     else
     {
-        Gui::createInfo("Success!", Gui::nameFromCell(cellIndex) + "\nhas been restored successfully.");
+        Gui::showInfo(Gui::nameFromCell(cellIndex) + "\nhas been restored successfully.");
     }
     
     FileSystem::unmount();

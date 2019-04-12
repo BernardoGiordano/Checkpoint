@@ -27,7 +27,7 @@
 #include "main.hpp"
 
 u128 g_currentUId = 0;
-u8 g_currentUserIndex = 0;
+bool g_backupScrollEnabled = 0;
 
 int main(int argc, char** argv)
 {
@@ -39,30 +39,20 @@ int main(int argc, char** argv)
     }
 
     loadTitles();
+    // get the user IDs
+    std::vector<u128> userIds = Account::ids();
+    // set g_currentUId to a default user in case we loaded at least one user
+    if (g_currentUId == 0) g_currentUId = userIds.at(0);
 
     int selectionTimer = 0;
     while(appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_PLUS))
     {
-        // get the user IDs
-        std::vector<u128> userIds = Account::ids();
-        // set g_currentUId to a default user in case we loaded at least one user
-        if (g_currentUId == 0 && !userIds.empty()) g_currentUId = userIds.at(0);
-
         hidScanInput();
         u32 kdown = hidKeysDown(CONTROLLER_P1_AUTO);
         u32 kheld = hidKeysHeld(CONTROLLER_P1_AUTO);
-        if (kdown & KEY_ZL)
+        if (kdown & KEY_ZL || kdown & KEY_ZR)
         {
-            ++g_currentUserIndex %= userIds.size();
-            g_currentUId = userIds.at(g_currentUserIndex);
-            Gui::index(TITLES, 0);
-            Gui::index(CELLS, 0);
-            Gui::setPKSMBridgeFlag(false);
-        }
-        if (kdown & KEY_ZR)
-        {
-            g_currentUserIndex = g_currentUserIndex - 1 < 0 ? userIds.size() - 1 : g_currentUserIndex - 1;
-            g_currentUId = userIds.at(g_currentUserIndex);
+            while((g_currentUId = Account::selectAccount()) == 0);
             Gui::index(TITLES, 0);
             Gui::index(CELLS, 0);
             Gui::setPKSMBridgeFlag(false);
@@ -85,32 +75,28 @@ int main(int argc, char** argv)
         // handle touchscreen
         touchPosition touch;
         hidTouchRead(&touch, 0);
-        for (u8 i = 0; i < userIds.size(); i++)
+        if (!g_backupScrollEnabled &&
+            hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
+            touch.px >= 1200 && touch.px <= 1200 + USER_ICON_SIZE &&
+            touch.py >= 626 && touch.py <= 626 + USER_ICON_SIZE)
         {
-            if (!Gui::backupScroll() &&
-                hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
-                touch.px >= u32(1280 - (USER_ICON_SIZE + 4) * (i+1)) &&
-                touch.px <= u32(1280 - (USER_ICON_SIZE + 4) * i) &&
-                touch.py >= 32 && touch.py <= 32 + USER_ICON_SIZE)
-            {
-                g_currentUserIndex = i;
-                g_currentUId = userIds.at(g_currentUserIndex);
-                Gui::index(TITLES, 0);
-                Gui::setPKSMBridgeFlag(false);
-            }
+            while ((g_currentUId = Account::selectAccount()) == 0);
+            Gui::index(TITLES, 0);
+            Gui::index(CELLS, 0);
+            Gui::setPKSMBridgeFlag(false);
         }
 
         // Handle touching the backup list
         if ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
-            (int)touch.px > 540 &&
-            (int)touch.px < 1046 &&
-            (int)touch.py > 462 &&
-            (int)touch.py < 692))
+            (int)touch.px > 538 &&
+            (int)touch.px < 952 &&
+            (int)touch.py > 276 &&
+            (int)touch.py < 656))
         {
             // Activate backup list only if multiple selections are enabled
             if (!Gui::multipleSelectionEnabled())
             {
-                Gui::backupScroll(true);
+                g_backupScrollEnabled = true;
                 Gui::updateButtons();
                 Gui::entryType(CELLS);
             }
@@ -119,11 +105,11 @@ int main(int argc, char** argv)
         // Handle pressing A
         // Backup list active:   Backup/Restore
         // Backup list inactive: Activate backup list only if multiple
-        //                         selections are enabled
+        //                       selections are enabled
         if (kdown & KEY_A)
         {
             // If backup list is active...
-            if (Gui::backupScroll())
+            if (g_backupScrollEnabled)
             {
                 // If the "New..." entry is selected...
                 if (0 == Gui::index(CELLS))
@@ -141,7 +127,7 @@ int main(int argc, char** argv)
                     }
                     else
                     {
-                         io::restore(Gui::index(TITLES), g_currentUId);
+                        io::restore(Gui::index(TITLES), g_currentUId);
                     }
                 }
             }
@@ -150,7 +136,7 @@ int main(int argc, char** argv)
                 // Activate backup list only if multiple selections are not enabled
                 if (!Gui::multipleSelectionEnabled())
                 {
-                    Gui::backupScroll(true);
+                    g_backupScrollEnabled = true;
                     Gui::updateButtons();
                     Gui::entryType(CELLS);
                 }
@@ -160,23 +146,23 @@ int main(int argc, char** argv)
         // Handle pressing B
         if (kdown & KEY_B ||
             (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH &&
-            (int)touch.px > 0 &&
-            (int)touch.px < 532 &&
-            (int)touch.py > 28 &&
-            (int)touch.py < 692))
+            (int)touch.px >= 0 &&
+            (int)touch.px <= 532 &&
+            (int)touch.py >= 0 &&
+            (int)touch.py <= 664))
         {
             Gui::index(CELLS, 0);
-            Gui::backupScroll(false);
+            g_backupScrollEnabled = false;
             Gui::entryType(TITLES);
             Gui::clearSelectedEntries();
             Gui::setPKSMBridgeFlag(false);
             Gui::updateButtons(); // Do this last
         }
 
-         // Handle pressing X
+        // Handle pressing X
         if (kdown & KEY_X)
         {
-            if (Gui::backupScroll())
+            if (g_backupScrollEnabled)
             {
                 size_t index = Gui::index(CELLS);
                 if (index > 0 && Gui::askForConfirmation("Delete selected backup?"))
@@ -193,14 +179,14 @@ int main(int argc, char** argv)
 
         // Handle pressing Y
         // Backup list active:   Deactivate backup list, select title, and
-        //                         enable backup button
+        //                       enable backup button
         // Backup list inactive: Select title and enable backup button
         if (kdown & KEY_Y)
         {
-            if (Gui::backupScroll())
+            if (g_backupScrollEnabled)
             {
                 Gui::index(CELLS, 0);
-                Gui::backupScroll(false);
+                g_backupScrollEnabled = false;
             }
             Gui::entryType(TITLES);
             Gui::addSelectedEntry(Gui::index(TITLES));
@@ -209,7 +195,7 @@ int main(int argc, char** argv)
         }
 
         // Handle holding Y
-        if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_Y && !(Gui::backupScroll()))
+        if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_Y && !(g_backupScrollEnabled))
         {
             selectionTimer++;
         }
@@ -241,8 +227,9 @@ int main(int argc, char** argv)
                 }
                 Gui::clearSelectedEntries();
                 Gui::updateButtons();
+                Gui::showInfo("Progress correctly saved to disk.");
             }
-            else if (Gui::backupScroll())
+            else if (g_backupScrollEnabled)
             {
                 if (Gui::getPKSMBridgeFlag())
                 {
@@ -258,12 +245,7 @@ int main(int argc, char** argv)
         // Handle pressing/touching R
         if (Gui::isRestoreReleased() || (kdown & KEY_R))
         {
-            if (Gui::multipleSelectionEnabled())
-            {
-                Gui::clearSelectedEntries();
-                Gui::updateButtons();
-            }
-            else if (Gui::backupScroll())
+            if (g_backupScrollEnabled)
             {
                 if (Gui::getPKSMBridgeFlag())
                 {
@@ -271,13 +253,21 @@ int main(int argc, char** argv)
                 }
                 else
                 {
-                        io::restore(Gui::index(TITLES), g_currentUId);
+                    io::restore(Gui::index(TITLES), g_currentUId);
                 }
             }
         }
 
+        if (Gui::isCheatReleased())
+        {
+
+        }
+
         Gui::updateSelector();
         Gui::draw(g_currentUId);
+
+        // poll server
+        Configuration::getInstance().pollServer();
     }
 
     servicesExit();

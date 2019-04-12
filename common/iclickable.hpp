@@ -41,12 +41,14 @@ public:
     : mx(x), my(y), mw(w), mh(h), mColorBg(colorBg), mColorText(colorText), mText(message), mCentered(centered)
     {
         mOldPressed = false;
+        mSelected = false;
+        mCanInvertColor = false;
     }
     
     virtual ~IClickable(void) { }
 
-    virtual void draw(void) = 0;
-    virtual void draw(float size) = 0;
+    virtual void draw(float size, T overlay) = 0;
+    virtual void drawOutline(T color) = 0;
     virtual bool held(void) = 0;
     virtual bool released(void) = 0;
     
@@ -73,6 +75,21 @@ public:
         mText = v;
     }
 
+    bool selected(void)
+    {
+        return mSelected;
+    }
+
+    void selected(bool selected)
+    {
+        mSelected = selected;
+    }
+
+    void canInvertColor(bool c)
+    {
+        mCanInvertColor = c;
+    }
+
 protected: 
     int         mx;
     int         my;
@@ -81,8 +98,10 @@ protected:
     T           mColorBg;
     T           mColorText;
     std::string mText;
+    bool        mCanInvertColor;
     bool        mCentered;
     bool        mOldPressed;
+    bool        mSelected;
 };
 
 #endif

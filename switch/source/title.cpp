@@ -56,7 +56,7 @@ void Title::init(u8 saveDataType, u64 id, u128 userID, const std::string& name, 
     mSaveDataType = saveDataType;
     mUserName = Account::username(userID);
     mAuthor = author;
-    mDisplayName = name;
+    mName = name;
     mSafeName = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
     mPath = "sdmc:/switch/Checkpoint/saves/" + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
 
@@ -100,7 +100,24 @@ std::string Title::author(void)
 
 std::string Title::name(void)
 {
-    return mDisplayName;
+    return mName;
+}
+
+std::pair<std::string, std::string> Title::displayName(void)
+{
+    std::string name = StringUtils::removeAccents(mName);
+    std::pair<std::string, std::string> p = std::make_pair(name, "");
+    size_t pos = name.rfind(":");
+    if (pos != std::string::npos)
+    {
+        std::string name1 = name.substr(0, pos);
+        std::string name2 = name.substr(pos+1);
+        StringUtils::trim(name1);
+        StringUtils::trim(name2);
+        p.first = name1;
+        p.second = name2;
+    }
+    return p;
 }
 
 std::string Title::path(void)
@@ -148,7 +165,7 @@ void Title::refreshDirectories(void)
     }
     else
     {
-        Gui::createError(savelist.error(), "Couldn't retrieve the directory list for the title " + name() + ".");
+        Gui::showError(savelist.error(), "Couldn't retrieve the directory list for the title " + name() + ".");
     }
 
     // save backups from configuration
@@ -236,7 +253,6 @@ void loadTitles(void)
                 }
                 nle = NULL;
             }
-
         }
     }
 
@@ -291,4 +307,17 @@ SDL_Texture* smallIcon(u128 uid, size_t i)
 {
     std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
     return it != titles.end() ? it->second.at(i).icon() : NULL; 
+}
+
+std::unordered_map<std::string, std::string> getCompleteTitleList(void)
+{
+    std::unordered_map<std::string, std::string> map;
+    for (const auto& pair : titles)
+    {
+        for (auto value : pair.second)
+        {
+            map.insert({ StringUtils::format("0x%016llX", value.id()), value.name() });
+        }
+    }
+    return map;
 }
