@@ -1,4 +1,3 @@
 [submodule "sharkive"]
 	path = sharkive
-	url = https://github.com/FlagBrew/Sharkive
-	branch = db
+	url = https://github.com/FlagBrew/sharkive
