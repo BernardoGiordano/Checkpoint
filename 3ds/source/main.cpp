@@ -178,15 +178,16 @@ int main() {
 
         if (Gui::isRestoreReleased() || (kDown & KEY_R))
         {
-            if (Gui::multipleSelectionEnabled())
-            {
-                Gui::clearSelectedEntries();
-                Gui::updateButtonsColor();
-            }
-            else if (Gui::bottomScroll())
-            {
-                io::restore(Gui::index());
-            }
+            // if (Gui::multipleSelectionEnabled())
+            // {
+            //     Gui::clearSelectedEntries();
+            //     Gui::updateButtonsColor();
+            // }
+            // else if (Gui::bottomScroll())
+            // {
+            //     io::restore(Gui::index());
+            // }
+            Gui::showError(0xFADE, "This is a complex error message. Report to FlagBrew.");
         }
 
         Gui::updateSelector();

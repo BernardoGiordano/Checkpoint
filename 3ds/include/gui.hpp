@@ -37,8 +37,6 @@
 #include "colors.hpp"
 #include "clickable.hpp"
 #include "hid.hpp"
-#include "info.hpp"
-#include "messagebox.hpp"
 #include "scrollable.hpp"
 #include "sprites.h"
 #include "title.hpp"
@@ -52,10 +50,11 @@ namespace Gui
     bool        askForConfirmation(const std::string& text);
     bool        bottomScroll(void);
     void        bottomScroll(bool enable);
-    void        createError(Result res, const std::string& message);
-    void        createInfo(const std::string& title, const std::string& message);
+    void        showError(Result res, const std::string& message);
+    void        showInfo(const std::string& message);
     void        draw(void);
     void        drawCopy(const std::u16string& src, u32 offset, u32 size);
+    void        frameEnd(void);
     size_t      index(void);
     bool        isBackupReleased(void);
     bool        isRestoreReleased(void);
@@ -76,5 +75,7 @@ namespace Gui
     C2D_Image   TWLIcon(void);
     C2D_Image   noIcon(void);
 }
+
+void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color);
 
 #endif

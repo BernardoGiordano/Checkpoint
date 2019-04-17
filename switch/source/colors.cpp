@@ -27,13 +27,13 @@
 #include "colors.hpp"
 
 static const struct Theme defaultTheme = {
-    COLOR_BLACK,
-    COLOR_GREY_BG,
-    COLOR_GREY_DARKER,
-    COLOR_GREY_DARK,
-    COLOR_GREY_MEDIUM,
-    COLOR_GREY_LIGHT,
-    COLOR_WHITE
+    COLOR_BLACK,       // c0
+    COLOR_GREY_BG,     // c1
+    COLOR_GREY_DARKER, // c2
+    COLOR_GREY_DARK,   // c3
+    COLOR_GREY_MEDIUM, // c4
+    COLOR_GREY_LIGHT,  // c5
+    COLOR_WHITE        // c6
 };
 
 static struct Theme currentTheme = defaultTheme;

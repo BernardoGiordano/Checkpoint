@@ -36,16 +36,12 @@ static C2D_Sprite checkbox, star;
 static C2D_ImageTint checkboxTint;
 
 static C2D_TextBuf staticBuf, dynamicBuf;
-static C2D_Text copyText;
 static C2D_Text ins1, ins2, ins3, ins4, c2dId, c2dMediatype;
 static C2D_Text checkpoint, version;
 
 // gui elements
-static Info* info;
 static Clickable* buttonBackup;
 static Clickable* buttonRestore;
-static MessageBox* messageBox;
-static MessageBox* copyList;
 static Scrollable* directoryList;
 
 static const size_t rowlen = 4;
@@ -140,88 +136,180 @@ static void drawBackground(gfxScreen_t screen)
     }
 }
 
-void Gui::drawCopy(const std::u16string& src, u32 offset, u32 size)
+void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color)
 {
-    copyList->clear();
-    copyList->push_message("Copying " + StringUtils::UTF16toUTF8(src));
-
-    C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-    C2D_TargetClear(top, COLOR_BG);
-    C2D_TargetClear(bottom, COLOR_BG);
-
-    C2D_SceneBegin(top);
-    drawBackground(GFX_TOP);
-    copyList->draw();
-
-    C2D_SceneBegin(bottom);
-    drawBackground(GFX_BOTTOM);
-
-    static const int barHeight = 19;
-    static const int progressBarHeight = 50;
-    static const int spacingFromSides = 20;
-    static const int spacingFromBars = (240 - barHeight * 2 - progressBarHeight) / 2;
-    static const int width = 320 - spacingFromSides * 2;
-
-    C2D_DrawRectSolid(spacingFromSides - 2, barHeight + spacingFromBars - 2, 0.5f, width + 4, progressBarHeight + 4, COLOR_GREY_LIGHT);
-    C2D_DrawRectSolid(spacingFromSides, barHeight + spacingFromBars, 0.5f, width, progressBarHeight, COLOR_WHITE);
-    C2D_DrawRectSolid(spacingFromSides, barHeight + spacingFromBars, 0.5f, (float)offset / (float)size * width, progressBarHeight, C2D_Color32(116, 222, 126, 255));
-
-    std::string sizeString = StringUtils::sizeString(offset) + " of " + StringUtils::sizeString(size);
-    C2D_TextBufClear(dynamicBuf);
-    C2D_TextParse(&copyText, dynamicBuf, sizeString.c_str());
-    C2D_TextOptimize(&copyText);
-    C2D_DrawText(&copyText, 0, (320 - ceilf(copyText.width*0.5f))/2, 112, 0.5f, 0.5f, 0.5f);
-    C3D_FrameEnd(0);
+    u8 r = color & 0xFF;
+    u8 g = (color >> 8) & 0xFF;
+    u8 b = (color >> 16) & 0xFF;
+    float highlight_multiplier = fmax(0.0, fabs(fmod(timer, 1.0) - 0.5) / 0.5);
+    color = C2D_Color32(r + (255 - r) * highlight_multiplier, g + (255 - g) * highlight_multiplier, b + (255 - b) * highlight_multiplier, 255);
+    C2D_DrawRectSolid(x - size, y - size, 0.5f, w + 2*size, size, color); // top
+    C2D_DrawRectSolid(x - size, y, 0.5f, size, h, color); // left
+    C2D_DrawRectSolid(x + w, y, 0.5f, size, h, color); // right
+    C2D_DrawRectSolid(x - size, y + h, 0.5f, w + 2*size, size, color); // bottom
 }
 
-bool Gui::askForConfirmation(const std::string& text)
+void Gui::drawCopy(const std::u16string& src, u32 offset, u32 size)
+{
+    // C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    // C2D_TargetClear(top, COLOR_BG);
+    // C2D_TargetClear(bottom, COLOR_BG);
+
+    // C2D_SceneBegin(top);
+    // drawBackground(GFX_TOP);
+
+    // C2D_SceneBegin(bottom);
+    // drawBackground(GFX_BOTTOM);
+
+    // static const int barHeight = 19;
+    // static const int progressBarHeight = 50;
+    // static const int spacingFromSides = 20;
+    // static const int spacingFromBars = (240 - barHeight * 2 - progressBarHeight) / 2;
+    // static const int width = 320 - spacingFromSides * 2;
+
+    // C2D_DrawRectSolid(spacingFromSides - 2, barHeight + spacingFromBars - 2, 0.5f, width + 4, progressBarHeight + 4, COLOR_GREY_LIGHT);
+    // C2D_DrawRectSolid(spacingFromSides, barHeight + spacingFromBars, 0.5f, width, progressBarHeight, COLOR_WHITE);
+    // C2D_DrawRectSolid(spacingFromSides, barHeight + spacingFromBars, 0.5f, (float)offset / (float)size * width, progressBarHeight, C2D_Color32(116, 222, 126, 255));
+
+    // std::string sizeString = StringUtils::sizeString(offset) + " of " + StringUtils::sizeString(size);
+    // C2D_TextBufClear(dynamicBuf);
+    // C2D_TextParse(&copyText, dynamicBuf, sizeString.c_str());
+    // C2D_TextOptimize(&copyText);
+    // C2D_DrawText(&copyText, 0, (320 - ceilf(copyText.width*0.5f))/2, 112, 0.5f, 0.5f, 0.5f);
+    // frameEnd();
+}
+
+bool Gui::askForConfirmation(const std::string& message)
 {
     bool ret = false;
-    Clickable* buttonYes = new Clickable(40, 90, 100, 60, COLOR_WHITE, COLOR_BLACK, "\uE000 Yes", true);
-    Clickable* buttonNo = new Clickable(180, 90, 100, 60, COLOR_WHITE, COLOR_BLACK, "\uE001 No", true);
-    MessageBox* message = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE, GFX_TOP);
-    message->push_message(text);
+    Clickable* buttonYes = new Clickable(42, 142, 116, 56, COLOR_GREY_DARK, COLOR_WHITE, "\uE000 Yes", true);
+    Clickable* buttonNo = new Clickable(162, 142, 116, 56, COLOR_GREY_DARK, COLOR_WHITE, "\uE001 No", true);
+    HidHorizontal* hid = new HidHorizontal(2, 2);
+    C2D_Text text;
+    C2D_TextParse(&text, dynamicBuf, message.c_str());
+    C2D_TextOptimize(&text);
 
-    while(aptMainLoop() && !(buttonNo->released() || hidKeysDown() & KEY_B))
+    while(aptMainLoop())
     {
         hidScanInput();
-        if (buttonYes->released() || hidKeysDown() & KEY_A)
+        hid->update(2);
+
+        if (buttonYes->released() ||
+            ((hidKeysDown() & KEY_A) && hid->index() == 0))
         {
             ret = true;
             break;
         }
+        else if (buttonNo->released() ||
+            (hidKeysDown() & KEY_B) ||
+            ((hidKeysDown() & KEY_A) && hid->index() == 1))
+        {
+            break;
+        }
+
+        hid->index(buttonYes->held() ? 0 : buttonNo->held() ? 1 : hid->index());
+        buttonYes->selected(hid->index() == 0);
+        buttonNo->selected(hid->index() == 1);
 
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        C2D_TargetClear(top, COLOR_BG);
-        C2D_TargetClear(bottom, COLOR_BG);
-
-        C2D_SceneBegin(top);
-        drawBackground(GFX_TOP);
-        message->draw();
-
         C2D_SceneBegin(bottom);
-        drawBackground(GFX_BOTTOM);
-        C2D_DrawRectSolid(38, 88, 0.5f, 104, 64, COLOR_GREY_LIGHT);
-        C2D_DrawRectSolid(178, 88, 0.5f, 104, 64, COLOR_GREY_LIGHT);
+        C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
+        C2D_DrawText(&text, C2D_WithColor, ceilf(320 - text.width * 0.6) / 2, 40 + ceilf(100 - 0.6f * fontGetInfo()->lineFeed) / 2, 0.5f, 0.6f, 0.6f, COLOR_WHITE);
+        C2D_DrawRectSolid(40, 140, 0.5f, 240, 60, COLOR_GREY_LIGHT);
+        
         buttonYes->draw(0.7, 0);
         buttonNo->draw(0.7, 0);
-        C3D_FrameEnd(0);
+
+        if (hid->index() == 0)
+        {
+            drawPulsingOutline(42, 142, 116, 56, 2, COLOR_BLUE);
+        }
+        else
+        {
+            drawPulsingOutline(162, 142, 116, 56, 2, COLOR_BLUE);
+        }
+
+        frameEnd();
     }
 
-    delete message;
+    delete hid;
     delete buttonYes;
     delete buttonNo;
     return ret;
 }
 
-void Gui::createInfo(const std::string& title, const std::string& message)
+void Gui::showInfo(const std::string& message)
 {
-    info->init(title, message, 500, TYPE_INFO);
+    const float size = 0.6f;
+    Clickable* button = new Clickable(40, 140, 240, 60, COLOR_GREY_DARK, COLOR_WHITE, "OK", true);
+    button->selected(true);
+    std::string t = StringUtils::wrap(message, size, 220);
+    C2D_Text text;
+    C2D_TextParse(&text, dynamicBuf, t.c_str());
+    C2D_TextOptimize(&text);
+    u32 w = StringUtils::textWidth(text, size);
+    u32 h = StringUtils::textHeight(t, size);
+
+    while(aptMainLoop())
+    {
+        hidScanInput();
+
+        if (button->released() ||
+            (hidKeysDown() & KEY_A) ||
+            (hidKeysDown() & KEY_B))
+        {
+            break;
+        }
+
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+        C2D_SceneBegin(bottom);
+        C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
+        C2D_DrawText(&text, C2D_WithColor, ceilf(320 - w) / 2, 40 + ceilf(100 - h) / 2, 0.5f, size, size, COLOR_WHITE);
+        button->draw(0.7f, COLOR_BLUE);
+        drawPulsingOutline(42, 142, 236, 56, 2, COLOR_BLUE);
+        frameEnd();
+    }
+
+    delete button;
 }
 
-void Gui::createError(Result res, const std::string& message)
+void Gui::showError(Result res, const std::string& message)
 {
-    info->init(res, message, 500, TYPE_ERROR);
+    const float size = 0.6f;
+    Clickable* button = new Clickable(40, 140, 240, 60, COLOR_GREY_DARKER, COLOR_WHITE, "OK", true);
+    button->selected(true);
+    std::string t = StringUtils::wrap(message, size, 220);
+    std::string e = StringUtils::format("Error: 0x%08lX", res);
+    C2D_Text text, error;
+    C2D_TextParse(&text, dynamicBuf, t.c_str());
+    C2D_TextParse(&error, dynamicBuf, e.c_str());
+    C2D_TextOptimize(&text);
+    C2D_TextOptimize(&error);
+    u32 w = StringUtils::textWidth(text, size);
+    u32 h = StringUtils::textHeight(t, size);
+
+    while(aptMainLoop())
+    {
+        hidScanInput();
+
+        if (button->released() ||
+            (hidKeysDown() & KEY_A) ||
+            (hidKeysDown() & KEY_B))
+        {
+            break;
+        }
+
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+        C2D_SceneBegin(bottom);
+        C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
+        C2D_DrawText(&error, C2D_WithColor, 44, 44, 0.5f, 0.5f, 0.5f, COLOR_RED);
+        C2D_DrawText(&text, C2D_WithColor, ceilf(320 - w) / 2, 40 + ceilf(100 - h) / 2, 0.5f, size, size, COLOR_WHITE);
+        button->draw(0.7f, COLOR_RED);
+        drawPulsingOutline(42, 142, 236, 56, 2, COLOR_RED);
+        frameEnd();
+    }
+
+    delete button;
 }
 
 void Gui::resetScrollableIndex(void)
@@ -252,23 +340,9 @@ void Gui::init(void)
     bottomScrollEnabled = false;
     hid = new HidHorizontal(rowlen * collen, collen);
 
-    info = new Info();
-    info->init("", "", 0, TYPE_INFO);
-    buttonBackup = new Clickable(204, 102, 110, 54, COLOR_WHITE, bottomScrollEnabled ? COLOR_BLACK : COLOR_GREY_LIGHT, "Backup \uE004", true);
-    buttonRestore = new Clickable(204, 158, 110, 54, COLOR_WHITE, bottomScrollEnabled ? COLOR_BLACK : COLOR_GREY_LIGHT, "Restore \uE005", true);
-    copyList = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE, GFX_TOP);
+    buttonBackup = new Clickable(204, 102, 110, 54, COLOR_GREY_DARKER, COLOR_WHITE, "Backup \uE004", true);
+    buttonRestore = new Clickable(204, 158, 110, 54, COLOR_GREY_DARKER, COLOR_WHITE, "Restore \uE005", true);
     directoryList = new Scrollable(6, 102, 196, 110, 5);
-    messageBox = new MessageBox(COLOR_GREY_DARK, COLOR_WHITE, GFX_TOP);
-    messageBox->push_message("Press \uE000 to enter target");
-    messageBox->push_message("Press \uE004 to backup target");
-    messageBox->push_message("Press \uE005 to restore target");
-    messageBox->push_message("Press \uE001 to exit target or deselect all titles");
-    messageBox->push_message("Press \uE002 to delete a backup");
-    messageBox->push_message("Press \uE003 to multiselect a title");
-    messageBox->push_message("Hold \uE003 to multiselect all titles");
-    messageBox->push_message("Press \uE006 to move between titles");
-    messageBox->push_message("Press \uE054\uE055 to switch page");
-    messageBox->push_message("Hold \uE001 to refresh titles");
 
     spritesheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");
     flag = C2D_SpriteSheetGetImage(spritesheet, sprites_checkpoint_idx);
@@ -307,12 +381,9 @@ void Gui::exit(void)
     C2D_TextBufDelete(staticBuf);
     C2D_SpriteSheetFree(spritesheet);
     delete hid;
-    delete messageBox;
     delete directoryList;
-    delete copyList;
     delete buttonRestore;
     delete buttonBackup;
-    delete info;
     C2D_Fini();
     C3D_Fini();
     gfxExit();
@@ -441,11 +512,9 @@ void Gui::draw(void)
     C2D_DrawText(&ins2, C2D_WithColor, border + ceilf(ins1.width*0.47f), 224, 0.5f, 0.47f, 0.47f, Archive::mode() == MODE_SAVE ? COLOR_WHITE : COLOR_RED);
     C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width)*0.47f), 224, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
 
-    info->draw();
-
     if (hidKeysHeld() & KEY_SELECT)
     {
-        messageBox->draw();
+
     }
 
     C2D_SceneBegin(bottom);
@@ -516,10 +585,7 @@ void Gui::draw(void)
     }
 
     C2D_DrawText(&ins4, C2D_WithColor, ceilf((320 - ins4.width*0.47f) / 2), 224, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
-    C3D_FrameEnd(0);
-
-    // increase timer
-    timer += 0.025f;
+    frameEnd();
 }
 
 bool Gui::isBackupReleased(void)
@@ -535,4 +601,10 @@ bool Gui::isRestoreReleased(void)
 void Gui::resetIndex(void)
 {
     hid->reset();
+}
+
+void Gui::frameEnd(void)
+{
+    C3D_FrameEnd(0);
+    timer += 0.025f;
 }

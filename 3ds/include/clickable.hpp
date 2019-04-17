@@ -31,6 +31,7 @@
 #include <string>
 #include "iclickable.hpp"
 #include "colors.hpp"
+#include "gui.hpp"
 
 class Clickable : public IClickable<u32>
 {
@@ -49,7 +50,7 @@ public:
     }
 
     void draw(float size, u32 overlay) override;
-    void drawOutline(u32 color) override { (void)color; };
+    void drawOutline(u32 color) override;
     bool held(void) override;
     bool released(void) override;
 
