@@ -24,8 +24,7 @@
 *         reasonable ways as different from the original version.
 */
 
-#include "thread.hpp"
-#include "util.hpp"
+#include "main.hpp"
 
 int main() {
     if (R_FAILED(servicesInit())) {
@@ -52,7 +51,7 @@ int main() {
         if (kDown & KEY_A)
         {
             // If backup list is active...
-            if (Gui::bottomScroll())
+            if (g_bottomScrollEnabled)
             {
                 // If the "New..." entry is selected...
                 if (0 == Gui::scrollableIndex())
@@ -69,7 +68,7 @@ int main() {
                 // Activate backup list only if multiple selections are not enabled
                 if (!MS::multipleSelectionEnabled())
                 {
-                    Gui::bottomScroll(true);
+                    g_bottomScrollEnabled = true;
                     Gui::updateButtonsColor();
                 }
             }
@@ -77,7 +76,7 @@ int main() {
 
         if (kDown & KEY_B)
         {
-            Gui::bottomScroll(false);
+            g_bottomScrollEnabled = false;
             MS::clearSelectedEntries();
             Gui::resetScrollableIndex();
             Gui::updateButtonsColor();
@@ -85,7 +84,7 @@ int main() {
 
         if (kDown & KEY_X)
         {
-            if (Gui::bottomScroll())
+            if (g_bottomScrollEnabled)
             {
                 bool isSaveMode = Archive::mode() == MODE_SAVE;
                 size_t index = Gui::scrollableIndex();
@@ -111,10 +110,10 @@ int main() {
 
         if (kDown & KEY_Y)
         {
-            if (Gui::bottomScroll())
+            if (g_bottomScrollEnabled)
             {
                 Gui::resetScrollableIndex();
-                Gui::bottomScroll(false);
+                g_bottomScrollEnabled = false;
             }
             MS::addSelectedEntry(Gui::index());
             Gui::updateButtonsColor(); // Do this last
@@ -170,7 +169,7 @@ int main() {
                 MS::clearSelectedEntries();
                 Gui::updateButtonsColor();
             }
-            else if (Gui::bottomScroll())
+            else if (g_bottomScrollEnabled)
             {
                 io::backup(Gui::index());
             }
@@ -183,7 +182,7 @@ int main() {
                 MS::clearSelectedEntries();
                 Gui::updateButtonsColor();
             }
-            else if (Gui::bottomScroll())
+            else if (g_bottomScrollEnabled)
             {
                 io::restore(Gui::index());
             }

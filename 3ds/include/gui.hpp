@@ -49,8 +49,6 @@ namespace Gui
     void        exit(void);
 
     bool        askForConfirmation(const std::string& text);
-    bool        bottomScroll(void);
-    void        bottomScroll(bool enable);
     void        showError(Result res, const std::string& message);
     void        showInfo(const std::string& message);
     void        draw(void);

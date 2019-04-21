@@ -39,13 +39,6 @@ void Scrollable::resetIndex(void)
     mHid->page(0);
 }
 
-void Scrollable::push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message)
-{
-    static const float spacing = mh / mVisibleEntries;
-    Clickable* cell = new Clickable(mx, my + (size() % mVisibleEntries)*spacing, mw, spacing, color, colorMessage, message, false);
-    mCells.push_back(cell);
-}
-
 void Scrollable::push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message, bool selected)
 {
     static const float spacing = mh / mVisibleEntries;

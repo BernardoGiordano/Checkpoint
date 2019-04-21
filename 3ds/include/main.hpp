@@ -24,39 +24,12 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef SCROLLABLE_HPP
-#define SCROLLABLE_HPP
+#ifndef MAIN_HPP
+#define MAIN_HPP
 
-#include <switch.h>
-#include <vector>
-#include "iscrollable.hpp"
-#include "clickable.hpp"
-#include "colors.hpp"
-#include "SDLHelper.hpp"
-#include "hid.hpp"
+#include "thread.hpp"
+#include "util.hpp"
 
-class Scrollable : public IScrollable<SDL_Color>
-{
-public:
-    Scrollable(u32 x, u32 y, u32 w, u32 h, size_t visibleEntries)
-    : IScrollable(x, y, w, h, visibleEntries)
-    {
-        mHid = new HidVertical(visibleEntries, 1);
-    }
-
-    virtual ~Scrollable(void)
-    {
-        delete mHid;
-    };
-
-    void draw(void) override;
-    void setIndex(size_t i);
-    void push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message, bool selected) override;
-    void resetIndex(void) override;
-    void updateSelection(void) override;
-
-protected:
-    HidVertical* mHid;
-};
+extern bool g_bottomScrollEnabled;
 
 #endif

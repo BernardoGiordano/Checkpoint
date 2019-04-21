@@ -58,23 +58,26 @@ bool Clickable::released(void)
 
 void Clickable::draw(float size, u32 overlay)
 {
-    static const float messageHeight = ceilf(size*fontGetInfo()->lineFeed);
-    const float messageWidth = mCentered ? mC2dText.width * size : mw- (mSelected ? 20 : 8);
+    const u8 r = overlay & 0xFF;
+    const u8 g = (overlay >> 8) & 0xFF;
+    const u8 b = (overlay >> 16) & 0xFF;
+    const float messageHeight = ceilf(size * fontGetInfo()->lineFeed);
+    const float messageWidth = mCentered ? mC2dText.width * size : mw - (mSelected ? 20 : 8);
 
     C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, mColorBg);
     if (mCanInvertColor && held())
     {
-        C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, overlay);
+        C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, C2D_Color32(r, g, b, 100));
     }
     if (mSelected)
     {
         C2D_DrawRectSolid(mx + 4, my + 6, 0.5f, 4, mh - 12, COLOR_WHITE);
-        C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, (overlay & 0x00FFFFF) | (100 << 24));
+        C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, C2D_Color32(r, g, b, 100));
     }
-    C2D_DrawText(&mC2dText, C2D_WithColor, mx + (mSelected ? 8 : 0) + (mw - messageWidth)/2, my + (mh - messageHeight)/2, 0.5f, size, size, mColorText);	
+    C2D_DrawText(&mC2dText, C2D_WithColor, mx + (mSelected ? 8 : 0) + (mw - messageWidth)/2, my + ceilf((mh - messageHeight) / 2), 0.5f, size, size, mColorText);	
 }
 
 void Clickable::drawOutline(u32 color)
 {
-    drawPulsingOutline(mx, my, mw, mh, 4, color);
+    drawPulsingOutline(mx, my, mw, mh, 2, color);
 }

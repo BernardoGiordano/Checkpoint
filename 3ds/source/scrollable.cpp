@@ -38,10 +38,11 @@ void Scrollable::resetIndex(void)
     setIndex(0);
 }
 
-void Scrollable::push_back(u32 color, u32 colorMessage, const std::string& message)
+void Scrollable::push_back(u32 color, u32 colorMessage, const std::string& message, bool selected)
 {
     static const float spacing = mh / mVisibleEntries;
     Clickable* cell = new Clickable(mx, my + (size() % mVisibleEntries)*spacing, mw, spacing, color, colorMessage, message, false);
+    cell->selected(selected);
     mCells.push_back(cell);
 }
 
@@ -69,5 +70,19 @@ void Scrollable::draw(void)
     for (size_t i = baseIndex; i < baseIndex + sz; i++)
     {
         mCells.at(i)->draw(0.5f, 0);
+    }
+
+    size_t blankRows = mVisibleEntries - sz;
+    size_t rowHeight = mh / mVisibleEntries;
+    C2D_DrawRectSolid(mx, my + sz * rowHeight, 0.5f, mw, rowHeight * blankRows, COLOR_GREY_DARKER);
+    
+    // draw selector
+    for (size_t i = baseIndex; i < baseIndex + sz; i++)
+    {
+        if (mCells.at(i)->selected())
+        {
+            mCells.at(i)->drawOutline(g_bottomScrollEnabled ? COLOR_BLUE : COLOR_GREY_LIGHT);
+            break;
+        }
     }
 }

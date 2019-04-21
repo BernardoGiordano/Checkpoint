@@ -33,6 +33,7 @@
 #include "clickable.hpp"
 #include "colors.hpp"
 #include "hid.hpp"
+#include "main.hpp"
 
 class Scrollable : public IScrollable<u32>
 {
@@ -50,7 +51,7 @@ public:
 
     void draw(void) override;
     void setIndex(size_t i);
-    void push_back(u32 color, u32 colorMessage, const std::string& message) override;
+    void push_back(u32 color, u32 colorMessage, const std::string& message, bool selected) override;
     void resetIndex(void) override;
     void updateSelection(void) override;
 

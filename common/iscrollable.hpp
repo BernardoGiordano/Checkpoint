@@ -46,7 +46,7 @@ public:
     }
 
     virtual void draw(void) = 0;
-    virtual void push_back(T color, T colorMessage, const std::string& message) = 0;
+    virtual void push_back(T color, T colorMessage, const std::string& message, bool selected) = 0;
     virtual void updateSelection(void) = 0;
 
     std::string cellName(size_t index)

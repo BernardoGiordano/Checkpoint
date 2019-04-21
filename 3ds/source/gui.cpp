@@ -43,17 +43,17 @@ static C2D_Text checkpoint, version;
 static Clickable* buttonBackup;
 static Clickable* buttonRestore;
 static Scrollable* directoryList;
+bool g_bottomScrollEnabled;
 
 static const size_t rowlen = 4;
 static const size_t collen = 8;
-static bool bottomScrollEnabled;
 static HidHorizontal* hid;
 
 static void drawBackground(gfxScreen_t screen);
 static void drawSelector(void);
 static int selectorX(size_t i);
 static int selectorY(size_t i);
-static float timer = 0;
+float g_timer = 0;
 
 C2D_Image Gui::TWLIcon(void)
 {
@@ -99,7 +99,7 @@ void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color)
     u8 r = color & 0xFF;
     u8 g = (color >> 8) & 0xFF;
     u8 b = (color >> 16) & 0xFF;
-    float highlight_multiplier = fmax(0.0, fabs(fmod(timer, 1.0) - 0.5) / 0.5);
+    float highlight_multiplier = fmax(0.0, fabs(fmod(g_timer, 1.0) - 0.5) / 0.5);
     color = C2D_Color32(r + (255 - r) * highlight_multiplier, g + (255 - g) * highlight_multiplier, b + (255 - b) * highlight_multiplier, 255);
     C2D_DrawRectSolid(x - size, y - size, 0.5f, w + 2*size, size, color); // top
     C2D_DrawRectSolid(x - size, y, 0.5f, size, h, color); // left
@@ -291,7 +291,7 @@ void Gui::init(void)
     top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
-    bottomScrollEnabled = false;
+    g_bottomScrollEnabled = false;
     hid = new HidHorizontal(rowlen * collen, collen);
 
     buttonBackup = new Clickable(204, 102, 110, 54, COLOR_GREY_DARKER, COLOR_WHITE, "Backup \uE004", true);
@@ -345,43 +345,42 @@ void Gui::exit(void)
     gfxExit();
 }
 
-bool Gui::bottomScroll(void)
-{
-    return bottomScrollEnabled;
-}
-
 size_t Gui::index(void)
 {
     return hid->fullIndex();
-}
-
-void Gui::bottomScroll(bool enable)
-{
-    bottomScrollEnabled = enable;
 }
 
 void Gui::updateButtonsColor(void)
 {
     if (MS::multipleSelectionEnabled())
     {
-        buttonBackup->setColors(COLOR_WHITE, COLOR_BLACK);
-        buttonRestore->setColors(COLOR_WHITE, COLOR_GREY_LIGHT);
+        buttonRestore->canInvertColor(true);
+        buttonRestore->canInvertColor(false);
+        // buttonCheats->canInvertColor(false);
+        buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
+        // buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
     }
-    else if (bottomScrollEnabled)
+    else if (g_bottomScrollEnabled)
     {
-        buttonBackup->setColors(COLOR_WHITE, COLOR_BLACK);
-        buttonRestore->setColors(COLOR_WHITE, COLOR_BLACK);
+        buttonBackup->canInvertColor(true);
+        buttonRestore->canInvertColor(true);
+        // buttonCheats->canInvertColor(true);
+        buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        // buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
     }
     else
     {
-        buttonBackup->setColors(COLOR_WHITE, COLOR_GREY_LIGHT);
-        buttonRestore->setColors(COLOR_WHITE, COLOR_GREY_LIGHT);
+        buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        // buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
     }
 }
 
 void Gui::updateSelector(void)
 {
-    if (!bottomScrollEnabled)
+    if (!g_bottomScrollEnabled)
     {
         if (getTitleCount() > 0)
         {
@@ -400,7 +399,7 @@ static void drawSelector(void)
     static const int w = 2;
     const int x = selectorX(hid->index());
     const int y = selectorY(hid->index());
-    float highlight_multiplier = fmax(0.0, fabs(fmod(timer, 1.0) - 0.5) / 0.5);
+    float highlight_multiplier = fmax(0.0, fabs(fmod(g_timer, 1.0) - 0.5) / 0.5);
     u8 r = COLOR_SELECTOR & 0xFF;
     u8 g = (COLOR_SELECTOR >> 8) & 0xFF;
     u8 b = (COLOR_SELECTOR >> 16) & 0xFF;
@@ -487,11 +486,7 @@ void Gui::draw(void)
 
         for (size_t i = 0; i < dirs.size(); i++)
         {
-            directoryList->push_back(COLOR_WHITE, bottomScrollEnabled ? COLOR_BLUE : COLOR_GREY_LIGHT, convert.to_bytes(dirs.at(i)));
-            if (i == directoryList->index())
-            {
-                directoryList->invertCellColors(i);
-            }
+            directoryList->push_back(COLOR_GREY_DARKER, COLOR_WHITE, convert.to_bytes(dirs.at(i)), i == directoryList->index());
         }
 
         C2D_TextBufClear(dynamicBuf);
@@ -530,15 +525,12 @@ void Gui::draw(void)
         C2D_DrawRectSolid(260, 27, 0.5f, 52, 52, COLOR_BLACK);
         C2D_DrawImageAt(title.icon(), 262, 29, 0.5f, NULL, 1.0f, 1.0f);
 
-        C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_GREY_LIGHT);
-        C2D_DrawRectSolid(6, 102, 0.5f, 308, 110, COLOR_GREY_DARK);
-
+        C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_GREY_DARK);
+        C2D_DrawRectSolid(202, 102, 0.5f, 2, 110, COLOR_GREY_DARK);
+        C2D_DrawRectSolid(204, 156, 0.5f, 110, 2, COLOR_GREY_DARK);
         directoryList->draw();
         buttonBackup->draw(0.7, 0);
         buttonRestore->draw(0.7, 0);
-
-        C2D_DrawRectSolid(202, 102, 0.5f, 2, 110, COLOR_GREY_LIGHT);
-        C2D_DrawRectSolid(204, 156, 0.5f, 110, 2, COLOR_GREY_LIGHT);
     }
 
     C2D_DrawText(&ins4, C2D_WithColor, ceilf((320 - ins4.width*0.47f) / 2), 224, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
@@ -563,5 +555,5 @@ void Gui::resetIndex(void)
 void Gui::frameEnd(void)
 {
     C3D_FrameEnd(0);
-    timer += 0.025f;
+    g_timer += 0.025f;
 }
