@@ -67,7 +67,7 @@ int main() {
             else
             {
                 // Activate backup list only if multiple selections are not enabled
-                if (!Gui::multipleSelectionEnabled())
+                if (!MS::multipleSelectionEnabled())
                 {
                     Gui::bottomScroll(true);
                     Gui::updateButtonsColor();
@@ -78,7 +78,7 @@ int main() {
         if (kDown & KEY_B)
         {
             Gui::bottomScroll(false);
-            Gui::clearSelectedEntries();
+            MS::clearSelectedEntries();
             Gui::resetScrollableIndex();
             Gui::updateButtonsColor();
         }
@@ -104,7 +104,7 @@ int main() {
             {
                 Gui::resetIndex();
                 Archive::mode(Archive::mode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
-                Gui::clearSelectedEntries();
+                MS::clearSelectedEntries();
                 Gui::resetScrollableIndex();
             }
         }
@@ -116,7 +116,7 @@ int main() {
                 Gui::resetScrollableIndex();
                 Gui::bottomScroll(false);
             }
-            Gui::addSelectedEntry(Gui::index());
+            MS::addSelectedEntry(Gui::index());
             Gui::updateButtonsColor(); // Do this last
         }
 
@@ -131,10 +131,10 @@ int main() {
 
         if (selectionTimer > 90)
         {
-            Gui::clearSelectedEntries();
+            MS::clearSelectedEntries();
             for (size_t i = 0, sz = getTitleCount(); i < sz; i++)
             {
-                Gui::addSelectedEntry(i);
+                MS::addSelectedEntry(i);
             }
             selectionTimer = 0;
         }
@@ -151,7 +151,7 @@ int main() {
         if (refreshTimer > 90)
         {
             Gui::resetIndex();
-            Gui::clearSelectedEntries();
+            MS::clearSelectedEntries();
             Gui::resetScrollableIndex();
             Threads::create((ThreadFunc)Threads::titles);
             refreshTimer = 0;
@@ -159,15 +159,15 @@ int main() {
 
         if (Gui::isBackupReleased() || (kDown & KEY_L))
         {
-            if (Gui::multipleSelectionEnabled())
+            if (MS::multipleSelectionEnabled())
             {
                 Gui::resetScrollableIndex();
-                std::vector<size_t> list = Gui::selectedEntries();
+                std::vector<size_t> list = MS::selectedEntries();
                 for (size_t i = 0, sz = list.size(); i < sz; i++)
                 {
                     io::backup(list.at(i));
                 }
-                Gui::clearSelectedEntries();
+                MS::clearSelectedEntries();
                 Gui::updateButtonsColor();
             }
             else if (Gui::bottomScroll())
@@ -178,16 +178,15 @@ int main() {
 
         if (Gui::isRestoreReleased() || (kDown & KEY_R))
         {
-            // if (Gui::multipleSelectionEnabled())
-            // {
-            //     Gui::clearSelectedEntries();
-            //     Gui::updateButtonsColor();
-            // }
-            // else if (Gui::bottomScroll())
-            // {
-            //     io::restore(Gui::index());
-            // }
-            Gui::showError(0xFADE, "This is a complex error message. Report to FlagBrew.");
+            if (MS::multipleSelectionEnabled())
+            {
+                MS::clearSelectedEntries();
+                Gui::updateButtonsColor();
+            }
+            else if (Gui::bottomScroll())
+            {
+                io::restore(Gui::index());
+            }
         }
 
         Gui::updateSelector();

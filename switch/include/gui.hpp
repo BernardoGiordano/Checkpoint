@@ -36,6 +36,7 @@
 #include "SDLHelper.hpp"
 #include "hid.hpp"
 #include "main.hpp"
+#include "multiselection.hpp"
 #include "scrollable.hpp"
 #include "status.hpp"
 #include "title.hpp"

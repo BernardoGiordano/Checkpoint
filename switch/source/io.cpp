@@ -149,7 +149,7 @@ Result io::deleteFolderRecursively(const std::string& path)
 void io::backup(size_t index, u128 uid)
 {
     // check if multiple selection is enabled and don't ask for confirmation if that's the case
-    if (!Gui::multipleSelectionEnabled())
+    if (!MS::multipleSelectionEnabled())
     {
         if (!Gui::askForConfirmation("Backup selected save?"))
         {
@@ -185,7 +185,7 @@ void io::backup(size_t index, u128 uid)
     std::string suggestion = DateTime::dateTimeStr() + " " + (StringUtils::containsInvalidChar(Account::username(title.userId())) ? "" : StringUtils::removeNotAscii(StringUtils::removeAccents(Account::username(title.userId()))));
     std::string customPath;
 
-    if (Gui::multipleSelectionEnabled())
+    if (MS::multipleSelectionEnabled())
     {
         customPath = isNewFolder ? suggestion : "";
     }
@@ -245,7 +245,7 @@ void io::backup(size_t index, u128 uid)
     refreshDirectories(title.id());
     
     FileSystem::unmount();
-    if (!Gui::multipleSelectionEnabled())
+    if (!MS::multipleSelectionEnabled())
     {
         Gui::showInfo("Progress correctly saved to disk.");
     }

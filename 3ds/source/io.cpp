@@ -159,7 +159,7 @@ Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
 void io::backup(size_t index)
 {
     // check if multiple selection is enabled and don't ask for confirmation if that's the case
-    if (!Gui::multipleSelectionEnabled())
+    if (!MS::multipleSelectionEnabled())
     {
         if (!Gui::askForConfirmation("Backup selected save?"))
         {
@@ -192,7 +192,7 @@ void io::backup(size_t index)
             std::string suggestion = DateTime::dateTimeStr();
             
             std::u16string customPath;
-            if (Gui::multipleSelectionEnabled())
+            if (MS::multipleSelectionEnabled())
             {
                 customPath = isNewFolder ? StringUtils::UTF8toUTF16(suggestion.c_str()) : StringUtils::UTF8toUTF16("");
             }
@@ -264,7 +264,7 @@ void io::backup(size_t index)
         std::string suggestion = DateTime::dateTimeStr();
         
         std::u16string customPath;
-        if (Gui::multipleSelectionEnabled())
+        if (MS::multipleSelectionEnabled())
         {
             customPath = isNewFolder ? StringUtils::UTF8toUTF16(suggestion.c_str()) : StringUtils::UTF8toUTF16("");
         }

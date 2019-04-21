@@ -91,48 +91,6 @@ void Gui::index(entryType_t type, size_t i)
     }
 }
 
-/// Multi selection
-
-static std::vector<size_t> selEnt;
-
-std::vector<size_t> Gui::selectedEntries(void)
-{
-    return selEnt;
-}
-
-bool Gui::multipleSelectionEnabled(void)
-{
-    return !selEnt.empty();
-}
-
-void Gui::clearSelectedEntries(void)
-{
-    selEnt.clear();
-}
-
-void Gui::addSelectedEntry(size_t idx)
-{
-    int existing = -1;
-    for (size_t i = 0, sz = selEnt.size(); i < sz && existing == -1; i++)
-    {
-        if (selEnt.at(i) == idx)
-        {
-            existing = (int)i;
-        }
-    }
-    
-    if (existing == -1)
-    {
-        selEnt.push_back(idx);
-    }
-    else
-    {
-        selEnt.erase(selEnt.begin() + existing);
-    }
-}
-
-/// Gui implementation
-
 static void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
 {
     SDLH_DrawRect(x - size, y - size, w + 2*size, size, color); // top
@@ -303,6 +261,7 @@ void Gui::exit(void)
 
 void Gui::draw(u128 uid)
 {
+    auto selEnt = MS::selectedEntries();
     const size_t entries = hid->maxVisibleEntries();
     const size_t max = hid->maxEntries(getTitleCount(g_currentUId)) + 1;
 
@@ -453,7 +412,7 @@ bool Gui::isCheatReleased(void)
 
 void Gui::updateButtons(void)
 {
-    if (Gui::multipleSelectionEnabled())
+    if (MS::multipleSelectionEnabled())
     {
         buttonRestore->canInvertColor(true);
         buttonRestore->canInvertColor(false);

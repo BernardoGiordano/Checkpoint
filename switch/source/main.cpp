@@ -94,7 +94,7 @@ int main(int argc, char** argv)
             (int)touch.py < 656))
         {
             // Activate backup list only if multiple selections are enabled
-            if (!Gui::multipleSelectionEnabled())
+            if (!MS::multipleSelectionEnabled())
             {
                 g_backupScrollEnabled = true;
                 Gui::updateButtons();
@@ -134,7 +134,7 @@ int main(int argc, char** argv)
             else
             {
                 // Activate backup list only if multiple selections are not enabled
-                if (!Gui::multipleSelectionEnabled())
+                if (!MS::multipleSelectionEnabled())
                 {
                     g_backupScrollEnabled = true;
                     Gui::updateButtons();
@@ -154,7 +154,7 @@ int main(int argc, char** argv)
             Gui::index(CELLS, 0);
             g_backupScrollEnabled = false;
             Gui::entryType(TITLES);
-            Gui::clearSelectedEntries();
+            MS::clearSelectedEntries();
             Gui::setPKSMBridgeFlag(false);
             Gui::updateButtons(); // Do this last
         }
@@ -189,7 +189,7 @@ int main(int argc, char** argv)
                 g_backupScrollEnabled = false;
             }
             Gui::entryType(TITLES);
-            Gui::addSelectedEntry(Gui::index(TITLES));
+            MS::addSelectedEntry(Gui::index(TITLES));
             Gui::setPKSMBridgeFlag(false);
             Gui::updateButtons(); // Do this last
         }
@@ -206,10 +206,10 @@ int main(int argc, char** argv)
 
         if (selectionTimer > 45)
         {
-            Gui::clearSelectedEntries();
+            MS::clearSelectedEntries();
             for (size_t i = 0, sz = getTitleCount(g_currentUId); i < sz; i++)
             {
-                Gui::addSelectedEntry(i);
+                MS::addSelectedEntry(i);
             }
             selectionTimer = 0;
         }
@@ -217,15 +217,15 @@ int main(int argc, char** argv)
         // Handle pressing/touching L
         if (Gui::isBackupReleased() || (kdown & KEY_L))
         {
-            if (Gui::multipleSelectionEnabled())
+            if (MS::multipleSelectionEnabled())
             {
                 Gui::resetIndex(CELLS);
-                std::vector<size_t> list = Gui::selectedEntries();
+                std::vector<size_t> list = MS::selectedEntries();
                 for (size_t i = 0, sz = list.size(); i < sz; i++)
                 {
                     io::backup(list.at(i), g_currentUId);
                 }
-                Gui::clearSelectedEntries();
+                MS::clearSelectedEntries();
                 Gui::updateButtons();
                 Gui::showInfo("Progress correctly saved to disk.");
             }

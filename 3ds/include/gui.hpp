@@ -37,6 +37,7 @@
 #include "colors.hpp"
 #include "clickable.hpp"
 #include "hid.hpp"
+#include "multiselection.hpp"
 #include "scrollable.hpp"
 #include "sprites.h"
 #include "title.hpp"
