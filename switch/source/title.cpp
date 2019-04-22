@@ -83,6 +83,16 @@ u64 Title::id(void)
     return mId;
 }
 
+u64 Title::saveId(void)
+{
+    return mSaveId;
+}
+
+void Title::saveId(u64 saveId)
+{
+    mSaveId = saveId;
+}
+
 u128 Title::userId(void)
 {
     return mUserId;
@@ -222,6 +232,7 @@ void loadTitles(void)
         if (info.SaveDataType == FsSaveDataType_SaveData)
         {
             u64 tid = info.titleID;
+            u64 sid = info.saveID;
             u128 uid = info.userID;
             if (!Configuration::getInstance().filter(tid))
             {
@@ -233,6 +244,7 @@ void loadTitles(void)
                     {
                         Title title;
                         title.init(info.SaveDataType, tid, uid, std::string(nle->name), std::string(nle->author));
+                        title.saveId(sid);
                         loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
 
                         // check if the vector is already created

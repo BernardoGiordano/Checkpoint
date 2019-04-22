@@ -53,6 +53,8 @@ public:
     std::string   path(void);
     std::string   fullPath(size_t index);
     void          refreshDirectories(void);
+    u64           saveId();
+    void          saveId(u64 id);
     std::vector
     <std::string> saves(void);
     u8            saveDataType(void);
@@ -62,6 +64,7 @@ public:
 
 private:
     u64           mId;
+    u64           mSaveId;
     u128          mUserId;
     std::string   mUserName;
     std::string   mName;
