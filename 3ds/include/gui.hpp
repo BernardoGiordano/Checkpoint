@@ -57,12 +57,13 @@ namespace Gui
     size_t      index(void);
     bool        isBackupReleased(void);
     bool        isRestoreReleased(void);
+    bool        isCheatReleased(void);
     std::string nameFromCell(size_t index);
     void        resetIndex(void);
     void        resetScrollableIndex(void);
     size_t      scrollableIndex(void);
     void        scrollableIndex(size_t index);
-    void        updateButtonsColor(void);
+    void        updateButtons(void);
     void        updateSelector(void);
     
     std::vector

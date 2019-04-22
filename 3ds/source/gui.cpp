@@ -39,11 +39,12 @@ static C2D_TextBuf staticBuf, dynamicBuf;
 static C2D_Text ins1, ins2, ins3, ins4, c2dId, c2dMediatype;
 static C2D_Text checkpoint, version;
 // instructions text
-static C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_b, bot_r;
+static C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_b, bot_r, bot_t;
 
 // gui elements
 static Clickable* buttonBackup;
 static Clickable* buttonRestore;
+static Clickable* buttonCheats;
 static Scrollable* directoryList;
 bool g_bottomScrollEnabled;
 
@@ -271,11 +272,13 @@ void Gui::init(void)
     g_bottomScrollEnabled = false;
     hid = new HidHorizontal(rowlen * collen, collen);
 
-    buttonBackup = new Clickable(204, 102, 110, 54, COLOR_GREY_DARKER, COLOR_WHITE, "Backup \uE004", true);
-    buttonRestore = new Clickable(204, 158, 110, 54, COLOR_GREY_DARKER, COLOR_WHITE, "Restore \uE005", true);
+    buttonBackup = new Clickable(204, 102, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Backup \uE004", true);
+    buttonRestore = new Clickable(204, 139, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Restore \uE005", true);
+    buttonCheats = new Clickable(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "Cheats", true);
     directoryList = new Scrollable(6, 102, 196, 110, 5);
     buttonBackup->canInvertColor(true);
     buttonRestore->canInvertColor(true);
+    buttonCheats->canInvertColor(true);
 
     spritesheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");
     flag = C2D_SpriteSheetGetImage(spritesheet, sprites_checkpoint_idx);
@@ -304,9 +307,10 @@ void Gui::init(void)
     C2D_TextParse(&top_y, staticBuf, "\uE003 to multiselect a title");
     C2D_TextParse(&top_my, staticBuf, "\uE003 hold to multiselect all titles");
     C2D_TextParse(&top_b, staticBuf, "\uE001 to exit target or deselect all titles");
-    C2D_TextParse(&bot_ts, staticBuf, "\uE01D\uE006 to move\nbetween backups");
-    C2D_TextParse(&bot_b, staticBuf, "\uE01D\uE004");
-    C2D_TextParse(&bot_r, staticBuf, "\uE01D\uE005");
+    C2D_TextParse(&bot_ts, staticBuf, "\uE01D \uE006 to move\nbetween backups");
+    C2D_TextParse(&bot_b, staticBuf, "\uE01D \uE004");
+    C2D_TextParse(&bot_r, staticBuf, "\uE01D \uE005");
+    C2D_TextParse(&bot_t, staticBuf, "\uE01D");
 
     C2D_TextOptimize(&ins1);
     C2D_TextOptimize(&ins2);
@@ -325,6 +329,7 @@ void Gui::init(void)
     C2D_TextOptimize(&bot_ts);
     C2D_TextOptimize(&bot_b);
     C2D_TextOptimize(&bot_r);
+    C2D_TextOptimize(&bot_t);
 }
 
 void Gui::exit(void)
@@ -334,6 +339,7 @@ void Gui::exit(void)
     C2D_SpriteSheetFree(spritesheet);
     delete hid;
     delete directoryList;
+    delete buttonCheats;
     delete buttonRestore;
     delete buttonBackup;
     C2D_Fini();
@@ -346,31 +352,31 @@ size_t Gui::index(void)
     return hid->fullIndex();
 }
 
-void Gui::updateButtonsColor(void)
+void Gui::updateButtons(void)
 {
     if (MS::multipleSelectionEnabled())
     {
         buttonRestore->canInvertColor(true);
         buttonRestore->canInvertColor(false);
-        // buttonCheats->canInvertColor(false);
+        buttonCheats->canInvertColor(false);
         buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
-        // buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
+        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
     }
     else if (g_bottomScrollEnabled)
     {
         buttonBackup->canInvertColor(true);
         buttonRestore->canInvertColor(true);
-        // buttonCheats->canInvertColor(true);
+        buttonCheats->canInvertColor(true);
         buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        // buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
     }
     else
     {
         buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        // buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
     }
 }
 
@@ -541,22 +547,21 @@ void Gui::draw(void)
         C2D_DrawImageAt(title.icon(), 262, 29, 0.5f, NULL, 1.0f, 1.0f);
 
         C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_GREY_DARK);
-        C2D_DrawRectSolid(202, 102, 0.5f, 2, 110, COLOR_GREY_DARK);
-        C2D_DrawRectSolid(204, 156, 0.5f, 110, 2, COLOR_GREY_DARK);
         directoryList->draw();
         buttonBackup->draw(0.7, 0);
         buttonRestore->draw(0.7, 0);
+        buttonCheats->draw(0.7, 0);
     }
 
     C2D_DrawText(&ins4, C2D_WithColor, ceilf((320 - ins4.width*0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
     
     if (hidKeysHeld() & KEY_SELECT)
     {
-        // bot_ts, bot_b, bot_r;
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, C2D_Color32(0, 0, 0, 190));
         C2D_DrawText(&bot_ts, C2D_WithColor, 32, 134, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
-        C2D_DrawText(&bot_b, C2D_WithColor, 242, 117, 0.5f, 0.8f, 0.8f, COLOR_WHITE);
-        C2D_DrawText(&bot_r, C2D_WithColor, 242, 173, 0.5f, 0.8f, 0.8f, COLOR_WHITE);
+        C2D_DrawText(&bot_b, C2D_WithColor, 238, 107, 0.5f, 0.8f, 0.8f, COLOR_WHITE);
+        C2D_DrawText(&bot_r, C2D_WithColor, 238, 145, 0.5f, 0.8f, 0.8f, COLOR_WHITE);
+        C2D_DrawText(&bot_t, C2D_WithColor, 252, 183, 0.5f, 0.8f, 0.8f, COLOR_WHITE);
     }
 
     frameEnd();
@@ -570,6 +575,11 @@ bool Gui::isBackupReleased(void)
 bool Gui::isRestoreReleased(void)
 {
     return buttonRestore->released();
+}
+
+bool Gui::isCheatReleased(void)
+{
+    return buttonCheats->released();
 }
 
 void Gui::resetIndex(void)

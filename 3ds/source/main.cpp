@@ -69,7 +69,7 @@ int main() {
                 if (!MS::multipleSelectionEnabled())
                 {
                     g_bottomScrollEnabled = true;
-                    Gui::updateButtonsColor();
+                    Gui::updateButtons();
                 }
             }
         }
@@ -79,7 +79,7 @@ int main() {
             g_bottomScrollEnabled = false;
             MS::clearSelectedEntries();
             Gui::resetScrollableIndex();
-            Gui::updateButtonsColor();
+            Gui::updateButtons();
         }
 
         if (kDown & KEY_X)
@@ -116,7 +116,7 @@ int main() {
                 g_bottomScrollEnabled = false;
             }
             MS::addSelectedEntry(Gui::index());
-            Gui::updateButtonsColor(); // Do this last
+            Gui::updateButtons(); // Do this last
         }
 
         if (kHeld & KEY_Y)
@@ -167,7 +167,7 @@ int main() {
                     io::backup(list.at(i));
                 }
                 MS::clearSelectedEntries();
-                Gui::updateButtonsColor();
+                Gui::updateButtons();
             }
             else if (g_bottomScrollEnabled)
             {
@@ -180,12 +180,17 @@ int main() {
             if (MS::multipleSelectionEnabled())
             {
                 MS::clearSelectedEntries();
-                Gui::updateButtonsColor();
+                Gui::updateButtons();
             }
             else if (g_bottomScrollEnabled)
             {
                 io::restore(Gui::index());
             }
+        }
+
+        if (Gui::isCheatReleased())
+        {
+
         }
 
         Gui::updateSelector();

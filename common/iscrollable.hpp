@@ -83,14 +83,6 @@ public:
         return mPage;
     }
 
-    void invertCellColors(size_t i)
-    {
-        if (i < size())
-        {
-            mCells.at(i)->invertColors();
-        }
-    }
-
     virtual void resetIndex(void)
     {
         mIndex = 0;
