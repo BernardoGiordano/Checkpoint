@@ -45,7 +45,7 @@ public:
         flush();
     }
 
-    virtual void draw(void) = 0;
+    virtual void draw(bool condition = false) = 0;
     virtual void push_back(T color, T colorMessage, const std::string& message, bool selected) = 0;
     virtual void updateSelection(void) = 0;
 
@@ -98,6 +98,11 @@ public:
     size_t visibleEntries(void)
     {
         return mVisibleEntries;
+    }
+
+    void selectRow(size_t i, bool selected)
+    {
+        mCells.at(i)->selected(selected);
     }
 
 protected:

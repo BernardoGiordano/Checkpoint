@@ -24,37 +24,64 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef UTIL_HPP
-#define UTIL_HPP
-
-#include <3ds.h>
-#include <map>
-#include <queue>
-#include <sys/stat.h>
-#include "common.hpp"
-#include "archive.hpp"
 #include "cheatmanager.hpp"
-#include "gui.hpp"
 
-extern "C" {
-#include "sha256.h"
-}
+static bool mLoaded = false;
+static nlohmann::json mCheats;
 
-void calculateTitleDBHash(u8* hash);
-void servicesExit(void);
-Result servicesInit(void);
-
-namespace StringUtils
+void CheatManager::init(void)
 {
-    std::u16string removeForbiddenCharacters(std::u16string src);
-    std::u16string UTF8toUTF16(const char* src);
-    std::string splitWord(const std::string& text, float scaleX, float maxWidth);
-    float textWidth(const std::string& text, float scaleX);
-    float textWidth(const std::u16string& text, float scaleX);
-    float textWidth(const C2D_Text& text, float scaleX);
-    std::string wrap(const std::string& text, float scaleX, float maxWidth);
-    std::string wrap(const std::string& text, float scaleX, float maxWidth, size_t lines);
-    float textHeight(const std::string& text, float scaleY);
+    std::ifstream i("romfs:/cheats/cheats.json");
+    i >> mCheats;
+    i.close();
+    mLoaded = true;
 }
 
-#endif
+void CheatManager::exit(void)
+{
+
+}
+
+bool CheatManager::loaded(void)
+{
+    return mLoaded;
+}
+
+bool CheatManager::availableCodes(const std::string& key)
+{
+    return mCheats.find(key) != mCheats.end();
+}
+
+void CheatManager::manageCheats(const std::string& key)
+{
+    size_t i = 0;
+    size_t currentIndex = i;
+    Scrollable* s = new Scrollable(2, 10, 396, 220, 11);
+    for (auto it = mCheats[key].begin(); it != mCheats[key].end(); ++it)
+    {
+        s->push_back(COLOR_GREY_DARKER, COLOR_WHITE, it.key(), i == 0);
+        i++;
+    }
+
+    while(aptMainLoop())
+    {
+        hidScanInput();
+        if (hidKeysDown() & KEY_B)
+        {
+            break;
+        }
+        s->updateSelection();
+        s->selectRow(currentIndex, false);
+        s->selectRow(s->index(), true);
+        currentIndex = s->index();
+
+        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_GREY_DARK);
+        C2D_TextBufClear(g_dynamicBuf);
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+        C2D_SceneBegin(g_top);
+        s->draw(true);
+        Gui::frameEnd();
+    }
+
+    delete s;
+}

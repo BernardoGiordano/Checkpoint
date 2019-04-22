@@ -188,9 +188,27 @@ int main() {
             }
         }
 
-        if (Gui::isCheatReleased())
+        if (Gui::isCheatReleased() && CheatManager::loaded())
         {
-
+            if (MS::multipleSelectionEnabled())
+            {
+                MS::clearSelectedEntries();
+                Gui::updateButtons();
+            }
+            else
+            {
+                Title title;
+                getTitle(title, Gui::index());
+                std::string key = StringUtils::format("%016llX", title.id());
+                if (CheatManager::availableCodes(key))
+                {
+                    CheatManager::manageCheats(key);
+                }
+                else
+                {
+                    Gui::showInfo("No available cheat codes for this title.");
+                }
+            }            
         }
 
         Gui::updateSelector();

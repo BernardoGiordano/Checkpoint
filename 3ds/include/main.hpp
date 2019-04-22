@@ -27,9 +27,14 @@
 #ifndef MAIN_HPP
 #define MAIN_HPP
 
+#include <citro2d.h>
 #include "thread.hpp"
 #include "util.hpp"
 
 extern bool g_bottomScrollEnabled;
+extern C3D_RenderTarget* g_top;
+extern C3D_RenderTarget* g_bottom;
+extern C2D_TextBuf g_staticBuf;
+extern C2D_TextBuf g_dynamicBuf;
 
 #endif

@@ -49,7 +49,7 @@ public:
         delete mHid;
     }
 
-    void draw(void) override;
+    void draw(bool condition = false) override;
     void setIndex(size_t i);
     void push_back(u32 color, u32 colorMessage, const std::string& message, bool selected) override;
     void resetIndex(void) override;

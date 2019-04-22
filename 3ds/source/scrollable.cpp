@@ -40,7 +40,7 @@ void Scrollable::resetIndex(void)
 
 void Scrollable::push_back(u32 color, u32 colorMessage, const std::string& message, bool selected)
 {
-    static const float spacing = mh / mVisibleEntries;
+    const float spacing = mh / mVisibleEntries;
     Clickable* cell = new Clickable(mx, my + (size() % mVisibleEntries)*spacing, mw, spacing, color, colorMessage, message, false);
     cell->selected(selected);
     mCells.push_back(cell);
@@ -63,7 +63,7 @@ void Scrollable::updateSelection(void)
     mPage = mHid->page();
 }
 
-void Scrollable::draw(void)
+void Scrollable::draw(bool condition)
 {
     const size_t baseIndex = mVisibleEntries*mPage;
     const size_t sz = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
@@ -75,13 +75,13 @@ void Scrollable::draw(void)
     size_t blankRows = mVisibleEntries - sz;
     size_t rowHeight = mh / mVisibleEntries;
     C2D_DrawRectSolid(mx, my + sz * rowHeight, 0.5f, mw, rowHeight * blankRows, COLOR_GREY_DARKER);
-    
+
     // draw selector
     for (size_t i = baseIndex; i < baseIndex + sz; i++)
     {
         if (mCells.at(i)->selected())
         {
-            mCells.at(i)->drawOutline(g_bottomScrollEnabled ? COLOR_BLUE : COLOR_GREY_LIGHT);
+            mCells.at(i)->drawOutline(condition ? COLOR_BLUE : COLOR_GREY_LIGHT);
             break;
         }
     }

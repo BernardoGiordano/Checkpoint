@@ -27,15 +27,15 @@
 #include "gui.hpp"
 
 // c2d/c3d vars
-static C3D_RenderTarget* top;
-static C3D_RenderTarget* bottom;
+C3D_RenderTarget* g_top;
+C3D_RenderTarget* g_bottom;
 
 static C2D_SpriteSheet spritesheet;
 static C2D_Image flag;
 static C2D_Sprite checkbox, star;
 static C2D_ImageTint checkboxTint;
 
-static C2D_TextBuf staticBuf, dynamicBuf;
+C2D_TextBuf g_staticBuf, g_dynamicBuf;
 static C2D_Text ins1, ins2, ins3, ins4, c2dId, c2dMediatype;
 static C2D_Text checkpoint, version;
 // instructions text
@@ -79,18 +79,26 @@ void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color)
     u8 b = (color >> 16) & 0xFF;
     float highlight_multiplier = fmax(0.0, fabs(fmod(g_timer, 1.0) - 0.5) / 0.5);
     color = C2D_Color32(r + (255 - r) * highlight_multiplier, g + (255 - g) * highlight_multiplier, b + (255 - b) * highlight_multiplier, 255);
-    C2D_DrawRectSolid(x - size, y - size, 0.5f, w + 2*size, size, color); // top
+    C2D_DrawRectSolid(x - size, y - size, 0.5f, w + 2*size, size, color); // g_top
     C2D_DrawRectSolid(x - size, y, 0.5f, size, h, color); // left
     C2D_DrawRectSolid(x + w, y, 0.5f, size, h, color); // right
-    C2D_DrawRectSolid(x - size, y + h, 0.5f, w + 2*size, size, color); // bottom
+    C2D_DrawRectSolid(x - size, y + h, 0.5f, w + 2*size, size, color); // g_bottom
+}
+
+void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color)
+{
+    C2D_DrawRectSolid(x - size, y - size, 0.5f, w + 2*size, size, color); // g_top
+    C2D_DrawRectSolid(x - size, y, 0.5f, size, h, color); // left
+    C2D_DrawRectSolid(x + w, y, 0.5f, size, h, color); // right
+    C2D_DrawRectSolid(x - size, y + h, 0.5f, w + 2*size, size, color); // g_bottom
 }
 
 void Gui::drawCopy(const std::u16string& src, u32 offset, u32 size)
 {
     C2D_Text copyText, srcText;
     std::string sizeString = StringUtils::sizeString(offset) + " of " + StringUtils::sizeString(size);
-    C2D_TextParse(&srcText, dynamicBuf, StringUtils::UTF16toUTF8(src).c_str());
-    C2D_TextParse(&copyText, dynamicBuf, sizeString.c_str());
+    C2D_TextParse(&srcText, g_dynamicBuf, StringUtils::UTF16toUTF8(src).c_str());
+    C2D_TextParse(&copyText, g_dynamicBuf, sizeString.c_str());
     C2D_TextOptimize(&srcText);
     C2D_TextOptimize(&copyText);
     const float scale = 0.6f;
@@ -98,9 +106,9 @@ void Gui::drawCopy(const std::u16string& src, u32 offset, u32 size)
     const u32 src_w = StringUtils::textWidth(srcText, scale);
     const u32 size_w = StringUtils::textWidth(copyText, scale);
 
-    C2D_TextBufClear(dynamicBuf);
+    C2D_TextBufClear(g_dynamicBuf);
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-    C2D_SceneBegin(bottom);
+    C2D_SceneBegin(g_bottom);
     C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
     C2D_DrawRectSolid(40, 160, 0.5f, (float)offset / (float)size * 240, 40, COLOR_BLUE);
     C2D_DrawText(&srcText, C2D_WithColor, 40 + (240 - src_w) / 2, 40 + ceilf((120 - size_h) / 2), 0.5f, scale, scale, COLOR_WHITE);
@@ -115,7 +123,7 @@ bool Gui::askForConfirmation(const std::string& message)
     Clickable* buttonNo = new Clickable(162, 162, 116, 36, COLOR_GREY_DARK, COLOR_WHITE, "\uE001 No", true);
     HidHorizontal* hid = new HidHorizontal(2, 2);
     C2D_Text text;
-    C2D_TextParse(&text, dynamicBuf, message.c_str());
+    C2D_TextParse(&text, g_dynamicBuf, message.c_str());
     C2D_TextOptimize(&text);
 
     while(aptMainLoop())
@@ -140,9 +148,9 @@ bool Gui::askForConfirmation(const std::string& message)
         buttonYes->selected(hid->index() == 0);
         buttonNo->selected(hid->index() == 1);
 
-        C2D_TextBufClear(dynamicBuf);
+        C2D_TextBufClear(g_dynamicBuf);
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        C2D_SceneBegin(bottom);
+        C2D_SceneBegin(g_bottom);
         C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
         C2D_DrawText(&text, C2D_WithColor, ceilf(320 - text.width * 0.6) / 2, 40 + ceilf(120 - 0.6f * fontGetInfo()->lineFeed) / 2, 0.5f, 0.6f, 0.6f, COLOR_WHITE);
         C2D_DrawRectSolid(40, 160, 0.5f, 240, 40, COLOR_GREY_LIGHT);
@@ -175,7 +183,7 @@ void Gui::showInfo(const std::string& message)
     button->selected(true);
     std::string t = StringUtils::wrap(message, size, 220);
     C2D_Text text;
-    C2D_TextParse(&text, dynamicBuf, t.c_str());
+    C2D_TextParse(&text, g_dynamicBuf, t.c_str());
     C2D_TextOptimize(&text);
     u32 w = StringUtils::textWidth(text, size);
     u32 h = StringUtils::textHeight(t, size);
@@ -191,9 +199,9 @@ void Gui::showInfo(const std::string& message)
             break;
         }
 
-        C2D_TextBufClear(dynamicBuf);
+        C2D_TextBufClear(g_dynamicBuf);
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        C2D_SceneBegin(bottom);
+        C2D_SceneBegin(g_bottom);
         C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
         C2D_DrawText(&text, C2D_WithColor, ceilf(320 - w) / 2, 40 + ceilf(120 - h) / 2, 0.5f, size, size, COLOR_WHITE);
         button->draw(0.7f, COLOR_BLUE);
@@ -212,8 +220,8 @@ void Gui::showError(Result res, const std::string& message)
     std::string t = StringUtils::wrap(message, size, 220);
     std::string e = StringUtils::format("Error: 0x%08lX", res);
     C2D_Text text, error;
-    C2D_TextParse(&text, dynamicBuf, t.c_str());
-    C2D_TextParse(&error, dynamicBuf, e.c_str());
+    C2D_TextParse(&text, g_dynamicBuf, t.c_str());
+    C2D_TextParse(&error, g_dynamicBuf, e.c_str());
     C2D_TextOptimize(&text);
     C2D_TextOptimize(&error);
     u32 w = StringUtils::textWidth(text, size);
@@ -230,9 +238,9 @@ void Gui::showError(Result res, const std::string& message)
             break;
         }
 
-        C2D_TextBufClear(dynamicBuf);
+        C2D_TextBufClear(g_dynamicBuf);
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        C2D_SceneBegin(bottom);
+        C2D_SceneBegin(g_bottom);
         C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
         C2D_DrawText(&error, C2D_WithColor, 44, 44, 0.5f, 0.5f, 0.5f, COLOR_RED);
         C2D_DrawText(&text, C2D_WithColor, ceilf(320 - w) / 2, 40 + ceilf(120 - h) / 2, 0.5f, size, size, COLOR_WHITE);
@@ -266,8 +274,8 @@ void Gui::init(void)
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
 
-    top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
-    bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
+    g_top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+    g_bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
     g_bottomScrollEnabled = false;
     hid = new HidHorizontal(rowlen * collen, collen);
@@ -283,34 +291,34 @@ void Gui::init(void)
     spritesheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");
     flag = C2D_SpriteSheetGetImage(spritesheet, sprites_checkpoint_idx);
     C2D_SpriteFromSheet(&checkbox, spritesheet, sprites_checkbox_idx);
-    C2D_SpriteSetDepth(&checkbox, 0.6f);
+    C2D_SpriteSetDepth(&checkbox, 0.5f);
     C2D_PlainImageTint(&checkboxTint, C2D_Color32(88, 88, 88, 255), 1.0f);
     C2D_SpriteFromSheet(&star, spritesheet, sprites_star_idx);
-    C2D_SpriteSetDepth(&star, 0.6f);
+    C2D_SpriteSetDepth(&star, 0.5f);
 
     char ver[10];
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 
-    staticBuf = C2D_TextBufNew(256);
-    dynamicBuf = C2D_TextBufNew(256);
-    C2D_TextParse(&ins1, staticBuf, "Hold SELECT to see commands. Press \uE002 for ");
-    C2D_TextParse(&ins2, staticBuf, "extdata");
-    C2D_TextParse(&ins3, staticBuf, ".");
-    C2D_TextParse(&ins4, staticBuf, "Press \uE073 or START to exit.");
-    C2D_TextParse(&version, staticBuf, ver);
-    C2D_TextParse(&checkpoint, staticBuf, "checkpoint");
-    C2D_TextParse(&c2dId, staticBuf, "ID:");
-    C2D_TextParse(&c2dMediatype, staticBuf, "Mediatype:");
+    g_staticBuf = C2D_TextBufNew(256);
+    g_dynamicBuf = C2D_TextBufNew(256);
+    C2D_TextParse(&ins1, g_staticBuf, "Hold SELECT to see commands. Press \uE002 for ");
+    C2D_TextParse(&ins2, g_staticBuf, "extdata");
+    C2D_TextParse(&ins3, g_staticBuf, ".");
+    C2D_TextParse(&ins4, g_staticBuf, "Press \uE073 or START to exit.");
+    C2D_TextParse(&version, g_staticBuf, ver);
+    C2D_TextParse(&checkpoint, g_staticBuf, "checkpoint");
+    C2D_TextParse(&c2dId, g_staticBuf, "ID:");
+    C2D_TextParse(&c2dMediatype, g_staticBuf, "Mediatype:");
 
-    C2D_TextParse(&top_move, staticBuf, "\uE006 to move between titles");
-    C2D_TextParse(&top_a, staticBuf, "\uE000 to enter target");
-    C2D_TextParse(&top_y, staticBuf, "\uE003 to multiselect a title");
-    C2D_TextParse(&top_my, staticBuf, "\uE003 hold to multiselect all titles");
-    C2D_TextParse(&top_b, staticBuf, "\uE001 to exit target or deselect all titles");
-    C2D_TextParse(&bot_ts, staticBuf, "\uE01D \uE006 to move\nbetween backups");
-    C2D_TextParse(&bot_b, staticBuf, "\uE01D \uE004");
-    C2D_TextParse(&bot_r, staticBuf, "\uE01D \uE005");
-    C2D_TextParse(&bot_t, staticBuf, "\uE01D");
+    C2D_TextParse(&top_move, g_staticBuf, "\uE006 to move between titles");
+    C2D_TextParse(&top_a, g_staticBuf, "\uE000 to enter target");
+    C2D_TextParse(&top_y, g_staticBuf, "\uE003 to multiselect a title");
+    C2D_TextParse(&top_my, g_staticBuf, "\uE003 hold to multiselect all titles");
+    C2D_TextParse(&top_b, g_staticBuf, "\uE001 to exit target or deselect all titles");
+    C2D_TextParse(&bot_ts, g_staticBuf, "\uE01D \uE006 to move\nbetween backups");
+    C2D_TextParse(&bot_b, g_staticBuf, "\uE01D \uE004");
+    C2D_TextParse(&bot_r, g_staticBuf, "\uE01D \uE005");
+    C2D_TextParse(&bot_t, g_staticBuf, "\uE01D");
 
     C2D_TextOptimize(&ins1);
     C2D_TextOptimize(&ins2);
@@ -334,8 +342,8 @@ void Gui::init(void)
 
 void Gui::exit(void)
 {
-    C2D_TextBufDelete(dynamicBuf);
-    C2D_TextBufDelete(staticBuf);
+    C2D_TextBufDelete(g_dynamicBuf);
+    C2D_TextBufDelete(g_staticBuf);
     C2D_SpriteSheetFree(spritesheet);
     delete hid;
     delete directoryList;
@@ -408,10 +416,10 @@ static void drawSelector(void)
     u32 color = C2D_Color32(r + (255 - r) * highlight_multiplier, g + (255 - g) * highlight_multiplier, b + (255 - b) * highlight_multiplier, 255);
 
     C2D_DrawRectSolid(         x,          y, 0.5f, 50,       50, C2D_Color32(255, 255, 255, 100));
-    C2D_DrawRectSolid(         x,          y, 0.5f, 50,        w, color); // top
+    C2D_DrawRectSolid(         x,          y, 0.5f, 50,        w, color); // g_top
     C2D_DrawRectSolid(         x,      y + w, 0.5f,  w, 50 - 2*w, color); // left
     C2D_DrawRectSolid(x + 50 - w,      y + w, 0.5f,  w, 50 - 2*w, color); // right
-    C2D_DrawRectSolid(         x, y + 50 - w, 0.5f, 50,        w, color); // bottom
+    C2D_DrawRectSolid(         x, y + 50 - w, 0.5f, 50,        w, color); // g_bottom
 }
 
 static int selectorX(size_t i)
@@ -432,17 +440,17 @@ void Gui::draw(void)
     const size_t max = hid->maxEntries(getTitleCount()) + 1;
     const Mode_t mode = Archive::mode();
 
-    C2D_TextBufClear(dynamicBuf);
+    C2D_TextBufClear(g_dynamicBuf);
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-    C2D_TargetClear(top, COLOR_BG);
-    C2D_TargetClear(bottom, COLOR_BG);
+    C2D_TargetClear(g_top, COLOR_BG);
+    C2D_TargetClear(g_bottom, COLOR_BG);
 
-    C2D_SceneBegin(top);
+    C2D_SceneBegin(g_top);
     C2D_DrawRectSolid(0, 0, 0.5f, 400, 19, COLOR_GREY_DARK);
     C2D_DrawRectSolid(0, 221, 0.5f, 400, 19, COLOR_GREY_DARK);
 
     C2D_Text timeText;
-    C2D_TextParse(&timeText, dynamicBuf, DateTime::timeStr().c_str());
+    C2D_TextParse(&timeText, g_dynamicBuf, DateTime::timeStr().c_str());
     C2D_TextOptimize(&timeText);
     C2D_DrawText(&timeText, C2D_WithColor, 4.0f, 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
     
@@ -494,7 +502,7 @@ void Gui::draw(void)
     C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width*0.45f), 0.0f, 0.5f, NULL, 1.0f, 1.0f);
     C2D_DrawText(&checkpoint, C2D_WithColor, 400 - 6 - 0.45f*version.width - 0.5f*checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
 
-    C2D_SceneBegin(bottom);
+    C2D_SceneBegin(g_bottom);
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 19, COLOR_GREY_DARK);
     C2D_DrawRectSolid(0, 221, 0.5f, 320, 19, COLOR_GREY_DARK);
     if (getTitleCount() > 0)
@@ -516,10 +524,10 @@ void Gui::draw(void)
         char lowid[18];
         snprintf(lowid, 9, "%08X", (int)title.lowId());
 
-        C2D_TextParse(&shortDesc, dynamicBuf, title.shortDescription().c_str());
-        C2D_TextParse(&longDesc, dynamicBuf, title.longDescription().c_str());
-        C2D_TextParse(&id, dynamicBuf, lowid);
-        C2D_TextParse(&media, dynamicBuf, title.mediaTypeString().c_str());
+        C2D_TextParse(&shortDesc, g_dynamicBuf, title.shortDescription().c_str());
+        C2D_TextParse(&longDesc, g_dynamicBuf, title.longDescription().c_str());
+        C2D_TextParse(&id, g_dynamicBuf, lowid);
+        C2D_TextParse(&media, g_dynamicBuf, title.mediaTypeString().c_str());
 
         C2D_TextOptimize(&shortDesc);
         C2D_TextOptimize(&longDesc);
@@ -537,7 +545,7 @@ void Gui::draw(void)
         C2D_DrawText(&id, C2D_WithColor, 25, 31 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
 
         snprintf(lowid, 18, "(%s)", title.productCode);
-        C2D_TextParse(&prodCode, dynamicBuf, lowid);
+        C2D_TextParse(&prodCode, g_dynamicBuf, lowid);
         C2D_TextOptimize(&prodCode);
         C2D_DrawText(&prodCode, C2D_WithColor, 30 + lowidWidth, 32 + longDescHeight, 0.5f, 0.42f, 0.42f, COLOR_GREY_LIGHT);
         C2D_DrawText(&c2dMediatype, C2D_WithColor, 4, 47 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
@@ -547,7 +555,7 @@ void Gui::draw(void)
         C2D_DrawImageAt(title.icon(), 262, 29, 0.5f, NULL, 1.0f, 1.0f);
 
         C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_GREY_DARK);
-        directoryList->draw();
+        directoryList->draw(g_bottomScrollEnabled);
         buttonBackup->draw(0.7, 0);
         buttonRestore->draw(0.7, 0);
         buttonCheats->draw(0.7, 0);

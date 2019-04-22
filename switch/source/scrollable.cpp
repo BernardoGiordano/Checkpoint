@@ -63,7 +63,7 @@ void Scrollable::updateSelection(void)
     mPage = mHid->page();
 }
 
-void Scrollable::draw(void)
+void Scrollable::draw(bool condition)
 {
     const size_t baseIndex = mVisibleEntries*mPage;
     const size_t sz = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
@@ -81,7 +81,7 @@ void Scrollable::draw(void)
     {
         if (mCells.at(i)->selected())
         {
-            mCells.at(i)->drawOutline(g_backupScrollEnabled ? COLOR_BLUE : theme().c5);
+            mCells.at(i)->drawOutline(condition ? COLOR_BLUE : theme().c5);
             break;
         }
     }

@@ -366,7 +366,7 @@ void Gui::draw(u128 uid)
         drawOutline(956, 276, 220, 80, 4, theme().c3);
         drawOutline(956, 360, 220, 80, 4, theme().c3);
         drawOutline(956, 444, 220, 80, 4, theme().c3);
-        backupList->draw();
+        backupList->draw(g_backupScrollEnabled);
         buttonBackup->draw(30, FC_MakeColor(0, 0, 0, 0));
         buttonRestore->draw(30, FC_MakeColor(0, 0, 0, 0));
         buttonCheats->draw(30, FC_MakeColor(0, 0, 0, 0));
