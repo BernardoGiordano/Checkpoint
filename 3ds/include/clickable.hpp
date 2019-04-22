@@ -31,7 +31,7 @@
 #include <string>
 #include "iclickable.hpp"
 #include "colors.hpp"
-#include "gui.hpp"
+#include "main.hpp"
 
 class Clickable : public IClickable<u32>
 {

@@ -28,10 +28,14 @@
 #define CHEATMANAGER_HPP
 
 #include <3ds.h>
+#include <sys/stat.h>
 #include <fstream>
+#include <sstream>
 #include "json.hpp"
 #include "gui.hpp"
 #include "main.hpp"
+#include "scrollable.hpp"
+#include "thread.hpp"
 
 namespace CheatManager
 {
@@ -40,6 +44,7 @@ namespace CheatManager
     bool loaded(void);
     bool availableCodes(const std::string& key);
     void manageCheats(const std::string& key);
+    void save(const std::string& key, Scrollable* s);
 }
 
 #endif

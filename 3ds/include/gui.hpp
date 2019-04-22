@@ -76,7 +76,4 @@ namespace Gui
     C2D_Image   noIcon(void);
 }
 
-void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color);
-void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color);
-
 #endif

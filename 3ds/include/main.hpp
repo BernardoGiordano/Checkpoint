@@ -28,13 +28,15 @@
 #define MAIN_HPP
 
 #include <citro2d.h>
-#include "thread.hpp"
-#include "util.hpp"
 
 extern bool g_bottomScrollEnabled;
 extern C3D_RenderTarget* g_top;
 extern C3D_RenderTarget* g_bottom;
 extern C2D_TextBuf g_staticBuf;
 extern C2D_TextBuf g_dynamicBuf;
+extern float g_timer;
+
+void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color);
+void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color);
 
 #endif

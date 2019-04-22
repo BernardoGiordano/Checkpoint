@@ -33,6 +33,7 @@ static nlohmann::json mCheats;
 
 void CheatManager::init(void)
 {
+    mkdir("/cheats", 777);
     std::ifstream i("romfs:/cheats/cheats.json");
     i >> mCheats;
     i.close();
@@ -56,12 +57,26 @@ bool CheatManager::availableCodes(const std::string& key)
 
 void CheatManager::manageCheats(const std::string& key)
 {
+    std::string existingCheat = "";
+    if (io::fileExists("/cheats/" + key + ".txt"))
+    {
+        std::ifstream t("/cheats/" + key + ".txt");
+        std::stringstream buffer;
+        buffer << t.rdbuf();
+        existingCheat = buffer.str();
+    }
+
     size_t i = 0;
     size_t currentIndex = i;
     Scrollable* s = new Scrollable(2, 10, 396, 220, 11);
     for (auto it = mCheats[key].begin(); it != mCheats[key].end(); ++it)
     {
-        s->push_back(COLOR_GREY_DARKER, COLOR_WHITE, it.key(), i == 0);
+        std::string value = it.key();
+        if (existingCheat.find(value) != std::string::npos)
+        {
+            value = SELECTED_MAGIC + value;
+        }
+        s->push_back(COLOR_GREY_DARKER, COLOR_WHITE, value, i == 0);
         i++;
     }
 
@@ -102,5 +117,34 @@ void CheatManager::manageCheats(const std::string& key)
         Gui::frameEnd();
     }
 
+    Gui::draw();
+    if (Gui::askForConfirmation("Do you want to store\nthe cheat file?"))
+    {
+        save(key, s);
+    }
+
     delete s;
+}
+
+void CheatManager::save(const std::string& key, Scrollable* s)
+{
+    std::string cheatFile = "";
+    for (size_t i = 0; i < s->size(); i++)
+    {
+        std::string cellName = s->cellName(i);
+        if (cellName.rfind(SELECTED_MAGIC, 0) == 0)
+        {
+            cellName = cellName.substr(strlen(SELECTED_MAGIC), cellName.length());
+            cheatFile += cellName + "\n";
+            for (auto &it : mCheats[key][cellName])
+            {
+                cheatFile += it.get<std::string>() + "\n";
+            }
+            cheatFile += "\n";
+        }
+    }
+
+    FILE* file = fopen(("/cheats/" + key + ".txt").c_str(), "w");
+    fwrite(cheatFile.c_str(), 1, cheatFile.length(), file);
+    fclose(file);
 }

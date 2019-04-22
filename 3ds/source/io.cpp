@@ -26,6 +26,12 @@
 
 #include "io.hpp"
 
+bool io::fileExists(const std::string& path)
+{
+    struct stat buffer;   
+    return (stat (path.c_str(), &buffer) == 0);
+}
+
 bool io::fileExists(FS_Archive archive, const std::u16string& path)
 {
     FSStream stream(archive, path, FS_OPEN_READ);

@@ -25,6 +25,8 @@
 */
 
 #include "main.hpp"
+#include "thread.hpp"
+#include "util.hpp"
 
 int main() {
     if (R_FAILED(servicesInit())) {

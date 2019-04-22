@@ -48,6 +48,7 @@ namespace io
     Result deleteFolderRecursively(FS_Archive arch, const std::u16string& path);
     bool   directoryExists(FS_Archive archive, const std::u16string& path);
     bool   fileExists(FS_Archive archive, const std::u16string& path);
+    bool   fileExists(const std::string& path);
 }
 
 #endif
