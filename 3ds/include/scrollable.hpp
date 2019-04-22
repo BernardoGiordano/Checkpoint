@@ -49,6 +49,7 @@ public:
         delete mHid;
     }
 
+    void c2dText(size_t i, const std::string& v);
     void draw(bool condition = false) override;
     void setIndex(size_t i);
     void push_back(u32 color, u32 colorMessage, const std::string& message, bool selected) override;

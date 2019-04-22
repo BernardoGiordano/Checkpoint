@@ -26,6 +26,11 @@
 
 #include "scrollable.hpp"
 
+void Scrollable::c2dText(size_t i, const std::string& v)
+{
+    ((Clickable*)mCells.at(i))->c2dText(v);
+}
+
 void Scrollable::setIndex(size_t i)
 {
     IScrollable::index(i);

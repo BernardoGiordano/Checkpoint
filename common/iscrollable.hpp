@@ -54,6 +54,11 @@ public:
         return mCells.at(index)->text();
     }
 
+    void cellName(size_t index, const std::string& name)
+    {
+        mCells.at(index)->text(name);
+    }
+
     void flush(void)
     {
         for (size_t i = 0; i < size(); i++)

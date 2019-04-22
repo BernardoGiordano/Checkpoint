@@ -26,6 +26,14 @@
 
 #include "clickable.hpp"
 
+void Clickable::c2dText(const std::string& v)
+{
+    text(v);
+    mTextBuf = C2D_TextBufNew(64);
+    C2D_TextParse(&mC2dText, mTextBuf, v.c_str());
+    C2D_TextOptimize(&mC2dText);
+}
+
 bool Clickable::held()
 {
     touchPosition touch;

@@ -53,6 +53,7 @@ public:
     void drawOutline(u32 color) override;
     bool held(void) override;
     bool released(void) override;
+    void c2dText(const std::string& text);
 
 protected:
     C2D_Text    mC2dText;

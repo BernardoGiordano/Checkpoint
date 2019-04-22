@@ -26,6 +26,8 @@
 
 #include "cheatmanager.hpp"
 
+#define SELECTED_MAGIC "\uE071 "
+
 static bool mLoaded = false;
 static nlohmann::json mCheats;
 
@@ -66,10 +68,27 @@ void CheatManager::manageCheats(const std::string& key)
     while(aptMainLoop())
     {
         hidScanInput();
+
         if (hidKeysDown() & KEY_B)
         {
             break;
         }
+
+        if (hidKeysDown() & KEY_A)
+        {
+            std::string cellName = s->cellName(s->index());
+            if (cellName.rfind(SELECTED_MAGIC, 0) == 0)
+            {
+                // cheat was already selected
+                cellName = cellName.substr(strlen(SELECTED_MAGIC), cellName.length());
+            }
+            else
+            {
+                cellName = SELECTED_MAGIC + cellName;
+            }
+            s->c2dText(s->index(), cellName);
+        }
+
         s->updateSelection();
         s->selectRow(currentIndex, false);
         s->selectRow(s->index(), true);
