@@ -39,7 +39,7 @@ C2D_TextBuf g_staticBuf, g_dynamicBuf;
 static C2D_Text ins1, ins2, ins3, ins4, c2dId, c2dMediatype;
 static C2D_Text checkpoint, version;
 // instructions text
-static C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_b, bot_r, bot_t;
+static C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_b, bot_r, bot_t, bot_x;
 
 // gui elements
 static Clickable* buttonBackup;
@@ -263,9 +263,9 @@ void Gui::init(void)
     buttonRestore = new Clickable(204, 139, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Restore \uE005", true);
     buttonCheats = new Clickable(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "Cheats", true);
     directoryList = new Scrollable(6, 102, 196, 110, 5);
-    buttonBackup->canInvertColor(true);
-    buttonRestore->canInvertColor(true);
-    buttonCheats->canInvertColor(true);
+    buttonBackup->canChangeColorWhenSelected(true);
+    buttonRestore->canChangeColorWhenSelected(true);
+    buttonCheats->canChangeColorWhenSelected(true);
 
     spritesheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");
     flag = C2D_SpriteSheetGetImage(spritesheet, sprites_checkpoint_idx);
@@ -298,6 +298,7 @@ void Gui::init(void)
     C2D_TextParse(&bot_b, g_staticBuf, "\uE01D \uE004");
     C2D_TextParse(&bot_r, g_staticBuf, "\uE01D \uE005");
     C2D_TextParse(&bot_t, g_staticBuf, "\uE01D");
+    C2D_TextParse(&bot_x, g_staticBuf, "\uE002 to delete backups");
 
     C2D_TextOptimize(&ins1);
     C2D_TextOptimize(&ins2);
@@ -317,6 +318,7 @@ void Gui::init(void)
     C2D_TextOptimize(&bot_b);
     C2D_TextOptimize(&bot_r);
     C2D_TextOptimize(&bot_t);
+    C2D_TextOptimize(&bot_x);
 }
 
 void Gui::exit(void)
@@ -343,18 +345,18 @@ void Gui::updateButtons(void)
 {
     if (MS::multipleSelectionEnabled())
     {
-        buttonRestore->canInvertColor(true);
-        buttonRestore->canInvertColor(false);
-        buttonCheats->canInvertColor(false);
+        buttonRestore->canChangeColorWhenSelected(true);
+        buttonRestore->canChangeColorWhenSelected(false);
+        buttonCheats->canChangeColorWhenSelected(false);
         buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
         buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
     }
     else if (g_bottomScrollEnabled)
     {
-        buttonBackup->canInvertColor(true);
-        buttonRestore->canInvertColor(true);
-        buttonCheats->canInvertColor(true);
+        buttonBackup->canChangeColorWhenSelected(true);
+        buttonRestore->canChangeColorWhenSelected(true);
+        buttonCheats->canChangeColorWhenSelected(true);
         buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
@@ -364,6 +366,17 @@ void Gui::updateButtons(void)
         buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+    }
+
+    if (CheatManager::loaded())
+    {
+        buttonCheats->c2dText("Cheats");
+        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+    }
+    else
+    {
+        buttonCheats->c2dText("Loading...");
+        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
     }
 }
 
@@ -549,6 +562,7 @@ void Gui::draw(void)
         C2D_DrawText(&bot_b, C2D_WithColor, 238, 107, 0.5f, 0.8f, 0.8f, COLOR_WHITE);
         C2D_DrawText(&bot_r, C2D_WithColor, 238, 145, 0.5f, 0.8f, 0.8f, COLOR_WHITE);
         C2D_DrawText(&bot_t, C2D_WithColor, 252, 183, 0.5f, 0.8f, 0.8f, COLOR_WHITE);
+        C2D_DrawText(&bot_x, C2D_WithColor, 32, 178, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
     }
 
     frameEnd();

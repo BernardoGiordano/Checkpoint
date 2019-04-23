@@ -63,7 +63,7 @@ void Clickable::draw(float font, SDL_Color overlay)
     const u32 messageWidth = mCentered ? textw : mw - (mSelected ? 20 : 8);
 
     SDLH_DrawRect(mx, my, mw, mh, mColorBg);
-    if (mCanInvertColor && held())
+    if (mCanChangeColorWhenSelected && held())
     {
         SDLH_DrawRect(mx, my, mw, mh, FC_MakeColor(overlay.r, overlay.g, overlay.b, 100));
     }

@@ -42,7 +42,7 @@ public:
     {
         mOldPressed = false;
         mSelected = false;
-        mCanInvertColor = false;
+        mCanChangeColorWhenSelected = false;
     }
     
     virtual ~IClickable(void) { }
@@ -51,13 +51,6 @@ public:
     virtual void drawOutline(T color) = 0;
     virtual bool held(void) = 0;
     virtual bool released(void) = 0;
-    
-    void invertColors(void)
-    {
-        T tmp = mColorBg;
-        mColorBg = mColorText;
-        mColorText = tmp;
-    }
 
     void setColors(T bg, T text)
     {
@@ -85,9 +78,9 @@ public:
         mSelected = selected;
     }
 
-    void canInvertColor(bool c)
+    void canChangeColorWhenSelected(bool c)
     {
-        mCanInvertColor = c;
+        mCanChangeColorWhenSelected = c;
     }
 
 protected: 
@@ -98,7 +91,7 @@ protected:
     T           mColorBg;
     T           mColorText;
     std::string mText;
-    bool        mCanInvertColor;
+    bool        mCanChangeColorWhenSelected;
     bool        mCentered;
     bool        mOldPressed;
     bool        mSelected;

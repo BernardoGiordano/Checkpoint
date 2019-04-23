@@ -33,11 +33,15 @@ static nlohmann::json mCheats;
 
 void CheatManager::init(void)
 {
-    mkdir("/cheats", 777);
-    std::ifstream i("romfs:/cheats/cheats.json");
+    Gui::updateButtons();
+
+    std::string path = io::fileExists("/3ds/Checkpoint/cheats.json") ? "/3ds/Checkpoint/cheats.json" : "romfs:/cheats/cheats.json";
+    std::ifstream i(path);
     i >> mCheats;
     i.close();
+    
     mLoaded = true;
+    Gui::updateButtons();
 }
 
 void CheatManager::exit(void)
@@ -68,7 +72,7 @@ void CheatManager::manageCheats(const std::string& key)
 
     size_t i = 0;
     size_t currentIndex = i;
-    Scrollable* s = new Scrollable(2, 10, 396, 220, 11);
+    Scrollable* s = new Scrollable(2, 2, 396, 220, 11);
     for (auto it = mCheats[key].begin(); it != mCheats[key].end(); ++it)
     {
         std::string value = it.key();
@@ -80,6 +84,7 @@ void CheatManager::manageCheats(const std::string& key)
         i++;
     }
 
+    const float scale = 0.47f;
     while(aptMainLoop())
     {
         hidScanInput();
@@ -109,11 +114,15 @@ void CheatManager::manageCheats(const std::string& key)
         s->selectRow(s->index(), true);
         currentIndex = s->index();
 
-        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_GREY_DARK);
+        C2D_Text page;
+        C2D_TextParse(&page, g_dynamicBuf, StringUtils::format("%d/%d", s->index() + 1, s->size()).c_str());
+        C2D_TextOptimize(&page);
         C2D_TextBufClear(g_dynamicBuf);
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_SceneBegin(g_top);
+        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_GREY_DARK);
         s->draw(true);
+        C2D_DrawText(&page, C2D_WithColor, ceilf(398 - page.width * scale), 224, 0.5f, scale, scale, COLOR_WHITE);
         Gui::frameEnd();
     }
 

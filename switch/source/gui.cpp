@@ -242,9 +242,9 @@ bool Gui::init(void)
     buttonBackup = new Clickable(956, 276, 220, 80, theme().c2, theme().c6, "Backup \ue004", true);
     buttonRestore = new Clickable(956, 360, 220, 80, theme().c2, theme().c6, "Restore \ue005", true);
     buttonCheats = new Clickable(956, 444, 220, 80, theme().c2, theme().c6, "Cheats", true);
-    buttonBackup->canInvertColor(true);
-    buttonRestore->canInvertColor(true);
-    buttonCheats->canInvertColor(true);
+    buttonBackup->canChangeColorWhenSelected(true);
+    buttonRestore->canChangeColorWhenSelected(true);
+    buttonCheats->canChangeColorWhenSelected(true);
     
     return true;
 }
@@ -414,18 +414,18 @@ void Gui::updateButtons(void)
 {
     if (MS::multipleSelectionEnabled())
     {
-        buttonRestore->canInvertColor(true);
-        buttonRestore->canInvertColor(false);
-        buttonCheats->canInvertColor(false);
+        buttonRestore->canChangeColorWhenSelected(true);
+        buttonRestore->canChangeColorWhenSelected(false);
+        buttonCheats->canChangeColorWhenSelected(false);
         buttonBackup->setColors(theme().c2, theme().c6);
         buttonRestore->setColors(theme().c2, theme().c5);
         buttonCheats->setColors(theme().c2, theme().c5);
     }
     else if (g_backupScrollEnabled)
     {
-        buttonBackup->canInvertColor(true);
-        buttonRestore->canInvertColor(true);
-        buttonCheats->canInvertColor(true);
+        buttonBackup->canChangeColorWhenSelected(true);
+        buttonRestore->canChangeColorWhenSelected(true);
+        buttonCheats->canChangeColorWhenSelected(true);
         buttonBackup->setColors(theme().c2, theme().c6);
         buttonRestore->setColors(theme().c2, theme().c6);
         buttonCheats->setColors(theme().c2, theme().c6);

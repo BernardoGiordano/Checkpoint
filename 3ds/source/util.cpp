@@ -59,6 +59,8 @@ Result servicesInit(void)
     mkdir("sdmc:/3ds/Checkpoint", 777);
     mkdir("sdmc:/3ds/Checkpoint/saves", 777);
     mkdir("sdmc:/3ds/Checkpoint/extdata", 777);
+    mkdir("sdmc:/3ds/Checkpoint/cheats", 777);
+    mkdir("sdmc:/cheats", 777);
     
     Gui::init();
     Threads::create((ThreadFunc)CheatManager::init);
@@ -218,40 +220,6 @@ float StringUtils::textWidth(const std::string& text, float scaleX)
     return std::max(largestRet, ret);
 }
 
-float StringUtils::textWidth(const std::u16string& text, float scaleX)
-{
-    float ret = 0.0f;
-    float largestRet = 0.0f;
-    for (size_t i = 0; i < text.size(); i++)
-    {
-        if (text[i] == u'\n')
-        {
-            largestRet = std::max(ret, largestRet);
-            ret = 0.0f;
-            continue;
-        }
-        float charWidth;
-        auto width = widthCache.find(text[i]);
-        if (width != widthCache.end())
-        {
-            charWidth = width->second->charWidth * scaleX;
-        }
-        else
-        {
-            widthCache.insert_or_assign(text[i], fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(text[i])));
-            widthCacheOrder.push(text[i]);
-            if (widthCache.size() > 512)
-            {
-                widthCache.erase(widthCacheOrder.front());
-                widthCacheOrder.pop();
-            }
-            charWidth = widthCache[text[i]]->charWidth * scaleX;
-        }
-        ret += charWidth;
-    }
-    return std::max(largestRet, ret);
-}
-
 float StringUtils::textWidth(const C2D_Text& text, float scaleX)
 {
     return ceilf(text.width*scaleX);
@@ -325,105 +293,6 @@ std::string StringUtils::wrap(const std::string& text, float scaleX, float maxWi
         }
     }
     return dst;
-}
-
-std::string StringUtils::wrap(const std::string& text, float scaleX, float maxWidth, size_t lines)
-{
-    if (textWidth(text, scaleX) <= maxWidth)
-    {
-        return text;
-    }
-
-    // Get the wrapped string
-    std::string wrapped = wrap(text, scaleX, maxWidth);
-    if (lines == 0)
-    {
-        return wrapped;
-    }
-
-    // string.split('\n')
-    std::vector<std::string> split;
-    for (size_t i = 0; i < wrapped.size(); i++)
-    {
-        if (wrapped[i] == '\n')
-        {
-            split.push_back(wrapped.substr(0, i));
-            wrapped = wrapped.substr(i+1, std::string::npos);
-            i = 0;
-        }
-    }
-    if (!wrapped.empty())
-    {
-        split.push_back(wrapped);
-    }
-
-    // If it's already the correct amount of lines, return it
-    if (split.size() <= lines)
-    {
-        wrapped = split[0];
-        for (size_t i = 1; i < split.size(); i++)
-        {
-            wrapped += '\n' + split[i];
-        }
-        return wrapped;
-    }
-
-    // Otherwise truncate it to the correct amount
-    for (size_t i = split.size(); i > lines; i--)
-    {
-        split.pop_back();
-    }
-
-    const float ellipsis = fontGetCharWidthInfo(fontGlyphIndexFromCodePoint('.'))->charWidth * 3 * scaleX;
-
-    // If there's space for the ellipsis, add it
-    if (textWidth(split[lines - 1], scaleX) + ellipsis <= maxWidth)
-    {
-        split[lines - 1] += "...";
-    }
-    // Otherwise do some sort of magic
-    else
-    {
-        std::string& finalLine = split[lines - 1];
-        // If there's a long enough word and a large enough space on the top line, move stuff up & add ellipsis to the end
-        if (lines > 1 && textWidth(split[lines - 2], scaleX) <= maxWidth / 2 && textWidth(finalLine.substr(0, finalLine.find(' ')), scaleX) > maxWidth * 0.75f)
-        {
-            std::string sliced = wrap(finalLine, scaleX, maxWidth * 0.4f);
-            split[lines - 2] += ' ' + sliced.substr(0, sliced.find('\n'));
-            sliced = sliced.substr(sliced.find('\n')+1);
-            for (size_t i = sliced.size(); i > 0; i--)
-            {
-                if (sliced[i - 1] == '\n')
-                {
-                    sliced.erase(i - 1, 1);
-                }
-            }
-            finalLine = sliced + "...";
-        }
-        // Or get rid of enough characters for it to fit
-        else
-        {
-            for (size_t i = finalLine.size(); i > 0; i--)
-            {
-                if ((finalLine[i-1] & 0x80 && finalLine[i-1] & 0x40) || !(finalLine[i-1] & 0x80)) // Beginning UTF-8 byte
-                {
-                    if (textWidth(finalLine.substr(0, i-1), scaleX) + ellipsis <= maxWidth)
-                    {
-                        finalLine = finalLine.substr(0, i-1) + "...";
-                    }
-                }
-            }
-        }
-    }
-
-    // Concatenate them and return
-    wrapped = split[0];
-    for (size_t i = 1; i < split.size(); i++)
-    {
-        wrapped += '\n' + split[i];
-    }
-
-    return wrapped;
 }
 
 float StringUtils::textHeight(const std::string& text, float scaleY)
