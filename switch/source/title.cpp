@@ -218,6 +218,7 @@ void loadTitles(void)
     Result res = fsOpenSaveDataIterator(&iterator, FsSaveDataSpaceId_NandUser);
     if (R_FAILED(res))
     {
+        free(nsacd);
         return;
     }
 

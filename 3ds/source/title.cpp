@@ -960,7 +960,7 @@ static bool scanCard(void)
         isScanning = true;
     }
 
-    bool ret;
+    bool ret = false;
     Result res = 0;
     u32 count = 0;
     FS_CardType cardType;
