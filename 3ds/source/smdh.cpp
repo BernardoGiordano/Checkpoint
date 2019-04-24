@@ -55,12 +55,12 @@ smdh_s* loadSMDH(u32 low, u32 high, u8 media)
 
 smdh_s* loadSMDH(const std::string& path)
 {
-    std::ifstream is(path, std::ios::binary);
-    if (is)
+    FILE* f = fopen(path.c_str(), "rb");
+    if (f != NULL)
     {
         smdh_s* smdh = new smdh_s;
-        is.read((char*)smdh, sizeof(smdh_s));
-        is.close();
+        fread(smdh, 1, sizeof(smdh_s), f);
+        fclose(f);
         return smdh;
     }
     return NULL;

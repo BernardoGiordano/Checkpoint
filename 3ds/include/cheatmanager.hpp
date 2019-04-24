@@ -29,8 +29,7 @@
 
 #include <3ds.h>
 #include <sys/stat.h>
-#include <fstream>
-#include <sstream>
+#include <stdio.h>
 #include "json.hpp"
 #include "gui.hpp"
 #include "main.hpp"

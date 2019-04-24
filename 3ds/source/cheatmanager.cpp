@@ -36,10 +36,9 @@ void CheatManager::init(void)
     Gui::updateButtons();
 
     std::string path = io::fileExists("/3ds/Checkpoint/cheats.json") ? "/3ds/Checkpoint/cheats.json" : "romfs:/cheats/cheats.json";
-    std::ifstream i(path);
-    i >> mCheats;
-    i.close();
-    
+    FILE* in = fopen(path.c_str(), "rt");
+    mCheats = nlohmann::json::parse(in, nullptr, false);
+    fclose(in);
     mLoaded = true;
     Gui::updateButtons();
 }
@@ -62,12 +61,16 @@ bool CheatManager::availableCodes(const std::string& key)
 void CheatManager::manageCheats(const std::string& key)
 {
     std::string existingCheat = "";
-    if (io::fileExists("/cheats/" + key + ".txt"))
+    FILE* f = fopen(("/cheats/" + key + ".txt").c_str(), "r");
+    if (f != NULL)
     {
-        std::ifstream t("/cheats/" + key + ".txt");
-        std::stringstream buffer;
-        buffer << t.rdbuf();
-        existingCheat = buffer.str();
+        fseek(f, 0, SEEK_END);
+        u32 size = ftell(f);
+        char* s = new char[size];
+        rewind(f);
+        fread(s, 1, size, f);
+        existingCheat = std::string(s);
+        delete[] s;
     }
 
     size_t i = 0;

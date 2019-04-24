@@ -34,10 +34,7 @@ Configuration::Configuration(void)
         store();
     }
 
-    // load json config file
-    std::ifstream i(BASEPATH);
-    i >> mJson;
-    i.close();
+    mJson = loadJson(BASEPATH);
 
     bool updateJson = false;
     if (mJson.find("version") == mJson.end())
@@ -58,9 +55,7 @@ Configuration::Configuration(void)
     if (updateJson) 
     {
         mJson["version"] = CONFIG_VERSION;
-        std::ofstream o(BASEPATH);
-        o << std::setw(2) << mJson << std::endl;
-        o.close();
+        storeJson(mJson, BASEPATH);
     }
 
     // parse filters
@@ -107,13 +102,29 @@ Configuration::Configuration(void)
     }
 }
 
+nlohmann::json Configuration::loadJson(const std::string& path)
+{
+    FILE* in = fopen(path.c_str(), "rt");
+    nlohmann::json json = nlohmann::json::parse(in, nullptr, false);
+    fclose(in);
+    return json;
+}
+
+void Configuration::storeJson(nlohmann::json& json, const std::string& path)
+{
+    std::string writeData = json.dump(2);
+    writeData.shrink_to_fit();
+    size_t size = writeData.size();
+
+    FILE* out = fopen(path.c_str(), "wt");
+    fwrite(writeData.c_str(), 1, size, out);
+    fclose(out);
+}
+
 void Configuration::store(void)
 {
-    std::ifstream src("romfs:/config.json");
-    std::ofstream dst(BASEPATH);
-    dst << src.rdbuf();
-    src.close();
-    dst.close();
+    nlohmann::json src = loadJson("romfs:/config.json");
+    storeJson(src, BASEPATH);
 }
 
 bool Configuration::filter(u64 id)

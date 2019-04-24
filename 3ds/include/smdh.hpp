@@ -28,8 +28,8 @@
 #define SMDH_HPP
 
 #include <3ds.h>
-#include <fstream>
 #include <string>
+#include <stdio.h>
 
 typedef struct {
     u32 magic;

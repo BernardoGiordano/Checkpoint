@@ -27,8 +27,6 @@
 #ifndef CONFIGHANDLER_HPP
 #define CONFIGHANDLER_HPP
 
-#include <fstream>
-#include <iomanip>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -58,6 +56,8 @@ private:
     ~Configuration(void) { };
 
     void store(void);
+    nlohmann::json loadJson(const std::string& path);
+    void storeJson(nlohmann::json& json, const std::string& path);
 
     Configuration(Configuration const&) = delete;
     void operator=(Configuration const&) = delete;
