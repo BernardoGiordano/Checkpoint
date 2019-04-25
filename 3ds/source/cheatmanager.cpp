@@ -35,11 +35,41 @@ void CheatManager::init(void)
 {
     Gui::updateButtons();
 
-    std::string path = io::fileExists("/3ds/Checkpoint/cheats.json") ? "/3ds/Checkpoint/cheats.json" : "romfs:/cheats/cheats.json";
-    FILE* in = fopen(path.c_str(), "rt");
-    mCheats = nlohmann::json::parse(in, nullptr, false);
-    fclose(in);
-    mLoaded = true;
+    if (io::fileExists("/3ds/Checkpoint/cheats.json"))
+    {
+        const std::string path = "/3ds/Checkpoint/cheats.json";
+        FILE* in = fopen(path.c_str(), "rt");
+        mCheats = nlohmann::json::parse(in, nullptr, false);
+        fclose(in);
+        mLoaded = true;
+    }
+    else
+    {
+        const std::string path = "romfs:/cheats/cheats.json.bz2";
+        // load compressed archive in memory
+        FILE* f = fopen(path.c_str(), "rb");
+        if (f != NULL)
+        {
+            fseek(f, 0, SEEK_END);
+            u32 size = ftell(f);
+            unsigned int destLen = 2*1024*1024;
+            char* s = new char[size];
+            char* d = new char[destLen]();
+            rewind(f);
+            fread(s, 1, size, f);
+            
+            int r = BZ2_bzBuffToBuffDecompress(d, &destLen, s, size, 0, 0);
+            if (r == BZ_OK)
+            {
+                mCheats = nlohmann::json::parse(d);
+                mLoaded = true;
+            }
+
+            delete[] s;
+            delete[] d;
+        }
+    }
+    
     Gui::updateButtons();
 }
 

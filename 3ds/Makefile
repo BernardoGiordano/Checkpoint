@@ -88,13 +88,13 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lcitro2d -lcitro3d -lctru -lm
+LIBS	:= -lbz2 -lcitro2d -lcitro3d -lctru -lm
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:= $(CTRULIB)
+LIBDIRS	:= $(CTRULIB) $(PORTLIBS)
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
@@ -187,7 +187,7 @@ ifeq ($(OS),Windows_NT)
 else
 	@cd $(SHARKIVE) && python3 joiner.py 3ds
 endif
-	@cd $(SHARKIVE)/$(BUILD) && mv 3ds.json ../../3ds/$(ROMFS)/$(CHEATS)/$(CHEATS).json
+	@cd $(SHARKIVE)/$(BUILD) && mv 3ds.json.bz2 ../../3ds/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $(OUTPUT).3dsx
 	@bannertool makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o $(BUILD)/banner.bnr
 	@bannertool makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i "$(APP_ICON)" -f "$(ICON_FLAGS)" -o $(BUILD)/icon.icn
