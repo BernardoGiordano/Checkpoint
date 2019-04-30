@@ -53,11 +53,6 @@ static void handle_save(struct mg_connection *nc, struct http_message *hm)
             (unsigned long) hm->body.len, (int) hm->body.len, hm->body.p);
 }
 
-static void handle_ssi_call(struct mg_connection *nc, const char *param)
-{
-
-}
-
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
     struct http_message *hm = (struct http_message *) ev_data;
@@ -71,9 +66,6 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
             } else {
                 mg_serve_http(nc, hm, s_http_server_opts);
             }
-            break;
-        case MG_EV_SSI_CALL:
-            handle_ssi_call(nc, (const char*)ev_data);
             break;
         default:
             break;
@@ -136,11 +128,17 @@ Configuration::~Configuration(void)
 
 void Configuration::store(void)
 {
-    std::ifstream src("romfs:/config.json");
-    std::ofstream dst(BASEPATH);
-    dst << src.rdbuf();
-    src.close();
-    dst.close();
+    FILE* in = fopen("romfs:/config.json", "rt");
+    nlohmann::json src = nlohmann::json::parse(in, nullptr, false);
+    fclose(in);
+
+    std::string writeData = src.dump(2);
+    writeData.shrink_to_fit();
+    size_t size = writeData.size();
+
+    FILE* out = fopen(BASEPATH.c_str(), "wt");
+    fwrite(writeData.c_str(), 1, size, out);
+    fclose(out);
 }
 
 bool Configuration::filter(u64 id)
@@ -172,16 +170,20 @@ void Configuration::pollServer(void)
 
 void Configuration::save(void)
 {
-    std::ofstream o(BASEPATH);
-    o << std::setw(2) << mJson << std::endl;
-    o.close();
+    std::string writeData = mJson.dump(2);
+    writeData.shrink_to_fit();
+    size_t size = writeData.size();
+
+    FILE* out = fopen(BASEPATH.c_str(), "wt");
+    fwrite(writeData.c_str(), 1, size, out);
+    fclose(out);
 }
 
 void Configuration::load(void)
 {
-    std::ifstream i(BASEPATH);
-    i >> mJson;
-    i.close();
+    FILE* in = fopen(BASEPATH.c_str(), "rt");
+    mJson = nlohmann::json::parse(in, nullptr, false);
+    fclose(in);
 }
 
 void Configuration::parse(void)

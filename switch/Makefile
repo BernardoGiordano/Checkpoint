@@ -54,8 +54,8 @@ CHEATS		:=	cheats
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE
 
-CFLAGS	:=	-g -O3 -ffunction-sections \
-			-Wall -Wno-write-strings -Wno-unused-value \
+CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections -flto \
+			-Wno-write-strings -Wno-unused-value -fomit-frame-pointer \
 			$(ARCH) $(DEFINES) \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
 			-DVERSION_MINOR=${VERSION_MINOR} \
@@ -72,7 +72,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-no-as-needed,-Map,$(notdir $*.map)
 
-LIBS	:=	-lSDL2_ttf -lSDL2_image -lpng -ljpeg `sdl2-config --libs` `freetype-config --libs` -lnx
+LIBS	:=	-lbz2 -lSDL2_ttf -lSDL2_image -lpng -ljpeg `sdl2-config --libs` `freetype-config --libs` -lnx
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
@@ -169,7 +169,7 @@ ifeq ($(OS),Windows_NT)
 else
 	@cd $(SHARKIVE) && python3 joiner.py switch
 endif
-	@cd $(SHARKIVE)/$(BUILD) && mv switch.json ../../switch/$(ROMFS)/$(CHEATS)/$(CHEATS).json
+	@cd $(SHARKIVE)/$(BUILD) && mv switch.json.bz2 ../../switch/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #---------------------------------------------------------------------------------

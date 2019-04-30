@@ -28,7 +28,6 @@
 #define IO_HPP
 
 #include <dirent.h>
-#include <fstream>
 #include <switch.h>
 #include <sys/stat.h>
 #include <unistd.h>

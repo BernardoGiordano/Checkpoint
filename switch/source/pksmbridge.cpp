@@ -57,12 +57,19 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     // load data
     Title title;
     getTitle(title, uid, index);
-    std::string srcPath = title.fullPath(cellIndex) + "/";
-    std::ifstream save(srcPath + "savedata.bin", std::ios::binary | std::ios::ate);
-    size_t size = save.tellg();
-    save.seekg(0, std::ios::beg);
+    std::string srcPath = title.fullPath(cellIndex) + "/savedata.bin";
+    FILE* save = fopen(srcPath.c_str(), "rb");
+    if (save == NULL)
+    {
+        return;
+    }
+
+    fseek(save, 0, SEEK_END);
+    size_t size = ftell(save);
+    rewind(save);
     char* data = new char[size];
-    save.read(data, size);
+    fread(data, 1, size, save);
+    fclose(save);
 
     // get server address
     auto ipaddress = KeyboardManager::get().keyboard("Input PKSM IP address");
@@ -164,8 +171,13 @@ void recvFromPKSMBridge(size_t index, u128 uid)
     size_t size = 0x100000;
     Title title;
     getTitle(title, uid, index);
-    std::string srcPath = title.fullPath(cellIndex) + "/";
-    std::ofstream save(srcPath + "savedata.bin", std::ios::binary);
+    std::string srcPath = title.fullPath(cellIndex) + "/savedata.bin";
+    FILE* save = fopen(srcPath.c_str(), "wb");
+    if (save == NULL)
+    {
+        return;
+    }
+
     char* data = new char[size]();
 
     size_t total = 0;
@@ -181,8 +193,8 @@ void recvFromPKSMBridge(size_t index, u128 uid)
     if (total == size)
     {
         Gui::showInfo("Data received correctly.");
-        save.write(data, size);
-        save.close();
+        fwrite(data, 1, size, save);
+        fclose(save);
     }
     else
     {

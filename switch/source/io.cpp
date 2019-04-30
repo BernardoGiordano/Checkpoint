@@ -34,31 +34,31 @@ bool io::fileExists(const std::string& path)
 
 void io::copyFile(const std::string& srcPath, const std::string& dstPath)
 {
-    std::fstream src(srcPath, std::ios::in | std::ios::binary);
-    std::fstream dst(dstPath, std::ios::out | std::ios::binary);
-    if (!src.is_open() || !dst.is_open())
+    FILE* src = fopen(srcPath.c_str(), "rb");
+    FILE* dst = fopen(dstPath.c_str(), "wb");
+    if (!src || !dst)
     {
         return;
     }
-     
-    src.seekg(0, src.end);
-    u64 sz = src.tellg();
-    src.seekg(0, src.beg);
+
+    fseek(src, 0, SEEK_END);
+    u64 sz = ftell(src);
+    rewind(src);
 
     u8* buf = new u8[BUFFER_SIZE];
     u64 offset = 0;
     size_t slashpos = srcPath.rfind("/");
     std::string name = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
     while (offset < sz) {
-        src.read((char*)buf, BUFFER_SIZE);
-        dst.write((char*)buf, src.gcount());
-        offset += src.gcount();
+        u32 count = fread((char*)buf, 1, BUFFER_SIZE, src);
+        fwrite((char*)buf, 1, count, dst);
+        offset += count;
         Gui::drawCopy(name, offset, sz);
     }
 
     delete[] buf;
-    src.close();
-    dst.close();
+    fclose(src);
+    fclose(dst);
 
     // commit each file to the save
     if (dstPath.rfind("save:/", 0) == 0)

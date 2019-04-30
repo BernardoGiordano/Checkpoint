@@ -27,7 +27,6 @@
 #ifndef KEYBOARDMANAGER_HPP
 #define KEYBOARDMANAGER_HPP
 
-#include <locale>
 #include <string>
 #include <switch.h>
 #include <utility>
