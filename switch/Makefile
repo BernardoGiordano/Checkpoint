@@ -74,6 +74,9 @@ LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-no-as-needed,-M
 
 LIBS	:=	-lbz2 -lSDL2_ttf -lSDL2_image -lpng -ljpeg `sdl2-config --libs` `freetype-config --libs` -lnx
 
+CXX		:= `which ccache` $(CXX)
+CC		:= `which ccache` $(CC)
+
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
