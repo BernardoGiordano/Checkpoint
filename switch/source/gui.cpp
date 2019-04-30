@@ -259,7 +259,7 @@ void Gui::exit(void)
     SDLH_Exit();
 }
 
-void Gui::draw(u128 uid)
+void Gui::draw(void)
 {
     auto selEnt = MS::selectedEntries();
     const size_t entries = hid->maxVisibleEntries();

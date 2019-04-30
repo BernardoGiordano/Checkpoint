@@ -47,7 +47,7 @@ namespace Gui
 {
     bool        init(void);
     void        exit(void);
-    void        draw(u128 uid);
+    void        draw(void);
 
     void        showInfo(const std::string& message);
     void        showError(Result res, const std::string& message);

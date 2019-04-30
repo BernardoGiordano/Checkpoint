@@ -264,7 +264,7 @@ int main(int argc, char** argv)
         }
 
         Gui::updateSelector();
-        Gui::draw(g_currentUId);
+        Gui::draw();
 
         // poll server
         Configuration::getInstance().pollServer();
