@@ -24,30 +24,28 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef UTIL_HPP
-#define UTIL_HPP
+#ifndef CHEATMANAGER_HPP
+#define CHEATMANAGER_HPP
 
 #include <switch.h>
 #include <sys/stat.h>
-#include "common.hpp"
-#include "account.hpp"
+#include <stdio.h>
+#include <bzlib.h>
+#include <errno.h>
+#include "json.hpp"
 #include "gui.hpp"
-#include "io.hpp"
-#include "cheatmanager.hpp"
+#include "main.hpp"
+#include "scrollable.hpp"
+#include "thread.hpp"
 
-// debug
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/errno.h>
-
-void   servicesExit(void);
-Result servicesInit(void);
-
-namespace StringUtils
+namespace CheatManager
 {
-    std::string    removeAccents(std::string str);
-    std::string    removeNotAscii(std::string str);
-    std::u16string UTF8toUTF16(const char* src);
+    void init(void);
+    void exit(void);
+    bool loaded(void);
+    bool availableCodes(const std::string& key);
+    void manageCheats(const std::string& key);
+    void save(const std::string& key, Scrollable* s);
 }
 
 #endif

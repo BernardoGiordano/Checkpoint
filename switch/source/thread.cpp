@@ -24,30 +24,34 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef UTIL_HPP
-#define UTIL_HPP
+#include "thread.hpp"
 
-#include <switch.h>
-#include <sys/stat.h>
-#include "common.hpp"
-#include "account.hpp"
-#include "gui.hpp"
-#include "io.hpp"
-#include "cheatmanager.hpp"
+static std::vector<Thread> threads;
 
-// debug
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/errno.h>
-
-void   servicesExit(void);
-Result servicesInit(void);
-
-namespace StringUtils
+Result Threads::create(ThreadFunc entrypoint)
 {
-    std::string    removeAccents(std::string str);
-    std::string    removeNotAscii(std::string str);
-    std::u16string UTF8toUTF16(const char* src);
+    Thread thread;
+    Result res = threadCreate(&thread, entrypoint, NULL, 16*1024, 0x2B, -2);
+    if (R_FAILED(res))
+    {
+        return res;
+    }
+
+    res = threadStart(&thread);
+    if (R_FAILED(res))
+    {
+        return res;
+    }
+
+    threads.push_back(thread);
+    return 0;
 }
 
-#endif
+void Threads::destroy(void)
+{
+    for (u32 i = 0; i < threads.size(); i++)
+    {
+        threadWaitForExit(&threads.at(i));
+        threadClose(&threads.at(i));
+    }
+}

@@ -54,6 +54,7 @@ public:
     void push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message, bool selected) override;
     void resetIndex(void) override;
     void updateSelection(void) override;
+    void text(size_t i, const std::string& v);
 
 protected:
     HidVertical* mHid;

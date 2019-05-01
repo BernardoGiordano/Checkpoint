@@ -108,7 +108,7 @@ Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath)
 
 Result io::createDirectory(const std::string& path)
 {
-    mkdir(path.c_str(), 777);
+    mkdir(path.c_str(), 0777);
     return 0;
 }
 

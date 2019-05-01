@@ -447,6 +447,17 @@ void Gui::updateButtons(void)
         buttonBackup->text("Backup \ue004");
         buttonRestore->text("Restore \ue005");            
     }
+
+    if (CheatManager::loaded())
+    {
+        buttonCheats->text("Cheats");
+        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+    }
+    else
+    {
+        buttonCheats->text("Loading...");
+        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
+    }
 }
 
 void Gui::updateSelector(void)

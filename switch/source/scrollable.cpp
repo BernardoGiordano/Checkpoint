@@ -26,6 +26,11 @@
 
 #include "scrollable.hpp"
 
+void Scrollable::text(size_t i, const std::string& v)
+{
+    ((Clickable*)mCells.at(i))->text(v);
+}
+
 void Scrollable::setIndex(size_t i)
 {
     IScrollable::index(i);
@@ -41,7 +46,7 @@ void Scrollable::resetIndex(void)
 
 void Scrollable::push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message, bool selected)
 {
-    static const float spacing = mh / mVisibleEntries;
+    const float spacing = mh / mVisibleEntries;
     Clickable* cell = new Clickable(mx, my + (size() % mVisibleEntries)*spacing, mw, spacing, color, colorMessage, message, false);
     cell->selected(selected);
     mCells.push_back(cell);
