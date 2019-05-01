@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <bzlib.h>
+#include <errno.h>
 #include "json.hpp"
 #include "gui.hpp"
 #include "main.hpp"

@@ -102,6 +102,7 @@ void CheatManager::manageCheats(const std::string& key)
         fread(s, 1, size, f);
         existingCheat = std::string(s);
         delete[] s;
+        fclose(f);
     }
 
     size_t i = 0;

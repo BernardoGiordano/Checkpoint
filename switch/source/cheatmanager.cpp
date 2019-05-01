@@ -111,6 +111,7 @@ void CheatManager::manageCheats(const std::string& key)
                     fread(s, 1, size, f);
                     existingCheat += "\n" + std::string(s);
                     delete[] s;
+                    fclose(f);
                 }
             }
         }
@@ -216,8 +217,8 @@ void CheatManager::save(const std::string& key, Scrollable* s)
 {
     std::string idfolder = StringUtils::format("/atmosphere/titles/%s", key.c_str());
     std::string rootfolder = idfolder + "/cheats";
-    mkdir(idfolder.c_str(), 777);
-    mkdir(rootfolder.c_str(), 777);
+    mkdir(idfolder.c_str(), 0777);
+    mkdir(rootfolder.c_str(), 0777);
 
     for (auto it = mCheats[key].begin(); it != mCheats[key].end(); ++it)
     {
@@ -242,7 +243,14 @@ void CheatManager::save(const std::string& key, Scrollable* s)
         }
 
         FILE* file = fopen((rootfolder + "/" + buildid + ".txt").c_str(), "w");
-        fwrite(cheatFile.c_str(), 1, cheatFile.length(), file);
-        fclose(file);
+        if (file != NULL)
+        {
+            fwrite(cheatFile.c_str(), 1, cheatFile.length(), file);
+            fclose(file);
+        }
+        else
+        {
+            Gui::showError(errno, "Failed to write cheat file\nto the sd card");
+        }
     }
 }
