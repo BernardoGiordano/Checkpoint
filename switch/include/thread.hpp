@@ -24,30 +24,17 @@
 *         reasonable ways as different from the original version.
 */
 
-#ifndef UTIL_HPP
-#define UTIL_HPP
+#ifndef THREAD_HPP
+#define THREAD_HPP
 
 #include <switch.h>
-#include <sys/stat.h>
-#include "common.hpp"
-#include "account.hpp"
-#include "gui.hpp"
-#include "io.hpp"
-#include "cheatmanager.hpp"
+#include <vector>
+#include "title.hpp"
 
-// debug
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <sys/errno.h>
-
-void   servicesExit(void);
-Result servicesInit(void);
-
-namespace StringUtils
+namespace Threads
 {
-    std::string    removeAccents(std::string str);
-    std::string    removeNotAscii(std::string str);
-    std::u16string UTF8toUTF16(const char* src);
+    Result create(ThreadFunc entrypoint);
+    void   destroy(void);
 }
 
 #endif

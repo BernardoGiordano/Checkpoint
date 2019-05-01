@@ -28,6 +28,7 @@
 
 void servicesExit(void)
 {
+    CheatManager::exit();
     // debug
     socketExit();
     freeIcons();
@@ -48,13 +49,10 @@ Result servicesInit(void)
 
     Result res = 0;
     romfsInit();
-    res = io::createDirectory("sdmc:/switch");
-    res = io::createDirectory("sdmc:/switch/Checkpoint");
-    res = io::createDirectory("sdmc:/switch/Checkpoint/saves");
-    if (R_FAILED(res))
-    {
-        return res;
-    }
+    io::createDirectory("sdmc:/switch");
+    io::createDirectory("sdmc:/switch/Checkpoint");
+    io::createDirectory("sdmc:/switch/Checkpoint/saves");
+    io::createDirectory("sdmc:/switch/Checkpoint/cheats");
 
     if (R_FAILED(res = plInitialize()))
     {
@@ -75,6 +73,8 @@ Result servicesInit(void)
     {
         return -1;
     }
+
+    Threads::create((ThreadFunc)CheatManager::init);
 
     Configuration::getInstance();
 
