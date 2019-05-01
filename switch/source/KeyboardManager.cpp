@@ -48,7 +48,7 @@ std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& sugges
         {
             swkbdConfigMakePresetDefault(&kbd);
             swkbdConfigSetInitialText(&kbd, suggestion.c_str());
-            kbd.arg.arg.stringLenMax = CUSTOM_PATH_LEN;
+            swkbdConfigSetStringLenMax(&kbd, CUSTOM_PATH_LEN);
             Result res = swkbdShow(&kbd, tmpoutstr, CUSTOM_PATH_LEN);
             swkbdClose(&kbd);
             if (R_SUCCEEDED(res))
