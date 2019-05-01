@@ -210,7 +210,7 @@ void CheatManager::save(const std::string& key, Scrollable* s)
     for (size_t i = 0; i < s->size(); i++)
     {
         std::string cellName = s->cellName(i);
-        if (cellName.rfind(SELECTED_MAGIC, 0) == 0)
+        if (cellName.find(SELECTED_MAGIC, 0) == 0)
         {
             cellName = cellName.substr(strlen(SELECTED_MAGIC), cellName.length());
             cheatFile += cellName + "\n";

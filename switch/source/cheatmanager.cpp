@@ -109,7 +109,7 @@ void CheatManager::manageCheats(const std::string& key)
                     char* s = new char[size];
                     rewind(f);
                     fread(s, 1, size, f);
-                    existingCheat += std::string(s);
+                    existingCheat += "\n" + std::string(s);
                     delete[] s;
                 }
             }
@@ -226,24 +226,23 @@ void CheatManager::save(const std::string& key, Scrollable* s)
         for (size_t i = 0; i < s->size(); i++)
         {
             std::string cellName = s->cellName(i);
-            if (cellName.rfind(SELECTED_MAGIC, 0) == 0)
+            if (cellName.find(SELECTED_MAGIC, 0) == 0)
             {
                 cellName = cellName.substr(strlen(SELECTED_MAGIC), cellName.length());
                 if (mCheats[key][buildid].find(cellName) != mCheats[key][buildid].end())
                 {
                     cheatFile += cellName + "\n";
-                    for (auto &it : mCheats[key][buildid][cellName])
+                    for (auto& it2 : mCheats[key][buildid][cellName])
                     {
-                        cheatFile += it.get<std::string>() + "\n";
+                        cheatFile += it2.get<std::string>() + "\n";
                     }
                     cheatFile += "\n";
                 }
             }
         }
 
-        // FILE* file = fopen((rootfolder + "/" + buildid + ".txt").c_str(), "w");
-        // fwrite(cheatFile.c_str(), 1, cheatFile.length(), file);
-        // fclose(file);
-        Gui::showInfo(cheatFile);
+        FILE* file = fopen((rootfolder + "/" + buildid + ".txt").c_str(), "w");
+        fwrite(cheatFile.c_str(), 1, cheatFile.length(), file);
+        fclose(file);
     }
 }
