@@ -30,6 +30,7 @@
 
 static bool mLoaded = false;
 static nlohmann::json mCheats;
+static bool multiSelected = false;
 
 void CheatManager::init(void)
 {
@@ -118,6 +119,10 @@ void CheatManager::manageCheats(const std::string& key)
     }
 
     const float scale = 0.47f;
+    C2D_Text multiSelectText;
+    C2D_TextParse(&multiSelectText, g_staticBuf, "\uE003 to select all cheats");
+    C2D_TextOptimize(&multiSelectText);
+
     while(aptMainLoop())
     {
         hidScanInput();
@@ -130,7 +135,7 @@ void CheatManager::manageCheats(const std::string& key)
         if (hidKeysDown() & KEY_A)
         {
             std::string cellName = s->cellName(s->index());
-            if (cellName.rfind(SELECTED_MAGIC, 0) == 0)
+            if (cellName.find(SELECTED_MAGIC, 0) == 0)
             {
                 // cheat was already selected
                 cellName = cellName.substr(strlen(SELECTED_MAGIC), cellName.length());
@@ -140,6 +145,36 @@ void CheatManager::manageCheats(const std::string& key)
                 cellName = SELECTED_MAGIC + cellName;
             }
             s->c2dText(s->index(), cellName);
+        }
+
+        if (hidKeysDown() & KEY_Y)
+        {
+            if (multiSelected)
+            {
+                for (size_t i = 0; i < s->size(); i++)
+                {
+                    std::string cellName = s->cellName(i);
+                    if (cellName.find(SELECTED_MAGIC, 0) == 0)
+                    {
+                        cellName = cellName.substr(strlen(SELECTED_MAGIC), cellName.length());
+                        s->c2dText(i, cellName);
+                    }          
+                }
+                multiSelected = false;
+            }
+            else
+            {
+                for (size_t i = 0; i < s->size(); i++)
+                {
+                    std::string cellName = s->cellName(i);
+                    if (cellName.find(SELECTED_MAGIC, 0) != 0)
+                    {
+                        cellName = SELECTED_MAGIC + cellName;
+                        s->c2dText(i, cellName); 
+                    }          
+                }
+                multiSelected = true;
+            }   
         }
 
         s->updateSelection();
@@ -156,6 +191,7 @@ void CheatManager::manageCheats(const std::string& key)
         C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_GREY_DARK);
         s->draw(true);
         C2D_DrawText(&page, C2D_WithColor, ceilf(398 - page.width * scale), 224, 0.5f, scale, scale, COLOR_WHITE);
+        C2D_DrawText(&multiSelectText, C2D_WithColor, 2, 224, 0.5f, scale, scale, COLOR_WHITE);
         Gui::frameEnd();
     }
 
