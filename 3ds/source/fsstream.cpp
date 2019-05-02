@@ -118,3 +118,8 @@ u32 FSStream::offset(void)
 {
     return mOffset;
 }
+
+void FSStream::offset(u32 offset)
+{
+    mOffset = offset;
+}

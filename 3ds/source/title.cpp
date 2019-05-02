@@ -1054,3 +1054,19 @@ void updateCard(void)
         }
     }
 }
+
+bool Title::isActivityLog(void)
+{
+    bool activityId = false;
+    switch (lowId())
+    {
+        case 0x00020200:
+        case 0x00021200:
+        case 0x00022200:
+        case 0x00026200:
+        case 0x00027200:
+        case 0x00028200:
+            activityId = true;
+    }
+    return mMedia == MEDIATYPE_NAND && activityId;
+}

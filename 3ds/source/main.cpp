@@ -190,27 +190,45 @@ int main() {
             }
         }
 
-        if (Gui::isCheatReleased() && CheatManager::loaded())
+        if (getTitleCount() > 0)
         {
-            if (MS::multipleSelectionEnabled())
+            Title title;
+            getTitle(title, Gui::index());
+            if (title.isActivityLog())
             {
-                MS::clearSelectedEntries();
-                Gui::updateButtons();
+                if (Gui::isPlayCoinsReleased())
+                {
+                    if (!Archive::setPlayCoins())
+                    {
+                        Gui::showError(-1, "Failed to set play coins.");
+                    }
+                }
             }
             else
             {
-                Title title;
-                getTitle(title, Gui::index());
-                std::string key = StringUtils::format("%016llX", title.id());
-                if (CheatManager::availableCodes(key))
+                if (Gui::isCheatReleased() && CheatManager::loaded())
                 {
-                    CheatManager::manageCheats(key);
+                    if (MS::multipleSelectionEnabled())
+                    {
+                        MS::clearSelectedEntries();
+                        Gui::updateButtons();
+                    }
+                    else
+                    {
+                        Title title;
+                        getTitle(title, Gui::index());
+                        std::string key = StringUtils::format("%016llX", title.id());
+                        if (CheatManager::availableCodes(key))
+                        {
+                            CheatManager::manageCheats(key);
+                        }
+                        else
+                        {
+                            Gui::showInfo("No available cheat codes for this title.");
+                        }
+                    }            
                 }
-                else
-                {
-                    Gui::showInfo("No available cheat codes for this title.");
-                }
-            }            
+            }
         }
 
         Gui::updateSelector();

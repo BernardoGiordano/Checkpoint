@@ -44,6 +44,7 @@ public:
     void operator=(KeyboardManager const&) = delete;
 
     std::u16string keyboard(const std::string& suggestion);
+    int numericPad(void);
 
     static const size_t CUSTOM_PATH_LEN = 20;
 

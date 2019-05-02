@@ -98,3 +98,33 @@ bool Archive::accessible(u32 ext)
     }
     return false;
 }
+
+bool Archive::setPlayCoins(void)
+{
+    FS_Archive archive;
+    const u32 path[3] = { MEDIATYPE_NAND, 0xF000000B, 0x00048000 };
+    Result res = FSUSER_OpenArchive(&archive, ARCHIVE_SHARED_EXTDATA, {PATH_BINARY, 0xC, path});
+    if (R_SUCCEEDED(res))
+    {
+        FSStream s(archive, StringUtils::UTF8toUTF16("/gamecoin.dat"), FS_OPEN_READ | FS_OPEN_WRITE);
+        if (s.good())
+        {
+            u8 buf[2];
+            int coinAmount = KeyboardManager::get().numericPad();
+            if (coinAmount >= 0)
+            {
+                coinAmount = coinAmount > 300 ? 300 : coinAmount;
+                s.offset(4);
+                buf[0] = (u8)coinAmount;
+                buf[1] = coinAmount >> 8;
+                s.write(buf, 2);
+            }
+
+            s.close();
+            FSUSER_CloseArchive(archive);
+            return true;
+        }
+        FSUSER_CloseArchive(archive);
+    }
+    return false;
+}

@@ -40,6 +40,7 @@ public:
     Result close(void);
     bool   eof(void);
     bool   good(void);
+    void   offset(u32 o);
     u32    offset(void);
     u32    read(void *buf, u32 size);
     Result result(void);

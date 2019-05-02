@@ -28,6 +28,8 @@
 #define ARCHIVE_HPP
 
 #include <3ds.h>
+#include "fsstream.hpp"
+#include "util.hpp"
 
 typedef enum {
     MODE_SAVE,
@@ -47,6 +49,7 @@ namespace Archive
     Result     extdata(FS_Archive* archive, u32 extdata);
     bool       accessible(FS_MediaType mediatype, u32 lowid, u32 highid); // save
     bool       accessible(u32 extdata); // extdata
+    bool       setPlayCoins(void);
 }
 
 #endif

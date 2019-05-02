@@ -45,6 +45,7 @@ static C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_b, bot_r, bot
 static Clickable* buttonBackup;
 static Clickable* buttonRestore;
 static Clickable* buttonCheats;
+static Clickable* buttonPlayCoins;
 static Scrollable* directoryList;
 bool g_bottomScrollEnabled;
 
@@ -262,10 +263,12 @@ void Gui::init(void)
     buttonBackup = new Clickable(204, 102, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Backup \uE004", true);
     buttonRestore = new Clickable(204, 139, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Restore \uE005", true);
     buttonCheats = new Clickable(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "Cheats", true);
+    buttonPlayCoins = new Clickable(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "\uE075 Coins", true);
     directoryList = new Scrollable(6, 102, 196, 110, 5);
     buttonBackup->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
     buttonCheats->canChangeColorWhenSelected(true);
+    buttonPlayCoins->canChangeColorWhenSelected(true);
 
     spritesheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");
     flag = C2D_SpriteSheetGetImage(spritesheet, sprites_checkpoint_idx);
@@ -328,6 +331,7 @@ void Gui::exit(void)
     C2D_SpriteSheetFree(spritesheet);
     delete hid;
     delete directoryList;
+    delete buttonPlayCoins;
     delete buttonCheats;
     delete buttonRestore;
     delete buttonBackup;
@@ -550,7 +554,14 @@ void Gui::draw(void)
         directoryList->draw(g_bottomScrollEnabled);
         buttonBackup->draw(0.7, 0);
         buttonRestore->draw(0.7, 0);
-        buttonCheats->draw(0.7, 0);
+        if (title.isActivityLog())
+        {
+            buttonPlayCoins->draw(0.7, 0);
+        }
+        else
+        {
+            buttonCheats->draw(0.7, 0);
+        }
     }
 
     C2D_DrawText(&ins4, C2D_WithColor, ceilf((320 - ins4.width*0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
@@ -581,6 +592,11 @@ bool Gui::isRestoreReleased(void)
 bool Gui::isCheatReleased(void)
 {
     return buttonCheats->released();
+}
+
+bool Gui::isPlayCoinsReleased(void)
+{
+    return buttonPlayCoins->released();
 }
 
 void Gui::resetIndex(void)

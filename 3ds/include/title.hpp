@@ -61,6 +61,7 @@ public:
     u32              highId(void);
     C2D_Image        icon(void);
     u64              id(void);
+    bool             isActivityLog(void);
     void             load(void);
     bool             load(u64 id, FS_MediaType mediaType, FS_CardType cardType);
     void             load(u64 id, u8* productCode, bool accessibleSave, bool accessibleExtdata, std::u16string shortDescription, std::u16string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card);

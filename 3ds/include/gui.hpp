@@ -58,6 +58,7 @@ namespace Gui
     bool        isBackupReleased(void);
     bool        isRestoreReleased(void);
     bool        isCheatReleased(void);
+    bool        isPlayCoinsReleased(void);
     std::string nameFromCell(size_t index);
     void        resetIndex(void);
     void        resetScrollableIndex(void);
