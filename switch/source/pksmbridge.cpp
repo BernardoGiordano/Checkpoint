@@ -194,13 +194,13 @@ void recvFromPKSMBridge(size_t index, u128 uid)
     {
         Gui::showInfo("Data received correctly.");
         fwrite(data, 1, size, save);
-        fclose(save);
     }
     else
     {
         Gui::showError(errno, "Failed to receive data.");
     }
-
+    
+    fclose(save);
     close(fd);
     close(fdconn);
     delete[] data;

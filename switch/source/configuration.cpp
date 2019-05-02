@@ -44,8 +44,11 @@ static void handle_populate(struct mg_connection *nc, struct http_message *hm)
 static void handle_save(struct mg_connection *nc, struct http_message *hm)
 {
     FILE* f = fopen(Configuration::getInstance().BASEPATH.c_str(), "w");
-    fwrite(hm->body.p, 1, hm->body.len, f);
-    fclose(f);
+    if (f != NULL)
+    {
+        fwrite(hm->body.p, 1, hm->body.len, f);
+        fclose(f);
+    }
     Configuration::getInstance().load();
     Configuration::getInstance().parse();
     // Send response
@@ -129,16 +132,22 @@ Configuration::~Configuration(void)
 void Configuration::store(void)
 {
     FILE* in = fopen("romfs:/config.json", "rt");
-    nlohmann::json src = nlohmann::json::parse(in, nullptr, false);
-    fclose(in);
+    if (in != NULL)
+    {
+        nlohmann::json src = nlohmann::json::parse(in, nullptr, false);
+        fclose(in);
 
-    std::string writeData = src.dump(2);
-    writeData.shrink_to_fit();
-    size_t size = writeData.size();
+        std::string writeData = src.dump(2);
+        writeData.shrink_to_fit();
+        size_t size = writeData.size();
 
-    FILE* out = fopen(BASEPATH.c_str(), "wt");
-    fwrite(writeData.c_str(), 1, size, out);
-    fclose(out);
+        FILE* out = fopen(BASEPATH.c_str(), "wt");
+        if (out != NULL)
+        {
+            fwrite(writeData.c_str(), 1, size, out);
+            fclose(out);
+        }
+    }
 }
 
 bool Configuration::filter(u64 id)
@@ -175,15 +184,21 @@ void Configuration::save(void)
     size_t size = writeData.size();
 
     FILE* out = fopen(BASEPATH.c_str(), "wt");
-    fwrite(writeData.c_str(), 1, size, out);
-    fclose(out);
+    if (out != NULL)
+    {
+        fwrite(writeData.c_str(), 1, size, out);
+        fclose(out);
+    }
 }
 
 void Configuration::load(void)
 {
     FILE* in = fopen(BASEPATH.c_str(), "rt");
-    mJson = nlohmann::json::parse(in, nullptr, false);
-    fclose(in);
+    if (in != NULL)
+    {
+        mJson = nlohmann::json::parse(in, nullptr, false);
+        fclose(in);
+    }
 }
 
 void Configuration::parse(void)

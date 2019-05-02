@@ -40,9 +40,12 @@ void CheatManager::init(void)
     {
         const std::string path = "/switch/Checkpoint/cheats.json";
         FILE* in = fopen(path.c_str(), "rt");
-        mCheats = nlohmann::json::parse(in, nullptr, false);
-        fclose(in);
-        mLoaded = true;
+        if (in != NULL)
+        {
+            mCheats = nlohmann::json::parse(in, nullptr, false);
+            fclose(in);
+            mLoaded = true;
+        }
     }
     else
     {
@@ -68,6 +71,7 @@ void CheatManager::init(void)
 
             delete[] s;
             delete[] d;
+            fclose(f);
         }
     }
     
@@ -242,11 +246,11 @@ void CheatManager::save(const std::string& key, Scrollable* s)
             }
         }
 
-        FILE* file = fopen((rootfolder + "/" + buildid + ".txt").c_str(), "w");
-        if (file != NULL)
+        FILE* f = fopen((rootfolder + "/" + buildid + ".txt").c_str(), "w");
+        if (f != NULL)
         {
-            fwrite(cheatFile.c_str(), 1, cheatFile.length(), file);
-            fclose(file);
+            fwrite(cheatFile.c_str(), 1, cheatFile.length(), f);
+            fclose(f);
         }
         else
         {
