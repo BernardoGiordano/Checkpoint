@@ -75,12 +75,22 @@ Result servicesInit(void)
 
 void calculateTitleDBHash(u8* hash)
 {
-    u32 titleCount, titlesRead;
+    u32 titleCount, nandCount, titlesRead, nandTitlesRead;
     AM_GetTitleCount(MEDIATYPE_SD, &titleCount);
-    u64 buf[titleCount];
-    AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, buf);
-    
-    sha256(hash, (u8*)buf, (titleCount + 1) * sizeof(u64));
+    if (Configuration::getInstance().nandSaves())
+    {
+        AM_GetTitleCount(MEDIATYPE_NAND, &nandCount);
+        u64 buf[titleCount + nandCount];
+        AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, buf);
+        AM_GetTitleList(&nandTitlesRead, MEDIATYPE_NAND, nandCount, buf + titlesRead * sizeof(u64));
+        sha256(hash, (u8*)buf, (titleCount + nandCount) * sizeof(u64));
+    }
+    else
+    {   
+        u64 buf[titleCount];
+        AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, buf);
+        sha256(hash, (u8*)buf, titleCount * sizeof(u64));
+    }
 }
 
 std::u16string StringUtils::UTF8toUTF16(const char* src)
