@@ -104,9 +104,13 @@ Configuration::Configuration(void)
 
 nlohmann::json Configuration::loadJson(const std::string& path)
 {
+    nlohmann::json json;
     FILE* in = fopen(path.c_str(), "rt");
-    nlohmann::json json = nlohmann::json::parse(in, nullptr, false);
-    fclose(in);
+    if (in != NULL)
+    {
+        json = nlohmann::json::parse(in, nullptr, false);
+        fclose(in);
+    }
     return json;
 }
 
@@ -117,8 +121,11 @@ void Configuration::storeJson(nlohmann::json& json, const std::string& path)
     size_t size = writeData.size();
 
     FILE* out = fopen(path.c_str(), "wt");
-    fwrite(writeData.c_str(), 1, size, out);
-    fclose(out);
+    if (out != NULL)
+    {
+        fwrite(writeData.c_str(), 1, size, out);
+        fclose(out);
+    }
 }
 
 void Configuration::store(void)

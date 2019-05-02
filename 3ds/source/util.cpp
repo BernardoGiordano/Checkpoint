@@ -55,12 +55,12 @@ Result servicesInit(void)
     
     if (R_FAILED(res = Archive::init())) return res;
     
-    mkdir("sdmc:/3ds", 0777);
-    mkdir("sdmc:/3ds/Checkpoint", 0777);
-    mkdir("sdmc:/3ds/Checkpoint/saves", 0777);
-    mkdir("sdmc:/3ds/Checkpoint/extdata", 0777);
-    mkdir("sdmc:/3ds/Checkpoint/cheats", 0777);
-    mkdir("sdmc:/cheats", 0777);
+    mkdir("sdmc:/3ds", 777);
+    mkdir("sdmc:/3ds/Checkpoint", 777);
+    mkdir("sdmc:/3ds/Checkpoint/saves", 777);
+    mkdir("sdmc:/3ds/Checkpoint/extdata", 777);
+    mkdir("sdmc:/3ds/Checkpoint/cheats", 777);
+    mkdir("sdmc:/cheats", 777);
     
     Gui::init();
     Threads::create((ThreadFunc)CheatManager::init);

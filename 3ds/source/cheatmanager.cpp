@@ -40,9 +40,12 @@ void CheatManager::init(void)
     {
         const std::string path = "/3ds/Checkpoint/cheats.json";
         FILE* in = fopen(path.c_str(), "rt");
-        mCheats = nlohmann::json::parse(in, nullptr, false);
-        fclose(in);
-        mLoaded = true;
+        if (in != NULL)
+        {
+            mCheats = nlohmann::json::parse(in, nullptr, false);
+            fclose(in);
+            mLoaded = true;
+        }
     }
     else
     {
@@ -68,6 +71,7 @@ void CheatManager::init(void)
 
             delete[] s;
             delete[] d;
+            fclose(f);
         }
     }
     
@@ -223,7 +227,14 @@ void CheatManager::save(const std::string& key, Scrollable* s)
         }
     }
 
-    FILE* file = fopen(("/cheats/" + key + ".txt").c_str(), "w");
-    fwrite(cheatFile.c_str(), 1, cheatFile.length(), file);
-    fclose(file);
+    FILE* f = fopen(("/cheats/" + key + ".txt").c_str(), "w");
+    if (f != NULL)
+    {
+        fwrite(cheatFile.c_str(), 1, cheatFile.length(), f);
+        fclose(f);
+    }
+    else
+    {
+        Gui::showError(errno, "Failed to write cheat file\nto the sd card");
+    }
 }
