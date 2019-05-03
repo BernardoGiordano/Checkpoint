@@ -39,7 +39,7 @@ C2D_TextBuf g_staticBuf, g_dynamicBuf;
 static C2D_Text ins1, ins2, ins3, ins4, c2dId, c2dMediatype;
 static C2D_Text checkpoint, version;
 // instructions text
-static C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_b, bot_r, bot_t, bot_x;
+static C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_x;
 
 // gui elements
 static Clickable* buttonBackup;
@@ -298,9 +298,6 @@ void Gui::init(void)
     C2D_TextParse(&top_my, g_staticBuf, "\uE003 hold to multiselect all titles");
     C2D_TextParse(&top_b, g_staticBuf, "\uE001 to exit target or deselect all titles");
     C2D_TextParse(&bot_ts, g_staticBuf, "\uE01D \uE006 to move\nbetween backups");
-    C2D_TextParse(&bot_b, g_staticBuf, "\uE01D \uE004");
-    C2D_TextParse(&bot_r, g_staticBuf, "\uE01D \uE005");
-    C2D_TextParse(&bot_t, g_staticBuf, "\uE01D");
     C2D_TextParse(&bot_x, g_staticBuf, "\uE002 to delete backups");
 
     C2D_TextOptimize(&ins1);
@@ -318,9 +315,6 @@ void Gui::init(void)
     C2D_TextOptimize(&top_my);
     C2D_TextOptimize(&top_b);
     C2D_TextOptimize(&bot_ts);
-    C2D_TextOptimize(&bot_b);
-    C2D_TextOptimize(&bot_r);
-    C2D_TextOptimize(&bot_t);
     C2D_TextOptimize(&bot_x);
 }
 
@@ -352,35 +346,44 @@ void Gui::updateButtons(void)
         buttonRestore->canChangeColorWhenSelected(true);
         buttonRestore->canChangeColorWhenSelected(false);
         buttonCheats->canChangeColorWhenSelected(false);
+        buttonPlayCoins->canChangeColorWhenSelected(false);
         buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
         buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
+        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
     }
     else if (g_bottomScrollEnabled)
     {
         buttonBackup->canChangeColorWhenSelected(true);
         buttonRestore->canChangeColorWhenSelected(true);
         buttonCheats->canChangeColorWhenSelected(true);
+        buttonPlayCoins->canChangeColorWhenSelected(true);
         buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
     }
     else
     {
         buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
     }
 
-    if (CheatManager::loaded())
+    static bool shouldCheckCheatManager = true;
+    if (CheatManager::loaded() && shouldCheckCheatManager)
     {
         buttonCheats->c2dText("Cheats");
         buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        shouldCheckCheatManager = false;
     }
-    else
+    else if (!CheatManager::loaded())
     {
         buttonCheats->c2dText("Loading...");
         buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
+        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
     }
 }
 
@@ -569,11 +572,8 @@ void Gui::draw(void)
     if (hidKeysHeld() & KEY_SELECT)
     {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, C2D_Color32(0, 0, 0, 190));
-        C2D_DrawText(&bot_ts, C2D_WithColor, 32, 134, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
-        C2D_DrawText(&bot_b, C2D_WithColor, 238, 107, 0.5f, 0.8f, 0.8f, COLOR_WHITE);
-        C2D_DrawText(&bot_r, C2D_WithColor, 238, 145, 0.5f, 0.8f, 0.8f, COLOR_WHITE);
-        C2D_DrawText(&bot_t, C2D_WithColor, 252, 183, 0.5f, 0.8f, 0.8f, COLOR_WHITE);
-        C2D_DrawText(&bot_x, C2D_WithColor, 32, 178, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+        C2D_DrawText(&bot_ts, C2D_WithColor, 16, 124, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+        C2D_DrawText(&bot_x, C2D_WithColor, 16, 168, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
     }
 
     frameEnd();

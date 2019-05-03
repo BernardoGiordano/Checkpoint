@@ -380,6 +380,7 @@ void Gui::draw(void)
         SDLH_DrawText(24, 100, 330, theme().c6, "\ue006 \ue080 to scroll between titles");
         SDLH_DrawText(24, 100, 360, theme().c6, "\ue000 to enter the selected title");
         SDLH_DrawText(24, 100, 390, theme().c6, "\ue001 to exit the selected title");
+        SDLH_DrawText(24, 616, 450, theme().c6, "\ue002 to delete a backup");
     }
 
     SDL_Color lightBlack = FC_MakeColor(theme().c0.r + 20, theme().c0.g + 20, theme().c0.b + 20, 255);
@@ -448,15 +449,17 @@ void Gui::updateButtons(void)
         buttonRestore->text("Restore \ue005");            
     }
 
-    if (CheatManager::loaded())
+    static bool shouldCheckCheatManager = true;
+    if (CheatManager::loaded() && shouldCheckCheatManager)
     {
         buttonCheats->text("Cheats");
-        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonCheats->setColors(theme().c2, theme().c6);
+        shouldCheckCheatManager = false;
     }
-    else
+    else if (!CheatManager::loaded())
     {
         buttonCheats->text("Loading...");
-        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
+        buttonCheats->setColors(theme().c2, theme().c5);
     }
 }
 
