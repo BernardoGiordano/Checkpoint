@@ -74,7 +74,7 @@ Result servicesInit(void)
         return -1;
     }
 
-    Threads::create((ThreadFunc)CheatManager::init);
+    CheatManager::init();
 
     Configuration::getInstance();
 

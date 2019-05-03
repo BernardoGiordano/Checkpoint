@@ -36,7 +36,6 @@
 #include "gui.hpp"
 #include "main.hpp"
 #include "scrollable.hpp"
-#include "thread.hpp"
 
 namespace CheatManager
 {

@@ -221,8 +221,8 @@ void CheatManager::save(const std::string& key, Scrollable* s)
 {
     std::string idfolder = StringUtils::format("/atmosphere/titles/%s", key.c_str());
     std::string rootfolder = idfolder + "/cheats";
-    mkdir(idfolder.c_str(), 0777);
-    mkdir(rootfolder.c_str(), 0777);
+    mkdir(idfolder.c_str(), 777);
+    mkdir(rootfolder.c_str(), 777);
 
     for (auto it = mCheats[key].begin(); it != mCheats[key].end(); ++it)
     {
