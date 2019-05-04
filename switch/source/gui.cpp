@@ -387,9 +387,12 @@ void Gui::draw(void)
         SDLH_DrawText(24, 100, 360, theme().c6, "\ue000 to enter the selected title");
         SDLH_DrawText(24, 100, 390, theme().c6, "\ue001 to exit the selected title");
         SDLH_DrawText(24, 616, 450, theme().c6, "\ue002 to delete a backup");
-        SDLH_DrawText(24, 16*6 + checkpoint_w + 8 + ver_w + inst_w, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
-            StringUtils::format("Configuration server running on %s:8000", getConsoleIP()).c_str());
-    }
+        if (gethostid() != INADDR_LOOPBACK)
+        {
+            SDLH_DrawText(24, 16*6 + checkpoint_w + 8 + ver_w + inst_w, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
+                StringUtils::format("Configuration server running on %s:8000", getConsoleIP()).c_str());
+        }
+     }
 
     SDLH_DrawRect(0, 672, checkpoint_w + ver_w + 2*16 + 8, 40, lightBlack);
     SDLH_DrawText(26, 16, 672 + (40 - checkpoint_h) / 2 + 2, theme().c6, "checkpoint");

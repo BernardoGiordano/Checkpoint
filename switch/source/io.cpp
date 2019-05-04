@@ -247,6 +247,7 @@ void io::backup(size_t index, u128 uid)
     FileSystem::unmount();
     if (!MS::multipleSelectionEnabled())
     {
+        blinkLed(4);
         Gui::showInfo("Progress correctly saved to disk.");
     }
     auto systemKeyboardAvailable = KeyboardManager::get().isSystemKeyboardAvailable();

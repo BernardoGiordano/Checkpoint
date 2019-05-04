@@ -26,12 +26,20 @@
 
 #include "util.hpp"
 
+bool g_notificationLedAvailable = false;
+
 void servicesExit(void)
 {
     CheatManager::exit();
+    
     // debug
     socketExit();
+    
     freeIcons();
+    if (g_notificationLedAvailable)
+    {
+        hidsysExit();
+    }
     nsExit();
     Account::exit();
     Gui::exit();
@@ -73,6 +81,11 @@ Result servicesInit(void)
     {
         return -1;
     }
+
+    if (R_SUCCEEDED(res = hidsysInitialize()))
+    {
+        g_notificationLedAvailable = true;
+    }  
 
     CheatManager::init();
 
@@ -117,4 +130,43 @@ std::string StringUtils::removeNotAscii(std::string str)
         }
     }
     return str; 
+}
+
+HidsysNotificationLedPattern blinkLedPattern(u8 times)
+{
+    HidsysNotificationLedPattern pattern;
+    memset(&pattern, 0, sizeof(pattern));
+
+    pattern.baseMiniCycleDuration = 0x1;             // 12.5ms.
+    pattern.totalMiniCycles = 0x2;                   // 2 mini cycles.
+    pattern.totalFullCycles = times;                 // Repeat n times.
+    pattern.startIntensity = 0x0;                    // 0%.
+
+    pattern.miniCycles[0].ledIntensity = 0xF;        // 100%.
+    pattern.miniCycles[0].transitionSteps = 0xF;     // 15 steps. Total 187.5ms.
+    pattern.miniCycles[0].finalStepDuration = 0x0;   // Forced 12.5ms.
+    pattern.miniCycles[1].ledIntensity = 0x0;        // 0%.
+    pattern.miniCycles[1].transitionSteps = 0xF;     // 15 steps. Total 187.5ms.
+    pattern.miniCycles[1].finalStepDuration = 0x0;   // Forced 12.5ms.
+
+    return pattern;
+}
+
+void blinkLed(u8 times)
+{
+    if (g_notificationLedAvailable)
+    {
+        size_t n;
+        u64 uniquePadIds[2];
+        HidsysNotificationLedPattern pattern = blinkLedPattern(times);
+        memset(uniquePadIds, 0, sizeof(uniquePadIds));
+        Result res = hidsysGetUniquePadsFromNpad(hidGetHandheldMode() ? CONTROLLER_HANDHELD : CONTROLLER_PLAYER_1, uniquePadIds, 2, &n);
+        if (R_SUCCEEDED(res))
+        {
+            for (size_t i = 0; i < n; i++)
+            {
+                hidsysSetNotificationLedPattern(&pattern, uniquePadIds[i]);
+            }
+        }
+    }
 }

@@ -42,6 +42,8 @@
 
 void   servicesExit(void);
 Result servicesInit(void);
+HidsysNotificationLedPattern blinkLedPattern(u8 times);
+void blinkLed(u8 times);
 
 namespace StringUtils
 {

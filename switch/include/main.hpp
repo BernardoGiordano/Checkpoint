@@ -35,5 +35,6 @@
 #include "pksmbridge.hpp"
 
 extern u128 g_currentUId;
+extern bool g_notificationLedAvailable;
 
 #endif

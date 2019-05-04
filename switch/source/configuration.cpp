@@ -33,6 +33,9 @@ static const char *s_http_port = "8000";
 
 static void handle_populate(struct mg_connection *nc, struct http_message *hm)
 {
+    // populate gets called at startup, assume a new connection has been started
+    blinkLed(2);
+
     auto json = Configuration::getInstance().getJson();
     auto map = getCompleteTitleList();
     json["title_list"] = map;
