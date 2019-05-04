@@ -241,7 +241,7 @@ bool Gui::init(void)
     backupList = new Scrollable(538, 276, 414, 380, rows);
     buttonBackup = new Clickable(956, 276, 220, 80, theme().c2, theme().c6, "Backup \ue004", true);
     buttonRestore = new Clickable(956, 360, 220, 80, theme().c2, theme().c6, "Restore \ue005", true);
-    buttonCheats = new Clickable(956, 444, 220, 80, theme().c2, theme().c6, "Cheats", true);
+    buttonCheats = new Clickable(956, 444, 220, 80, theme().c2, theme().c6, "Cheats \ue0c5", true);
     buttonBackup->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
     buttonCheats->canChangeColorWhenSelected(true);
@@ -371,7 +371,13 @@ void Gui::draw(void)
         buttonRestore->draw(30, FC_MakeColor(0, 0, 0, 0));
         buttonCheats->draw(30, FC_MakeColor(0, 0, 0, 0));
     }
-    
+
+    SDL_Color lightBlack = FC_MakeColor(theme().c0.r + 20, theme().c0.g + 20, theme().c0.b + 20, 255);
+    u32 ver_w, ver_h, checkpoint_h, checkpoint_w, inst_w, inst_h;
+    SDLH_GetTextDimensions(20, ver, &ver_w, &ver_h);
+    SDLH_GetTextDimensions(26, "checkpoint", &checkpoint_w, &checkpoint_h);
+    SDLH_GetTextDimensions(24, "\ue046 Instructions", &inst_w, &inst_h);
+
     if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_MINUS)
     {
         SDLH_DrawRect(0, 0, 1280, 720, FC_MakeColor(0, 0, 0, 190));
@@ -381,13 +387,10 @@ void Gui::draw(void)
         SDLH_DrawText(24, 100, 360, theme().c6, "\ue000 to enter the selected title");
         SDLH_DrawText(24, 100, 390, theme().c6, "\ue001 to exit the selected title");
         SDLH_DrawText(24, 616, 450, theme().c6, "\ue002 to delete a backup");
+        SDLH_DrawText(24, 16*6 + checkpoint_w + 8 + ver_w + inst_w, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
+            StringUtils::format("Configuration server running on %s:8000", getConsoleIP()).c_str());
     }
 
-    SDL_Color lightBlack = FC_MakeColor(theme().c0.r + 20, theme().c0.g + 20, theme().c0.b + 20, 255);
-    u32 ver_w, ver_h, checkpoint_h, checkpoint_w, inst_h;
-    SDLH_GetTextDimensions(20, ver, &ver_w, &ver_h);
-    SDLH_GetTextDimensions(26, "checkpoint", &checkpoint_w, &checkpoint_h);
-    SDLH_GetTextDimensions(24, "\ue046 Instructions", NULL, &inst_h);
     SDLH_DrawRect(0, 672, checkpoint_w + ver_w + 2*16 + 8, 40, lightBlack);
     SDLH_DrawText(26, 16, 672 + (40 - checkpoint_h) / 2 + 2, theme().c6, "checkpoint");
     SDLH_DrawText(20, 16 + checkpoint_w + 8, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - ver_h, theme().c6, ver);
@@ -452,7 +455,7 @@ void Gui::updateButtons(void)
     static bool shouldCheckCheatManager = true;
     if (CheatManager::loaded() && shouldCheckCheatManager)
     {
-        buttonCheats->text("Cheats");
+        buttonCheats->text("Cheats \ue0c5");
         buttonCheats->setColors(theme().c2, theme().c6);
         shouldCheckCheatManager = false;
     }

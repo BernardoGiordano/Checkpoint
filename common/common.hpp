@@ -36,6 +36,10 @@
 #include <string>
 #include <string.h>
 #include <time.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
 
 namespace DateTime
 {
@@ -55,5 +59,7 @@ namespace StringUtils
     void rtrim(std::string &s);
     void trim(std::string &s);
 }
+
+char* getConsoleIP(void);
 
 #endif

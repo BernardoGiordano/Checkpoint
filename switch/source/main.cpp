@@ -258,7 +258,7 @@ int main(int argc, char** argv)
             }
         }
 
-        if (Gui::isCheatReleased() && CheatManager::loaded())
+        if ((Gui::isCheatReleased() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RSTICK)) && CheatManager::loaded())
         {
             if (MS::multipleSelectionEnabled())
             {

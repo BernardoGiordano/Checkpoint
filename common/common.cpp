@@ -119,3 +119,10 @@ void StringUtils::trim(std::string &s)
     ltrim(s);
     rtrim(s);
 }
+
+char* getConsoleIP(void)
+{
+    struct in_addr in;
+    in.s_addr = gethostid();
+	return inet_ntoa(in);
+}
