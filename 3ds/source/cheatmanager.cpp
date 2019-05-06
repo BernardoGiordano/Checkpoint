@@ -124,9 +124,11 @@ void CheatManager::manageCheats(const std::string& key)
     }
 
     const float scale = 0.47f;
-    C2D_Text multiSelectText;
+    C2D_Text multiSelectText, multiDeselectText;
     C2D_TextParse(&multiSelectText, g_dynamicBuf, "\uE003 to select all cheats");
+    C2D_TextParse(&multiDeselectText, g_dynamicBuf, "\uE003 to deselect all cheats");
     C2D_TextOptimize(&multiSelectText);
+    C2D_TextOptimize(&multiDeselectText);
 
     while(aptMainLoop())
     {
@@ -196,7 +198,7 @@ void CheatManager::manageCheats(const std::string& key)
         C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_GREY_DARK);
         s->draw(true);
         C2D_DrawText(&page, C2D_WithColor, ceilf(396 - page.width * scale), 224, 0.5f, scale, scale, COLOR_WHITE);
-        C2D_DrawText(&multiSelectText, C2D_WithColor, 4, 224, 0.5f, scale, scale, COLOR_WHITE);
+        C2D_DrawText(multiSelected ? &multiDeselectText : &multiSelectText, C2D_WithColor, 4, 224, 0.5f, scale, scale, COLOR_WHITE);
         Gui::frameEnd();
     }
 
