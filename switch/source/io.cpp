@@ -314,6 +314,7 @@ void io::restore(size_t index, u128 uid)
     }
     else
     {
+        blinkLed(4);
         Gui::showInfo(Gui::nameFromCell(cellIndex) + "\nhas been restored successfully.");
     }
     

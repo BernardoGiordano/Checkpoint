@@ -227,6 +227,7 @@ int main(int argc, char** argv)
                 }
                 MS::clearSelectedEntries();
                 Gui::updateButtons();
+                blinkLed(4);
                 Gui::showInfo("Progress correctly saved to disk.");
             }
             else if (g_backupScrollEnabled)

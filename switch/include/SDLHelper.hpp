@@ -24,7 +24,6 @@ void SDLH_DrawIcon(std::string icon, int x, int y);
 void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h);
 void SDLH_DrawTextBox(int size, int x, int y, SDL_Color color, int max, const char* text);
 void SDLH_Render(void);
-void SDLH_PlayClick(void);
 
 void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color);
 void drawPulsingRect(int x, int y, int w, int h, SDL_Color color);
