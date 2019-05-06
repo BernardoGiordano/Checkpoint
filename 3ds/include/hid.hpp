@@ -34,7 +34,7 @@ class HidHorizontal : public IHidHorizontal
 {
 public:
     HidHorizontal(size_t entries, size_t columns)
-    : IHidHorizontal(entries, columns) { mDelayTicks = 50000000; }
+    : IHidHorizontal(entries, columns) { mDelayTicks = 35000000; }
 
     virtual ~HidHorizontal(void) { }
 
