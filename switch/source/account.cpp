@@ -1,28 +1,28 @@
 /*
-*   This file is part of Checkpoint
-*   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
-*
-*   This program is free software: you can redistribute it and/or modify
-*   it under the terms of the GNU General Public License as published by
-*   the Free Software Foundation, either version 3 of the License, or
-*   (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*   GNU General Public License for more details.
-*
-*   You should have received a copy of the GNU General Public License
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
-*       * Requiring preservation of specified reasonable legal notices or
-*         author attributions in that material or in the Appropriate Legal
-*         Notices displayed by works containing it.
-*       * Prohibiting misrepresentation of the origin of that material,
-*         or requiring that modified versions of such material be marked in
-*         reasonable ways as different from the original version.
-*/
+ *   This file is part of Checkpoint
+ *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+ *       * Requiring preservation of specified reasonable legal notices or
+ *         author attributions in that material or in the Appropriate Legal
+ *         Notices displayed by works containing it.
+ *       * Prohibiting misrepresentation of the origin of that material,
+ *         or requiring that modified versions of such material be marked in
+ *         reasonable ways as different from the original version.
+ */
 
 #include "account.hpp"
 
@@ -35,8 +35,7 @@ Result Account::init(void)
 
 void Account::exit(void)
 {
-    for (auto& value : mUsers)
-    {
+    for (auto& value : mUsers) {
         SDL_DestroyTexture(value.second.icon);
     }
     accountExit();
@@ -45,8 +44,7 @@ void Account::exit(void)
 std::vector<u128> Account::ids(void)
 {
     std::vector<u128> v;
-    for (auto& value : mUsers)
-    {
+    for (auto& value : mUsers) {
         v.push_back(value.second.id);
     }
     return v;
@@ -54,23 +52,19 @@ std::vector<u128> Account::ids(void)
 
 static User getUser(u128 id)
 {
-    User user{ id, "", NULL };
+    User user{id, "", NULL};
     AccountProfile profile;
     AccountProfileBase profilebase;
     memset(&profilebase, 0, sizeof(profilebase));
 
-    if (R_SUCCEEDED(accountGetProfile(&profile, id)) && 
-        R_SUCCEEDED(accountProfileGet(&profile, NULL, &profilebase)))
-    {
+    if (R_SUCCEEDED(accountGetProfile(&profile, id)) && R_SUCCEEDED(accountProfileGet(&profile, NULL, &profilebase))) {
         user.name = std::string(profilebase.username, 0x20);
 
-        //load icon
+        // load icon
         u8* buffer;
         size_t image_size, real_size;
-        if (R_SUCCEEDED(accountProfileGetImageSize(&profile, &image_size)) &&
-            (buffer = (u8*)malloc(image_size)) != NULL &&
-            R_SUCCEEDED(accountProfileLoadImage(&profile, buffer, image_size, &real_size)))
-        {
+        if (R_SUCCEEDED(accountProfileGetImageSize(&profile, &image_size)) && (buffer = (u8*)malloc(image_size)) != NULL &&
+            R_SUCCEEDED(accountProfileLoadImage(&profile, buffer, image_size, &real_size))) {
             SDLH_LoadImage(&user.icon, buffer, image_size);
             free(buffer);
         }
@@ -83,8 +77,7 @@ static User getUser(u128 id)
 std::string Account::username(u128 id)
 {
     std::map<u128, User>::const_iterator got = mUsers.find(id);
-    if (got == mUsers.end())
-    {
+    if (got == mUsers.end()) {
         User user = getUser(id);
         mUsers.insert({id, user});
         return user.name;
@@ -96,8 +89,7 @@ std::string Account::username(u128 id)
 SDL_Texture* Account::icon(u128 id)
 {
     std::map<u128, User>::const_iterator got = mUsers.find(id);
-    if (got == mUsers.end())
-    {
+    if (got == mUsers.end()) {
         User user = getUser(id);
         mUsers.insert({id, user});
         return user.icon;
@@ -120,7 +112,7 @@ u128 Account::selectAccount(void)
     LibAppletArgs args;
 
     u8 indata[0xA0] = {0};
-    indata[0x96] = 1;
+    indata[0x96]    = 1;
 
     appletCreateLibraryApplet(&aph, AppletId_playerSelect, LibAppletMode_AllForeground);
     libappletArgsCreate(&args, 0);
@@ -132,7 +124,8 @@ u128 Account::selectAccount(void)
     appletHolderPushInData(&aph, &hast1);
     appletHolderStart(&aph);
 
-    while (appletHolderWaitInteractiveOut(&aph));
+    while (appletHolderWaitInteractiveOut(&aph))
+        ;
 
     appletHolderJoin(&aph);
     appletHolderPopOutData(&aph, &ast);

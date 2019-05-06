@@ -1,39 +1,36 @@
 /*
-*   This file is part of Checkpoint
-*   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
-*
-*   This program is free software: you can redistribute it and/or modify
-*   it under the terms of the GNU General Public License as published by
-*   the Free Software Foundation, either version 3 of the License, or
-*   (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*   GNU General Public License for more details.
-*
-*   You should have received a copy of the GNU General Public License
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
-*       * Requiring preservation of specified reasonable legal notices or
-*         author attributions in that material or in the Appropriate Legal
-*         Notices displayed by works containing it.
-*       * Prohibiting misrepresentation of the origin of that material,
-*         or requiring that modified versions of such material be marked in
-*         reasonable ways as different from the original version.
-*/
+ *   This file is part of Checkpoint
+ *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+ *       * Requiring preservation of specified reasonable legal notices or
+ *         author attributions in that material or in the Appropriate Legal
+ *         Notices displayed by works containing it.
+ *       * Prohibiting misrepresentation of the origin of that material,
+ *         or requiring that modified versions of such material be marked in
+ *         reasonable ways as different from the original version.
+ */
 
 #ifndef GUI_HPP
 #define GUI_HPP
 
-#include <math.h>
-#include <switch.h>
-#include <string.h>
-#include "account.hpp"
-#include "colors.hpp"
-#include "clickable.hpp"
 #include "SDLHelper.hpp"
+#include "account.hpp"
+#include "clickable.hpp"
+#include "colors.hpp"
 #include "hid.hpp"
 #include "main.hpp"
 #include "multiselection.hpp"
@@ -42,39 +39,40 @@
 #include "title.hpp"
 #include "types.hpp"
 #include "util.hpp"
+#include <math.h>
+#include <string.h>
+#include <switch.h>
 
-namespace Gui
-{
-    bool        init(void);
-    void        exit(void);
-    void        draw(void);
+namespace Gui {
+    bool init(void);
+    void exit(void);
+    void draw(void);
 
-    void        showInfo(const std::string& message);
-    void        showError(Result res, const std::string& message);
+    void showInfo(const std::string& message);
+    void showError(Result res, const std::string& message);
 
-    size_t      count(entryType_t type);
-    void        entryType(entryType_t type);
-    size_t      index(entryType_t type);
-    void        index(entryType_t type, size_t i);
-    bool        isBackupReleased(void);
-    bool        isRestoreReleased(void);
-    bool        isCheatReleased(void);
+    size_t count(entryType_t type);
+    void entryType(entryType_t type);
+    size_t index(entryType_t type);
+    void index(entryType_t type, size_t i);
+    bool isBackupReleased(void);
+    bool isRestoreReleased(void);
+    bool isCheatReleased(void);
     std::string nameFromCell(size_t index);
-    void        resetIndex(entryType_t type);
-    void        updateButtons(void);
-    void        updateSelector(void);
+    void resetIndex(entryType_t type);
+    void updateButtons(void);
+    void updateSelector(void);
 
-    bool        askForConfirmation(const std::string& text);
-    void        drawCopy(const std::string& src, u64 offset, u64 size);
+    bool askForConfirmation(const std::string& text);
+    void drawCopy(const std::string& src, u64 offset, u64 size);
 
-    void        addSelectedEntry(size_t idx);
-    void        clearSelectedEntries(void);
-    bool        multipleSelectionEnabled(void);
-    std::vector
-    <size_t>    selectedEntries(void);
+    void addSelectedEntry(size_t idx);
+    void clearSelectedEntries(void);
+    bool multipleSelectionEnabled(void);
+    std::vector<size_t> selectedEntries(void);
 
-    bool        getPKSMBridgeFlag(void);
-    void        setPKSMBridgeFlag(bool f);
+    bool getPKSMBridgeFlag(void);
+    void setPKSMBridgeFlag(bool f);
 }
 
 #endif

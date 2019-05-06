@@ -42,9 +42,11 @@ VERSION_MICRO := 0
 TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out
 BUILD			:=	build
-SOURCES			:=	source ../common ../3rd-party/sha256
+FORMATSOURCES	:=	source ../common
+SOURCES			:=	$(FORMATSOURCES) ../3rd-party/sha256
 DATA			:=	data
-INCLUDES		:=	include ../common ../3rd-party/json ../3rd-party/sha256
+FORMATINCLUDES	:=	include ../common
+INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/sha256
 GRAPHICS		:=	assets/gfx
 ROMFS			:=	assets/romfs
 GFXBUILD		:=	$(ROMFS)/gfx
@@ -180,7 +182,7 @@ ifneq ($(ROMFS),)
 	export _3DSXFLAGS += --romfs=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: all clean
+.PHONY: all clean format
 
 #---------------------------------------------------------------------------------
 all:
@@ -199,7 +201,9 @@ endif
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(OUTDIR)
-
+#---------------------------------------------------------------------------------
+format:
+	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))
 #---------------------------------------------------------------------------------
 else
 

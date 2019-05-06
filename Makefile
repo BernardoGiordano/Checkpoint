@@ -12,4 +12,7 @@ clean:
 switch:
 	@$(MAKE) -C switch
 
-.PHONY: $(SUBDIRS)
+format:
+	@for dir in $(SUBDIRS); do $(MAKE) -C $$dir format; done
+
+.PHONY: $(SUBDIRS) clean format

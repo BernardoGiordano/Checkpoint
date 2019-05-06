@@ -38,16 +38,18 @@ APP_TITLE	:=	Checkpoint
 APP_AUTHOR	:=	Bernardo Giordano, FlagBrew
 APP_VERSION	:=	${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
 
-TARGET		:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
-OUTDIR		:=	out
-BUILD		:=	build
-SOURCES		:=	source ../common ../3rd-party/mongoose
-DATA		:=	data
-INCLUDES	:=	include ../common ../3rd-party/mongoose ../3rd-party/json
-EXEFS_SRC	:=	exefs_src
-ROMFS		:=	romfs
-SHARKIVE	:=	../sharkive
-CHEATS		:=	cheats
+TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
+OUTDIR			:=	out
+BUILD			:=	build
+FORMATSOURCES	:=	source ../common
+SOURCES			:=	$(FORMATSOURCES) ../3rd-party/mongoose
+DATA			:=	data
+FORMATINCLUDES	:=	include ../common
+INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/mongoose ../3rd-party/json
+EXEFS_SRC		:=	exefs_src
+ROMFS			:=	romfs
+SHARKIVE		:=	../sharkive
+CHEATS			:=	cheats
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -160,7 +162,7 @@ ifneq ($(ROMFS),)
 	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: $(BUILD) clean all
+.PHONY: $(BUILD) clean all format
 
 #---------------------------------------------------------------------------------
 all: $(BUILD)
@@ -179,9 +181,12 @@ endif
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(OUTDIR)
-
+#---------------------------------------------------------------------------------
+format:
+	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))
 #---------------------------------------------------------------------------------
 else
+
 .PHONY:	all
 
 DEPENDS	:=	$(OFILES:.o=.d)

@@ -1,28 +1,28 @@
 /*
-*   This file is part of Checkpoint
-*   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
-*
-*   This program is free software: you can redistribute it and/or modify
-*   it under the terms of the GNU General Public License as published by
-*   the Free Software Foundation, either version 3 of the License, or
-*   (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*   GNU General Public License for more details.
-*
-*   You should have received a copy of the GNU General Public License
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
-*       * Requiring preservation of specified reasonable legal notices or
-*         author attributions in that material or in the Appropriate Legal
-*         Notices displayed by works containing it.
-*       * Prohibiting misrepresentation of the origin of that material,
-*         or requiring that modified versions of such material be marked in
-*         reasonable ways as different from the original version.
-*/
+ *   This file is part of Checkpoint
+ *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+ *       * Requiring preservation of specified reasonable legal notices or
+ *         author attributions in that material or in the Appropriate Legal
+ *         Notices displayed by works containing it.
+ *       * Prohibiting misrepresentation of the origin of that material,
+ *         or requiring that modified versions of such material be marked in
+ *         reasonable ways as different from the original version.
+ */
 
 /*
  *  This file is part of TWLSaveTool.
@@ -56,7 +56,7 @@ extern "C" {
 #define SPI_512B_EEPROM_CMD_RDLO 3
 #define SPI_512B_EEPROM_CMD_RDHI 11
 
-#define SPI_EEPROM_CMD_WRITE 2 
+#define SPI_EEPROM_CMD_WRITE 2
 
 #define SPI_CMD_PP 2
 #define SPI_CMD_READ 3
@@ -70,30 +70,30 @@ extern "C" {
 #define SPI_FLG_WIP 1
 #define SPI_FLG_WEL 2
 
-extern u8* fill_buf; 
+extern u8* fill_buf;
 
 typedef enum {
     NO_CHIP = -1,
-    
+
     EEPROM_512B = 0,
-    
-    EEPROM_8KB = 1,
-    EEPROM_64KB = 2,
-    EEPROM_128KB = 3,
+
+    EEPROM_8KB       = 1,
+    EEPROM_64KB      = 2,
+    EEPROM_128KB     = 3,
     EEPROM_STD_DUMMY = 1,
-    
-    FLASH_256KB_1 = 4,
-    FLASH_256KB_2 = 5,
-    FLASH_512KB_1 = 6,
-    FLASH_512KB_2 = 7,
-    FLASH_1MB = 8,
-    FLASH_8MB = 9, // <- can't restore savegames, and maybe not read them atm
+
+    FLASH_256KB_1   = 4,
+    FLASH_256KB_2   = 5,
+    FLASH_512KB_1   = 6,
+    FLASH_512KB_2   = 7,
+    FLASH_1MB       = 8,
+    FLASH_8MB       = 9, // <- can't restore savegames, and maybe not read them atm
     FLASH_STD_DUMMY = 4,
-    
+
     FLASH_512KB_INFRARED = 10,
     FLASH_256KB_INFRARED = 11, // AFAIK, only "Active Health with Carol Vorderman" has such a flash save memory
     FLASH_INFRARED_DUMMY = 9,
-    
+
     CHIP_LAST = 11,
 } CardType;
 

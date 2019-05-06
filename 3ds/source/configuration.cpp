@@ -1,74 +1,67 @@
 /*
-*   This file is part of Checkpoint
-*   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
-*
-*   This program is free software: you can redistribute it and/or modify
-*   it under the terms of the GNU General Public License as published by
-*   the Free Software Foundation, either version 3 of the License, or
-*   (at your option) any later version.
-*
-*   This program is distributed in the hope that it will be useful,
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*   GNU General Public License for more details.
-*
-*   You should have received a copy of the GNU General Public License
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
-*       * Requiring preservation of specified reasonable legal notices or
-*         author attributions in that material or in the Appropriate Legal
-*         Notices displayed by works containing it.
-*       * Prohibiting misrepresentation of the origin of that material,
-*         or requiring that modified versions of such material be marked in
-*         reasonable ways as different from the original version.
-*/
+ *   This file is part of Checkpoint
+ *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+ *       * Requiring preservation of specified reasonable legal notices or
+ *         author attributions in that material or in the Appropriate Legal
+ *         Notices displayed by works containing it.
+ *       * Prohibiting misrepresentation of the origin of that material,
+ *         or requiring that modified versions of such material be marked in
+ *         reasonable ways as different from the original version.
+ */
 
 #include "configuration.hpp"
 
 Configuration::Configuration(void)
 {
     // check for existing config.json files on the sd card, BASEPATH
-    if (!io::fileExists(Archive::sdmc(), StringUtils::UTF8toUTF16(BASEPATH.c_str())))
-    {
+    if (!io::fileExists(Archive::sdmc(), StringUtils::UTF8toUTF16(BASEPATH.c_str()))) {
         store();
     }
 
     mJson = loadJson(BASEPATH);
 
     bool updateJson = false;
-    if (mJson.find("version") == mJson.end())
-    {
+    if (mJson.find("version") == mJson.end()) {
         // if config is present but is < 3.4.2, override it
         store();
     }
-    else 
-    {
+    else {
         // 3.4.2 -> 3.5.0
-        if (mJson["version"] < 2)
-        {
+        if (mJson["version"] < 2) {
             mJson["favorites"] = nlohmann::json::array();
-            updateJson = true;
+            updateJson         = true;
         }
     }
 
-    if (updateJson) 
-    {
+    if (updateJson) {
         mJson["version"] = CONFIG_VERSION;
         storeJson(mJson, BASEPATH);
     }
 
     // parse filters
     std::vector<std::string> filter = mJson["filter"];
-    for (auto& id : filter)
-    {
+    for (auto& id : filter) {
         mFilterIds.emplace(strtoull(id.c_str(), NULL, 16));
     }
 
     // parse favorites
     std::vector<std::string> favorites = mJson["favorites"];
-    for (auto& id : favorites)
-    {
+    for (auto& id : favorites) {
         mFavoriteIds.emplace(strtoull(id.c_str(), NULL, 16));
     }
 
@@ -77,12 +70,10 @@ Configuration::Configuration(void)
 
     // parse additional save folders
     auto js = mJson["additional_save_folders"];
-    for (auto it = js.begin(); it != js.end(); ++it)
-    {
+    for (auto it = js.begin(); it != js.end(); ++it) {
         std::vector<std::string> folders = it.value()["folders"];
         std::vector<std::u16string> u16folders;
-        for (auto& folder : folders)
-        {
+        for (auto& folder : folders) {
             u16folders.push_back(StringUtils::UTF8toUTF16(folder.c_str()));
         }
         mAdditionalSaveFolders.emplace(strtoull(it.key().c_str(), NULL, 16), u16folders);
@@ -90,12 +81,10 @@ Configuration::Configuration(void)
 
     // parse additional extdata folders
     auto je = mJson["additional_extdata_folders"];
-    for (auto it = je.begin(); it != je.end(); ++it)
-    {
+    for (auto it = je.begin(); it != je.end(); ++it) {
         std::vector<std::string> folders = it.value()["folders"];
         std::vector<std::u16string> u16folders;
-        for (auto& folder : folders)
-        {
+        for (auto& folder : folders) {
             u16folders.push_back(StringUtils::UTF8toUTF16(folder.c_str()));
         }
         mAdditionalExtdataFolders.emplace(strtoull(it.key().c_str(), NULL, 16), u16folders);
@@ -106,8 +95,7 @@ nlohmann::json Configuration::loadJson(const std::string& path)
 {
     nlohmann::json json;
     FILE* in = fopen(path.c_str(), "rt");
-    if (in != NULL)
-    {
+    if (in != NULL) {
         json = nlohmann::json::parse(in, nullptr, false);
         fclose(in);
     }
@@ -121,8 +109,7 @@ void Configuration::storeJson(nlohmann::json& json, const std::string& path)
     size_t size = writeData.size();
 
     FILE* out = fopen(path.c_str(), "wt");
-    if (out != NULL)
-    {
+    if (out != NULL) {
         fwrite(writeData.c_str(), 1, size, out);
         fclose(out);
     }
