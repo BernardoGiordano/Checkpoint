@@ -172,7 +172,7 @@ void Title::refreshDirectories(void)
 
     // save backups from configuration
     std::vector<std::string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
-    for (std::vector<std::string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); it++) {
+    for (std::vector<std::string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
         // we have other folders to parse
         Directory list(*it);
         if (list.good()) {

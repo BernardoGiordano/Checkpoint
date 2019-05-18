@@ -40,12 +40,12 @@ KeyboardManager::KeyboardManager(void)
 std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& suggestion)
 {
     if (systemKeyboardAvailable) {
-        char tmpoutstr[CUSTOM_PATH_LEN] = {0};
         SwkbdConfig kbd;
         if (R_SUCCEEDED(swkbdCreate(&kbd, 0))) {
             swkbdConfigMakePresetDefault(&kbd);
             swkbdConfigSetInitialText(&kbd, suggestion.c_str());
             swkbdConfigSetStringLenMax(&kbd, CUSTOM_PATH_LEN);
+            char tmpoutstr[CUSTOM_PATH_LEN] = {0};
             Result res = swkbdShow(&kbd, tmpoutstr, CUSTOM_PATH_LEN);
             swkbdClose(&kbd);
             if (R_SUCCEEDED(res)) {

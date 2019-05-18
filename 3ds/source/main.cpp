@@ -181,8 +181,6 @@ int main()
                         Gui::updateButtons();
                     }
                     else {
-                        Title title;
-                        getTitle(title, Gui::index());
                         std::string key = StringUtils::format("%016llX", title.id());
                         if (CheatManager::availableCodes(key)) {
                             CheatManager::manageCheats(key);

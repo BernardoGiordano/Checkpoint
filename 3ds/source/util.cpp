@@ -123,8 +123,8 @@ static std::queue<u16> widthCacheOrder;
 std::string StringUtils::splitWord(const std::string& text, float scaleX, float maxWidth)
 {
     std::string word   = text;
-    float currentWidth = 0.0f;
     if (StringUtils::textWidth(word, scaleX) > maxWidth) {
+        float currentWidth = 0.0f;
         for (size_t i = 0; i < word.size(); i++) {
             u16 codepoint = 0xFFFF;
             int iMod      = 0;
@@ -225,7 +225,7 @@ std::string StringUtils::wrap(const std::string& text, float scaleX, float maxWi
     std::string dst, line, word;
     dst = line = word = "";
 
-    for (std::string::const_iterator it = text.begin(); it != text.end(); it++) {
+    for (std::string::const_iterator it = text.begin(); it != text.end(); ++it) {
         word += *it;
         if (*it == ' ') {
             // split single words that are bigger than maxWidth

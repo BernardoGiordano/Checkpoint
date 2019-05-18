@@ -190,11 +190,3 @@ void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
     SDLH_DrawRect(x + w, y, size, h, color);                      // right
     SDLH_DrawRect(x - size, y + h, w + 2 * size, size, color);    // bottom
 }
-
-void drawPulsingRect(int x, int y, int w, int h, SDL_Color color)
-{
-    float highlight_multiplier = fmax(0.0, fabs(fmod(g_currentTime, 1.0) - 0.5) / 0.5);
-    color                      = FC_MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier,
-        color.b + (255 - color.b) * highlight_multiplier, 255);
-    SDLH_DrawRect(x, y, w, h, color);
-}

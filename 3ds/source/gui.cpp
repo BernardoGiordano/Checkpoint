@@ -101,26 +101,26 @@ bool Gui::askForConfirmation(const std::string& message)
     bool ret             = false;
     Clickable* buttonYes = new Clickable(42, 162, 116, 36, COLOR_GREY_DARK, COLOR_WHITE, "\uE000 Yes", true);
     Clickable* buttonNo  = new Clickable(162, 162, 116, 36, COLOR_GREY_DARK, COLOR_WHITE, "\uE001 No", true);
-    HidHorizontal* hid   = new HidHorizontal(2, 2);
+    HidHorizontal* mhid  = new HidHorizontal(2, 2);
     C2D_Text text;
     C2D_TextParse(&text, g_dynamicBuf, message.c_str());
     C2D_TextOptimize(&text);
 
     while (aptMainLoop()) {
         hidScanInput();
-        hid->update(2);
+        mhid->update(2);
 
-        if (buttonYes->released() || ((hidKeysDown() & KEY_A) && hid->index() == 0)) {
+        if (buttonYes->released() || ((hidKeysDown() & KEY_A) && mhid->index() == 0)) {
             ret = true;
             break;
         }
-        else if (buttonNo->released() || (hidKeysDown() & KEY_B) || ((hidKeysDown() & KEY_A) && hid->index() == 1)) {
+        else if (buttonNo->released() || (hidKeysDown() & KEY_B) || ((hidKeysDown() & KEY_A) && mhid->index() == 1)) {
             break;
         }
 
-        hid->index(buttonYes->held() ? 0 : buttonNo->held() ? 1 : hid->index());
-        buttonYes->selected(hid->index() == 0);
-        buttonNo->selected(hid->index() == 1);
+        mhid->index(buttonYes->held() ? 0 : buttonNo->held() ? 1 : mhid->index());
+        buttonYes->selected(mhid->index() == 0);
+        buttonNo->selected(mhid->index() == 1);
 
         C2D_TextBufClear(g_dynamicBuf);
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
@@ -133,7 +133,7 @@ bool Gui::askForConfirmation(const std::string& message)
         buttonYes->draw(0.7, 0);
         buttonNo->draw(0.7, 0);
 
-        if (hid->index() == 0) {
+        if (mhid->index() == 0) {
             drawPulsingOutline(42, 162, 116, 36, 2, COLOR_BLUE);
         }
         else {
@@ -143,7 +143,7 @@ bool Gui::askForConfirmation(const std::string& message)
         frameEnd();
     }
 
-    delete hid;
+    delete mhid;
     delete buttonYes;
     delete buttonNo;
     return ret;

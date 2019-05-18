@@ -15,4 +15,7 @@ switch:
 format:
 	@for dir in $(SUBDIRS); do $(MAKE) -C $$dir format; done
 
-.PHONY: $(SUBDIRS) clean format
+cppcheck:
+	cppcheck . --enable=all 2> cppcheck.log
+
+.PHONY: $(SUBDIRS) clean format cppcheck

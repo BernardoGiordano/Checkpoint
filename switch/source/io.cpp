@@ -35,8 +35,12 @@ bool io::fileExists(const std::string& path)
 void io::copyFile(const std::string& srcPath, const std::string& dstPath)
 {
     FILE* src = fopen(srcPath.c_str(), "rb");
+    if (src == NULL) {
+        return;
+    }
     FILE* dst = fopen(dstPath.c_str(), "wb");
-    if (!src || !dst) {
+    if (dst == NULL) {
+        fclose(src);
         return;
     }
 
@@ -208,7 +212,7 @@ void io::backup(size_t index, u128 uid)
         }
     }
 
-    res = io::createDirectory(dstPath);
+    io::createDirectory(dstPath);
     res = io::copyDirectory("save:/", dstPath + "/");
     if (R_FAILED(res)) {
         FileSystem::unmount();

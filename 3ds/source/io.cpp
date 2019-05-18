@@ -338,10 +338,10 @@ void io::restore(size_t index)
             std::u16string dstPath = StringUtils::UTF8toUTF16("/");
 
             if (mode != MODE_EXTDATA) {
-                res = FSUSER_DeleteDirectoryRecursively(archive, fsMakePath(PATH_UTF16, dstPath.data()));
+                FSUSER_DeleteDirectoryRecursively(archive, fsMakePath(PATH_UTF16, dstPath.data()));
             }
             else {
-                res = deleteFolderRecursively(archive, dstPath);
+                deleteFolderRecursively(archive, dstPath);
             }
 
             res = io::copyDirectory(Archive::sdmc(), archive, srcPath, dstPath);

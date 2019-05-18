@@ -26,6 +26,5 @@ void SDLH_DrawTextBox(int size, int x, int y, SDL_Color color, int max, const ch
 void SDLH_Render(void);
 
 void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color);
-void drawPulsingRect(int x, int y, int w, int h, SDL_Color color);
 
 #endif

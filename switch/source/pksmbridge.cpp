@@ -99,14 +99,15 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     size_t total = 0;
     size_t chunk = 1024;
     int n;
+    size_t tosend;
     while (total < size) {
-        size_t tosend = size - total > chunk ? chunk : size - total;
+        tosend = size - total > chunk ? chunk : size - total;
         n             = send(fd, data + total, tosend, 0);
         if (n == -1) {
             break;
         }
         total += n;
-        fprintf(stderr, "Sent %lu bytes, %lu still missing\n", total, size - total);
+        fprintf(stderr, "Sent %lu bytes, %lu still missing\n", (unsigned long)total, (unsigned long)(size - total));
     }
     if (total == size) {
         Gui::showInfo("Data sent correctly.");
@@ -171,14 +172,15 @@ void recvFromPKSMBridge(size_t index, u128 uid)
     size_t total = 0;
     size_t chunk = 1024;
     int n;
+    size_t torecv;
     while (total < size) {
-        size_t torecv = size - total > chunk ? chunk : size - total;
+        torecv = size - total > chunk ? chunk : size - total;
         n             = recv(fdconn, data + total, torecv, 0);
         if (n == -1) {
             break;
         }
         total += n;
-        fprintf(stderr, "Recv %lu bytes, %lu still missing\n", total, size - total);
+        fprintf(stderr, "Recv %lu bytes, %lu still missing\n", (unsigned long)total, (unsigned long)(size - total));
     }
     if (total == size) {
         Gui::showInfo("Data received correctly.");

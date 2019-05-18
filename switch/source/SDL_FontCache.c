@@ -291,23 +291,6 @@ static inline SDL_Surface* FC_CreateSurface32(Uint32 width, Uint32 height)
 #endif
 }
 
-char* U8_alloc(unsigned int size)
-{
-    char* result;
-    if (size == 0)
-        return NULL;
-
-    result    = (char*)malloc(size);
-    result[0] = '\0';
-
-    return result;
-}
-
-void U8_free(char* string)
-{
-    free(string);
-}
-
 char* U8_strdup(const char* string)
 {
     char* result;
@@ -367,60 +350,6 @@ int U8_charcpy(char* buffer, const char* source, int buffer_size)
 const char* U8_next(const char* string)
 {
     return string + U8_charsize(string);
-}
-
-int U8_strinsert(char* string, int position, const char* source, int max_bytes)
-{
-    int pos_bytes;
-    int len;
-    int add_len;
-    int ulen;
-
-    if (string == NULL || source == NULL)
-        return 0;
-
-    len     = strlen(string);
-    add_len = strlen(source);
-    ulen    = U8_strlen(string);
-
-    if (position == -1)
-        position = ulen;
-
-    if (position < 0 || position > ulen || len + add_len + 1 > max_bytes)
-        return 0;
-
-    // Move string pointer to the proper position
-    pos_bytes = 0;
-    while (*string != '\0' && pos_bytes < position) {
-        string = (char*)U8_next(string);
-        ++pos_bytes;
-    }
-
-    // Move the rest of the string out of the way
-    memmove(string + add_len, string, len - pos_bytes + 1);
-
-    // Copy in the new characters
-    memcpy(string, source, add_len);
-
-    return 1;
-}
-
-void U8_strdel(char* string, int position)
-{
-    if (string == NULL || position < 0)
-        return;
-
-    while (*string != '\0') {
-        if (position == 0) {
-            int chars_to_erase  = U8_charsize(string);
-            int remaining_bytes = strlen(string) + 1;
-            memmove(string, string + chars_to_erase, remaining_bytes);
-            break;
-        }
-
-        string = (char*)U8_next(string);
-        --position;
-    }
 }
 
 static inline FC_Rect FC_RectUnion(FC_Rect A, FC_Rect B)
@@ -897,8 +826,8 @@ Uint8 FC_LoadFontFromTTF(FC_Font* font, SDL_Renderer* renderer, TTF_Font* ttf, T
     // Copy glyphs from the surface to the font texture and store the position data
     // Pack row by row into a square texture
     // Try figuring out dimensions that make sense for the font size.
-    unsigned int w = font->height * 12;
-    unsigned int h = font->height * 12;
+    unsigned int w, h;
+    w = h = font->height * 12;
     SDL_Surface* surfaces[FC_LOAD_MAX_SURFACES];
     int num_surfaces        = 1;
     surfaces[0]             = FC_CreateSurface32(w, h);

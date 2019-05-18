@@ -329,8 +329,8 @@ Result SPIEraseSector(CardType type, u32 offset)
     }
     // Simulate the same behavior on EEPROM chips.
     else {
-        u32 sz     = SPIGetCapacity(type);
-        Result res = SPIWriteSaveData(type, 0, fill_buf, (sz < 0x10000) ? sz : 0x10000);
+        u32 sz = SPIGetCapacity(type);
+        res    = SPIWriteSaveData(type, 0, fill_buf, (sz < 0x10000) ? sz : 0x10000);
         return res;
     }
     return 0;

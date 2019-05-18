@@ -124,13 +124,6 @@ void FC_GetUTF8FromCodepoint(char* result, Uint32 codepoint);
 
 // UTF-8 string operations
 
-/*! Allocates a new string of 'size' bytes that is already NULL-terminated.  The NULL byte counts toward the size limit, as usual.  Returns NULL if
- * size is 0. */
-char* U8_alloc(unsigned int size);
-
-/*! Deallocates the given string. */
-void U8_free(char* string);
-
 /*! Allocates a copy of the given string. */
 char* U8_strdup(const char* string);
 
@@ -145,12 +138,6 @@ int U8_charcpy(char* buffer, const char* source, int buffer_size);
 
 /*! Returns a pointer to the next UTF-8 character. */
 const char* U8_next(const char* string);
-
-/*! Inserts a UTF-8 string into 'string' at the given position.  Use a position of -1 to append.  Returns 0 when unable to insert the string. */
-int U8_strinsert(char* string, int position, const char* source, int max_bytes);
-
-/*! Erases the UTF-8 character at the given position, moving the subsequent characters down. */
-void U8_strdel(char* string, int position);
 
 // Internal settings
 

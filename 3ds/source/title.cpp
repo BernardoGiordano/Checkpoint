@@ -32,7 +32,7 @@ static C2D_Image loadTextureIcon(smdh_s* smdh);
 static std::vector<Title> titleSaves;
 static std::vector<Title> titleExtdatas;
 
-static void exportTitleListCache(std::vector<Title> list, const std::u16string path);
+static void exportTitleListCache(std::vector<Title>& list, const std::u16string& path);
 static void importTitleListCache(void);
 
 void Title::load(void)
@@ -163,7 +163,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 
         loadTitle = true;
         if (!io::directoryExists(Archive::sdmc(), mSavePath)) {
-            Result res = io::createDirectory(Archive::sdmc(), mSavePath);
+            res = io::createDirectory(Archive::sdmc(), mSavePath);
             if (R_FAILED(res)) {
                 Gui::showError(res, "Failed to create backup directory.");
             }
@@ -282,7 +282,7 @@ void Title::refreshDirectories(void)
 
         // save backups from configuration
         std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
-        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); it++) {
+        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
             // we have other folders to parse
             Directory list(Archive::sdmc(), *it);
             if (list.good()) {
@@ -319,7 +319,7 @@ void Title::refreshDirectories(void)
 
         // extdata backups from configuration
         std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
-        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); it++) {
+        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
             // we have other folders to parse
             Directory list(Archive::sdmc(), *it);
             if (list.good()) {
@@ -628,7 +628,7 @@ bool favorite(int i)
     return Configuration::getInstance().favorite(id);
 }
 
-static C2D_Image loadTextureByBytes(u16* bigIconData)
+static C2D_Image loadTextureFromBytes(u16* bigIconData)
 {
     C3D_Tex* tex                          = (C3D_Tex*)malloc(sizeof(C3D_Tex));
     static const Tex3DS_SubTexture subt3x = {48, 48, 0.0f, 48 / 64.0f, 48 / 64.0f, 0.0f};
@@ -648,7 +648,7 @@ static C2D_Image loadTextureByBytes(u16* bigIconData)
 
 static C2D_Image loadTextureIcon(smdh_s* smdh)
 {
-    return loadTextureByBytes(smdh->bigIconData);
+    return loadTextureFromBytes(smdh->bigIconData);
 }
 
 void refreshDirectories(u64 id)
@@ -689,7 +689,7 @@ static const size_t ENTRYSIZE = 5341;
  * bigIconData (733, 4608)
  */
 
-static void exportTitleListCache(std::vector<Title> list, const std::u16string path)
+static void exportTitleListCache(std::vector<Title>& list, const std::u16string& path)
 {
     if (list.front().mediaType() == MEDIATYPE_GAME_CARD) {
         list.erase(list.begin());
@@ -797,8 +797,8 @@ static void importTitleListCache(void)
         if (cardType == CARD_CTR) {
             u16 bigIconData[0x900];
             memcpy(bigIconData, cachesaves + i * ENTRYSIZE + 733, 0x900 * 2);
-            C2D_Image icon = loadTextureByBytes(bigIconData);
-            title.setIcon(icon);
+            C2D_Image smallIcon = loadTextureFromBytes(bigIconData);
+            title.setIcon(smallIcon);
         }
         else {
             title.setIcon(Gui::TWLIcon());
@@ -843,8 +843,8 @@ static void importTitleListCache(void)
             if (cardType == CARD_CTR) {
                 u16 bigIconData[0x900];
                 memcpy(bigIconData, cacheextdatas + i * ENTRYSIZE + 733, 0x900 * 2);
-                C2D_Image icon = loadTextureByBytes(bigIconData);
-                title.setIcon(icon);
+                C2D_Image smallIcon = loadTextureFromBytes(bigIconData);
+                title.setIcon(smallIcon);
             }
             else {
                 title.setIcon(Gui::TWLIcon());

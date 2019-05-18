@@ -31,6 +31,7 @@
 static bool mLoaded = false;
 static nlohmann::json mCheats;
 static bool multiSelected = false;
+static size_t MAGIC_LEN   = strlen(SELECTED_MAGIC);
 
 void CheatManager::init(void)
 {
@@ -128,9 +129,9 @@ void CheatManager::manageCheats(const std::string& key)
 
         if (hidKeysDown() & KEY_A) {
             std::string cellName = s->cellName(s->index());
-            if (cellName.find(SELECTED_MAGIC, 0) == 0) {
+            if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) == 0) {
                 // cheat was already selected
-                cellName = cellName.substr(strlen(SELECTED_MAGIC), cellName.length());
+                cellName = cellName.substr(MAGIC_LEN, cellName.length());
             }
             else {
                 cellName = SELECTED_MAGIC + cellName;
@@ -140,21 +141,21 @@ void CheatManager::manageCheats(const std::string& key)
 
         if (hidKeysDown() & KEY_Y) {
             if (multiSelected) {
-                for (size_t i = 0; i < s->size(); i++) {
-                    std::string cellName = s->cellName(i);
-                    if (cellName.find(SELECTED_MAGIC, 0) == 0) {
-                        cellName = cellName.substr(strlen(SELECTED_MAGIC), cellName.length());
-                        s->c2dText(i, cellName);
+                for (size_t j = 0; j < s->size(); j++) {
+                    std::string cellName = s->cellName(j);
+                    if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) == 0) {
+                        cellName = cellName.substr(MAGIC_LEN, cellName.length());
+                        s->c2dText(j, cellName);
                     }
                 }
                 multiSelected = false;
             }
             else {
-                for (size_t i = 0; i < s->size(); i++) {
-                    std::string cellName = s->cellName(i);
-                    if (cellName.find(SELECTED_MAGIC, 0) != 0) {
+                for (size_t j = 0; j < s->size(); j++) {
+                    std::string cellName = s->cellName(j);
+                    if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) != 0) {
                         cellName = SELECTED_MAGIC + cellName;
-                        s->c2dText(i, cellName);
+                        s->c2dText(j, cellName);
                     }
                 }
                 multiSelected = true;
@@ -192,8 +193,8 @@ void CheatManager::save(const std::string& key, Scrollable* s)
     std::string cheatFile = "";
     for (size_t i = 0; i < s->size(); i++) {
         std::string cellName = s->cellName(i);
-        if (cellName.find(SELECTED_MAGIC, 0) == 0) {
-            cellName = cellName.substr(strlen(SELECTED_MAGIC), cellName.length());
+        if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) == 0) {
+            cellName = cellName.substr(MAGIC_LEN, cellName.length());
             cheatFile += cellName + "\n";
             for (auto& it : mCheats[key][cellName]) {
                 cheatFile += it.get<std::string>() + "\n";

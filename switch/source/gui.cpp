@@ -114,27 +114,27 @@ bool Gui::askForConfirmation(const std::string& text)
     bool ret             = false;
     Clickable* buttonYes = new Clickable(322, 462, 316, 56, theme().c3, theme().c6, "Yes", true);
     Clickable* buttonNo  = new Clickable(642, 462, 316, 56, theme().c3, theme().c6, "No", true);
-    HidHorizontal* hid   = new HidHorizontal(2, 2);
+    HidHorizontal* mhid   = new HidHorizontal(2, 2);
 
     u32 w, h;
     SDLH_GetTextDimensions(28, text.c_str(), &w, &h);
 
     while (appletMainLoop()) {
         hidScanInput();
-        hid->update(2);
+        mhid->update(2);
 
-        if (buttonYes->released() || ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) && hid->index() == 0)) {
+        if (buttonYes->released() || ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) && mhid->index() == 0)) {
             ret = true;
             break;
         }
         else if (buttonNo->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B) ||
-                 ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) && hid->index() == 1)) {
+                 ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) && mhid->index() == 1)) {
             break;
         }
 
-        hid->index(buttonYes->held() ? 0 : buttonNo->held() ? 1 : hid->index());
-        buttonYes->selected(hid->index() == 0);
-        buttonNo->selected(hid->index() == 1);
+        mhid->index(buttonYes->held() ? 0 : buttonNo->held() ? 1 : mhid->index());
+        buttonYes->selected(mhid->index() == 0);
+        buttonNo->selected(mhid->index() == 1);
 
         SDLH_DrawRect(320, 200, 640, 260, theme().c3);
         SDLH_DrawText(28, ceilf(1280 - w) / 2, 200 + ceilf((260 - h) / 2), theme().c6, text.c_str());
@@ -143,7 +143,7 @@ bool Gui::askForConfirmation(const std::string& text)
         buttonYes->draw(28, COLOR_BLUE);
         buttonNo->draw(28, COLOR_BLUE);
 
-        if (hid->index() == 0) {
+        if (mhid->index() == 0) {
             drawPulsingOutline(324, 464, 312, 52, 4, COLOR_BLUE);
         }
         else {
@@ -153,7 +153,7 @@ bool Gui::askForConfirmation(const std::string& text)
         SDLH_Render();
     }
 
-    delete hid;
+    delete mhid;
     delete buttonYes;
     delete buttonNo;
     return ret;
