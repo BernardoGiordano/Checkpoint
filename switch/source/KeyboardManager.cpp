@@ -46,7 +46,7 @@ std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& sugges
             swkbdConfigSetInitialText(&kbd, suggestion.c_str());
             swkbdConfigSetStringLenMax(&kbd, CUSTOM_PATH_LEN);
             char tmpoutstr[CUSTOM_PATH_LEN] = {0};
-            Result res = swkbdShow(&kbd, tmpoutstr, CUSTOM_PATH_LEN);
+            Result res                      = swkbdShow(&kbd, tmpoutstr, CUSTOM_PATH_LEN);
             swkbdClose(&kbd);
             if (R_SUCCEEDED(res)) {
                 return std::make_pair(true, std::string(tmpoutstr));

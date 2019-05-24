@@ -122,7 +122,7 @@ static std::queue<u16> widthCacheOrder;
 
 std::string StringUtils::splitWord(const std::string& text, float scaleX, float maxWidth)
 {
-    std::string word   = text;
+    std::string word = text;
     if (StringUtils::textWidth(word, scaleX) > maxWidth) {
         float currentWidth = 0.0f;
         for (size_t i = 0; i < word.size(); i++) {

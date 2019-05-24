@@ -54,7 +54,7 @@ CHEATS			:=	cheats
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
-ARCH	:=	-march=armv8-a -mtune=cortex-a57 -mtp=soft -fPIE
+ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
 CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections -flto \
 			-Wno-write-strings -Wno-unused-value -fomit-frame-pointer \

@@ -114,7 +114,7 @@ bool Gui::askForConfirmation(const std::string& text)
     bool ret             = false;
     Clickable* buttonYes = new Clickable(322, 462, 316, 56, theme().c3, theme().c6, "Yes", true);
     Clickable* buttonNo  = new Clickable(642, 462, 316, 56, theme().c3, theme().c6, "No", true);
-    HidHorizontal* mhid   = new HidHorizontal(2, 2);
+    HidHorizontal* mhid  = new HidHorizontal(2, 2);
 
     u32 w, h;
     SDLH_GetTextDimensions(28, text.c_str(), &w, &h);

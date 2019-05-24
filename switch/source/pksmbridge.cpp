@@ -102,7 +102,7 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     size_t tosend;
     while (total < size) {
         tosend = size - total > chunk ? chunk : size - total;
-        n             = send(fd, data + total, tosend, 0);
+        n      = send(fd, data + total, tosend, 0);
         if (n == -1) {
             break;
         }
@@ -175,7 +175,7 @@ void recvFromPKSMBridge(size_t index, u128 uid)
     size_t torecv;
     while (total < size) {
         torecv = size - total > chunk ? chunk : size - total;
-        n             = recv(fdconn, data + total, torecv, 0);
+        n      = recv(fdconn, data + total, torecv, 0);
         if (n == -1) {
             break;
         }
