@@ -24,41 +24,45 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#ifndef LOGGER_HPP
+#define LOGGER_HPP
 
-#include <algorithm>
-#include <arpa/inet.h>
-#include <codecvt>
-#include <cstdio>
-#include <locale>
-#include <memory>
-#include <netinet/in.h>
-#include <stdarg.h>
-#include <string.h>
+#include "common.hpp"
+#include <stdio.h>
 #include <string>
-#include <sys/socket.h>
-#include <time.h>
-#include <unistd.h>
 
-namespace DateTime {
-    std::string timeStr(void);
-    std::string dateTimeStr(void);
-    std::string logDateTime(void);
-}
+class Logger {
+public:
+    static Logger& getInstance(void)
+    {
+        static Logger mLogger;
+        return mLogger;
+    }
 
-namespace StringUtils {
-    bool containsInvalidChar(const std::string& str);
-    std::string escapeJson(const std::string& s);
-    std::string format(const std::string fmt_str, ...);
-    std::string removeForbiddenCharacters(std::string src);
-    std::string sizeString(double size);
-    std::string UTF16toUTF8(const std::u16string& src);
-    void ltrim(std::string& s);
-    void rtrim(std::string& s);
-    void trim(std::string& s);
-}
+    template <typename... Args>
+    void log(const std::string& format, Args... args)
+    {
+        if (mFile != NULL) {
+            fprintf(mFile, (DateUtils::logDateTime() + format + "\n").c_str(), args);
+        }
+    }
 
-char* getConsoleIP(void);
+private:
+    Logger(void) { mFile = fopen(mPath.c_str(), "a"); }
+    ~Logger(void) { fclose(mFile); }
+
+    Logger(Logger const&) = delete;
+    void operator=(Logger const&) = delete;
+
+#if defined(_3DS)
+    const std::string mPath = "/3ds/Checkpoint/checkpoint.log";
+#elif defined(__SWITCH__)
+    const std::string mPath = "/switch/Checkpoint/checkpoint.log";
+#else
+    const std::string mPath = "checkpoint.log";
+#endif
+
+    FILE* mFile;
+};
 
 #endif
