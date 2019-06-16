@@ -52,18 +52,8 @@ namespace Gui {
     void showInfo(const std::string& message);
     void showError(Result res, const std::string& message);
 
-    void updateButtons(void);
-
     bool askForConfirmation(const std::string& text);
     void drawCopy(const std::string& src, u64 offset, u64 size);
-
-    void addSelectedEntry(size_t idx);
-    void clearSelectedEntries(void);
-    bool multipleSelectionEnabled(void);
-    std::vector<size_t> selectedEntries(void);
-
-    bool getPKSMBridgeFlag(void);
-    void setPKSMBridgeFlag(bool f);
 
     void setScreen(std::unique_ptr<Screen> screen);
 }

@@ -30,6 +30,7 @@ static constexpr size_t rowlen = 5, collen = 4, rows = 10, SIDEBAR_w = 96;
 
 MainScreen::MainScreen() : hid(rowlen * collen, collen)
 {
+    pksmBridge = false;
     selectionTimer = 0;
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
     backupList    = std::make_unique<Scrollable>(538, 276, 414, 380, rows);
@@ -58,7 +59,7 @@ void MainScreen::draw() const
     const size_t max     = hid.maxEntries(getTitleCount(g_currentUId)) + 1;
 
     SDLH_ClearScreen(theme().c1);
-    SDL_Color colorBar = Gui::getPKSMBridgeFlag() ? COLOR_HIGHBLUE : FC_MakeColor(theme().c1.r - 15, theme().c1.g - 15, theme().c1.b - 15, 255);
+    SDL_Color colorBar = getPKSMBridgeFlag() ? COLOR_HIGHBLUE : FC_MakeColor(theme().c1.r - 15, theme().c1.g - 15, theme().c1.b - 15, 255);
     SDLH_DrawRect(0, 0, 532, 662, FC_MakeColor(theme().c1.r + 5, theme().c1.g + 5, theme().c1.b + 5, 255));
     SDLH_DrawRect(1280 - SIDEBAR_w, 0, SIDEBAR_w, 720, colorBar);
 
@@ -217,7 +218,7 @@ void MainScreen::updateSelector(touchPosition* touch)
 
         backupList->resetIndex();
         if (hid.index() != oldindex) {
-            Gui::setPKSMBridgeFlag(false);
+            setPKSMBridgeFlag(false);
         }
     }
     else {
@@ -234,16 +235,16 @@ void MainScreen::handleEvents(touchPosition* touch)
             ;
         this->index(TITLES, 0);
         this->index(CELLS, 0);
-        Gui::setPKSMBridgeFlag(false);
+        setPKSMBridgeFlag(false);
     }
     // handle PKSM bridge
     if (Configuration::getInstance().isPKSMBridgeEnabled()) {
         Title title;
         getTitle(title, g_currentUId, this->index(TITLES));
-        if (!Gui::getPKSMBridgeFlag()) {
+        if (!getPKSMBridgeFlag()) {
             if ((kheld & KEY_L) && (kheld & KEY_R) && isPKSMBridgeTitle(title.id())) {
-                Gui::setPKSMBridgeFlag(true);
-                Gui::updateButtons();
+                setPKSMBridgeFlag(true);
+                updateButtons();
             }
         }
     }
@@ -255,7 +256,7 @@ void MainScreen::handleEvents(touchPosition* touch)
             ;
         this->index(TITLES, 0);
         this->index(CELLS, 0);
-        Gui::setPKSMBridgeFlag(false);
+        setPKSMBridgeFlag(false);
     }
 
     // Handle touching the backup list
@@ -264,7 +265,7 @@ void MainScreen::handleEvents(touchPosition* touch)
         // Activate backup list only if multiple selections are enabled
         if (!MS::multipleSelectionEnabled()) {
             g_backupScrollEnabled = true;
-            Gui::updateButtons();
+            updateButtons();
             entryType(CELLS);
         }
     }
@@ -278,12 +279,12 @@ void MainScreen::handleEvents(touchPosition* touch)
         if (g_backupScrollEnabled) {
             // If the "New..." entry is selected...
             if (0 == this->index(CELLS)) {
-                if (!Gui::getPKSMBridgeFlag()) {
+                if (!getPKSMBridgeFlag()) {
                     io::backup(this->index(TITLES), g_currentUId, this->index(CELLS));
                 }
             }
             else {
-                if (Gui::getPKSMBridgeFlag()) {
+                if (getPKSMBridgeFlag()) {
                     recvFromPKSMBridge(this->index(TITLES), g_currentUId, this->index(CELLS));
                 }
                 else {
@@ -295,7 +296,7 @@ void MainScreen::handleEvents(touchPosition* touch)
             // Activate backup list only if multiple selections are not enabled
             if (!MS::multipleSelectionEnabled()) {
                 g_backupScrollEnabled = true;
-                Gui::updateButtons();
+                updateButtons();
                 entryType(CELLS);
             }
         }
@@ -308,8 +309,8 @@ void MainScreen::handleEvents(touchPosition* touch)
         g_backupScrollEnabled = false;
         entryType(TITLES);
         MS::clearSelectedEntries();
-        Gui::setPKSMBridgeFlag(false);
-        Gui::updateButtons(); // Do this last
+        setPKSMBridgeFlag(false);
+        updateButtons(); // Do this last
     }
 
     // Handle pressing X
@@ -338,8 +339,8 @@ void MainScreen::handleEvents(touchPosition* touch)
         }
         entryType(TITLES);
         MS::addSelectedEntry(this->index(TITLES));
-        Gui::setPKSMBridgeFlag(false);
-        Gui::updateButtons(); // Do this last
+        setPKSMBridgeFlag(false);
+        updateButtons(); // Do this last
     }
 
     // Handle holding Y
@@ -367,12 +368,12 @@ void MainScreen::handleEvents(touchPosition* touch)
                 io::backup(list.at(i), g_currentUId, this->index(CELLS));
             }
             MS::clearSelectedEntries();
-            Gui::updateButtons();
+            updateButtons();
             blinkLed(4);
             Gui::showInfo("Progress correctly saved to disk.");
         }
         else if (g_backupScrollEnabled) {
-            if (Gui::getPKSMBridgeFlag()) {
+            if (getPKSMBridgeFlag()) {
                 sendToPKSMBrigde(this->index(TITLES), g_currentUId, this->index(CELLS));
             }
             else {
@@ -384,7 +385,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     // Handle pressing/touching R
     if (isRestoreReleased() || (kdown & KEY_R)) {
         if (g_backupScrollEnabled) {
-            if (Gui::getPKSMBridgeFlag()) {
+            if (getPKSMBridgeFlag()) {
                 recvFromPKSMBridge(this->index(TITLES), g_currentUId, this->index(CELLS));
             }
             else {
@@ -396,7 +397,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     if ((isCheatReleased() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RSTICK)) && CheatManager::loaded()) {
         if (MS::multipleSelectionEnabled()) {
             MS::clearSelectedEntries();
-            Gui::updateButtons();
+            updateButtons();
         }
         else {
             Title title;
@@ -460,5 +461,61 @@ void MainScreen::index(entryType_t type, size_t i)
     }
     else {
         backupList->setIndex(i);
+    }
+}
+
+bool MainScreen::getPKSMBridgeFlag(void) const
+{
+    return Configuration::getInstance().isPKSMBridgeEnabled() ? pksmBridge : false;
+}
+
+void MainScreen::setPKSMBridgeFlag(bool f)
+{
+    pksmBridge = f;
+    updateButtons();
+}
+
+void MainScreen::updateButtons(void)
+{
+    if (MS::multipleSelectionEnabled()) {
+        buttonRestore->canChangeColorWhenSelected(true);
+        buttonRestore->canChangeColorWhenSelected(false);
+        buttonCheats->canChangeColorWhenSelected(false);
+        buttonBackup->setColors(theme().c2, theme().c6);
+        buttonRestore->setColors(theme().c2, theme().c5);
+        buttonCheats->setColors(theme().c2, theme().c5);
+    }
+    else if (g_backupScrollEnabled) {
+        buttonBackup->canChangeColorWhenSelected(true);
+        buttonRestore->canChangeColorWhenSelected(true);
+        buttonCheats->canChangeColorWhenSelected(true);
+        buttonBackup->setColors(theme().c2, theme().c6);
+        buttonRestore->setColors(theme().c2, theme().c6);
+        buttonCheats->setColors(theme().c2, theme().c6);
+    }
+    else {
+        buttonBackup->setColors(theme().c2, theme().c6);
+        buttonRestore->setColors(theme().c2, theme().c6);
+        buttonCheats->setColors(theme().c2, theme().c6);
+    }
+
+    if (getPKSMBridgeFlag()) {
+        buttonBackup->text("Send \ue004");
+        buttonRestore->text("Receive \ue005");
+    }
+    else {
+        buttonBackup->text("Backup \ue004");
+        buttonRestore->text("Restore \ue005");
+    }
+
+    static bool shouldCheckCheatManager = true;
+    if (CheatManager::loaded() && shouldCheckCheatManager) {
+        buttonCheats->text("Cheats \ue0c5");
+        buttonCheats->setColors(theme().c2, theme().c6);
+        shouldCheckCheatManager = false;
+    }
+    else if (!CheatManager::loaded()) {
+        buttonCheats->text("Loading...");
+        buttonCheats->setColors(theme().c2, theme().c5);
     }
 }

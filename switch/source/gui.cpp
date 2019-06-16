@@ -28,19 +28,7 @@
 
 std::stack<std::unique_ptr<Screen>> g_screens;
 
-static Clickable* buttonBackup;
-static Clickable* buttonRestore;
-static Clickable* buttonCheats;
-static Scrollable* backupList;
-
-static const size_t rowlen = 5;
-static const size_t collen = 4;
-static const size_t rows   = 10;
-static HidHorizontal* hid;
-
 float g_currentTime = 0;
-
-static bool PKSMBridge = false;
 
 void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
 {
@@ -163,82 +151,12 @@ bool Gui::init(void)
         return false;
     }
 
-    hid           = new HidHorizontal(rowlen * collen, collen);
-    backupList    = new Scrollable(538, 276, 414, 380, rows);
-    buttonBackup  = new Clickable(956, 276, 220, 80, theme().c2, theme().c6, "Backup \ue004", true);
-    buttonRestore = new Clickable(956, 360, 220, 80, theme().c2, theme().c6, "Restore \ue005", true);
-    buttonCheats  = new Clickable(956, 444, 220, 80, theme().c2, theme().c6, "Cheats \ue0c5", true);
-    buttonBackup->canChangeColorWhenSelected(true);
-    buttonRestore->canChangeColorWhenSelected(true);
-    buttonCheats->canChangeColorWhenSelected(true);
-
     return true;
 }
 
 void Gui::exit(void)
 {
-    delete hid;
-    delete backupList;
-    delete buttonCheats;
-    delete buttonBackup;
-    delete buttonRestore;
     SDLH_Exit();
-}
-
-void Gui::updateButtons(void)
-{
-    if (MS::multipleSelectionEnabled()) {
-        buttonRestore->canChangeColorWhenSelected(true);
-        buttonRestore->canChangeColorWhenSelected(false);
-        buttonCheats->canChangeColorWhenSelected(false);
-        buttonBackup->setColors(theme().c2, theme().c6);
-        buttonRestore->setColors(theme().c2, theme().c5);
-        buttonCheats->setColors(theme().c2, theme().c5);
-    }
-    else if (g_backupScrollEnabled) {
-        buttonBackup->canChangeColorWhenSelected(true);
-        buttonRestore->canChangeColorWhenSelected(true);
-        buttonCheats->canChangeColorWhenSelected(true);
-        buttonBackup->setColors(theme().c2, theme().c6);
-        buttonRestore->setColors(theme().c2, theme().c6);
-        buttonCheats->setColors(theme().c2, theme().c6);
-    }
-    else {
-        buttonBackup->setColors(theme().c2, theme().c6);
-        buttonRestore->setColors(theme().c2, theme().c6);
-        buttonCheats->setColors(theme().c2, theme().c6);
-    }
-
-    if (getPKSMBridgeFlag()) {
-        buttonBackup->text("Send \ue004");
-        buttonRestore->text("Receive \ue005");
-    }
-    else {
-        buttonBackup->text("Backup \ue004");
-        buttonRestore->text("Restore \ue005");
-    }
-
-    static bool shouldCheckCheatManager = true;
-    if (CheatManager::loaded() && shouldCheckCheatManager) {
-        buttonCheats->text("Cheats \ue0c5");
-        buttonCheats->setColors(theme().c2, theme().c6);
-        shouldCheckCheatManager = false;
-    }
-    else if (!CheatManager::loaded()) {
-        buttonCheats->text("Loading...");
-        buttonCheats->setColors(theme().c2, theme().c5);
-    }
-}
-
-bool Gui::getPKSMBridgeFlag(void)
-{
-    return Configuration::getInstance().isPKSMBridgeEnabled() ? PKSMBridge : false;
-}
-
-void Gui::setPKSMBridgeFlag(bool f)
-{
-    PKSMBridge = f;
-    Gui::updateButtons();
 }
 
 void Gui::setScreen(std::unique_ptr<Screen> screen)

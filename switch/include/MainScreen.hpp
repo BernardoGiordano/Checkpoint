@@ -55,6 +55,9 @@ protected:
     size_t index(entryType_t type) const;
     void index(entryType_t type, size_t i);
     void resetIndex(entryType_t type);
+    bool getPKSMBridgeFlag(void) const;
+    void setPKSMBridgeFlag(bool f);
+    void updateButtons(void);
 
 private:
     entryType_t type;

@@ -66,11 +66,6 @@ namespace Gui {
     void updateButtons(void);
     void updateSelector(void);
 
-    std::vector<size_t> selectedEntries(void);
-    bool multipleSelectionEnabled(void);
-    void clearSelectedEntries(void);
-    void addSelectedEntry(size_t index);
-
     C2D_Image TWLIcon(void);
     C2D_Image noIcon(void);
 }

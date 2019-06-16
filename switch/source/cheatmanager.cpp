@@ -35,7 +35,7 @@ static size_t MAGIC_LEN   = strlen(SELECTED_MAGIC);
 
 void CheatManager::init(void)
 {
-    Gui::updateButtons();
+    // Gui::updateButtons();
 
     if (io::fileExists("/switch/Checkpoint/cheats.json")) {
         const std::string path = "/switch/Checkpoint/cheats.json";
@@ -71,7 +71,7 @@ void CheatManager::init(void)
         }
     }
 
-    Gui::updateButtons();
+    // Gui::updateButtons();
 }
 
 void CheatManager::exit(void) {}
