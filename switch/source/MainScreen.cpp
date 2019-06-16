@@ -30,7 +30,7 @@ static constexpr size_t rowlen = 5, collen = 4, rows = 10, SIDEBAR_w = 96;
 
 MainScreen::MainScreen() : hid(rowlen * collen, collen)
 {
-    pksmBridge = false;
+    pksmBridge     = false;
     selectionTimer = 0;
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
     backupList    = std::make_unique<Scrollable>(538, 276, 414, 380, rows);
@@ -190,7 +190,6 @@ void MainScreen::draw() const
 
 void MainScreen::update(touchPosition* touch)
 {
-    Screen::update();
     updateSelector(touch);
     handleEvents(touch);
 }

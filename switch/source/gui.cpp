@@ -26,10 +26,6 @@
 
 #include "gui.hpp"
 
-std::stack<std::unique_ptr<Screen>> g_screens;
-
-float g_currentTime = 0;
-
 void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
 {
     std::string sizeString = StringUtils::sizeString(offset) + " of " + StringUtils::sizeString(size);
@@ -143,23 +139,4 @@ void Gui::showError(Result res, const std::string& message)
     }
 
     delete button;
-}
-
-bool Gui::init(void)
-{
-    if (!SDLH_Init()) {
-        return false;
-    }
-
-    return true;
-}
-
-void Gui::exit(void)
-{
-    SDLH_Exit();
-}
-
-void Gui::setScreen(std::unique_ptr<Screen> screen)
-{
-    g_screens.push(std::move(screen));
 }

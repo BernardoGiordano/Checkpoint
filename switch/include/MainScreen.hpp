@@ -36,6 +36,9 @@
 
 typedef enum { TITLES, CELLS } entryType_t;
 
+class Clickable;
+class Scrollable;
+
 class MainScreen : public Screen {
 public:
     MainScreen();

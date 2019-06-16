@@ -26,8 +26,16 @@
 
 #include "main.hpp"
 
-u128 g_currentUId          = 0;
-bool g_backupScrollEnabled = 0;
+float g_currentTime             = 0;
+u128 g_currentUId               = 0;
+bool g_backupScrollEnabled      = 0;
+bool g_notificationLedAvailable = false;
+std::stack<std::unique_ptr<Screen>> g_screens;
+
+void setScreen(std::unique_ptr<Screen> screen)
+{
+    g_screens.push(std::move(screen));
+}
 
 int main(void)
 {
@@ -37,7 +45,7 @@ int main(void)
         return res;
     }
 
-    Gui::setScreen(std::make_unique<MainScreen>());
+    setScreen(std::make_unique<MainScreen>());
 
     loadTitles();
     // get the user IDs

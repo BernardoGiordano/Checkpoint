@@ -29,7 +29,7 @@
 
 #include "SDLHelper.hpp"
 #include "iclickable.hpp"
-#include "status.hpp"
+#include "main.hpp"
 #include <string>
 #include <switch.h>
 

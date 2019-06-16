@@ -3,7 +3,7 @@
 
 #include "SDL_FontCache.h"
 #include "colors.hpp"
-#include "status.hpp"
+#include "main.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <string>

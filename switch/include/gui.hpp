@@ -37,7 +37,6 @@
 #include "main.hpp"
 #include "multiselection.hpp"
 #include "scrollable.hpp"
-#include "status.hpp"
 #include "title.hpp"
 #include "util.hpp"
 #include <math.h>
@@ -46,9 +45,6 @@
 #include <switch.h>
 
 namespace Gui {
-    bool init(void);
-    void exit(void);
-
     void showInfo(const std::string& message);
     void showError(Result res, const std::string& message);
 

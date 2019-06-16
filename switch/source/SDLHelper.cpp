@@ -78,7 +78,6 @@ void SDLH_ClearScreen(SDL_Color color)
 
 void SDLH_Render(void)
 {
-    // increase g_currentTime
     g_currentTime = SDL_GetTicks() / 1000.f;
     SDL_RenderPresent(s_renderer);
 }

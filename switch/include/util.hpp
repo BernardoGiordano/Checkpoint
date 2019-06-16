@@ -30,7 +30,6 @@
 #include "account.hpp"
 #include "cheatmanager.hpp"
 #include "common.hpp"
-#include "gui.hpp"
 #include "io.hpp"
 #include <switch.h>
 #include <sys/stat.h>

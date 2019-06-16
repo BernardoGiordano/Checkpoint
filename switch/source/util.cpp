@@ -26,8 +26,6 @@
 
 #include "util.hpp"
 
-bool g_notificationLedAvailable = false;
-
 void servicesExit(void)
 {
     CheatManager::exit();
@@ -41,7 +39,7 @@ void servicesExit(void)
     }
     nsExit();
     Account::exit();
-    Gui::exit();
+    SDLH_Exit();
     plExit();
     romfsExit();
 }
@@ -72,7 +70,7 @@ Result servicesInit(void)
         return res;
     }
 
-    if (!Gui::init()) {
+    if (!SDLH_Init()) {
         return -1;
     }
 
