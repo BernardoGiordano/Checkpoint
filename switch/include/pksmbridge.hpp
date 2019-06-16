@@ -40,5 +40,5 @@
 #define PKSM_PORT 34567
 
 bool isPKSMBridgeTitle(u64 id);
-void sendToPKSMBrigde(size_t index, u128 uid);
-void recvFromPKSMBridge(size_t index, u128 uid);
+void sendToPKSMBrigde(size_t index, u128 uid, size_t cellIndex);
+void recvFromPKSMBridge(size_t index, u128 uid, size_t cellIndex);

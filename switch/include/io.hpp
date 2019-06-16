@@ -39,8 +39,8 @@
 #define BUFFER_SIZE 0x80000
 
 namespace io {
-    void backup(size_t index, u128 uid);
-    void restore(size_t index, u128 uid);
+    void backup(size_t index, u128 uid, size_t cellIndex);
+    void restore(size_t index, u128 uid, size_t cellIndex, const std::string& nameFromCell);
 
     Result copyDirectory(const std::string& srcPath, const std::string& dstPath);
     void copyFile(const std::string& srcPath, const std::string& dstPath);

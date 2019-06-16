@@ -27,16 +27,16 @@
 #ifndef SCREEN_HPP
 #define SCREEN_HPP
 
-#include "Overlay.hpp"
 #if defined(_3DS)
-  #include <3ds.h>
+#include <3ds.h>
 #elif defined(__SWITCH__)
-  #include <switch.h>
+#include <switch.h>
 #endif
 #include <memory>
 
-class Screen
-{
+class Overlay;
+
+class Screen {
     friend class Overlay;
 
 public:

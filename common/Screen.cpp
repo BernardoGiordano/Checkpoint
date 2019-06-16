@@ -30,20 +30,17 @@
 void Screen::doDraw() const
 {
     draw();
-    if (currentOverlay)
-    {
+    if (currentOverlay) {
         currentOverlay->draw();
     }
 }
 
 void Screen::doUpdate(touchPosition* touch)
 {
-    if (currentOverlay)
-    {
+    if (currentOverlay) {
         currentOverlay->update(touch);
     }
-    else
-    {
+    else {
         update(touch);
     }
 }

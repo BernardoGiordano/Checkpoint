@@ -26,7 +26,7 @@
 
 #include "ihid.hpp"
 
-size_t IHid::index(void)
+size_t IHid::index(void) const
 {
     return mIndex;
 }
@@ -36,12 +36,12 @@ void IHid::index(size_t v)
     mIndex = v;
 }
 
-size_t IHid::fullIndex(void)
+size_t IHid::fullIndex(void) const
 {
     return mIndex + mPage * mMaxVisibleEntries;
 }
 
-int IHid::page(void)
+int IHid::page(void) const
 {
     return mPage;
 }
@@ -57,12 +57,12 @@ void IHid::reset(void)
     mPage  = 0;
 }
 
-size_t IHid::maxVisibleEntries(void)
+size_t IHid::maxVisibleEntries(void) const
 {
     return mMaxVisibleEntries;
 }
 
-size_t IHid::maxEntries(size_t count)
+size_t IHid::maxEntries(size_t count) const
 {
     return (count - mPage * mMaxVisibleEntries) > mMaxVisibleEntries ? mMaxVisibleEntries - 1 : count - mPage * mMaxVisibleEntries - 1;
 }

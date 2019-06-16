@@ -27,17 +27,40 @@
 #ifndef MAINSCREEN_HPP
 #define MAINSCREEN_HPP
 
-#include "gui.hpp"
 #include "Screen.hpp"
+#include "clickable.hpp"
+#include "gui.hpp"
+#include "hid.hpp"
+#include "main.hpp"
+#include "scrollable.hpp"
+
+typedef enum { TITLES, CELLS } entryType_t;
 
 class MainScreen : public Screen {
 public:
     MainScreen();
     void draw(void) const override;
     void update(touchPosition* touch) override;
+
+protected:
+    int selectorX(size_t i) const;
+    int selectorY(size_t i) const;
+    void updateSelector(touchPosition* touch);
+    void handleEvents(touchPosition* touch);
+    bool isBackupReleased(void) const;
+    bool isRestoreReleased(void) const;
+    bool isCheatReleased(void) const;
+    std::string nameFromCell(size_t index) const;
+    void entryType(entryType_t type);
+    size_t index(entryType_t type) const;
+    void index(entryType_t type, size_t i);
+    void resetIndex(entryType_t type);
+
 private:
-    HidHorizontal hid;
+    entryType_t type;
+    int selectionTimer;
     bool pksmBridge;
+    HidHorizontal hid;
     std::unique_ptr<Scrollable> backupList;
     std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;
     char ver[8];

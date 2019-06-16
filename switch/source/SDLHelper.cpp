@@ -23,7 +23,7 @@ static FC_Font* getFontFromMap(int size)
 
 bool SDLH_Init(void)
 {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) < 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) {
         fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
         return false;
     }
@@ -180,13 +180,18 @@ void SDLH_DrawIcon(std::string icon, int x, int y)
     }
 }
 
+void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
+{
+    SDLH_DrawRect(x - size, y - size, w + 2 * size, size, color); // top
+    SDLH_DrawRect(x - size, y, size, h, color);                   // left
+    SDLH_DrawRect(x + w, y, size, h, color);                      // right
+    SDLH_DrawRect(x - size, y + h, w + 2 * size, size, color);    // bottom
+}
+
 void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
 {
     float highlight_multiplier = fmax(0.0, fabs(fmod(g_currentTime, 1.0) - 0.5) / 0.5);
     color                      = FC_MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier,
         color.b + (255 - color.b) * highlight_multiplier, 255);
-    SDLH_DrawRect(x - size, y - size, w + 2 * size, size, color); // top
-    SDLH_DrawRect(x - size, y, size, h, color);                   // left
-    SDLH_DrawRect(x + w, y, size, h, color);                      // right
-    SDLH_DrawRect(x - size, y + h, w + 2 * size, size, color);    // bottom
+    drawOutline(x, y, w, h, size, color);
 }

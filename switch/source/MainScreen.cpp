@@ -30,30 +30,23 @@ static constexpr size_t rowlen = 5, collen = 4, rows = 10, SIDEBAR_w = 96;
 
 MainScreen::MainScreen() : hid(rowlen * collen, collen)
 {
+    selectionTimer = 0;
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
-    backupList = std::make_unique<Scrollable>(538, 276, 414, 380, rows);
-    buttonBackup = std::make_unique<Clickable>(956, 276, 220, 80, theme().c2, theme().c6, "Backup \ue004", true);
+    backupList    = std::make_unique<Scrollable>(538, 276, 414, 380, rows);
+    buttonBackup  = std::make_unique<Clickable>(956, 276, 220, 80, theme().c2, theme().c6, "Backup \ue004", true);
     buttonRestore = std::make_unique<Clickable>(956, 360, 220, 80, theme().c2, theme().c6, "Restore \ue005", true);
-    buttonCheats = std::make_unique<Clickable>(956, 444, 220, 80, theme().c2, theme().c6, "Cheats \ue0c5", true);
+    buttonCheats  = std::make_unique<Clickable>(956, 444, 220, 80, theme().c2, theme().c6, "Cheats \ue0c5", true);
     buttonBackup->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
     buttonCheats->canChangeColorWhenSelected(true);
 }
 
-static void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
-{
-    SDLH_DrawRect(x - size, y - size, w + 2 * size, size, color); // top
-    SDLH_DrawRect(x - size, y, size, h, color);                   // left
-    SDLH_DrawRect(x + w, y, size, h, color);                      // right
-    SDLH_DrawRect(x - size, y + h, w + 2 * size, size, color);    // bottom
-}
-
-static int selectorX(size_t i)
+int MainScreen::selectorX(size_t i) const
 {
     return 128 * ((i % (rowlen * collen)) % collen) + 4 * (((i % (rowlen * collen)) % collen) + 1);
 }
 
-static int selectorY(size_t i)
+int MainScreen::selectorY(size_t i) const
 {
     return 128 * ((i % (rowlen * collen)) / collen) + 4 * (((i % (rowlen * collen)) / collen) + 1);
 }
@@ -192,4 +185,280 @@ void MainScreen::draw() const
     SDLH_DrawText(26, 16, 672 + (40 - checkpoint_h) / 2 + 2, theme().c6, "checkpoint");
     SDLH_DrawText(20, 16 + checkpoint_w + 8, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - ver_h, theme().c6, ver);
     SDLH_DrawText(24, 16 * 3 + checkpoint_w + 8 + ver_w, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, theme().c6, "\ue046 Instructions");
+}
+
+void MainScreen::update(touchPosition* touch)
+{
+    Screen::update();
+    updateSelector(touch);
+    handleEvents(touch);
+}
+
+void MainScreen::updateSelector(touchPosition* touch)
+{
+    if (!g_backupScrollEnabled) {
+        size_t oldindex = hid.index();
+        hid.update(getTitleCount(g_currentUId));
+
+        // loop through every rendered title
+        for (u8 row = 0; row < rowlen; row++) {
+            for (u8 col = 0; col < collen; col++) {
+                u8 index = row * collen + col;
+                if (index > hid.maxEntries(getTitleCount(g_currentUId)))
+                    break;
+
+                u32 x = selectorX(index);
+                u32 y = selectorY(index);
+                if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && touch->px >= x && touch->px <= x + 128 && touch->py >= y && touch->py <= y + 128) {
+                    hid.index(index);
+                }
+            }
+        }
+
+        backupList->resetIndex();
+        if (hid.index() != oldindex) {
+            Gui::setPKSMBridgeFlag(false);
+        }
+    }
+    else {
+        backupList->updateSelection();
+    }
+}
+
+void MainScreen::handleEvents(touchPosition* touch)
+{
+    u32 kdown = hidKeysDown(CONTROLLER_P1_AUTO);
+    u32 kheld = hidKeysHeld(CONTROLLER_P1_AUTO);
+    if (kdown & KEY_ZL || kdown & KEY_ZR) {
+        while ((g_currentUId = Account::selectAccount()) == 0)
+            ;
+        this->index(TITLES, 0);
+        this->index(CELLS, 0);
+        Gui::setPKSMBridgeFlag(false);
+    }
+    // handle PKSM bridge
+    if (Configuration::getInstance().isPKSMBridgeEnabled()) {
+        Title title;
+        getTitle(title, g_currentUId, this->index(TITLES));
+        if (!Gui::getPKSMBridgeFlag()) {
+            if ((kheld & KEY_L) && (kheld & KEY_R) && isPKSMBridgeTitle(title.id())) {
+                Gui::setPKSMBridgeFlag(true);
+                Gui::updateButtons();
+            }
+        }
+    }
+
+    // handle touchscreen
+    if (!g_backupScrollEnabled && hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && touch->px >= 1200 && touch->px <= 1200 + USER_ICON_SIZE &&
+        touch->py >= 626 && touch->py <= 626 + USER_ICON_SIZE) {
+        while ((g_currentUId = Account::selectAccount()) == 0)
+            ;
+        this->index(TITLES, 0);
+        this->index(CELLS, 0);
+        Gui::setPKSMBridgeFlag(false);
+    }
+
+    // Handle touching the backup list
+    if ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH && (int)touch->px > 538 && (int)touch->px < 952 && (int)touch->py > 276 &&
+            (int)touch->py < 656)) {
+        // Activate backup list only if multiple selections are enabled
+        if (!MS::multipleSelectionEnabled()) {
+            g_backupScrollEnabled = true;
+            Gui::updateButtons();
+            entryType(CELLS);
+        }
+    }
+
+    // Handle pressing A
+    // Backup list active:   Backup/Restore
+    // Backup list inactive: Activate backup list only if multiple
+    //                       selections are enabled
+    if (kdown & KEY_A) {
+        // If backup list is active...
+        if (g_backupScrollEnabled) {
+            // If the "New..." entry is selected...
+            if (0 == this->index(CELLS)) {
+                if (!Gui::getPKSMBridgeFlag()) {
+                    io::backup(this->index(TITLES), g_currentUId, this->index(CELLS));
+                }
+            }
+            else {
+                if (Gui::getPKSMBridgeFlag()) {
+                    recvFromPKSMBridge(this->index(TITLES), g_currentUId, this->index(CELLS));
+                }
+                else {
+                    io::restore(this->index(TITLES), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
+                }
+            }
+        }
+        else {
+            // Activate backup list only if multiple selections are not enabled
+            if (!MS::multipleSelectionEnabled()) {
+                g_backupScrollEnabled = true;
+                Gui::updateButtons();
+                entryType(CELLS);
+            }
+        }
+    }
+
+    // Handle pressing B
+    if (kdown & KEY_B || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH && (int)touch->px >= 0 && (int)touch->px <= 532 && (int)touch->py >= 0 &&
+                             (int)touch->py <= 664)) {
+        this->index(CELLS, 0);
+        g_backupScrollEnabled = false;
+        entryType(TITLES);
+        MS::clearSelectedEntries();
+        Gui::setPKSMBridgeFlag(false);
+        Gui::updateButtons(); // Do this last
+    }
+
+    // Handle pressing X
+    if (kdown & KEY_X) {
+        if (g_backupScrollEnabled) {
+            size_t index = this->index(CELLS);
+            if (index > 0 && Gui::askForConfirmation("Delete selected backup?")) {
+                Title title;
+                getTitle(title, g_currentUId, this->index(TITLES));
+                std::string path = title.fullPath(index);
+                io::deleteFolderRecursively((path + "/").c_str());
+                refreshDirectories(title.id());
+                this->index(CELLS, index - 1);
+            }
+        }
+    }
+
+    // Handle pressing Y
+    // Backup list active:   Deactivate backup list, select title, and
+    //                       enable backup button
+    // Backup list inactive: Select title and enable backup button
+    if (kdown & KEY_Y) {
+        if (g_backupScrollEnabled) {
+            this->index(CELLS, 0);
+            g_backupScrollEnabled = false;
+        }
+        entryType(TITLES);
+        MS::addSelectedEntry(this->index(TITLES));
+        Gui::setPKSMBridgeFlag(false);
+        Gui::updateButtons(); // Do this last
+    }
+
+    // Handle holding Y
+    if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_Y && !(g_backupScrollEnabled)) {
+        selectionTimer++;
+    }
+    else {
+        selectionTimer = 0;
+    }
+
+    if (selectionTimer > 45) {
+        MS::clearSelectedEntries();
+        for (size_t i = 0, sz = getTitleCount(g_currentUId); i < sz; i++) {
+            MS::addSelectedEntry(i);
+        }
+        selectionTimer = 0;
+    }
+
+    // Handle pressing/touching L
+    if (isBackupReleased() || (kdown & KEY_L)) {
+        if (MS::multipleSelectionEnabled()) {
+            resetIndex(CELLS);
+            std::vector<size_t> list = MS::selectedEntries();
+            for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                io::backup(list.at(i), g_currentUId, this->index(CELLS));
+            }
+            MS::clearSelectedEntries();
+            Gui::updateButtons();
+            blinkLed(4);
+            Gui::showInfo("Progress correctly saved to disk.");
+        }
+        else if (g_backupScrollEnabled) {
+            if (Gui::getPKSMBridgeFlag()) {
+                sendToPKSMBrigde(this->index(TITLES), g_currentUId, this->index(CELLS));
+            }
+            else {
+                io::backup(this->index(TITLES), g_currentUId, this->index(CELLS));
+            }
+        }
+    }
+
+    // Handle pressing/touching R
+    if (isRestoreReleased() || (kdown & KEY_R)) {
+        if (g_backupScrollEnabled) {
+            if (Gui::getPKSMBridgeFlag()) {
+                recvFromPKSMBridge(this->index(TITLES), g_currentUId, this->index(CELLS));
+            }
+            else {
+                io::restore(this->index(TITLES), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
+            }
+        }
+    }
+
+    if ((isCheatReleased() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RSTICK)) && CheatManager::loaded()) {
+        if (MS::multipleSelectionEnabled()) {
+            MS::clearSelectedEntries();
+            Gui::updateButtons();
+        }
+        else {
+            Title title;
+            getTitle(title, g_currentUId, this->index(TITLES));
+            std::string key = StringUtils::format("%016llX", title.id());
+            if (CheatManager::availableCodes(key)) {
+                CheatManager::manageCheats(key);
+            }
+            else {
+                Gui::showInfo("No available cheat codes for this title.");
+            }
+        }
+    }
+}
+
+bool MainScreen::isBackupReleased(void) const
+{
+    return buttonBackup->released();
+}
+
+bool MainScreen::isRestoreReleased(void) const
+{
+    return buttonRestore->released();
+}
+
+bool MainScreen::isCheatReleased(void) const
+{
+    return buttonCheats->released();
+}
+
+std::string MainScreen::nameFromCell(size_t index) const
+{
+    return backupList->cellName(index);
+}
+
+void MainScreen::entryType(entryType_t type_)
+{
+    type = type_;
+}
+
+void MainScreen::resetIndex(entryType_t type)
+{
+    if (type == TITLES) {
+        hid.reset();
+    }
+    else {
+        backupList->resetIndex();
+    }
+}
+
+size_t MainScreen::index(entryType_t type) const
+{
+    return type == TITLES ? hid.fullIndex() : backupList->index();
+}
+
+void MainScreen::index(entryType_t type, size_t i)
+{
+    if (type == TITLES) {
+        hid.page(i / hid.maxVisibleEntries());
+        hid.index(i - hid.page() * hid.maxVisibleEntries());
+    }
+    else {
+        backupList->setIndex(i);
+    }
 }

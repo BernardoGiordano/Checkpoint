@@ -40,9 +40,8 @@ bool validateIpAddress(const std::string& ip)
     return inet_pton(AF_INET, ip.c_str(), &sa.sin_addr) != 0;
 }
 
-void sendToPKSMBrigde(size_t index, u128 uid)
+void sendToPKSMBrigde(size_t index, u128 uid, size_t cellIndex)
 {
-    const size_t cellIndex = Gui::index(CELLS);
     if (cellIndex == 0 || !Gui::askForConfirmation("Send save to PKSM?")) {
         return;
     }
@@ -120,9 +119,8 @@ void sendToPKSMBrigde(size_t index, u128 uid)
     delete[] data;
 }
 
-void recvFromPKSMBridge(size_t index, u128 uid)
+void recvFromPKSMBridge(size_t index, u128 uid, size_t cellIndex)
 {
-    const size_t cellIndex = Gui::index(CELLS);
     if (cellIndex == 0 || !Gui::askForConfirmation("Receive save from PKSM?")) {
         return;
     }

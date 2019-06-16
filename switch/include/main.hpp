@@ -27,14 +27,18 @@
 #ifndef MAIN_HPP
 #define MAIN_HPP
 
+#include "Screen.hpp"
 #include "io.hpp"
 #include "pksmbridge.hpp"
 #include "status.hpp"
 #include "title.hpp"
 #include "util.hpp"
+#include <memory>
+#include <stack>
 #include <switch.h>
 
 extern u128 g_currentUId;
 extern bool g_notificationLedAvailable;
+extern std::stack<std::unique_ptr<Screen>> g_screens;
 
 #endif

@@ -27,7 +27,9 @@
 #ifndef GUI_HPP
 #define GUI_HPP
 
+#include "MainScreen.hpp"
 #include "SDLHelper.hpp"
+#include "Screen.hpp"
 #include "account.hpp"
 #include "clickable.hpp"
 #include "colors.hpp"
@@ -37,31 +39,20 @@
 #include "scrollable.hpp"
 #include "status.hpp"
 #include "title.hpp"
-#include "types.hpp"
 #include "util.hpp"
 #include <math.h>
+#include <stack>
 #include <string.h>
 #include <switch.h>
 
 namespace Gui {
     bool init(void);
     void exit(void);
-    void draw(void);
 
     void showInfo(const std::string& message);
     void showError(Result res, const std::string& message);
 
-    size_t count(entryType_t type);
-    void entryType(entryType_t type);
-    size_t index(entryType_t type);
-    void index(entryType_t type, size_t i);
-    bool isBackupReleased(void);
-    bool isRestoreReleased(void);
-    bool isCheatReleased(void);
-    std::string nameFromCell(size_t index);
-    void resetIndex(entryType_t type);
     void updateButtons(void);
-    void updateSelector(void);
 
     bool askForConfirmation(const std::string& text);
     void drawCopy(const std::string& src, u64 offset, u64 size);
@@ -73,6 +64,8 @@ namespace Gui {
 
     bool getPKSMBridgeFlag(void);
     void setPKSMBridgeFlag(bool f);
+
+    void setScreen(std::unique_ptr<Screen> screen);
 }
 
 #endif

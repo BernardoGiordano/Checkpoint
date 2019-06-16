@@ -27,20 +27,18 @@
 #ifndef OVERLAY_HPP
 #define OVERLAY_HPP
 
-#include <string>
+#include "Screen.hpp"
 #include <memory>
+#include <string>
 #if defined(_3DS)
-  #include <3ds.h>
+#include <3ds.h>
 #elif defined(__SWITCH__)
-  #include <switch.h>
+#include <switch.h>
 #endif
 
-class Screen;
-
-class Overlay
-{
+class Overlay {
 public:
-    Overlay(Screen& screen);
+    Overlay(Screen& screen) : screen(screen), me(screen.currentOverlay) {}
     virtual ~Overlay() {}
     virtual void update(touchPosition* touch) = 0;
     virtual void draw() const                 = 0;
