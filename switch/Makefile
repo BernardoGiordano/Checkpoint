@@ -74,7 +74,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-no-as-needed,-Map,$(notdir $*.map)
 
-LIBS	:=	-lbz2 -lSDL2_ttf -lSDL2_image -lpng -ljpeg `sdl2-config --libs` `freetype-config --libs` -lnx
+LIBS	:=	`aarch64-none-elf-pkg-config SDL2_ttf SDL2_image --libs`
 
 CXX		:= `which ccache` $(CXX)
 CC		:= `which ccache` $(CC)
