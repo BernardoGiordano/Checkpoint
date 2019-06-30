@@ -82,7 +82,7 @@ void Gui::drawCopy(const std::u16string& src, u32 offset, u32 size)
     C2D_TextOptimize(&srcText);
     C2D_TextOptimize(&copyText);
     const float scale = 0.6f;
-    const u32 size_h  = scale * fontGetInfo()->lineFeed;
+    const u32 size_h  = scale * fontGetInfo(NULL)->lineFeed;
     const u32 src_w   = StringUtils::textWidth(srcText, scale);
     const u32 size_w  = StringUtils::textWidth(copyText, scale);
 
@@ -126,7 +126,7 @@ bool Gui::askForConfirmation(const std::string& message)
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_SceneBegin(g_bottom);
         C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
-        C2D_DrawText(&text, C2D_WithColor, ceilf(320 - text.width * 0.6) / 2, 40 + ceilf(120 - 0.6f * fontGetInfo()->lineFeed) / 2, 0.5f, 0.6f, 0.6f,
+        C2D_DrawText(&text, C2D_WithColor, ceilf(320 - text.width * 0.6) / 2, 40 + ceilf(120 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2, 0.5f, 0.6f, 0.6f,
             COLOR_WHITE);
         C2D_DrawRectSolid(40, 160, 0.5f, 240, 40, COLOR_GREY_LIGHT);
 
@@ -459,7 +459,7 @@ void Gui::draw(void)
     C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
 
     if (hidKeysHeld() & KEY_SELECT) {
-        const u32 inst_lh = scaleInst * fontGetInfo()->lineFeed;
+        const u32 inst_lh = scaleInst * fontGetInfo(NULL)->lineFeed;
         const u32 inst_h  = ceilf((240 - scaleInst * inst_lh * 6) / 2);
         C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, C2D_Color32(0, 0, 0, 190));
         C2D_DrawText(&top_move, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_move, scaleInst)) / 2), inst_h, 0.9f, scaleInst, scaleInst,

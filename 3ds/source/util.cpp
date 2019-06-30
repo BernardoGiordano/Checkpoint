@@ -148,7 +148,7 @@ std::string StringUtils::splitWord(const std::string& text, float scaleX, float 
                 charWidth = width->second->charWidth * scaleX;
             }
             else {
-                widthCache.insert_or_assign(codepoint, fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(codepoint)));
+                widthCache.insert_or_assign(codepoint, fontGetCharWidthInfo(NULL, fontGlyphIndexFromCodePoint(NULL, codepoint)));
                 widthCacheOrder.push(codepoint);
                 if (widthCache.size() > 512) {
                     widthCache.erase(widthCacheOrder.front());
@@ -199,7 +199,7 @@ float StringUtils::textWidth(const std::string& text, float scaleX)
             charWidth = width->second->charWidth * scaleX;
         }
         else {
-            widthCache.insert_or_assign(codepoint, fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(codepoint)));
+            widthCache.insert_or_assign(codepoint, fontGetCharWidthInfo(NULL, fontGlyphIndexFromCodePoint(NULL, codepoint)));
             widthCacheOrder.push(codepoint);
             if (widthCache.size() > 1000) {
                 widthCache.erase(widthCacheOrder.front());
@@ -277,5 +277,5 @@ std::string StringUtils::wrap(const std::string& text, float scaleX, float maxWi
 float StringUtils::textHeight(const std::string& text, float scaleY)
 {
     size_t n = std::count(text.begin(), text.end(), '\n') + 1;
-    return ceilf(scaleY * fontGetInfo()->lineFeed * n);
+    return ceilf(scaleY * fontGetInfo(NULL)->lineFeed * n);
 }

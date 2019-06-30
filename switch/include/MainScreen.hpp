@@ -41,7 +41,7 @@ class Scrollable;
 
 class MainScreen : public Screen {
 public:
-    MainScreen();
+    MainScreen(void);
     void draw(void) const override;
     void update(touchPosition* touch) override;
 

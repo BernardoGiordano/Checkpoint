@@ -66,7 +66,7 @@ void Clickable::draw(float size, u32 overlay)
     const u8 r                = overlay & 0xFF;
     const u8 g                = (overlay >> 8) & 0xFF;
     const u8 b                = (overlay >> 16) & 0xFF;
-    const float messageHeight = ceilf(size * fontGetInfo()->lineFeed);
+    const float messageHeight = ceilf(size * fontGetInfo(NULL)->lineFeed);
     const float messageWidth  = mCentered ? mC2dText.width * size : mw - (mSelected ? 20 : 8);
 
     C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, mColorBg);
