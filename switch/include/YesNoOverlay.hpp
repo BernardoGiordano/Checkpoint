@@ -24,29 +24,33 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef GUI_HPP
-#define GUI_HPP
+#ifndef YESNOOVERLAY_HPP
+#define YESNOOVERLAY_HPP
 
-#include "MainScreen.hpp"
+#include "Overlay.hpp"
 #include "SDLHelper.hpp"
-#include "Screen.hpp"
-#include "account.hpp"
 #include "clickable.hpp"
 #include "colors.hpp"
 #include "hid.hpp"
-#include "main.hpp"
-#include "multiselection.hpp"
-#include "scrollable.hpp"
-#include "title.hpp"
-#include "util.hpp"
-#include <math.h>
-#include <string.h>
-#include <switch.h>
+#include <functional>
+#include <memory>
+#include <string>
 
-namespace Gui {
-    void showInfo(const std::string& message);
-    void showError(Result res, const std::string& message);
-    void drawCopy(const std::string& src, u64 offset, u64 size);
-}
+class Clickable;
+
+class YesNoOverlay : public Overlay {
+public:
+    YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<bool()>& callbackYes, const std::function<bool()>& callbackNo);
+    ~YesNoOverlay(void) {}
+    void draw(void) const override;
+    void update(touchPosition* touch) override;
+
+private:
+    u32 textw, texth;
+    std::string text;
+    std::unique_ptr<Clickable> buttonYes, buttonNo;
+    HidHorizontal hid;
+    std::function<bool()> yesFunc, noFunc;
+};
 
 #endif

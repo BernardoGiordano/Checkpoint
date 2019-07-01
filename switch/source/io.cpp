@@ -140,13 +140,6 @@ Result io::deleteFolderRecursively(const std::string& path)
 
 void io::backup(size_t index, u128 uid, size_t cellIndex)
 {
-    // check if multiple selection is enabled and don't ask for confirmation if that's the case
-    if (!MS::multipleSelectionEnabled()) {
-        if (!Gui::askForConfirmation("Backup selected save?")) {
-            return;
-        }
-    }
-
     const bool isNewFolder = cellIndex == 0;
     Result res             = 0;
 
@@ -235,10 +228,6 @@ void io::backup(size_t index, u128 uid, size_t cellIndex)
 
 void io::restore(size_t index, u128 uid, size_t cellIndex, const std::string& nameFromCell)
 {
-    if (cellIndex == 0 || !Gui::askForConfirmation("Restore selected save?")) {
-        return;
-    }
-
     Result res = 0;
 
     Title title;

@@ -40,56 +40,6 @@ void Gui::drawCopy(const std::string& src, u64 offset, u64 size)
     SDLH_Render();
 }
 
-bool Gui::askForConfirmation(const std::string& text)
-{
-    bool ret             = false;
-    Clickable* buttonYes = new Clickable(322, 462, 316, 56, theme().c3, theme().c6, "Yes", true);
-    Clickable* buttonNo  = new Clickable(642, 462, 316, 56, theme().c3, theme().c6, "No", true);
-    HidHorizontal* mhid  = new HidHorizontal(2, 2);
-
-    u32 w, h;
-    SDLH_GetTextDimensions(28, text.c_str(), &w, &h);
-
-    while (appletMainLoop()) {
-        hidScanInput();
-        mhid->update(2);
-
-        if (buttonYes->released() || ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) && mhid->index() == 0)) {
-            ret = true;
-            break;
-        }
-        else if (buttonNo->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B) ||
-                 ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) && mhid->index() == 1)) {
-            break;
-        }
-
-        mhid->index(buttonYes->held() ? 0 : buttonNo->held() ? 1 : mhid->index());
-        buttonYes->selected(mhid->index() == 0);
-        buttonNo->selected(mhid->index() == 1);
-
-        SDLH_DrawRect(320, 200, 640, 260, theme().c3);
-        SDLH_DrawText(28, ceilf(1280 - w) / 2, 200 + ceilf((260 - h) / 2), theme().c6, text.c_str());
-        drawOutline(322, 462, 316, 56, 2, theme().c5);
-        drawOutline(642, 462, 316, 56, 2, theme().c5);
-        buttonYes->draw(28, COLOR_BLUE);
-        buttonNo->draw(28, COLOR_BLUE);
-
-        if (mhid->index() == 0) {
-            drawPulsingOutline(324, 464, 312, 52, 4, COLOR_BLUE);
-        }
-        else {
-            drawPulsingOutline(644, 464, 312, 52, 4, COLOR_BLUE);
-        }
-
-        SDLH_Render();
-    }
-
-    delete mhid;
-    delete buttonYes;
-    delete buttonNo;
-    return ret;
-}
-
 void Gui::showInfo(const std::string& message)
 {
     Clickable* button = new Clickable(322, 462, 636, 56, theme().c3, theme().c6, "OK", true);

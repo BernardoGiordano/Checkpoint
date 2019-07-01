@@ -42,10 +42,6 @@ bool validateIpAddress(const std::string& ip)
 
 void sendToPKSMBrigde(size_t index, u128 uid, size_t cellIndex)
 {
-    if (cellIndex == 0 || !Gui::askForConfirmation("Send save to PKSM?")) {
-        return;
-    }
-
     auto systemKeyboardAvailable = KeyboardManager::get().isSystemKeyboardAvailable();
     if (!systemKeyboardAvailable.first) {
         Gui::showError(systemKeyboardAvailable.second, "System keyboard not accessible.");
@@ -121,10 +117,6 @@ void sendToPKSMBrigde(size_t index, u128 uid, size_t cellIndex)
 
 void recvFromPKSMBridge(size_t index, u128 uid, size_t cellIndex)
 {
-    if (cellIndex == 0 || !Gui::askForConfirmation("Receive save from PKSM?")) {
-        return;
-    }
-
     int fd;
     struct sockaddr_in servaddr;
     if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_IP)) < 0) {

@@ -184,9 +184,10 @@ void CheatManager::manageCheats(const std::string& key)
         SDLH_Render();
     }
 
-    if (Gui::askForConfirmation("Do you want to store the cheat file?")) {
-        save(key, s);
-    }
+    // TODO: restore this
+    // if (Gui::askForConfirmation("Do you want to store the cheat file?")) {
+    //     save(key, s);
+    // }
 
     delete s;
 }

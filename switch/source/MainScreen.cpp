@@ -165,7 +165,7 @@ void MainScreen::draw() const
     SDLH_GetTextDimensions(26, "checkpoint", &checkpoint_w, &checkpoint_h);
     SDLH_GetTextDimensions(24, "\ue046 Instructions", &inst_w, &inst_h);
 
-    if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_MINUS) {
+    if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_MINUS && currentOverlay == nullptr) {
         SDLH_DrawRect(0, 0, 1280, 720, FC_MakeColor(0, 0, 0, 190));
         SDLH_DrawText(27, 1205, 646, theme().c6, "\ue085\ue086");
         SDLH_DrawText(24, 58, 69, theme().c6, "\ue058 Tap to select title");
@@ -287,7 +287,13 @@ void MainScreen::handleEvents(touchPosition* touch)
                     recvFromPKSMBridge(this->index(TITLES), g_currentUId, this->index(CELLS));
                 }
                 else {
-                    io::restore(this->index(TITLES), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
+                    currentOverlay = std::make_shared<YesNoOverlay>(
+                        *this, "Restore selected save?",
+                        [this]() {
+                            io::restore(this->index(TITLES), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
+                            return true;
+                        },
+                        []() { return true; });
                 }
             }
         }
@@ -316,13 +322,19 @@ void MainScreen::handleEvents(touchPosition* touch)
     if (kdown & KEY_X) {
         if (g_backupScrollEnabled) {
             size_t index = this->index(CELLS);
-            if (index > 0 && Gui::askForConfirmation("Delete selected backup?")) {
-                Title title;
-                getTitle(title, g_currentUId, this->index(TITLES));
-                std::string path = title.fullPath(index);
-                io::deleteFolderRecursively((path + "/").c_str());
-                refreshDirectories(title.id());
-                this->index(CELLS, index - 1);
+            if (index > 0) {
+                currentOverlay = std::make_shared<YesNoOverlay>(
+                    *this, "Delete selected backup?",
+                    [this, index]() {
+                        Title title;
+                        getTitle(title, g_currentUId, this->index(TITLES));
+                        std::string path = title.fullPath(index);
+                        io::deleteFolderRecursively((path + "/").c_str());
+                        refreshDirectories(title.id());
+                        this->index(CELLS, index - 1);
+                        return true;
+                    },
+                    []() { return true; });
             }
         }
     }
@@ -364,6 +376,7 @@ void MainScreen::handleEvents(touchPosition* touch)
             resetIndex(CELLS);
             std::vector<size_t> list = MS::selectedEntries();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                // check if multiple selection is enabled and don't ask for confirmation if that's the case
                 io::backup(list.at(i), g_currentUId, this->index(CELLS));
             }
             MS::clearSelectedEntries();
@@ -373,10 +386,24 @@ void MainScreen::handleEvents(touchPosition* touch)
         }
         else if (g_backupScrollEnabled) {
             if (getPKSMBridgeFlag()) {
-                sendToPKSMBrigde(this->index(TITLES), g_currentUId, this->index(CELLS));
+                if (this->index(CELLS) != 0) {
+                    currentOverlay = std::make_shared<YesNoOverlay>(
+                        *this, "Send save to PKSM?",
+                        [this]() {
+                            sendToPKSMBrigde(this->index(TITLES), g_currentUId, this->index(CELLS));
+                            return true;
+                        },
+                        []() { return true; });
+                }
             }
             else {
-                io::backup(this->index(TITLES), g_currentUId, this->index(CELLS));
+                currentOverlay = std::make_shared<YesNoOverlay>(
+                    *this, "Backup selected save?",
+                    [this]() {
+                        io::backup(this->index(TITLES), g_currentUId, this->index(CELLS));
+                        return true;
+                    },
+                    []() { return true; });
             }
         }
     }
@@ -384,11 +411,25 @@ void MainScreen::handleEvents(touchPosition* touch)
     // Handle pressing/touching R
     if (isRestoreReleased() || (kdown & KEY_R)) {
         if (g_backupScrollEnabled) {
-            if (getPKSMBridgeFlag()) {
-                recvFromPKSMBridge(this->index(TITLES), g_currentUId, this->index(CELLS));
+            if (getPKSMBridgeFlag() && this->index(CELLS) != 0) {
+                currentOverlay = std::make_shared<YesNoOverlay>(
+                    *this, "Receive save from PKSM?",
+                    [this]() {
+                        recvFromPKSMBridge(this->index(TITLES), g_currentUId, this->index(CELLS));
+                        return true;
+                    },
+                    []() { return true; });
             }
             else {
-                io::restore(this->index(TITLES), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
+                if (this->index(CELLS) != 0) {
+                    currentOverlay = std::make_shared<YesNoOverlay>(
+                        *this, "Restore selected save?",
+                        [this]() {
+                            io::restore(this->index(TITLES), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
+                            return true;
+                        },
+                        []() { return true; });
+                }
             }
         }
     }

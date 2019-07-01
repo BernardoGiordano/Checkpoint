@@ -126,8 +126,8 @@ bool Gui::askForConfirmation(const std::string& message)
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_SceneBegin(g_bottom);
         C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
-        C2D_DrawText(&text, C2D_WithColor, ceilf(320 - text.width * 0.6) / 2, 40 + ceilf(120 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2, 0.5f, 0.6f, 0.6f,
-            COLOR_WHITE);
+        C2D_DrawText(&text, C2D_WithColor, ceilf(320 - text.width * 0.6) / 2, 40 + ceilf(120 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2, 0.5f, 0.6f,
+            0.6f, COLOR_WHITE);
         C2D_DrawRectSolid(40, 160, 0.5f, 240, 40, COLOR_GREY_LIGHT);
 
         buttonYes->draw(0.7, 0);

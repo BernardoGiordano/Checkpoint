@@ -28,6 +28,7 @@
 #define MAINSCREEN_HPP
 
 #include "Screen.hpp"
+#include "YesNoOverlay.hpp"
 #include "clickable.hpp"
 #include "gui.hpp"
 #include "hid.hpp"
