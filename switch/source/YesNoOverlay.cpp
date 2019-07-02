@@ -27,7 +27,7 @@
 #include "YesNoOverlay.hpp"
 
 YesNoOverlay::YesNoOverlay(
-    Screen& screen, const std::string& mtext, const std::function<bool()>& callbackYes, const std::function<bool()>& callbackNo)
+    Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo)
     : Overlay(screen), hid(2, 2)
 {
     text    = mtext;
@@ -66,10 +66,8 @@ void YesNoOverlay::update(touchPosition* touch)
 
     if (buttonYes->released() || ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) && hid.index() == 0)) {
         yesFunc();
-        screen.removeOverlay();
     }
     else if (buttonNo->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B) || ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) && hid.index() == 1)) {
         noFunc();
-        screen.removeOverlay();
     }
 }

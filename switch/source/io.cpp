@@ -48,15 +48,12 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
     u64 sz = ftell(src);
     rewind(src);
 
-    u8* buf          = new u8[BUFFER_SIZE];
-    u64 offset       = 0;
-    size_t slashpos  = srcPath.rfind("/");
-    std::string name = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
+    u8* buf    = new u8[BUFFER_SIZE];
+    u64 offset = 0;
     while (offset < sz) {
         u32 count = fread((char*)buf, 1, BUFFER_SIZE, src);
         fwrite((char*)buf, 1, count, dst);
         offset += count;
-        Gui::drawCopy(name, offset, sz);
     }
 
     delete[] buf;
@@ -138,11 +135,11 @@ Result io::deleteFolderRecursively(const std::string& path)
     return 0;
 }
 
-void io::backup(size_t index, u128 uid, size_t cellIndex)
+std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t cellIndex)
 {
-    const bool isNewFolder = cellIndex == 0;
-    Result res             = 0;
-
+    const bool isNewFolder                    = cellIndex == 0;
+    Result res                                = 0;
+    std::tuple<bool, Result, std::string> ret = std::make_tuple(false, -1, "");
     Title title;
     getTitle(title, uid, index);
 
@@ -152,13 +149,11 @@ void io::backup(size_t index, u128 uid, size_t cellIndex)
         int ret = FileSystem::mount(fileSystem);
         if (ret == -1) {
             FileSystem::unmount();
-            Gui::showError(-2, "Failed to mount save.");
-            return;
+            return std::make_tuple(false, -2, "Failed to mount save.");
         }
     }
     else {
-        Gui::showError(res, "Failed to mount save.");
-        return;
+        return std::make_tuple(false, res, "Failed to mount save.");
     }
 
     std::string suggestion = DateTime::dateTimeStr() + " " +
@@ -178,7 +173,7 @@ void io::backup(size_t index, u128 uid, size_t cellIndex)
             }
             else {
                 FileSystem::unmount();
-                return;
+                return std::make_tuple(false, 0, "Operation aborted by the user.");
             }
         }
         else {
@@ -199,8 +194,7 @@ void io::backup(size_t index, u128 uid, size_t cellIndex)
         int ret = io::deleteFolderRecursively((dstPath + "/").c_str());
         if (ret != 0) {
             FileSystem::unmount();
-            Gui::showError((Result)ret, "Failed to delete the existing backup\ndirectory recursively.");
-            return;
+            return std::make_tuple(false, (Result)ret, "Failed to delete the existing backup\ndirectory recursively.");
         }
     }
 
@@ -209,8 +203,7 @@ void io::backup(size_t index, u128 uid, size_t cellIndex)
     if (R_FAILED(res)) {
         FileSystem::unmount();
         io::deleteFolderRecursively((dstPath + "/").c_str());
-        Gui::showError(res, "Failed to backup save.");
-        return;
+        return std::make_tuple(false, res, "Failed to backup save.");
     }
 
     refreshDirectories(title.id());
@@ -218,18 +211,20 @@ void io::backup(size_t index, u128 uid, size_t cellIndex)
     FileSystem::unmount();
     if (!MS::multipleSelectionEnabled()) {
         blinkLed(4);
-        Gui::showInfo("Progress correctly saved to disk.");
+        ret = std::make_tuple(true, 0, "Progress correctly saved to disk.");
     }
     auto systemKeyboardAvailable = KeyboardManager::get().isSystemKeyboardAvailable();
     if (!systemKeyboardAvailable.first) {
-        Gui::showError(systemKeyboardAvailable.second, "System keyboard applet not accessible.\nThe suggested destination folder was used\ninstead.");
+        return std::make_tuple(
+            false, systemKeyboardAvailable.second, "System keyboard applet not accessible.\nThe suggested destination folder was used\ninstead.");
     }
+    return ret;
 }
 
-void io::restore(size_t index, u128 uid, size_t cellIndex, const std::string& nameFromCell)
+std::tuple<bool, Result, std::string> io::restore(size_t index, u128 uid, size_t cellIndex, const std::string& nameFromCell)
 {
-    Result res = 0;
-
+    Result res                                = 0;
+    std::tuple<bool, Result, std::string> ret = std::make_tuple(false, -1, "");
     Title title;
     getTitle(title, uid, index);
 
@@ -239,13 +234,11 @@ void io::restore(size_t index, u128 uid, size_t cellIndex, const std::string& na
         int ret = FileSystem::mount(fileSystem);
         if (ret == -1) {
             FileSystem::unmount();
-            Gui::showError(-2, "Failed to mount save.");
-            return;
+            return std::make_tuple(false, -2, "Failed to mount save.");
         }
     }
     else {
-        Gui::showError(res, "Failed to mount save.");
-        return;
+        return std::make_tuple(false, res, "Failed to mount save.");
     }
 
     std::string srcPath = title.fullPath(cellIndex) + "/";
@@ -254,25 +247,24 @@ void io::restore(size_t index, u128 uid, size_t cellIndex, const std::string& na
     res = io::deleteFolderRecursively(dstPath.c_str());
     if (R_FAILED(res)) {
         FileSystem::unmount();
-        Gui::showError(res, "Failed to delete save.");
-        return;
+        return std::make_tuple(false, res, "Failed to delete save.");
     }
 
     res = io::copyDirectory(srcPath, dstPath);
     if (R_FAILED(res)) {
         FileSystem::unmount();
-        Gui::showError(res, "Failed to restore save.");
-        return;
+        return std::make_tuple(false, res, "Failed to restore save.");
     }
 
     res = fsdevCommitDevice("save");
     if (R_FAILED(res)) {
-        Gui::showError(res, "Failed to commit to save device.");
+        return std::make_tuple(false, res, "Failed to commit to save device.");
     }
     else {
         blinkLed(4);
-        Gui::showInfo(nameFromCell + "\nhas been restored successfully.");
+        ret = std::make_tuple(true, 0, nameFromCell + "\nhas been restored successfully.");
     }
 
     FileSystem::unmount();
+    return ret;
 }

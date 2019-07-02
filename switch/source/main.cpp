@@ -25,12 +25,12 @@
  */
 
 #include "main.hpp"
+#include "MainScreen.hpp"
 
 float g_currentTime             = 0;
 u128 g_currentUId               = 0;
 bool g_backupScrollEnabled      = 0;
 bool g_notificationLedAvailable = false;
-std::unique_ptr<Screen> g_screen;
 
 int main(void)
 {
@@ -40,7 +40,7 @@ int main(void)
         return res;
     }
 
-    g_screen = std::make_unique<MainScreen>();
+    auto screen = std::make_unique<MainScreen>();
 
     loadTitles();
     // get the user IDs
@@ -54,8 +54,8 @@ int main(void)
         hidScanInput();
         hidTouchRead(&touch, 0);
 
-        g_screen->doDraw();
-        g_screen->doUpdate(&touch);
+        screen->doDraw();
+        screen->doUpdate(&touch);
         SDLH_Render();
         // poll server
         Configuration::getInstance().pollServer();

@@ -25,7 +25,7 @@
  */
 
 #include "KeyboardManager.hpp"
-#include "gui.hpp"
+#include "title.hpp"
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
@@ -34,11 +34,12 @@
 #include <switch.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <tuple>
 #include <unistd.h>
 #include <utility>
 
 #define PKSM_PORT 34567
 
 bool isPKSMBridgeTitle(u64 id);
-void sendToPKSMBrigde(size_t index, u128 uid, size_t cellIndex);
-void recvFromPKSMBridge(size_t index, u128 uid, size_t cellIndex);
+std::tuple<bool, Result, std::string> sendToPKSMBrigde(size_t index, u128 uid, size_t cellIndex);
+std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, u128 uid, size_t cellIndex);

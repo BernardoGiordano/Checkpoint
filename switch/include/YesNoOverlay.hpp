@@ -40,7 +40,7 @@ class Clickable;
 
 class YesNoOverlay : public Overlay {
 public:
-    YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<bool()>& callbackYes, const std::function<bool()>& callbackNo);
+    YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
     ~YesNoOverlay(void) {}
     void draw(void) const override;
     void update(touchPosition* touch) override;
@@ -50,7 +50,7 @@ private:
     std::string text;
     std::unique_ptr<Clickable> buttonYes, buttonNo;
     HidHorizontal hid;
-    std::function<bool()> yesFunc, noFunc;
+    std::function<void()> yesFunc, noFunc;
 };
 
 #endif

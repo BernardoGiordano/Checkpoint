@@ -24,29 +24,30 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef GUI_HPP
-#define GUI_HPP
+#include "ErrorOverlay.hpp"
 
-#include "MainScreen.hpp"
-#include "SDLHelper.hpp"
-#include "Screen.hpp"
-#include "account.hpp"
-#include "clickable.hpp"
-#include "colors.hpp"
-#include "hid.hpp"
-#include "main.hpp"
-#include "multiselection.hpp"
-#include "scrollable.hpp"
-#include "title.hpp"
-#include "util.hpp"
-#include <math.h>
-#include <string.h>
-#include <switch.h>
-
-namespace Gui {
-    void showInfo(const std::string& message);
-    void showError(Result res, const std::string& message);
-    void drawCopy(const std::string& src, u64 offset, u64 size);
+ErrorOverlay::ErrorOverlay(Screen& screen, Result mres, const std::string& mtext) : Overlay(screen)
+{
+    res  = mres;
+    text = mtext;
+    SDLH_GetTextDimensions(28, text.c_str(), &textw, &texth);
+    button = std::make_unique<Clickable>(322, 462, 636, 56, theme().c1, theme().c6, "OK", true);
+    button->selected(true);
 }
 
-#endif
+void ErrorOverlay::draw(void) const
+{
+    SDLH_DrawRect(0, 0, 1280, 720, FC_MakeColor(0, 0, 0, 160));
+    SDLH_DrawRect(320, 200, 640, 260, theme().c0);
+    SDLH_DrawText(20, 330, 210, COLOR_RED, StringUtils::format("Error: 0x%0llX", res).c_str());
+    SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), theme().c6, text.c_str());
+    button->draw(28, COLOR_RED);
+    drawPulsingOutline(322, 462, 636, 56, 4, COLOR_RED);
+}
+
+void ErrorOverlay::update(touchPosition* touch)
+{
+    if (button->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B)) {
+        screen.removeOverlay();
+    }
+}

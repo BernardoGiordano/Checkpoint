@@ -29,18 +29,21 @@
 
 #include "KeyboardManager.hpp"
 #include "directory.hpp"
-#include "gui.hpp"
+#include "multiselection.hpp"
+#include "title.hpp"
+#include "util.hpp"
 #include <dirent.h>
 #include <switch.h>
 #include <sys/stat.h>
+#include <tuple>
 #include <unistd.h>
 #include <utility>
 
 #define BUFFER_SIZE 0x80000
 
 namespace io {
-    void backup(size_t index, u128 uid, size_t cellIndex);
-    void restore(size_t index, u128 uid, size_t cellIndex, const std::string& nameFromCell);
+    std::tuple<bool, Result, std::string> backup(size_t index, u128 uid, size_t cellIndex);
+    std::tuple<bool, Result, std::string> restore(size_t index, u128 uid, size_t cellIndex, const std::string& nameFromCell);
 
     Result copyDirectory(const std::string& srcPath, const std::string& dstPath);
     void copyFile(const std::string& srcPath, const std::string& dstPath);

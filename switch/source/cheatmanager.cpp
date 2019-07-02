@@ -222,7 +222,8 @@ void CheatManager::save(const std::string& key, Scrollable* s)
             fclose(f);
         }
         else {
-            Gui::showError(errno, "Failed to write cheat file\nto the sd card");
+            // TODO:
+            // Gui::showError(errno, "Failed to write cheat file\nto the sd card");
         }
     }
 }

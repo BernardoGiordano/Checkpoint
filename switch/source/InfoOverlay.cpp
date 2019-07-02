@@ -24,27 +24,28 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef CHEATMANAGER_HPP
-#define CHEATMANAGER_HPP
+#include "InfoOverlay.hpp"
 
-#include "json.hpp"
-#include "main.hpp"
-#include "scrollable.hpp"
-#include <bzlib.h>
-#include <errno.h>
-#include <stdio.h>
-#include <switch.h>
-#include <sys/stat.h>
-
-class Scrollable;
-
-namespace CheatManager {
-    void init(void);
-    void exit(void);
-    bool loaded(void);
-    bool availableCodes(const std::string& key);
-    void manageCheats(const std::string& key);
-    void save(const std::string& key, Scrollable* s);
+InfoOverlay::InfoOverlay(Screen& screen, const std::string& mtext) : Overlay(screen)
+{
+    text = mtext;
+    SDLH_GetTextDimensions(28, text.c_str(), &textw, &texth);
+    button = std::make_unique<Clickable>(322, 462, 636, 56, theme().c3, theme().c6, "OK", true);
+    button->selected(true);
 }
 
-#endif
+void InfoOverlay::draw(void) const
+{
+    SDLH_DrawRect(0, 0, 1280, 720, FC_MakeColor(0, 0, 0, 160));
+    SDLH_DrawRect(320, 200, 640, 260, theme().c3);
+    SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), theme().c6, text.c_str());
+    button->draw(28, COLOR_BLUE);
+    drawPulsingOutline(322, 462, 636, 56, 4, COLOR_BLUE);
+}
+
+void InfoOverlay::update(touchPosition* touch)
+{
+    if (button->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B)) {
+        screen.removeOverlay();
+    }
+}

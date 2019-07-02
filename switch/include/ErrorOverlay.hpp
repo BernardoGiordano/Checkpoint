@@ -24,27 +24,30 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef CHEATMANAGER_HPP
-#define CHEATMANAGER_HPP
+#ifndef ERROROVERLAY_HPP
+#define ERROROVERLAY_HPP
 
-#include "json.hpp"
-#include "main.hpp"
-#include "scrollable.hpp"
-#include <bzlib.h>
-#include <errno.h>
-#include <stdio.h>
-#include <switch.h>
-#include <sys/stat.h>
+#include "Overlay.hpp"
+#include "SDLHelper.hpp"
+#include "clickable.hpp"
+#include "colors.hpp"
+#include <memory>
+#include <string>
 
-class Scrollable;
+class Clickable;
 
-namespace CheatManager {
-    void init(void);
-    void exit(void);
-    bool loaded(void);
-    bool availableCodes(const std::string& key);
-    void manageCheats(const std::string& key);
-    void save(const std::string& key, Scrollable* s);
-}
+class ErrorOverlay : public Overlay {
+public:
+    ErrorOverlay(Screen& screen, Result res, const std::string& mtext);
+    ~ErrorOverlay(void) {}
+    void draw(void) const override;
+    void update(touchPosition* touch) override;
+
+private:
+    u32 textw, texth;
+    std::string text;
+    std::unique_ptr<Clickable> button;
+    Result res;
+};
 
 #endif

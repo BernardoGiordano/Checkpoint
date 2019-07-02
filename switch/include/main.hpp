@@ -27,9 +27,6 @@
 #ifndef MAIN_HPP
 #define MAIN_HPP
 
-#include "Screen.hpp"
-#include "io.hpp"
-#include "pksmbridge.hpp"
 #include "title.hpp"
 #include "util.hpp"
 #include <memory>
@@ -39,6 +36,5 @@ extern bool g_backupScrollEnabled;
 extern float g_currentTime;
 extern u128 g_currentUId;
 extern bool g_notificationLedAvailable;
-extern std::unique_ptr<Screen> g_screen;
 
 #endif

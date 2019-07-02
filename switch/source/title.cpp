@@ -167,7 +167,8 @@ void Title::refreshDirectories(void)
         mFullSavePaths.insert(mFullSavePaths.begin(), "New...");
     }
     else {
-        Gui::showError(savelist.error(), "Couldn't retrieve the directory list for the title " + name() + ".");
+        // Gui::showError(savelist.error(), "Couldn't retrieve the directory list for the title " + name() + ".");
+        // TODO: log this
     }
 
     // save backups from configuration

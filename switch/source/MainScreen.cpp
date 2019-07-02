@@ -279,21 +279,38 @@ void MainScreen::handleEvents(touchPosition* touch)
             // If the "New..." entry is selected...
             if (0 == this->index(CELLS)) {
                 if (!getPKSMBridgeFlag()) {
-                    io::backup(this->index(TITLES), g_currentUId, this->index(CELLS));
+                    auto result = io::backup(this->index(TITLES), g_currentUId, this->index(CELLS));
+                    if (std::get<0>(result)) {
+                        currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                    }
+                    else {
+                        currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                    }
                 }
             }
             else {
                 if (getPKSMBridgeFlag()) {
-                    recvFromPKSMBridge(this->index(TITLES), g_currentUId, this->index(CELLS));
+                    auto result = recvFromPKSMBridge(this->index(TITLES), g_currentUId, this->index(CELLS));
+                    if (std::get<0>(result)) {
+                        currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                    }
+                    else {
+                        currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                    }
                 }
                 else {
                     currentOverlay = std::make_shared<YesNoOverlay>(
                         *this, "Restore selected save?",
                         [this]() {
-                            io::restore(this->index(TITLES), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
-                            return true;
+                            auto result = io::restore(this->index(TITLES), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
+                            if (std::get<0>(result)) {
+                                currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                            }
+                            else {
+                                currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                            }
                         },
-                        []() { return true; });
+                        [this]() { this->removeOverlay(); });
                 }
             }
         }
@@ -332,9 +349,9 @@ void MainScreen::handleEvents(touchPosition* touch)
                         io::deleteFolderRecursively((path + "/").c_str());
                         refreshDirectories(title.id());
                         this->index(CELLS, index - 1);
-                        return true;
+                        this->removeOverlay();
                     },
-                    []() { return true; });
+                    [this]() { this->removeOverlay(); });
             }
         }
     }
@@ -377,12 +394,18 @@ void MainScreen::handleEvents(touchPosition* touch)
             std::vector<size_t> list = MS::selectedEntries();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
                 // check if multiple selection is enabled and don't ask for confirmation if that's the case
-                io::backup(list.at(i), g_currentUId, this->index(CELLS));
+                auto result = io::backup(list.at(i), g_currentUId, this->index(CELLS));
+                if (std::get<0>(result)) {
+                    currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                }
+                else {
+                    currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                }
             }
             MS::clearSelectedEntries();
             updateButtons();
             blinkLed(4);
-            Gui::showInfo("Progress correctly saved to disk.");
+            currentOverlay = std::make_shared<InfoOverlay>(*this, "Progress correctly saved to disk.");
         }
         else if (g_backupScrollEnabled) {
             if (getPKSMBridgeFlag()) {
@@ -390,20 +413,30 @@ void MainScreen::handleEvents(touchPosition* touch)
                     currentOverlay = std::make_shared<YesNoOverlay>(
                         *this, "Send save to PKSM?",
                         [this]() {
-                            sendToPKSMBrigde(this->index(TITLES), g_currentUId, this->index(CELLS));
-                            return true;
+                            auto result = sendToPKSMBrigde(this->index(TITLES), g_currentUId, this->index(CELLS));
+                            if (std::get<0>(result)) {
+                                currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                            }
+                            else {
+                                currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                            }
                         },
-                        []() { return true; });
+                        [this]() { this->removeOverlay(); });
                 }
             }
             else {
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Backup selected save?",
                     [this]() {
-                        io::backup(this->index(TITLES), g_currentUId, this->index(CELLS));
-                        return true;
+                        auto result = io::backup(this->index(TITLES), g_currentUId, this->index(CELLS));
+                        if (std::get<0>(result)) {
+                            currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                        }
+                        else {
+                            currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                        }
                     },
-                    []() { return true; });
+                    [this]() { this->removeOverlay(); });
             }
         }
     }
@@ -415,20 +448,30 @@ void MainScreen::handleEvents(touchPosition* touch)
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Receive save from PKSM?",
                     [this]() {
-                        recvFromPKSMBridge(this->index(TITLES), g_currentUId, this->index(CELLS));
-                        return true;
+                        auto result = recvFromPKSMBridge(this->index(TITLES), g_currentUId, this->index(CELLS));
+                        if (std::get<0>(result)) {
+                            currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                        }
+                        else {
+                            currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                        }
                     },
-                    []() { return true; });
+                    [this]() { this->removeOverlay(); });
             }
             else {
                 if (this->index(CELLS) != 0) {
                     currentOverlay = std::make_shared<YesNoOverlay>(
                         *this, "Restore selected save?",
                         [this]() {
-                            io::restore(this->index(TITLES), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
-                            return true;
+                            auto result = io::restore(this->index(TITLES), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
+                            if (std::get<0>(result)) {
+                                currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                            }
+                            else {
+                                currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                            }
                         },
-                        []() { return true; });
+                        [this]() { this->removeOverlay(); });
                 }
             }
         }
@@ -447,7 +490,7 @@ void MainScreen::handleEvents(touchPosition* touch)
                 CheatManager::manageCheats(key);
             }
             else {
-                Gui::showInfo("No available cheat codes for this title.");
+                currentOverlay = std::make_shared<InfoOverlay>(*this, "No available cheat codes for this title.");
             }
         }
     }

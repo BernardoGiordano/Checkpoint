@@ -27,13 +27,18 @@
 #ifndef MAINSCREEN_HPP
 #define MAINSCREEN_HPP
 
+#include "ErrorOverlay.hpp"
+#include "InfoOverlay.hpp"
 #include "Screen.hpp"
 #include "YesNoOverlay.hpp"
 #include "clickable.hpp"
-#include "gui.hpp"
 #include "hid.hpp"
+#include "io.hpp"
 #include "main.hpp"
+#include "multiselection.hpp"
+#include "pksmbridge.hpp"
 #include "scrollable.hpp"
+#include <tuple>
 
 typedef enum { TITLES, CELLS } entryType_t;
 
