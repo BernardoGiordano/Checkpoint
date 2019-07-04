@@ -24,27 +24,33 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef CLICKABLE_HPP
-#define CLICKABLE_HPP
+#ifndef YESNOOVERLAY_HPP
+#define YESNOOVERLAY_HPP
 
+#include "Overlay.hpp"
 #include "SDLHelper.hpp"
-#include "iclickable.hpp"
-#include "main.hpp"
+#include "clickable.hpp"
+#include "colors.hpp"
+#include "hid.hpp"
+#include <functional>
+#include <memory>
 #include <string>
-#include <switch.h>
 
-class Clickable : public IClickable<SDL_Color> {
+class Clickable;
+
+class YesNoOverlay : public Overlay {
 public:
-    Clickable(int x, int y, u16 w, u16 h, SDL_Color colorBg, SDL_Color colorText, const std::string& message, bool centered)
-        : IClickable(x, y, w, h, colorBg, colorText, message, centered)
-    {
-    }
-    virtual ~Clickable(void){};
+    YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
+    ~YesNoOverlay(void) {}
+    void draw(void) const override;
+    void update(touchPosition* touch) override;
 
-    void draw(float font, SDL_Color overlay) override;
-    bool held(void) override;
-    bool released(void) override;
-    void drawOutline(SDL_Color color) override;
+private:
+    u32 textw, texth;
+    std::string text;
+    std::unique_ptr<Clickable> buttonYes, buttonNo;
+    HidHorizontal hid;
+    std::function<void()> yesFunc, noFunc;
 };
 
 #endif

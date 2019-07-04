@@ -58,6 +58,31 @@ void Title::init(u8 saveDataType, u64 id, u128 userID, const std::string& name, 
     mSafeName     = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
     mPath         = "sdmc:/switch/Checkpoint/saves/" + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
 
+    std::string aname = StringUtils::removeAccents(mName);
+    size_t pos        = aname.rfind(":");
+    mDisplayName      = std::make_pair(name, "");
+    if (pos != std::string::npos) {
+        std::string name1 = aname.substr(0, pos);
+        std::string name2 = aname.substr(pos + 1);
+        StringUtils::trim(name1);
+        StringUtils::trim(name2);
+        mDisplayName.first  = name1;
+        mDisplayName.second = name2;
+    }
+    else {
+        // check for parenthesis
+        size_t pos1 = aname.find("(");
+        size_t pos2 = aname.rfind(")");
+        if (pos1 != std::string::npos && pos2 != std::string::npos) {
+            std::string name1 = aname.substr(0, pos1);
+            std::string name2 = aname.substr(pos1 + 1, pos2 - pos1);
+            StringUtils::trim(name1);
+            StringUtils::trim(name2);
+            mDisplayName.first  = name1;
+            mDisplayName.second = name2;
+        }
+    }
+
     if (!io::directoryExists(mPath)) {
         io::createDirectory(mPath);
     }
@@ -112,18 +137,7 @@ std::string Title::name(void)
 
 std::pair<std::string, std::string> Title::displayName(void)
 {
-    std::string name                      = StringUtils::removeAccents(mName);
-    std::pair<std::string, std::string> p = std::make_pair(name, "");
-    size_t pos                            = name.rfind(":");
-    if (pos != std::string::npos) {
-        std::string name1 = name.substr(0, pos);
-        std::string name2 = name.substr(pos + 1);
-        StringUtils::trim(name1);
-        StringUtils::trim(name2);
-        p.first  = name1;
-        p.second = name2;
-    }
-    return p;
+    return mDisplayName;
 }
 
 std::string Title::path(void)
@@ -167,7 +181,8 @@ void Title::refreshDirectories(void)
         mFullSavePaths.insert(mFullSavePaths.begin(), "New...");
     }
     else {
-        Gui::showError(savelist.error(), "Couldn't retrieve the directory list for the title " + name() + ".");
+        // Gui::showError(savelist.error(), "Couldn't retrieve the directory list for the title " + name() + ".");
+        // TODO: log this
     }
 
     // save backups from configuration

@@ -24,27 +24,28 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef CLICKABLE_HPP
-#define CLICKABLE_HPP
+#ifndef OVERLAY_HPP
+#define OVERLAY_HPP
 
-#include "SDLHelper.hpp"
-#include "iclickable.hpp"
-#include "main.hpp"
+#include "Screen.hpp"
+#include <memory>
 #include <string>
+#if defined(_3DS)
+#include <3ds.h>
+#elif defined(__SWITCH__)
 #include <switch.h>
+#endif
 
-class Clickable : public IClickable<SDL_Color> {
+class Overlay {
 public:
-    Clickable(int x, int y, u16 w, u16 h, SDL_Color colorBg, SDL_Color colorText, const std::string& message, bool centered)
-        : IClickable(x, y, w, h, colorBg, colorText, message, centered)
-    {
-    }
-    virtual ~Clickable(void){};
+    Overlay(Screen& screen) : screen(screen), me(screen.currentOverlay) {}
+    virtual ~Overlay() {}
+    virtual void update(touchPosition* touch) = 0;
+    virtual void draw() const                 = 0;
 
-    void draw(float font, SDL_Color overlay) override;
-    bool held(void) override;
-    bool released(void) override;
-    void drawOutline(SDL_Color color) override;
+protected:
+    Screen& screen;
+    std::shared_ptr<Overlay>& me;
 };
 
 #endif

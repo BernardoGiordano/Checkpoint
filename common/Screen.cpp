@@ -24,5 +24,23 @@
  *         reasonable ways as different from the original version.
  */
 
-extern bool g_backupScrollEnabled;
-extern float g_currentTime;
+#include "Screen.hpp"
+#include "Overlay.hpp"
+
+void Screen::doDraw() const
+{
+    draw();
+    if (currentOverlay) {
+        currentOverlay->draw();
+    }
+}
+
+void Screen::doUpdate(touchPosition* touch)
+{
+    if (currentOverlay) {
+        currentOverlay->update(touch);
+    }
+    else {
+        update(touch);
+    }
+}

@@ -28,7 +28,6 @@
 #define ACCOUNT_HPP
 
 #include "SDLHelper.hpp"
-#include "types.hpp"
 #include <map>
 #include <string.h>
 #include <string>

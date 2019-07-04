@@ -24,27 +24,28 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef CLICKABLE_HPP
-#define CLICKABLE_HPP
+#include "InfoOverlay.hpp"
 
-#include "SDLHelper.hpp"
-#include "iclickable.hpp"
-#include "main.hpp"
-#include <string>
-#include <switch.h>
+InfoOverlay::InfoOverlay(Screen& screen, const std::string& mtext) : Overlay(screen)
+{
+    text = mtext;
+    SDLH_GetTextDimensions(28, text.c_str(), &textw, &texth);
+    button = std::make_unique<Clickable>(322, 462, 636, 56, theme().c3, theme().c6, "OK", true);
+    button->selected(true);
+}
 
-class Clickable : public IClickable<SDL_Color> {
-public:
-    Clickable(int x, int y, u16 w, u16 h, SDL_Color colorBg, SDL_Color colorText, const std::string& message, bool centered)
-        : IClickable(x, y, w, h, colorBg, colorText, message, centered)
-    {
+void InfoOverlay::draw(void) const
+{
+    SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
+    SDLH_DrawRect(320, 200, 640, 260, theme().c3);
+    SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), theme().c6, text.c_str());
+    button->draw(28, COLOR_BLUE);
+    drawPulsingOutline(322, 462, 636, 56, 4, COLOR_BLUE);
+}
+
+void InfoOverlay::update(touchPosition* touch)
+{
+    if (button->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B)) {
+        screen.removeOverlay();
     }
-    virtual ~Clickable(void){};
-
-    void draw(float font, SDL_Color overlay) override;
-    bool held(void) override;
-    bool released(void) override;
-    void drawOutline(SDL_Color color) override;
-};
-
-#endif
+}

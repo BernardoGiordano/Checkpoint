@@ -24,27 +24,40 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef CLICKABLE_HPP
-#define CLICKABLE_HPP
+#ifndef CHEATMANAGEROVERLAY_HPP
+#define CHEATMANAGEROVERLAY_HPP
 
+#include "Overlay.hpp"
 #include "SDLHelper.hpp"
-#include "iclickable.hpp"
-#include "main.hpp"
+#include "YesNoOverlay.hpp"
+#include "cheatmanager.hpp"
+#include "clickable.hpp"
+#include "colors.hpp"
+#include "directory.hpp"
+#include "scrollable.hpp"
+#include <memory>
 #include <string>
-#include <switch.h>
 
-class Clickable : public IClickable<SDL_Color> {
+class Clickable;
+class Scrollable;
+
+class CheatManagerOverlay : public Overlay {
 public:
-    Clickable(int x, int y, u16 w, u16 h, SDL_Color colorBg, SDL_Color colorText, const std::string& message, bool centered)
-        : IClickable(x, y, w, h, colorBg, colorText, message, centered)
-    {
-    }
-    virtual ~Clickable(void){};
+    CheatManagerOverlay(Screen& screen, const std::string& mtext);
+    ~CheatManagerOverlay(void) {}
+    void draw(void) const override;
+    void update(touchPosition* touch) override;
 
-    void draw(float font, SDL_Color overlay) override;
-    bool held(void) override;
-    bool released(void) override;
-    void drawOutline(SDL_Color color) override;
+protected:
+    void save(const std::string& key, Scrollable* s);
+
+private:
+    bool multiSelected;
+    std::string existingCheat;
+    std::string key;
+    const size_t MAGIC_LEN = strlen(SELECTED_MAGIC);
+    std::shared_ptr<Scrollable> scrollable;
+    size_t currentIndex;
 };
 
 #endif

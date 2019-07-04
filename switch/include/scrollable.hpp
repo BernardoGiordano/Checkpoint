@@ -37,6 +37,8 @@
 
 class Scrollable : public IScrollable<SDL_Color> {
 public:
+    Scrollable(void) : IScrollable() {}
+
     Scrollable(u32 x, u32 y, u32 w, u32 h, size_t visibleEntries) : IScrollable(x, y, w, h, visibleEntries)
     {
         mHid = new HidVertical(visibleEntries, 1);

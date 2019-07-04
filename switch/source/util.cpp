@@ -26,12 +26,8 @@
 
 #include "util.hpp"
 
-bool g_notificationLedAvailable = false;
-
 void servicesExit(void)
 {
-    CheatManager::exit();
-
     // debug
     socketExit();
 
@@ -41,7 +37,7 @@ void servicesExit(void)
     }
     nsExit();
     Account::exit();
-    Gui::exit();
+    SDLH_Exit();
     plExit();
     romfsExit();
 }
@@ -72,15 +68,13 @@ Result servicesInit(void)
         return res;
     }
 
-    if (!Gui::init()) {
+    if (!SDLH_Init()) {
         return -1;
     }
 
     if (R_SUCCEEDED(res = hidsysInitialize())) {
         g_notificationLedAvailable = true;
     }
-
-    CheatManager::init();
 
     Configuration::getInstance();
 

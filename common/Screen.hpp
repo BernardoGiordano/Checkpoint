@@ -24,55 +24,37 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef GUI_HPP
-#define GUI_HPP
+#ifndef SCREEN_HPP
+#define SCREEN_HPP
 
-#include "SDLHelper.hpp"
-#include "account.hpp"
-#include "clickable.hpp"
-#include "colors.hpp"
-#include "hid.hpp"
-#include "main.hpp"
-#include "multiselection.hpp"
-#include "scrollable.hpp"
-#include "status.hpp"
-#include "title.hpp"
-#include "types.hpp"
-#include "util.hpp"
-#include <math.h>
-#include <string.h>
+#if defined(_3DS)
+#include <3ds.h>
+#elif defined(__SWITCH__)
 #include <switch.h>
+#endif
+#include <memory>
 
-namespace Gui {
-    bool init(void);
-    void exit(void);
-    void draw(void);
+class Overlay;
 
-    void showInfo(const std::string& message);
-    void showError(Result res, const std::string& message);
+class Screen {
+    friend class Overlay;
 
-    size_t count(entryType_t type);
-    void entryType(entryType_t type);
-    size_t index(entryType_t type);
-    void index(entryType_t type, size_t i);
-    bool isBackupReleased(void);
-    bool isRestoreReleased(void);
-    bool isCheatReleased(void);
-    std::string nameFromCell(size_t index);
-    void resetIndex(entryType_t type);
-    void updateButtons(void);
-    void updateSelector(void);
+public:
+    Screen() {}
+    virtual ~Screen() {}
+    // Call currentOverlay->update if it exists, and update if it doesn't
+    virtual void doUpdate(touchPosition* touch) final;
+    virtual void update(touchPosition* touch) = 0;
+    // Call draw, then currentOverlay->draw if it exists
+    virtual void doDraw() const final;
+    virtual void draw() const = 0;
+    void removeOverlay() { currentOverlay = nullptr; }
+    void setOverlay(std::shared_ptr<Overlay>& overlay) { currentOverlay = overlay; }
 
-    bool askForConfirmation(const std::string& text);
-    void drawCopy(const std::string& src, u64 offset, u64 size);
-
-    void addSelectedEntry(size_t idx);
-    void clearSelectedEntries(void);
-    bool multipleSelectionEnabled(void);
-    std::vector<size_t> selectedEntries(void);
-
-    bool getPKSMBridgeFlag(void);
-    void setPKSMBridgeFlag(bool f);
-}
+protected:
+    // No point in restricting this to only being editable during update, especially since it's drawn afterwards. Allows setting it before the first
+    // draw loop is done
+    mutable std::shared_ptr<Overlay> currentOverlay = nullptr;
+};
 
 #endif

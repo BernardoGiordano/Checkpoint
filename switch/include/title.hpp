@@ -72,6 +72,7 @@ private:
     std::vector<std::string> mSaves;
     std::vector<std::string> mFullSavePaths;
     u8 mSaveDataType;
+    std::pair<std::string, std::string> mDisplayName;
 };
 
 void getTitle(Title& dst, u128 uid, size_t i);

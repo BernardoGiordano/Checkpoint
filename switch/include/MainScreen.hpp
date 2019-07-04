@@ -24,50 +24,59 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef GUI_HPP
-#define GUI_HPP
+#ifndef MAINSCREEN_HPP
+#define MAINSCREEN_HPP
 
-#include "archive.hpp"
+#include "CheatManagerOverlay.hpp"
+#include "ErrorOverlay.hpp"
+#include "InfoOverlay.hpp"
+#include "Screen.hpp"
+#include "YesNoOverlay.hpp"
 #include "clickable.hpp"
-#include "colors.hpp"
 #include "hid.hpp"
+#include "io.hpp"
+#include "main.hpp"
 #include "multiselection.hpp"
+#include "pksmbridge.hpp"
 #include "scrollable.hpp"
-#include "sprites.h"
-#include "title.hpp"
-#include "util.hpp"
-#include <algorithm>
-#include <citro2d.h>
-#include <codecvt>
-#include <locale>
-#include <string>
-#include <vector>
+#include <tuple>
 
-namespace Gui {
-    void init(void);
-    void exit(void);
+typedef enum { TITLES, CELLS } entryType_t;
 
-    bool askForConfirmation(const std::string& text);
-    void showError(Result res, const std::string& message);
-    void showInfo(const std::string& message);
-    void draw(void);
-    void drawCopy(const std::u16string& src, u32 offset, u32 size);
-    void frameEnd(void);
-    size_t index(void);
-    bool isBackupReleased(void);
-    bool isRestoreReleased(void);
-    bool isCheatReleased(void);
-    bool isPlayCoinsReleased(void);
-    std::string nameFromCell(size_t index);
-    void resetIndex(void);
-    void resetScrollableIndex(void);
-    size_t scrollableIndex(void);
-    void scrollableIndex(size_t index);
+class Clickable;
+class Scrollable;
+
+class MainScreen : public Screen {
+public:
+    MainScreen(void);
+    void draw(void) const override;
+    void update(touchPosition* touch) override;
+
+protected:
+    int selectorX(size_t i) const;
+    int selectorY(size_t i) const;
+    void updateSelector(touchPosition* touch);
+    void handleEvents(touchPosition* touch);
+    bool isBackupReleased(void) const;
+    bool isRestoreReleased(void) const;
+    bool isCheatReleased(void) const;
+    std::string nameFromCell(size_t index) const;
+    void entryType(entryType_t type);
+    size_t index(entryType_t type) const;
+    void index(entryType_t type, size_t i);
+    void resetIndex(entryType_t type);
+    bool getPKSMBridgeFlag(void) const;
+    void setPKSMBridgeFlag(bool f);
     void updateButtons(void);
-    void updateSelector(void);
 
-    C2D_Image TWLIcon(void);
-    C2D_Image noIcon(void);
-}
+private:
+    entryType_t type;
+    int selectionTimer;
+    bool pksmBridge;
+    HidHorizontal hid;
+    std::unique_ptr<Scrollable> backupList;
+    std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;
+    char ver[8];
+};
 
 #endif

@@ -24,27 +24,30 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef CLICKABLE_HPP
-#define CLICKABLE_HPP
+#include "ErrorOverlay.hpp"
 
-#include "SDLHelper.hpp"
-#include "iclickable.hpp"
-#include "main.hpp"
-#include <string>
-#include <switch.h>
+ErrorOverlay::ErrorOverlay(Screen& screen, Result mres, const std::string& mtext) : Overlay(screen)
+{
+    res  = mres;
+    text = mtext;
+    SDLH_GetTextDimensions(28, text.c_str(), &textw, &texth);
+    button = std::make_unique<Clickable>(322, 462, 636, 56, theme().c1, theme().c6, "OK", true);
+    button->selected(true);
+}
 
-class Clickable : public IClickable<SDL_Color> {
-public:
-    Clickable(int x, int y, u16 w, u16 h, SDL_Color colorBg, SDL_Color colorText, const std::string& message, bool centered)
-        : IClickable(x, y, w, h, colorBg, colorText, message, centered)
-    {
+void ErrorOverlay::draw(void) const
+{
+    SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
+    SDLH_DrawRect(320, 200, 640, 260, theme().c0);
+    SDLH_DrawText(20, 330, 210, COLOR_RED, StringUtils::format("Error: 0x%0llX", res).c_str());
+    SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), theme().c6, text.c_str());
+    button->draw(28, COLOR_RED);
+    drawPulsingOutline(322, 462, 636, 56, 4, COLOR_RED);
+}
+
+void ErrorOverlay::update(touchPosition* touch)
+{
+    if (button->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B)) {
+        screen.removeOverlay();
     }
-    virtual ~Clickable(void){};
-
-    void draw(float font, SDL_Color overlay) override;
-    bool held(void) override;
-    bool released(void) override;
-    void drawOutline(SDL_Color color) override;
-};
-
-#endif
+}
