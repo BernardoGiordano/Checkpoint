@@ -41,5 +41,6 @@ extern bool g_ftpAvailable;
 extern std::shared_ptr<Screen> g_screen;
 extern std::string g_selectedCheatKey;
 extern std::vector<std::string> g_selectedCheatCodes;
+inline bool g_shouldExitNetworkLoop = false;
 
 #endif

@@ -47,7 +47,8 @@ void servicesExit(void)
 Result servicesInit(void)
 {
     // debug
-    if (socketInitializeDefault() == 0) {
+    Result socinit = 0;
+    if ((socinit = socketInitializeDefault()) == 0) {
         // nxlinkStdio();
     }
 
@@ -80,7 +81,7 @@ Result servicesInit(void)
 
     Configuration::getInstance();
 
-    if (R_SUCCEEDED(res = nifmInitialize())) {
+    if (R_SUCCEEDED(socinit) && R_SUCCEEDED(res = nifmInitialize())) {
         if (R_SUCCEEDED(res = ftp_init())) {
             g_ftpAvailable = true;
         }

@@ -1319,7 +1319,7 @@ static void ftp_session_read_command(ftp_session_t *session, int events) {
   if(rc == 0)
   {
     /* peer closed connection */
-    printf("peer closed connection\n");
+    // printf("peer closed connection\n");
     ftp_session_close_cmd(session);
     return;
   }
@@ -1530,7 +1530,7 @@ static ftp_session_t* ftp_session_poll(ftp_session_t *session) {
       /* we need to read a new command */
       if(pollinfo[0].revents & (POLLERR|POLLHUP))
       {
-        printf("cmd revents=0x%x\n", pollinfo[0].revents);
+        // printf("cmd revents=0x%x\n", pollinfo[0].revents);
         ftp_session_close_cmd(session);
       }
       else if(pollinfo[0].revents & (POLLIN | POLLPRI))
@@ -1595,7 +1595,7 @@ static ftp_session_t* ftp_session_poll(ftp_session_t *session) {
     return session->next;
 
   /* disconnected from peer; destroy it and return next session */
-  printf("disconnected from peer\n");
+  // printf("disconnected from peer\n");
   return ftp_session_destroy(session);
 }
 
@@ -1737,7 +1737,7 @@ int ftp_init(void) {
 
 /*! deinitialize ftp subsystem */
 void ftp_exit(void) {
-  printf("exiting ftp server\n");
+  // printf("exiting ftp server\n");
 
   /* clean up all sessions */
   while(sessions != NULL)
@@ -1979,11 +1979,11 @@ static loop_status_t list_transfer(ftp_session_t *session) {
     else
     {
       /* lstat the entry */
-      if((rc = build_path(session, session->lwd, dent->d_name)) != 0)
-        printf("build_path: %d %s\n", errno, strerror(errno));
+      if((rc = build_path(session, session->lwd, dent->d_name)) != 0) {}
+        // printf("build_path: %d %s\n", errno, strerror(errno));
         //console_print(RED "build_path: %d %s\n" RESET, errno, strerror(errno));
-      else if((rc = lstat(session->buffer, &st)) != 0)
-        printf("stat '%s': %d %s\n", session->buffer, errno, strerror(errno));
+      else if((rc = lstat(session->buffer, &st)) != 0) {}
+        // printf("stat '%s': %d %s\n", session->buffer, errno, strerror(errno));
         //console_print(RED "stat '%s': %d %s\n" RESET, session->buffer, errno, strerror(errno));
 
       if(rc != 0)

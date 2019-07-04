@@ -37,6 +37,16 @@ bool g_notificationLedAvailable  = false;
 bool g_ftpAvailable = false;
 std::shared_ptr<Screen> g_screen = nullptr;
 
+static void networkLoop(void) {
+    while(appletMainLoop() && !g_shouldExitNetworkLoop) {
+        // poll server
+        Configuration::getInstance().pollServer();
+        if(g_ftpAvailable) {
+            ftp_loop();
+        }
+    }
+}
+
 int main(void)
 {
     Result res = servicesInit();
@@ -54,6 +64,10 @@ int main(void)
     if (g_currentUId == 0)
         g_currentUId = userIds.at(0);
 
+    Thread networkThread;
+    threadCreate(&networkThread, (ThreadFunc)networkLoop, nullptr, 16 * 1000, 0x2C, -2);
+    threadStart(&networkThread);
+
     while (appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_PLUS)) {
         touchPosition touch;
         hidScanInput();
@@ -62,12 +76,11 @@ int main(void)
         g_screen->doDraw();
         g_screen->doUpdate(&touch);
         SDLH_Render();
-        // poll server
-        Configuration::getInstance().pollServer();
-        if(g_ftpAvailable) {
-            ftp_loop();
-        }
     }
+
+    g_shouldExitNetworkLoop = true;
+    threadWaitForExit(&networkThread);
+    threadClose(&networkThread);
 
     servicesExit();
     return 0;
