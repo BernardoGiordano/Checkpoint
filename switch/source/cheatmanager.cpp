@@ -26,9 +26,6 @@
 
 #include "cheatmanager.hpp"
 
-std::string g_selectedCheatKey;
-std::vector<std::string> g_selectedCheatCodes;
-
 CheatManager::CheatManager(void)
 {
     mCheats = nullptr;

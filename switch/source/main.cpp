@@ -27,12 +27,6 @@
 #include "main.hpp"
 #include "MainScreen.hpp"
 
-float g_currentTime              = 0;
-u128 g_currentUId                = 0;
-bool g_backupScrollEnabled       = 0;
-bool g_notificationLedAvailable  = false;
-std::shared_ptr<Screen> g_screen = nullptr;
-
 int main(void)
 {
     Result res = servicesInit();
