@@ -30,18 +30,11 @@ extern "C" {
 #include "ftp.h"
 }
 
-float g_currentTime              = 0;
-u128 g_currentUId                = 0;
-bool g_backupScrollEnabled       = 0;
-bool g_notificationLedAvailable  = false;
-bool g_ftpAvailable = false;
-std::shared_ptr<Screen> g_screen = nullptr;
-
-static void networkLoop(void) {
-    while(appletMainLoop() && !g_shouldExitNetworkLoop) {
-        // poll server
+static void networkLoop(void)
+{
+    while (appletMainLoop() && !g_shouldExitNetworkLoop) {
         Configuration::getInstance().pollServer();
-        if(g_ftpAvailable) {
+        if (g_ftpAvailable) {
             ftp_loop();
         }
     }
