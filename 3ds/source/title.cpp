@@ -375,6 +375,10 @@ u32 Title::extdataId(void)
             return 0x12DC; // Fire Emblem If JP
         case 0x001B5100:
             return 0x1B50; // Pokémon Ultramoon
+        // TODO: need confirmation for this
+        // case 0x001C5100:
+        // case 0x001C5300:
+        //     return 0x0BD3; // Etrian Odyssey V: Beyond the Myth
     }
 
     return low >> 8;

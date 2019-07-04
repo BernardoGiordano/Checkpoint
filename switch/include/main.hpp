@@ -33,14 +33,13 @@
 #include <memory>
 #include <switch.h>
 
-extern bool g_backupScrollEnabled;
-extern float g_currentTime;
-extern u128 g_currentUId;
-extern bool g_notificationLedAvailable;
-extern bool g_ftpAvailable;
-extern std::shared_ptr<Screen> g_screen;
-extern std::string g_selectedCheatKey;
-extern std::vector<std::string> g_selectedCheatCodes;
+inline float g_currentTime              = 0;
+inline u128 g_currentUId                = 0;
+inline bool g_backupScrollEnabled       = 0;
+inline bool g_notificationLedAvailable  = false;
+inline std::shared_ptr<Screen> g_screen = nullptr;
+inline std::string g_selectedCheatKey;
+inline std::vector<std::string> g_selectedCheatCodes;
 inline bool g_shouldExitNetworkLoop = false;
 
 #endif
