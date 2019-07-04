@@ -24,29 +24,40 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef UTIL_HPP
-#define UTIL_HPP
+#ifndef CHEATMANAGEROVERLAY_HPP
+#define CHEATMANAGEROVERLAY_HPP
 
-#include "account.hpp"
-#include "common.hpp"
-#include "io.hpp"
-#include <switch.h>
-#include <sys/stat.h>
+#include "Overlay.hpp"
+#include "SDLHelper.hpp"
+#include "YesNoOverlay.hpp"
+#include "cheatmanager.hpp"
+#include "clickable.hpp"
+#include "colors.hpp"
+#include "directory.hpp"
+#include "scrollable.hpp"
+#include <memory>
+#include <string>
 
-// debug
-#include <arpa/inet.h>
-#include <sys/errno.h>
-#include <sys/socket.h>
+class Clickable;
+class Scrollable;
 
-void servicesExit(void);
-Result servicesInit(void);
-HidsysNotificationLedPattern blinkLedPattern(u8 times);
-void blinkLed(u8 times);
+class CheatManagerOverlay : public Overlay {
+public:
+    CheatManagerOverlay(Screen& screen, const std::string& mtext);
+    ~CheatManagerOverlay(void) {}
+    void draw(void) const override;
+    void update(touchPosition* touch) override;
 
-namespace StringUtils {
-    std::string removeAccents(std::string str);
-    std::string removeNotAscii(std::string str);
-    std::u16string UTF8toUTF16(const char* src);
-}
+protected:
+    void save(const std::string& key, Scrollable* s);
+
+private:
+    bool multiSelected;
+    std::string existingCheat;
+    std::string key;
+    const size_t MAGIC_LEN = strlen(SELECTED_MAGIC);
+    std::shared_ptr<Scrollable> scrollable;
+    size_t currentIndex;
+};
 
 #endif

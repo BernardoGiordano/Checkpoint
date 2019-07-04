@@ -33,6 +33,7 @@
 template <typename T>
 class IScrollable {
 public:
+    IScrollable(void) {}
     IScrollable(int x, int y, u16 w, u16 h, size_t visibleEntries) : mx(x), my(y), mw(w), mh(h), mVisibleEntries(visibleEntries)
     {
         mIndex = 0;
@@ -45,7 +46,7 @@ public:
     virtual void push_back(T color, T colorMessage, const std::string& message, bool selected) = 0;
     virtual void updateSelection(void)                                                         = 0;
 
-    std::string cellName(size_t index) { return mCells.at(index)->text(); }
+    std::string cellName(size_t index) const { return mCells.at(index)->text(); }
 
     void cellName(size_t index, const std::string& name) { mCells.at(index)->text(name); }
 
@@ -57,7 +58,7 @@ public:
         mCells.clear();
     }
 
-    size_t size(void) { return mCells.size(); }
+    size_t size(void) const { return mCells.size(); }
 
     size_t maxVisibleEntries(void)
     {

@@ -37,7 +37,7 @@ ErrorOverlay::ErrorOverlay(Screen& screen, Result mres, const std::string& mtext
 
 void ErrorOverlay::draw(void) const
 {
-    SDLH_DrawRect(0, 0, 1280, 720, FC_MakeColor(0, 0, 0, 160));
+    SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
     SDLH_DrawRect(320, 200, 640, 260, theme().c0);
     SDLH_DrawText(20, 330, 210, COLOR_RED, StringUtils::format("Error: 0x%0llX", res).c_str());
     SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), theme().c6, text.c_str());

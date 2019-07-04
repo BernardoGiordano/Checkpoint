@@ -14,7 +14,7 @@ static FC_Font* getFontFromMap(int size)
     if (got == s_fonts.end() || got->second == NULL) {
         FC_Font* f = FC_CreateFont();
         FC_LoadFont_RW(f, s_renderer, SDL_RWFromMem((void*)fontData.address, fontData.size),
-            SDL_RWFromMem((void*)fontExtData.address, fontExtData.size), 1, size, FC_MakeColor(0, 0, 0, 255), TTF_STYLE_NORMAL);
+            SDL_RWFromMem((void*)fontExtData.address, fontExtData.size), 1, size, COLOR_BLACK, TTF_STYLE_NORMAL);
         s_fonts.insert({size, f});
         return f;
     }

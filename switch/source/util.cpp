@@ -28,8 +28,6 @@
 
 void servicesExit(void)
 {
-    CheatManager::exit();
-
     // debug
     socketExit();
 
@@ -77,8 +75,6 @@ Result servicesInit(void)
     if (R_SUCCEEDED(res = hidsysInitialize())) {
         g_notificationLedAvailable = true;
     }
-
-    CheatManager::init();
 
     Configuration::getInstance();
 

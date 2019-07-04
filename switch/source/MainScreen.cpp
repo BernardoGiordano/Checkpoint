@@ -98,7 +98,7 @@ void MainScreen::draw() const
         const int x = selectorX(hid.index()) + 4 / 2;
         const int y = selectorY(hid.index()) + 4 / 2;
         drawPulsingOutline(x, y, 124, 124, 4, COLOR_BLUE);
-        SDLH_DrawRect(x, y, 124, 124, FC_MakeColor(255, 255, 255, 80));
+        SDLH_DrawRect(x, y, 124, 124, COLOR_WHITEMASK);
     }
 
     if (getTitleCount(g_currentUId) > 0) {
@@ -154,9 +154,9 @@ void MainScreen::draw() const
         drawOutline(956, 360, 220, 80, 4, theme().c3);
         drawOutline(956, 444, 220, 80, 4, theme().c3);
         backupList->draw(g_backupScrollEnabled);
-        buttonBackup->draw(30, FC_MakeColor(0, 0, 0, 0));
-        buttonRestore->draw(30, FC_MakeColor(0, 0, 0, 0));
-        buttonCheats->draw(30, FC_MakeColor(0, 0, 0, 0));
+        buttonBackup->draw(30, COLOR_NULL);
+        buttonRestore->draw(30, COLOR_NULL);
+        buttonCheats->draw(30, COLOR_NULL);
     }
 
     SDL_Color lightBlack = FC_MakeColor(theme().c0.r + 20, theme().c0.g + 20, theme().c0.b + 20, 255);
@@ -166,7 +166,7 @@ void MainScreen::draw() const
     SDLH_GetTextDimensions(24, "\ue046 Instructions", &inst_w, &inst_h);
 
     if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_MINUS && currentOverlay == nullptr) {
-        SDLH_DrawRect(0, 0, 1280, 720, FC_MakeColor(0, 0, 0, 190));
+        SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
         SDLH_DrawText(27, 1205, 646, theme().c6, "\ue085\ue086");
         SDLH_DrawText(24, 58, 69, theme().c6, "\ue058 Tap to select title");
         SDLH_DrawText(24, 100, 330, theme().c6, "\ue006 \ue080 to scroll between titles");
@@ -477,7 +477,7 @@ void MainScreen::handleEvents(touchPosition* touch)
         }
     }
 
-    if ((isCheatReleased() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RSTICK)) && CheatManager::loaded()) {
+    if ((isCheatReleased() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RSTICK)) && CheatManager::getInstance().cheats() != nullptr) {
         if (MS::multipleSelectionEnabled()) {
             MS::clearSelectedEntries();
             updateButtons();
@@ -486,8 +486,8 @@ void MainScreen::handleEvents(touchPosition* touch)
             Title title;
             getTitle(title, g_currentUId, this->index(TITLES));
             std::string key = StringUtils::format("%016llX", title.id());
-            if (CheatManager::availableCodes(key)) {
-                CheatManager::manageCheats(key);
+            if (CheatManager::getInstance().areCheatsAvailable(key)) {
+                currentOverlay = std::make_shared<CheatManagerOverlay>(*this, key);
             }
             else {
                 currentOverlay = std::make_shared<InfoOverlay>(*this, "No available cheat codes for this title.");
@@ -589,16 +589,5 @@ void MainScreen::updateButtons(void)
     else {
         buttonBackup->text("Backup \ue004");
         buttonRestore->text("Restore \ue005");
-    }
-
-    static bool shouldCheckCheatManager = true;
-    if (CheatManager::loaded() && shouldCheckCheatManager) {
-        buttonCheats->text("Cheats \ue0c5");
-        buttonCheats->setColors(theme().c2, theme().c6);
-        shouldCheckCheatManager = false;
-    }
-    else if (!CheatManager::loaded()) {
-        buttonCheats->text("Loading...");
-        buttonCheats->setColors(theme().c2, theme().c5);
     }
 }

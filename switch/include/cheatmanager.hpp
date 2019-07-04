@@ -36,15 +36,31 @@
 #include <switch.h>
 #include <sys/stat.h>
 
+#define SELECTED_MAGIC "\uE071 "
+
 class Scrollable;
 
-namespace CheatManager {
-    void init(void);
-    void exit(void);
-    bool loaded(void);
-    bool availableCodes(const std::string& key);
-    void manageCheats(const std::string& key);
-    void save(const std::string& key, Scrollable* s);
-}
+class CheatManager {
+public:
+    static CheatManager& getInstance(void)
+    {
+        static CheatManager mCheatManager;
+        return mCheatManager;
+    }
+
+    bool areCheatsAvailable(const std::string& key);
+    void save(const std::string& key, const std::vector<std::string>& s);
+
+    std::shared_ptr<nlohmann::json> cheats(void) { return mCheats; }
+
+private:
+    CheatManager(void);
+    ~CheatManager(void){};
+
+    CheatManager(CheatManager const&) = delete;
+    void operator=(CheatManager const&) = delete;
+
+    std::shared_ptr<nlohmann::json> mCheats;
+};
 
 #endif

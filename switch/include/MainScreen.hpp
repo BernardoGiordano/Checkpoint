@@ -27,6 +27,7 @@
 #ifndef MAINSCREEN_HPP
 #define MAINSCREEN_HPP
 
+#include "CheatManagerOverlay.hpp"
 #include "ErrorOverlay.hpp"
 #include "InfoOverlay.hpp"
 #include "Screen.hpp"

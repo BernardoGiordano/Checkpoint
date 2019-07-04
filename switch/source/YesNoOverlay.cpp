@@ -40,7 +40,7 @@ YesNoOverlay::YesNoOverlay(
 
 void YesNoOverlay::draw(void) const
 {
-    SDLH_DrawRect(0, 0, 1280, 720, FC_MakeColor(0, 0, 0, 160));
+    SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
     SDLH_DrawRect(320, 200, 640, 260, theme().c3);
     SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), theme().c6, text.c_str());
     drawOutline(322, 462, 316, 56, 2, theme().c5);
