@@ -40,6 +40,6 @@ inline bool g_notificationLedAvailable  = false;
 inline std::shared_ptr<Screen> g_screen = nullptr;
 inline std::string g_selectedCheatKey;
 inline std::vector<std::string> g_selectedCheatCodes;
-
+inline bool g_shouldExitNetworkLoop = false;
 
 #endif
