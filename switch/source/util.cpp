@@ -28,6 +28,8 @@
 
 void servicesExit(void)
 {
+    ftp_exit();
+    nifmExit();
     // debug
     socketExit();
 
@@ -77,6 +79,12 @@ Result servicesInit(void)
     }
 
     Configuration::getInstance();
+
+    if (R_SUCCEEDED(res = nifmInitialize())) {
+        if (R_SUCCEEDED(res = ftp_init())) {
+            g_ftpAvailable = true;
+        }
+    }
 
     return 0;
 }

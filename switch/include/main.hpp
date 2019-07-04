@@ -37,6 +37,7 @@ extern bool g_backupScrollEnabled;
 extern float g_currentTime;
 extern u128 g_currentUId;
 extern bool g_notificationLedAvailable;
+extern bool g_ftpAvailable;
 extern std::shared_ptr<Screen> g_screen;
 extern std::string g_selectedCheatKey;
 extern std::vector<std::string> g_selectedCheatCodes;

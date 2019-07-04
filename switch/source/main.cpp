@@ -26,11 +26,15 @@
 
 #include "main.hpp"
 #include "MainScreen.hpp"
+extern "C" {
+#include "ftp.h"
+}
 
 float g_currentTime              = 0;
 u128 g_currentUId                = 0;
 bool g_backupScrollEnabled       = 0;
 bool g_notificationLedAvailable  = false;
+bool g_ftpAvailable = false;
 std::shared_ptr<Screen> g_screen = nullptr;
 
 int main(void)
@@ -60,6 +64,9 @@ int main(void)
         SDLH_Render();
         // poll server
         Configuration::getInstance().pollServer();
+        if(g_ftpAvailable) {
+            ftp_loop();
+        }
     }
 
     servicesExit();
