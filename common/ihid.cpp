@@ -86,3 +86,19 @@ void IHid::page_forward(void)
         mPage = 0;
     }
 }
+
+void IHid::pageBack(size_t count)
+{
+    page_back();
+    if (mIndex > maxEntries(count)) {
+        mIndex = maxEntries(count);
+    }
+}
+
+void IHid::pageForward(size_t count)
+{
+    page_forward();
+    if (mIndex > maxEntries(count)) {
+        mIndex = maxEntries(count);
+    }
+}

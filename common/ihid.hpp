@@ -54,6 +54,8 @@ public:
     int page(void) const;
     void page(int v);
     void reset(void);
+    void pageBack(size_t count);
+    void pageForward(size_t count);
 
 protected:
     void page_back(void);

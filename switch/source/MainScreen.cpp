@@ -201,14 +201,22 @@ void MainScreen::update(touchPosition* touch)
 void MainScreen::updateSelector(touchPosition* touch)
 {
     if (!g_backupScrollEnabled) {
+        size_t count    = getTitleCount(g_currentUId);
         size_t oldindex = hid.index();
-        hid.update(getTitleCount(g_currentUId));
+        hid.update(count);
+        // change page
+        if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_L) {
+            hid.pageBack(count);
+        }
+        else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_R) {
+            hid.pageForward(count);
+        }
 
         // loop through every rendered title
         for (u8 row = 0; row < rowlen; row++) {
             for (u8 col = 0; col < collen; col++) {
                 u8 index = row * collen + col;
-                if (index > hid.maxEntries(getTitleCount(g_currentUId)))
+                if (index > hid.maxEntries(count))
                     break;
 
                 u32 x = selectorX(index);
