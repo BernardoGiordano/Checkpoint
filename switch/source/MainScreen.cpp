@@ -169,7 +169,8 @@ void MainScreen::draw() const
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
         SDLH_DrawText(27, 1205, 646, theme().c6, "\ue085\ue086");
         SDLH_DrawText(24, 58, 69, theme().c6, "\ue058 Tap to select title");
-        SDLH_DrawText(24, 100, 330, theme().c6, "\ue006 \ue080 to scroll between titles");
+        SDLH_DrawText(24, 100, 300, theme().c6, "\ue006 \ue080 to scroll between titles");
+        SDLH_DrawText(24, 100, 330, theme().c6, "\ue004 \ue005 to scroll between pages");
         SDLH_DrawText(24, 100, 360, theme().c6, "\ue000 to enter the selected title");
         SDLH_DrawText(24, 100, 390, theme().c6, "\ue001 to exit the selected title");
         if (Configuration::getInstance().isPKSMBridgeEnabled()) {
