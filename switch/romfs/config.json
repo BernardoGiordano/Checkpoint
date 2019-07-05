@@ -9,5 +9,6 @@
 
   },
   "pksm-bridge": false,
-  "version": 3
+  "ftp-enabled": false,
+  "version": 4
 }

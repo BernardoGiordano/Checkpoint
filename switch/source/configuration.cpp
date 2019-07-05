@@ -100,7 +100,12 @@ Configuration::Configuration(void)
         }
         // 3.5.0 -> 3.5.1
         if (mJson["version"] < 3) {
-            mJson["pksm-bridge"] = true;
+            mJson["pksm-bridge"] = false;
+            updateJson           = true;
+        }
+        // 3.6.0 -> 4.0.0
+        if (mJson["version"] < 4) {
+            mJson["ftp-enabled"] = false;
             updateJson           = true;
         }
     }
@@ -224,6 +229,8 @@ void Configuration::parse(void)
 
     // parse PKSM Bridge flag
     PKSMBridgeEnabled = mJson["pksm-bridge"];
+    // parse FTP flag
+    FTPEnabled = mJson["ftp-enabled"];
 }
 
 const char* Configuration::c_str(void)
@@ -234,4 +241,9 @@ const char* Configuration::c_str(void)
 nlohmann::json Configuration::getJson(void)
 {
     return mJson;
+}
+
+bool Configuration::isFTPEnabled(void)
+{
+    return FTPEnabled;
 }

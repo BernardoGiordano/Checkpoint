@@ -38,6 +38,7 @@ window.onload = () => {
             try {
                 j = JSON.parse(data);
                 document.getElementById("enable-pksm-bridge").checked = j["pksm-bridge"];
+                document.getElementById("enable-ftp").checked = j["ftp-enabled"];
                 j['favorites'].forEach((id) => {
                     pushToFavorites(id);
                 });
@@ -125,10 +126,11 @@ function createAdditionalSavesRows(j) {
 function saveSettings() {
     var data = {
         'pksm-bridge': document.getElementById("enable-pksm-bridge").checked,
+        'ftp-enabled': document.getElementById("enable-ftp").checked,
         'filter': filter,
         'favorites': favorites,
         'additional_save_folders': {},
-        'version': 3
+        'version': 4
     };
     Object.keys(j.title_list).forEach((id) => {
         data.additional_save_folders[id] = {};

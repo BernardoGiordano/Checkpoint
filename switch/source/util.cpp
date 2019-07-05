@@ -52,6 +52,8 @@ Result servicesInit(void)
         // nxlinkStdio();
     }
 
+    g_shouldExitNetworkLoop = R_FAILED(socinit);
+
     Result res = 0;
     romfsInit();
     io::createDirectory("sdmc:/switch");

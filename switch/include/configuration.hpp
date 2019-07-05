@@ -37,7 +37,7 @@ extern "C" {
 #include "mongoose.h"
 }
 
-#define CONFIG_VERSION 2
+#define CONFIG_VERSION 4
 
 class Configuration {
 public:
@@ -50,6 +50,7 @@ public:
     bool filter(u64 id);
     bool favorite(u64 id);
     bool isPKSMBridgeEnabled(void);
+    bool isFTPEnabled(void);
     std::vector<std::string> additionalSaveFolders(u64 id);
     void pollServer(void);
     void save(void);
@@ -71,6 +72,7 @@ private:
 
     nlohmann::json mJson;
     bool PKSMBridgeEnabled;
+    bool FTPEnabled;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders;
 };
