@@ -88,25 +88,56 @@ Configuration::Configuration(void)
     load();
 
     bool updateJson = false;
-    if (mJson.find("version") == mJson.end()) {
+    if (!mJson.is_object() || mJson.find("version") == mJson.end() || !mJson["version"].is_number_integer()) {
         // if config is present but is < 3.4.2, override it
         store();
     }
     else {
-        // 3.4.2 -> 3.5.0
-        if (mJson["version"] < 2) {
-            mJson["favorites"] = nlohmann::json::array();
-            updateJson         = true;
+        if (mJson["version"] < CONFIG_VERSION) {
+            mJson["version"] = CONFIG_VERSION;
+            updateJson = true;
         }
-        // 3.5.0 -> 3.5.1
-        if (mJson["version"] < 3) {
+        if (!(mJson.contains("pksm-bridge") && mJson["pksm-bridge"].is_boolean())) {
             mJson["pksm-bridge"] = false;
-            updateJson           = true;
+            updateJson = true;
         }
-        // 3.6.0 -> 4.0.0
-        if (mJson["version"] < 4) {
+        if (!(mJson.contains("ftp-enabled") && mJson["ftp-enabled"].is_boolean())) {
             mJson["ftp-enabled"] = false;
-            updateJson           = true;
+            updateJson = true;
+        }
+        if (!(mJson.contains("filter") && mJson["filter"].is_array())) {
+            mJson["filter"] = nlohmann::json::array();
+            updateJson = true;
+        }
+        if (!(mJson.contains("favorites") && mJson["favorites"].is_array())) {
+            mJson["favorites"] = nlohmann::json::array();
+            updateJson = true;
+        }
+        if (!(mJson.contains("additional_save_folders") && mJson["additional_save_folders"].is_array())) {
+            mJson["additional_save_folders"] = nlohmann::json::array();
+            updateJson = true;
+        }
+        // check every single entry in the arrays...
+        for (auto& obj : mJson["filter"]) {
+            if (!obj.is_string()) {
+                mJson["filter"] = nlohmann::json::array();
+                updateJson = true;
+                break;
+            }
+        }
+        for (auto& obj : mJson["favorites"]) {
+            if (!obj.is_string()) {
+                mJson["favorites"] = nlohmann::json::array();
+                updateJson = true;
+                break;
+            }
+        }
+        for (auto& obj : mJson["additional_save_folders"]) {
+            if (!obj.is_string()) {
+                mJson["additional_save_folders"] = nlohmann::json::array();
+                updateJson = true;
+                break;
+            }
         }
     }
 
