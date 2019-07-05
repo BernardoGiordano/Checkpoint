@@ -95,47 +95,47 @@ Configuration::Configuration(void)
     else {
         if (mJson["version"] < CONFIG_VERSION) {
             mJson["version"] = CONFIG_VERSION;
-            updateJson = true;
+            updateJson       = true;
         }
         if (!(mJson.contains("pksm-bridge") && mJson["pksm-bridge"].is_boolean())) {
             mJson["pksm-bridge"] = false;
-            updateJson = true;
+            updateJson           = true;
         }
         if (!(mJson.contains("ftp-enabled") && mJson["ftp-enabled"].is_boolean())) {
             mJson["ftp-enabled"] = false;
-            updateJson = true;
+            updateJson           = true;
         }
         if (!(mJson.contains("filter") && mJson["filter"].is_array())) {
             mJson["filter"] = nlohmann::json::array();
-            updateJson = true;
+            updateJson      = true;
         }
         if (!(mJson.contains("favorites") && mJson["favorites"].is_array())) {
             mJson["favorites"] = nlohmann::json::array();
-            updateJson = true;
+            updateJson         = true;
         }
         if (!(mJson.contains("additional_save_folders") && mJson["additional_save_folders"].is_array())) {
             mJson["additional_save_folders"] = nlohmann::json::array();
-            updateJson = true;
+            updateJson                       = true;
         }
         // check every single entry in the arrays...
         for (auto& obj : mJson["filter"]) {
             if (!obj.is_string()) {
                 mJson["filter"] = nlohmann::json::array();
-                updateJson = true;
+                updateJson      = true;
                 break;
             }
         }
         for (auto& obj : mJson["favorites"]) {
             if (!obj.is_string()) {
                 mJson["favorites"] = nlohmann::json::array();
-                updateJson = true;
+                updateJson         = true;
                 break;
             }
         }
         for (auto& obj : mJson["additional_save_folders"]) {
             if (!obj.is_string()) {
                 mJson["additional_save_folders"] = nlohmann::json::array();
-                updateJson = true;
+                updateJson                       = true;
                 break;
             }
         }
