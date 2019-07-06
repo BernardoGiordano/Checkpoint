@@ -85,7 +85,7 @@ void CheatManager::save(const std::string& key, const std::vector<std::string>& 
             if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) == 0) {
                 cellName = cellName.substr(strlen(SELECTED_MAGIC), cellName.length());
                 if (cheats[key][buildid].find(cellName) != cheats[key][buildid].end()) {
-                    cheatFile += cellName + "\n";
+                    cheatFile += "[" + cellName + "]\n";
                     for (auto& it2 : cheats[key][buildid][cellName]) {
                         cheatFile += it2.get<std::string>() + "\n";
                     }
