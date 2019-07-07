@@ -35,8 +35,6 @@ static size_t MAGIC_LEN   = strlen(SELECTED_MAGIC);
 
 void CheatManager::init(void)
 {
-    Gui::updateButtons();
-
     if (io::fileExists("/3ds/Checkpoint/cheats.json")) {
         const std::string path = "/3ds/Checkpoint/cheats.json";
         FILE* in               = fopen(path.c_str(), "rt");
@@ -70,8 +68,6 @@ void CheatManager::init(void)
             fclose(f);
         }
     }
-
-    Gui::updateButtons();
 }
 
 void CheatManager::exit(void) {}
@@ -180,7 +176,6 @@ void CheatManager::manageCheats(const std::string& key)
         Gui::frameEnd();
     }
 
-    Gui::draw();
     if (Gui::askForConfirmation("Do you want to store\nthe cheat file?")) {
         save(key, s);
     }

@@ -53,15 +53,11 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
 
     FSStream output(dstArch, dstPath, FS_OPEN_WRITE, input.size());
     if (output.good()) {
-        size_t slashpos     = srcPath.rfind(StringUtils::UTF8toUTF16("/"));
-        std::u16string name = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
-
         u32 rd;
         u8* buf = new u8[size];
         do {
             rd = input.read(buf, size);
             output.write(buf, rd);
-            Gui::drawCopy(name, input.offset(), input.size());
         } while (!input.eof());
         delete[] buf;
     }
@@ -279,8 +275,6 @@ void io::backup(size_t index)
             if (R_FAILED(res)) {
                 break;
             }
-            Gui::drawCopy(
-                StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav"), sectorSize * (i + 1), saveSize);
         }
 
         if (R_FAILED(res)) {
@@ -404,8 +398,6 @@ void io::restore(size_t index)
             if (R_FAILED(res)) {
                 break;
             }
-            Gui::drawCopy(
-                StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav"), pageSize * (i + 1), saveSize);
         }
 
         if (R_FAILED(res)) {

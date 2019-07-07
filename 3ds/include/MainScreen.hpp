@@ -24,48 +24,45 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef GUI_HPP
-#define GUI_HPP
+#ifndef MAINSCREEN_HPP
+#define MAINSCREEN_HPP
 
-#include "archive.hpp"
+#include "Screen.hpp"
 #include "clickable.hpp"
-#include "colors.hpp"
-#include "hid.hpp"
-#include "multiselection.hpp"
+#include "gui.hpp"
 #include "scrollable.hpp"
-#include "sprites.h"
-#include "title.hpp"
-#include "util.hpp"
-#include <algorithm>
-#include <citro2d.h>
-#include <codecvt>
-#include <locale>
-#include <string>
-#include <vector>
+#include <memory>
 
-inline C3D_RenderTarget* g_top;
-inline C3D_RenderTarget* g_bottom;
+class MainScreen : public Screen {
+public:
+    MainScreen(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
+    void update(touchPosition* touch) override;
 
-inline C2D_SpriteSheet spritesheet;
-inline C2D_Image flag;
-inline C2D_Sprite checkbox, star;
+protected:
+    int selectorX(size_t i) const;
+    int selectorY(size_t i) const;
+    void drawSelector(void) const;
+    void handleEvents(touchPosition* touch);
+    void updateSelector(void);
+    void updateButtons(void);
 
-inline C2D_TextBuf g_staticBuf, g_dynamicBuf;
+private:
+    HidHorizontal hid;
+    std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonCheats, buttonPlayCoins;
+    std::unique_ptr<Scrollable> directoryList;
+    char ver[10];
 
-namespace Gui {
-    void init(void);
-    void exit(void);
+    C2D_Text ins1, ins2, ins3, ins4, c2dId, c2dMediatype;
+    C2D_Text checkpoint, version;
+    // instructions text
+    C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_x;
 
-    bool askForConfirmation(const std::string& text);
-    void showError(Result res, const std::string& message);
-    void showInfo(const std::string& message);
-    void frameEnd(void);
-    std::string nameFromCell(size_t index);
-    size_t scrollableIndex(void);
-    void scrollableIndex(size_t index);
-
-    C2D_Image TWLIcon(void);
-    C2D_Image noIcon(void);
-}
+    const float scaleInst = 0.7f;
+    C2D_ImageTint checkboxTint;
+    int selectionTimer;
+    int refreshTimer;
+};
 
 #endif

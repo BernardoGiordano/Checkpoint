@@ -25,6 +25,7 @@
  */
 
 #include "main.hpp"
+#include "MainScreen.hpp"
 #include "thread.hpp"
 #include "util.hpp"
 
@@ -35,166 +36,24 @@ int main()
         return -1;
     }
 
-    int selectionTimer = 0;
-    int refreshTimer   = 0;
+    g_screen = std::make_unique<MainScreen>();
+
     Threads::create((ThreadFunc)Threads::titles);
 
-    u32 kHeld, kDown = hidKeysDown();
-    while (aptMainLoop() && !(kDown & KEY_START)) {
+    while (aptMainLoop() && !(hidKeysDown() & KEY_START)) {
+        touchPosition touch;
         hidScanInput();
-        kDown = hidKeysDown();
-        kHeld = hidKeysHeld();
+        hidTouchRead(&touch);
 
         updateCard();
 
-        // Handle pressing A
-        // Backup list active:   Backup/Restore
-        // Backup list inactive: Activate backup list only if multiple
-        //                       selections are enabled
-        if (kDown & KEY_A) {
-            // If backup list is active...
-            if (g_bottomScrollEnabled) {
-                // If the "New..." entry is selected...
-                if (0 == Gui::scrollableIndex()) {
-                    io::backup(Gui::index());
-                }
-                else {
-                    io::restore(Gui::index());
-                }
-            }
-            else {
-                // Activate backup list only if multiple selections are not enabled
-                if (!MS::multipleSelectionEnabled()) {
-                    g_bottomScrollEnabled = true;
-                    Gui::updateButtons();
-                }
-            }
-        }
-
-        if (kDown & KEY_B) {
-            g_bottomScrollEnabled = false;
-            MS::clearSelectedEntries();
-            Gui::resetScrollableIndex();
-            Gui::updateButtons();
-        }
-
-        if (kDown & KEY_X) {
-            if (g_bottomScrollEnabled) {
-                bool isSaveMode = Archive::mode() == MODE_SAVE;
-                size_t index    = Gui::scrollableIndex();
-                // avoid actions if X is pressed on "New..."
-                if (index > 0 && Gui::askForConfirmation("Delete selected backup?")) {
-                    Title title;
-                    getTitle(title, Gui::index());
-                    std::u16string path = isSaveMode ? title.fullSavePath(index) : title.fullExtdataPath(index);
-                    io::deleteBackupFolder(path);
-                    refreshDirectories(title.id());
-                    Gui::scrollableIndex(index - 1);
-                }
-            }
-            else {
-                Gui::resetIndex();
-                Archive::mode(Archive::mode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
-                MS::clearSelectedEntries();
-                Gui::resetScrollableIndex();
-            }
-        }
-
-        if (kDown & KEY_Y) {
-            if (g_bottomScrollEnabled) {
-                Gui::resetScrollableIndex();
-                g_bottomScrollEnabled = false;
-            }
-            MS::addSelectedEntry(Gui::index());
-            Gui::updateButtons(); // Do this last
-        }
-
-        if (kHeld & KEY_Y) {
-            selectionTimer++;
-        }
-        else {
-            selectionTimer = 0;
-        }
-
-        if (selectionTimer > 90) {
-            MS::clearSelectedEntries();
-            for (size_t i = 0, sz = getTitleCount(); i < sz; i++) {
-                MS::addSelectedEntry(i);
-            }
-            selectionTimer = 0;
-        }
-
-        if (kHeld & KEY_B) {
-            refreshTimer++;
-        }
-        else {
-            refreshTimer = 0;
-        }
-
-        if (refreshTimer > 90) {
-            Gui::resetIndex();
-            MS::clearSelectedEntries();
-            Gui::resetScrollableIndex();
-            Threads::create((ThreadFunc)Threads::titles);
-            refreshTimer = 0;
-        }
-
-        if (Gui::isBackupReleased() || (kDown & KEY_L)) {
-            if (MS::multipleSelectionEnabled()) {
-                Gui::resetScrollableIndex();
-                std::vector<size_t> list = MS::selectedEntries();
-                for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                    io::backup(list.at(i));
-                }
-                MS::clearSelectedEntries();
-                Gui::updateButtons();
-            }
-            else if (g_bottomScrollEnabled) {
-                io::backup(Gui::index());
-            }
-        }
-
-        if (Gui::isRestoreReleased() || (kDown & KEY_R)) {
-            if (MS::multipleSelectionEnabled()) {
-                MS::clearSelectedEntries();
-                Gui::updateButtons();
-            }
-            else if (g_bottomScrollEnabled) {
-                io::restore(Gui::index());
-            }
-        }
-
-        if (getTitleCount() > 0) {
-            Title title;
-            getTitle(title, Gui::index());
-            if (title.isActivityLog()) {
-                if (Gui::isPlayCoinsReleased()) {
-                    if (!Archive::setPlayCoins()) {
-                        Gui::showError(-1, "Failed to set play coins.");
-                    }
-                }
-            }
-            else {
-                if (Gui::isCheatReleased() && CheatManager::loaded()) {
-                    if (MS::multipleSelectionEnabled()) {
-                        MS::clearSelectedEntries();
-                        Gui::updateButtons();
-                    }
-                    else {
-                        std::string key = StringUtils::format("%016llX", title.id());
-                        if (CheatManager::availableCodes(key)) {
-                            CheatManager::manageCheats(key);
-                        }
-                        else {
-                            Gui::showInfo("No available cheat codes for this title.");
-                        }
-                    }
-                }
-            }
-        }
-
-        Gui::updateSelector();
-        Gui::draw();
+        C2D_TextBufClear(g_dynamicBuf);
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+        g_screen->doDrawTop();
+        C2D_SceneBegin(g_bottom);
+        g_screen->doDrawBottom();
+        Gui::frameEnd();
+        g_screen->doUpdate(&touch);
     }
 
     Threads::destroy();
