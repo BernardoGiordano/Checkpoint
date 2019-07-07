@@ -24,56 +24,35 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef MAINSCREEN_HPP
-#define MAINSCREEN_HPP
+#ifndef YESNOOVERLAY_HPP
+#define YESNOOVERLAY_HPP
 
-#include "CheatManagerOverlay.hpp"
-#include "ErrorOverlay.hpp"
-#include "InfoOverlay.hpp"
-#include "Screen.hpp"
-#include "YesNoOverlay.hpp"
+#include "Overlay.hpp"
 #include "clickable.hpp"
+#include "colors.hpp"
+#include "gui.hpp"
 #include "hid.hpp"
-#include "io.hpp"
-#include "main.hpp"
-#include "multiselection.hpp"
-#include "pksmbridge.hpp"
-#include "scrollable.hpp"
-#include <tuple>
-
-typedef enum { TITLES, CELLS } entryType_t;
+#include <functional>
+#include <memory>
+#include <string>
 
 class Clickable;
-class Scrollable;
 
-class MainScreen : public Screen {
+class YesNoOverlay : public Overlay {
 public:
-    MainScreen(void);
-    void draw(void) const override;
+    YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
+    ~YesNoOverlay(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
     void update(touchPosition* touch) override;
 
-protected:
-    int selectorX(size_t i) const;
-    int selectorY(size_t i) const;
-    void updateSelector(touchPosition* touch);
-    void handleEvents(touchPosition* touch);
-    std::string nameFromCell(size_t index) const;
-    void entryType(entryType_t type);
-    size_t index(entryType_t type) const;
-    void index(entryType_t type, size_t i);
-    void resetIndex(entryType_t type);
-    bool getPKSMBridgeFlag(void) const;
-    void setPKSMBridgeFlag(bool f);
-    void updateButtons(void);
-
 private:
-    entryType_t type;
-    int selectionTimer;
-    bool pksmBridge;
+    u32 posx, posy;
+    C2D_TextBuf textBuf;
+    C2D_Text text;
+    std::unique_ptr<Clickable> buttonYes, buttonNo;
     HidHorizontal hid;
-    std::unique_ptr<Scrollable> backupList;
-    std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;
-    char ver[8];
+    std::function<void()> yesFunc, noFunc;
 };
 
 #endif

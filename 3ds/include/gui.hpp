@@ -27,12 +27,8 @@
 #ifndef GUI_HPP
 #define GUI_HPP
 
-#include "archive.hpp"
-#include "clickable.hpp"
 #include "colors.hpp"
-#include "hid.hpp"
-#include "multiselection.hpp"
-#include "scrollable.hpp"
+#include "main.hpp"
 #include "sprites.h"
 #include "title.hpp"
 #include "util.hpp"
@@ -43,28 +39,17 @@
 #include <string>
 #include <vector>
 
+inline C3D_RenderTarget* g_top;
+inline C3D_RenderTarget* g_bottom;
+
+inline C2D_SpriteSheet spritesheet;
+inline C2D_Image flag;
+inline C2D_Sprite checkbox, star;
+
 namespace Gui {
     void init(void);
     void exit(void);
-
-    bool askForConfirmation(const std::string& text);
-    void showError(Result res, const std::string& message);
-    void showInfo(const std::string& message);
-    void draw(void);
-    void drawCopy(const std::u16string& src, u32 offset, u32 size);
     void frameEnd(void);
-    size_t index(void);
-    bool isBackupReleased(void);
-    bool isRestoreReleased(void);
-    bool isCheatReleased(void);
-    bool isPlayCoinsReleased(void);
-    std::string nameFromCell(size_t index);
-    void resetIndex(void);
-    void resetScrollableIndex(void);
-    size_t scrollableIndex(void);
-    void scrollableIndex(size_t index);
-    void updateButtons(void);
-    void updateSelector(void);
 
     C2D_Image TWLIcon(void);
     C2D_Image noIcon(void);

@@ -27,6 +27,7 @@
 #ifndef ARCHIVE_HPP
 #define ARCHIVE_HPP
 
+#include "KeyboardManager.hpp"
 #include "fsstream.hpp"
 #include "util.hpp"
 #include <3ds.h>

@@ -33,47 +33,46 @@
 #include "Screen.hpp"
 #include "YesNoOverlay.hpp"
 #include "clickable.hpp"
-#include "hid.hpp"
-#include "io.hpp"
-#include "main.hpp"
+#include "gui.hpp"
 #include "multiselection.hpp"
-#include "pksmbridge.hpp"
 #include "scrollable.hpp"
+#include "thread.hpp"
+#include <memory>
 #include <tuple>
-
-typedef enum { TITLES, CELLS } entryType_t;
-
-class Clickable;
-class Scrollable;
 
 class MainScreen : public Screen {
 public:
     MainScreen(void);
-    void draw(void) const override;
+    ~MainScreen(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
     void update(touchPosition* touch) override;
 
 protected:
     int selectorX(size_t i) const;
     int selectorY(size_t i) const;
-    void updateSelector(touchPosition* touch);
+    void drawSelector(void) const;
     void handleEvents(touchPosition* touch);
-    std::string nameFromCell(size_t index) const;
-    void entryType(entryType_t type);
-    size_t index(entryType_t type) const;
-    void index(entryType_t type, size_t i);
-    void resetIndex(entryType_t type);
-    bool getPKSMBridgeFlag(void) const;
-    void setPKSMBridgeFlag(bool f);
+    void updateSelector(void);
     void updateButtons(void);
+    std::string nameFromCell(size_t index) const;
 
 private:
-    entryType_t type;
-    int selectionTimer;
-    bool pksmBridge;
     HidHorizontal hid;
-    std::unique_ptr<Scrollable> backupList;
-    std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;
-    char ver[8];
+    std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonCheats, buttonPlayCoins;
+    std::unique_ptr<Scrollable> directoryList;
+    char ver[10];
+
+    C2D_Text ins1, ins2, ins3, ins4, c2dId, c2dMediatype;
+    C2D_Text checkpoint, version;
+    // instructions text
+    C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_x;
+    C2D_TextBuf dynamicBuf, staticBuf;
+
+    const float scaleInst = 0.7f;
+    C2D_ImageTint checkboxTint;
+    int selectionTimer;
+    int refreshTimer;
 };
 
 #endif

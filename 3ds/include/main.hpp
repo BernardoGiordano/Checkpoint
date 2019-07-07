@@ -27,14 +27,16 @@
 #ifndef MAIN_HPP
 #define MAIN_HPP
 
+#include "Screen.hpp"
 #include <citro2d.h>
+#include <memory>
+#include <vector>
 
-extern bool g_bottomScrollEnabled;
-extern C3D_RenderTarget* g_top;
-extern C3D_RenderTarget* g_bottom;
-extern C2D_TextBuf g_staticBuf;
-extern C2D_TextBuf g_dynamicBuf;
-extern float g_timer;
+inline std::shared_ptr<Screen> g_screen = nullptr;
+inline bool g_bottomScrollEnabled       = false;
+inline float g_timer                    = 0;
+inline std::string g_selectedCheatKey;
+inline std::vector<std::string> g_selectedCheatCodes;
 
 void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color);
 void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color);

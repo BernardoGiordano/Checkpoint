@@ -24,56 +24,45 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef MAINSCREEN_HPP
-#define MAINSCREEN_HPP
+#ifndef CHEATMANAGEROVERLAY_HPP
+#define CHEATMANAGEROVERLAY_HPP
 
-#include "CheatManagerOverlay.hpp"
-#include "ErrorOverlay.hpp"
-#include "InfoOverlay.hpp"
-#include "Screen.hpp"
+#include "Overlay.hpp"
 #include "YesNoOverlay.hpp"
+#include "cheatmanager.hpp"
 #include "clickable.hpp"
-#include "hid.hpp"
-#include "io.hpp"
-#include "main.hpp"
-#include "multiselection.hpp"
-#include "pksmbridge.hpp"
+#include "colors.hpp"
+#include "directory.hpp"
+#include "gui.hpp"
 #include "scrollable.hpp"
-#include <tuple>
-
-typedef enum { TITLES, CELLS } entryType_t;
+#include <memory>
+#include <string>
 
 class Clickable;
 class Scrollable;
 
-class MainScreen : public Screen {
+class CheatManagerOverlay : public Overlay {
 public:
-    MainScreen(void);
-    void draw(void) const override;
+    CheatManagerOverlay(Screen& screen, const std::string& mtext);
+    ~CheatManagerOverlay(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
     void update(touchPosition* touch) override;
 
 protected:
-    int selectorX(size_t i) const;
-    int selectorY(size_t i) const;
-    void updateSelector(touchPosition* touch);
-    void handleEvents(touchPosition* touch);
-    std::string nameFromCell(size_t index) const;
-    void entryType(entryType_t type);
-    size_t index(entryType_t type) const;
-    void index(entryType_t type, size_t i);
-    void resetIndex(entryType_t type);
-    bool getPKSMBridgeFlag(void) const;
-    void setPKSMBridgeFlag(bool f);
-    void updateButtons(void);
+    void save(const std::string& key, Scrollable* s);
 
 private:
-    entryType_t type;
-    int selectionTimer;
-    bool pksmBridge;
-    HidHorizontal hid;
-    std::unique_ptr<Scrollable> backupList;
-    std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;
-    char ver[8];
+    bool multiSelected;
+    std::string existingCheat;
+    std::string key;
+    const size_t MAGIC_LEN = strlen(SELECTED_MAGIC);
+    std::shared_ptr<Scrollable> scrollable;
+    size_t currentIndex;
+    const float scale = 0.47f;
+
+    C2D_Text multiSelectText, multiDeselectText;
+    C2D_TextBuf staticBuf, dynamicBuf;
 };
 
 #endif

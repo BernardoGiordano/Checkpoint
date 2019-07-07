@@ -53,15 +53,11 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
 
     FSStream output(dstArch, dstPath, FS_OPEN_WRITE, input.size());
     if (output.good()) {
-        size_t slashpos     = srcPath.rfind(StringUtils::UTF8toUTF16("/"));
-        std::u16string name = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
-
         u32 rd;
         u8* buf = new u8[size];
         do {
             rd = input.read(buf, size);
             output.write(buf, rd);
-            Gui::drawCopy(name, input.offset(), input.size());
         } while (!input.eof());
         delete[] buf;
     }
@@ -147,17 +143,9 @@ Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
     return 0;
 }
 
-void io::backup(size_t index)
+std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
 {
-    // check if multiple selection is enabled and don't ask for confirmation if that's the case
-    if (!MS::multipleSelectionEnabled()) {
-        if (!Gui::askForConfirmation("Backup selected save?")) {
-            return;
-        }
-    }
-
     const Mode_t mode      = Archive::mode();
-    const size_t cellIndex = Gui::scrollableIndex();
     const bool isNewFolder = cellIndex == 0;
     Result res             = 0;
 
@@ -199,16 +187,14 @@ void io::backup(size_t index)
                 res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
                 if (R_FAILED(res)) {
                     FSUSER_CloseArchive(archive);
-                    Gui::showError(res, "Failed to delete the existing backup\ndirectory recursively.");
-                    return;
+                    return std::make_tuple(false, res, "Failed to delete the existing backup\ndirectory recursively.");
                 }
             }
 
             res = io::createDirectory(Archive::sdmc(), dstPath);
             if (R_FAILED(res)) {
                 FSUSER_CloseArchive(archive);
-                Gui::showError(res, "Failed to create destination directory.");
-                return;
+                return std::make_tuple(false, res, "Failed to create destination directory.");
             }
 
             std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/");
@@ -217,16 +203,14 @@ void io::backup(size_t index)
             if (R_FAILED(res)) {
                 std::string message = mode == MODE_SAVE ? "Failed to backup save." : "Failed to backup extdata.";
                 FSUSER_CloseArchive(archive);
-                Gui::showError(res, message);
-
                 FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-                return;
+                return std::make_tuple(false, res, message);
             }
 
             refreshDirectories(title.id());
         }
         else {
-            Gui::showError(res, "Failed to open save archive.");
+            return std::make_tuple(false, res, "Failed to open save archive.");
         }
 
         FSUSER_CloseArchive(archive);
@@ -259,15 +243,13 @@ void io::backup(size_t index)
         if (!isNewFolder || io::directoryExists(Archive::sdmc(), dstPath)) {
             res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
             if (R_FAILED(res)) {
-                Gui::showError(res, "Failed to delete the existing\nbackup directory recursively.");
-                return;
+                return std::make_tuple(false, res, "Failed to delete the existing\nbackup directory recursively.");
             }
         }
 
         res = io::createDirectory(Archive::sdmc(), dstPath);
         if (R_FAILED(res)) {
-            Gui::showError(res, "Failed to create destination directory.");
-            return;
+            return std::make_tuple(false, res, "Failed to create destination directory.");
         }
 
         std::u16string copyPath =
@@ -279,15 +261,12 @@ void io::backup(size_t index)
             if (R_FAILED(res)) {
                 break;
             }
-            Gui::drawCopy(
-                StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav"), sectorSize * (i + 1), saveSize);
         }
 
         if (R_FAILED(res)) {
             delete[] saveFile;
-            Gui::showError(res, "Failed to backup save.");
             FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-            return;
+            return std::make_tuple(false, res, "Failed to backup save.");
         }
 
         FSStream stream(Archive::sdmc(), copyPath, FS_OPEN_WRITE, saveSize);
@@ -297,9 +276,8 @@ void io::backup(size_t index)
         else {
             delete[] saveFile;
             stream.close();
-            Gui::showError(res, "Failed to backup save.");
             FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-            return;
+            return std::make_tuple(false, res, "Failed to backup save.");
         }
 
         delete[] saveFile;
@@ -307,18 +285,13 @@ void io::backup(size_t index)
         refreshDirectories(title.id());
     }
 
-    Gui::showInfo("Progress correctly saved to disk.");
+    return std::make_tuple(true, 0, "Progress correctly saved to disk.");
 }
 
-void io::restore(size_t index)
+std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex, const std::string& nameFromCell)
 {
-    const Mode_t mode      = Archive::mode();
-    const size_t cellIndex = Gui::scrollableIndex();
-    if (cellIndex == 0 || !Gui::askForConfirmation("Restore selected save?")) {
-        return;
-    }
-
-    Result res = 0;
+    const Mode_t mode = Archive::mode();
+    Result res        = 0;
 
     Title title;
     getTitle(title, index);
@@ -348,16 +321,14 @@ void io::restore(size_t index)
             if (R_FAILED(res)) {
                 std::string message = mode == MODE_SAVE ? "Failed to restore save." : "Failed to restore extdata.";
                 FSUSER_CloseArchive(archive);
-                Gui::showError(res, message);
-                return;
+                return std::make_tuple(false, res, message);
             }
 
             if (mode == MODE_SAVE) {
                 res = FSUSER_ControlArchive(archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
                 if (R_FAILED(res)) {
                     FSUSER_CloseArchive(archive);
-                    Gui::showError(res, "Failed to commit save data.");
-                    return;
+                    return std::make_tuple(false, res, "Failed to commit save data.");
                 }
 
                 u8 out;
@@ -365,13 +336,12 @@ void io::restore(size_t index)
                 res             = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &secureValue, 8, &out, 1);
                 if (R_FAILED(res)) {
                     FSUSER_CloseArchive(archive);
-                    Gui::showError(res, "Failed to fix secure value.");
-                    return;
+                    return std::make_tuple(false, res, "Failed to fix secure value.");
                 }
             }
         }
         else {
-            Gui::showError(res, "Failed to open save archive.");
+            return std::make_tuple(false, res, "Failed to open save archive.");
         }
 
         FSUSER_CloseArchive(archive);
@@ -395,8 +365,7 @@ void io::restore(size_t index)
 
         if (R_FAILED(res)) {
             delete[] saveFile;
-            Gui::showError(res, "Failed to read save file backup.");
-            return;
+            return std::make_tuple(false, res, "Failed to read save file backup.");
         }
 
         for (u32 i = 0; i < saveSize / pageSize; ++i) {
@@ -404,26 +373,24 @@ void io::restore(size_t index)
             if (R_FAILED(res)) {
                 break;
             }
-            Gui::drawCopy(
-                StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav"), pageSize * (i + 1), saveSize);
         }
 
         if (R_FAILED(res)) {
             delete[] saveFile;
-            Gui::showError(res, "Failed to restore save.");
-            return;
+            return std::make_tuple(false, res, "Failed to restore save.");
         }
 
         delete[] saveFile;
     }
 
-    Gui::showInfo(Gui::nameFromCell(cellIndex) + "\nhas been restored successfully.");
+    return std::make_tuple(true, 0, nameFromCell + "\nhas been restored successfully.");
 }
 
 void io::deleteBackupFolder(const std::u16string& path)
 {
     Result res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, path.data()));
     if (R_FAILED(res)) {
-        Gui::showError(res, "Failed to delete backup folder.");
+        // TODO: log this
+        // return std::make_tuple(false, res, "Failed to delete backup folder.");
     }
 }

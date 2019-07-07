@@ -28,8 +28,9 @@
 #define UTIL_HPP
 
 #include "archive.hpp"
-#include "cheatmanager.hpp"
 #include "common.hpp"
+#include "configuration.hpp"
+#include "gui.hpp"
 #include <3ds.h>
 #include <citro2d.h>
 #include <map>

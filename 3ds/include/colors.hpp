@@ -3,6 +3,8 @@
 
 #include <citro2d.h>
 
+inline const u32 COLOR_OVERLAY = C2D_Color32(0, 0, 0, 160);
+
 #define COLOR_BG C2D_Color32(51, 51, 51, 255)
 #define COLOR_WHITE C2D_Color32(255, 255, 255, 255)
 #define COLOR_BLACK C2D_Color32(0, 0, 0, 255)

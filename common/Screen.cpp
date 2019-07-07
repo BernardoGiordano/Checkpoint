@@ -27,6 +27,26 @@
 #include "Screen.hpp"
 #include "Overlay.hpp"
 
+#if defined(_3DS)
+
+void Screen::doDrawTop() const
+{
+    drawTop();
+    if (currentOverlay) {
+        currentOverlay->drawTop();
+    }
+}
+
+void Screen::doDrawBottom() const
+{
+    drawBottom();
+    if (currentOverlay) {
+        currentOverlay->drawBottom();
+    }
+}
+
+#elif defined(__SWITCH__)
+
 void Screen::doDraw() const
 {
     draw();
@@ -34,6 +54,8 @@ void Screen::doDraw() const
         currentOverlay->draw();
     }
 }
+
+#endif
 
 void Screen::doUpdate(touchPosition* touch)
 {

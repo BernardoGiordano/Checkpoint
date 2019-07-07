@@ -41,7 +41,12 @@ public:
     Overlay(Screen& screen) : screen(screen), me(screen.currentOverlay) {}
     virtual ~Overlay() {}
     virtual void update(touchPosition* touch) = 0;
-    virtual void draw() const                 = 0;
+#if defined(_3DS)
+    virtual void drawTop() const    = 0;
+    virtual void drawBottom() const = 0;
+#elif defined(__SWITCH__)
+    virtual void draw() const = 0;
+#endif
 
 protected:
     Screen& screen;
