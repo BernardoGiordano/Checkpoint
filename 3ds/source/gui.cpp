@@ -26,8 +26,6 @@
 
 #include "gui.hpp"
 
-static Scrollable* directoryList;
-
 C2D_Image Gui::TWLIcon(void)
 {
     return C2D_SpriteSheetGetImage(spritesheet, sprites_twlcart_idx);
@@ -36,11 +34,6 @@ C2D_Image Gui::TWLIcon(void)
 C2D_Image Gui::noIcon(void)
 {
     return C2D_SpriteSheetGetImage(spritesheet, sprites_noicon_idx);
-}
-
-std::string Gui::nameFromCell(size_t index)
-{
-    return directoryList->cellName(index);
 }
 
 bool Gui::askForConfirmation(const std::string& message)
@@ -164,16 +157,6 @@ void Gui::showError(Result res, const std::string& message)
     delete button;
 }
 
-size_t Gui::scrollableIndex(void)
-{
-    return directoryList->index();
-}
-
-void Gui::scrollableIndex(size_t idx)
-{
-    directoryList->setIndex(idx);
-}
-
 void Gui::init(void)
 {
     gfxInitDefault();
@@ -183,8 +166,6 @@ void Gui::init(void)
 
     g_top    = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     g_bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
-
-    directoryList = new Scrollable(6, 102, 196, 110, 5);
 
     spritesheet = C2D_SpriteSheetLoad("romfs:/gfx/sprites.t3x");
     flag        = C2D_SpriteSheetGetImage(spritesheet, sprites_checkpoint_idx);
@@ -202,7 +183,6 @@ void Gui::exit(void)
     C2D_TextBufDelete(g_dynamicBuf);
     C2D_TextBufDelete(g_staticBuf);
     C2D_SpriteSheetFree(spritesheet);
-    delete directoryList;
     C2D_Fini();
     C3D_Fini();
     gfxExit();

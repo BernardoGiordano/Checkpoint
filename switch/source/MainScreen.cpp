@@ -401,7 +401,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     }
 
     // Handle pressing/touching L
-    if (isBackupReleased() || (kdown & KEY_L)) {
+    if (buttonBackup->released() || (kdown & KEY_L)) {
         if (MS::multipleSelectionEnabled()) {
             resetIndex(CELLS);
             std::vector<size_t> list = MS::selectedEntries();
@@ -455,7 +455,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     }
 
     // Handle pressing/touching R
-    if (isRestoreReleased() || (kdown & KEY_R)) {
+    if (buttonRestore->released() || (kdown & KEY_R)) {
         if (g_backupScrollEnabled) {
             if (getPKSMBridgeFlag() && this->index(CELLS) != 0) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
@@ -490,7 +490,7 @@ void MainScreen::handleEvents(touchPosition* touch)
         }
     }
 
-    if ((isCheatReleased() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RSTICK)) && CheatManager::getInstance().cheats() != nullptr) {
+    if ((buttonCheats->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RSTICK)) && CheatManager::getInstance().cheats() != nullptr) {
         if (MS::multipleSelectionEnabled()) {
             MS::clearSelectedEntries();
             updateButtons();
@@ -507,21 +507,6 @@ void MainScreen::handleEvents(touchPosition* touch)
             }
         }
     }
-}
-
-bool MainScreen::isBackupReleased(void) const
-{
-    return buttonBackup->released();
-}
-
-bool MainScreen::isRestoreReleased(void) const
-{
-    return buttonRestore->released();
-}
-
-bool MainScreen::isCheatReleased(void) const
-{
-    return buttonCheats->released();
 }
 
 std::string MainScreen::nameFromCell(size_t index) const

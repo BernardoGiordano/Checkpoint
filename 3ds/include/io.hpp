@@ -37,8 +37,8 @@
 #define BUFFER_SIZE 0x50000
 
 namespace io {
-    void backup(size_t index);
-    void restore(size_t index);
+    void backup(size_t index, size_t cellIndex);
+    void restore(size_t index, size_t cellIndex, const std::string& nameFromCell);
 
     Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
     void copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);

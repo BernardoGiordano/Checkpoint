@@ -254,11 +254,12 @@ void MainScreen::handleEvents(touchPosition* touch)
         // If backup list is active...
         if (g_bottomScrollEnabled) {
             // If the "New..." entry is selected...
-            if (0 == Gui::scrollableIndex()) {
-                io::backup(hid.fullIndex());
+            if (0 == directoryList->index()) {
+                io::backup(hid.fullIndex(), 0);
             }
             else {
-                io::restore(hid.fullIndex());
+                size_t cellIndex = directoryList->index();
+                io::restore(hid.fullIndex(), cellIndex, nameFromCell(cellIndex));
             }
         }
         else {
@@ -280,7 +281,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     if (kDown & KEY_X) {
         if (g_bottomScrollEnabled) {
             bool isSaveMode = Archive::mode() == MODE_SAVE;
-            size_t index    = Gui::scrollableIndex();
+            size_t index    = directoryList->index();
             // avoid actions if X is pressed on "New..."
             if (index > 0 && Gui::askForConfirmation("Delete selected backup?")) {
                 Title title;
@@ -288,7 +289,7 @@ void MainScreen::handleEvents(touchPosition* touch)
                 std::u16string path = isSaveMode ? title.fullSavePath(index) : title.fullExtdataPath(index);
                 io::deleteBackupFolder(path);
                 refreshDirectories(title.id());
-                Gui::scrollableIndex(index - 1);
+                directoryList->setIndex(index - 1);
             }
         }
         else {
@@ -343,13 +344,13 @@ void MainScreen::handleEvents(touchPosition* touch)
             directoryList->resetIndex();
             std::vector<size_t> list = MS::selectedEntries();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                io::backup(list.at(i));
+                io::backup(list.at(i), directoryList->index());
             }
             MS::clearSelectedEntries();
             updateButtons();
         }
         else if (g_bottomScrollEnabled) {
-            io::backup(hid.fullIndex());
+            io::backup(hid.fullIndex(), directoryList->index());
         }
     }
 
@@ -359,7 +360,8 @@ void MainScreen::handleEvents(touchPosition* touch)
             updateButtons();
         }
         else if (g_bottomScrollEnabled) {
-            io::restore(hid.fullIndex());
+            size_t cellIndex = directoryList->index();
+            io::restore(hid.fullIndex(), cellIndex, nameFromCell(cellIndex));
         }
     }
 
@@ -415,10 +417,10 @@ void MainScreen::drawSelector(void) const
     u32 color = C2D_Color32(r + (255 - r) * highlight_multiplier, g + (255 - g) * highlight_multiplier, b + (255 - b) * highlight_multiplier, 255);
 
     C2D_DrawRectSolid(x, y, 0.5f, 50, 50, C2D_Color32(255, 255, 255, 100));
-    C2D_DrawRectSolid(x, y, 0.5f, 50, w, color);                      // g_top
+    C2D_DrawRectSolid(x, y, 0.5f, 50, w, color);                      // top
     C2D_DrawRectSolid(x, y + w, 0.5f, w, 50 - 2 * w, color);          // left
     C2D_DrawRectSolid(x + 50 - w, y + w, 0.5f, w, 50 - 2 * w, color); // right
-    C2D_DrawRectSolid(x, y + 50 - w, 0.5f, 50, w, color);             // g_bottom
+    C2D_DrawRectSolid(x, y + 50 - w, 0.5f, 50, w, color);             // bottom
 }
 
 void MainScreen::updateButtons(void)
@@ -462,4 +464,9 @@ void MainScreen::updateButtons(void)
         buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
         buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
     }
+}
+
+std::string MainScreen::nameFromCell(size_t index) const
+{
+    return directoryList->cellName(index);
 }

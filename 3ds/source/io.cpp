@@ -143,7 +143,7 @@ Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
     return 0;
 }
 
-void io::backup(size_t index)
+void io::backup(size_t index, size_t cellIndex)
 {
     // check if multiple selection is enabled and don't ask for confirmation if that's the case
     if (!MS::multipleSelectionEnabled()) {
@@ -153,7 +153,6 @@ void io::backup(size_t index)
     }
 
     const Mode_t mode      = Archive::mode();
-    const size_t cellIndex = Gui::scrollableIndex();
     const bool isNewFolder = cellIndex == 0;
     Result res             = 0;
 
@@ -304,10 +303,9 @@ void io::backup(size_t index)
     Gui::showInfo("Progress correctly saved to disk.");
 }
 
-void io::restore(size_t index)
+void io::restore(size_t index, size_t cellIndex, const std::string& nameFromCell)
 {
-    const Mode_t mode      = Archive::mode();
-    const size_t cellIndex = Gui::scrollableIndex();
+    const Mode_t mode = Archive::mode();
     if (cellIndex == 0 || !Gui::askForConfirmation("Restore selected save?")) {
         return;
     }
@@ -409,7 +407,7 @@ void io::restore(size_t index)
         delete[] saveFile;
     }
 
-    Gui::showInfo(Gui::nameFromCell(cellIndex) + "\nhas been restored successfully.");
+    Gui::showInfo(nameFromCell + "\nhas been restored successfully.");
 }
 
 void io::deleteBackupFolder(const std::u16string& path)

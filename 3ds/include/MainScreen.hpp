@@ -47,6 +47,7 @@ protected:
     void handleEvents(touchPosition* touch);
     void updateSelector(void);
     void updateButtons(void);
+    std::string nameFromCell(size_t index) const;
 
 private:
     HidHorizontal hid;

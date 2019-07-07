@@ -28,11 +28,8 @@
 #define GUI_HPP
 
 #include "archive.hpp"
-#include "clickable.hpp"
 #include "colors.hpp"
-#include "hid.hpp"
 #include "multiselection.hpp"
-#include "scrollable.hpp"
 #include "sprites.h"
 #include "title.hpp"
 #include "util.hpp"
@@ -60,9 +57,6 @@ namespace Gui {
     void showError(Result res, const std::string& message);
     void showInfo(const std::string& message);
     void frameEnd(void);
-    std::string nameFromCell(size_t index);
-    size_t scrollableIndex(void);
-    void scrollableIndex(size_t index);
 
     C2D_Image TWLIcon(void);
     C2D_Image noIcon(void);

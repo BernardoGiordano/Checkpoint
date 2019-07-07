@@ -57,9 +57,6 @@ protected:
     int selectorY(size_t i) const;
     void updateSelector(touchPosition* touch);
     void handleEvents(touchPosition* touch);
-    bool isBackupReleased(void) const;
-    bool isRestoreReleased(void) const;
-    bool isCheatReleased(void) const;
     std::string nameFromCell(size_t index) const;
     void entryType(entryType_t type);
     size_t index(entryType_t type) const;
