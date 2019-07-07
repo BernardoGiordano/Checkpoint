@@ -26,22 +26,15 @@
 
 #include "cheatmanager.hpp"
 
-#define SELECTED_MAGIC "\uE071 "
-
-static bool mLoaded = false;
-static nlohmann::json mCheats;
-static bool multiSelected = false;
-static size_t MAGIC_LEN   = strlen(SELECTED_MAGIC);
-
-void CheatManager::init(void)
+CheatManager::CheatManager(void)
 {
+    mCheats = nullptr;
     if (io::fileExists("/3ds/Checkpoint/cheats.json")) {
         const std::string path = "/3ds/Checkpoint/cheats.json";
         FILE* in               = fopen(path.c_str(), "rt");
         if (in != NULL) {
-            mCheats = nlohmann::json::parse(in, nullptr, false);
+            mCheats = std::make_shared<nlohmann::json>(nlohmann::json::parse(in, nullptr, false));
             fclose(in);
-            mLoaded = true;
         }
     }
     else {
@@ -59,8 +52,7 @@ void CheatManager::init(void)
 
             int r = BZ2_bzBuffToBuffDecompress(d, &destLen, s, size, 0, 0);
             if (r == BZ_OK) {
-                mCheats = nlohmann::json::parse(d);
-                mLoaded = true;
+                mCheats = std::make_shared<nlohmann::json>(nlohmann::json::parse(d));
             }
 
             delete[] s;
@@ -70,128 +62,23 @@ void CheatManager::init(void)
     }
 }
 
-void CheatManager::exit(void) {}
-
-bool CheatManager::loaded(void)
+bool CheatManager::areCheatsAvailable(const std::string& key)
 {
-    return mLoaded;
+    return mCheats->find(key) != mCheats->end();
 }
 
-bool CheatManager::availableCodes(const std::string& key)
+void CheatManager::save(const std::string& key, const std::vector<std::string>& s)
 {
-    return mCheats.find(key) != mCheats.end();
-}
+    static size_t MAGIC_LEN = strlen(SELECTED_MAGIC);
 
-void CheatManager::manageCheats(const std::string& key)
-{
-    std::string existingCheat = "";
-    FILE* f                   = fopen(("/cheats/" + key + ".txt").c_str(), "r");
-    if (f != NULL) {
-        fseek(f, 0, SEEK_END);
-        u32 size = ftell(f);
-        char* s  = new char[size];
-        rewind(f);
-        fread(s, 1, size, f);
-        existingCheat = std::string(s);
-        delete[] s;
-        fclose(f);
-    }
-
-    size_t i            = 0;
-    size_t currentIndex = i;
-    Scrollable* s       = new Scrollable(2, 2, 396, 220, 11);
-    for (auto it = mCheats[key].begin(); it != mCheats[key].end(); ++it) {
-        std::string value = it.key();
-        if (existingCheat.find(value) != std::string::npos) {
-            value = SELECTED_MAGIC + value;
-        }
-        s->push_back(COLOR_GREY_DARKER, COLOR_WHITE, value, i == 0);
-        i++;
-    }
-
-    const float scale = 0.47f;
-    C2D_Text multiSelectText, multiDeselectText;
-    C2D_TextParse(&multiSelectText, g_dynamicBuf, "\uE003 to select all cheats");
-    C2D_TextParse(&multiDeselectText, g_dynamicBuf, "\uE003 to deselect all cheats");
-    C2D_TextOptimize(&multiSelectText);
-    C2D_TextOptimize(&multiDeselectText);
-
-    while (aptMainLoop()) {
-        hidScanInput();
-
-        if (hidKeysDown() & KEY_B) {
-            break;
-        }
-
-        if (hidKeysDown() & KEY_A) {
-            std::string cellName = s->cellName(s->index());
-            if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) == 0) {
-                // cheat was already selected
-                cellName = cellName.substr(MAGIC_LEN, cellName.length());
-            }
-            else {
-                cellName = SELECTED_MAGIC + cellName;
-            }
-            s->c2dText(s->index(), cellName);
-        }
-
-        if (hidKeysDown() & KEY_Y) {
-            if (multiSelected) {
-                for (size_t j = 0; j < s->size(); j++) {
-                    std::string cellName = s->cellName(j);
-                    if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) == 0) {
-                        cellName = cellName.substr(MAGIC_LEN, cellName.length());
-                        s->c2dText(j, cellName);
-                    }
-                }
-                multiSelected = false;
-            }
-            else {
-                for (size_t j = 0; j < s->size(); j++) {
-                    std::string cellName = s->cellName(j);
-                    if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) != 0) {
-                        cellName = SELECTED_MAGIC + cellName;
-                        s->c2dText(j, cellName);
-                    }
-                }
-                multiSelected = true;
-            }
-        }
-
-        s->updateSelection();
-        s->selectRow(currentIndex, false);
-        s->selectRow(s->index(), true);
-        currentIndex = s->index();
-
-        C2D_Text page;
-        C2D_TextParse(&page, g_dynamicBuf, StringUtils::format("%d/%d", s->index() + 1, s->size()).c_str());
-        C2D_TextOptimize(&page);
-        C2D_TextBufClear(g_dynamicBuf);
-        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        C2D_SceneBegin(g_top);
-        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_GREY_DARK);
-        s->draw(true);
-        C2D_DrawText(&page, C2D_WithColor, ceilf(396 - page.width * scale), 224, 0.5f, scale, scale, COLOR_WHITE);
-        C2D_DrawText(multiSelected ? &multiDeselectText : &multiSelectText, C2D_WithColor, 4, 224, 0.5f, scale, scale, COLOR_WHITE);
-        Gui::frameEnd();
-    }
-
-    if (Gui::askForConfirmation("Do you want to store\nthe cheat file?")) {
-        save(key, s);
-    }
-
-    delete s;
-}
-
-void CheatManager::save(const std::string& key, Scrollable* s)
-{
     std::string cheatFile = "";
-    for (size_t i = 0; i < s->size(); i++) {
-        std::string cellName = s->cellName(i);
+    auto cheats           = *CheatManager::getInstance().cheats().get();
+    for (size_t i = 0; i < s.size(); i++) {
+        std::string cellName = s.at(i);
         if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) == 0) {
             cellName = cellName.substr(MAGIC_LEN, cellName.length());
-            cheatFile += cellName + "\n";
-            for (auto& it : mCheats[key][cellName]) {
+            cheatFile += "[" + cellName + "]\n";
+            for (auto& it : cheats[key][cellName]) {
                 cheatFile += it.get<std::string>() + "\n";
             }
             cheatFile += "\n";
@@ -202,8 +89,5 @@ void CheatManager::save(const std::string& key, Scrollable* s)
     if (f != NULL) {
         fwrite(cheatFile.c_str(), 1, cheatFile.length(), f);
         fclose(f);
-    }
-    else {
-        Gui::showError(errno, "Failed to write cheat file\nto the sd card");
     }
 }

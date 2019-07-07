@@ -24,42 +24,32 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef CHEATMANAGER_HPP
-#define CHEATMANAGER_HPP
+#ifndef ERROROVERLAY_HPP
+#define ERROROVERLAY_HPP
 
-#include "json.hpp"
-#include "main.hpp"
-#include <bzlib.h>
-#include <errno.h>
-#include <stdio.h>
-#include <switch.h>
-#include <sys/stat.h>
+#include "Overlay.hpp"
+#include "clickable.hpp"
+#include "colors.hpp"
+#include "gui.hpp"
+#include <memory>
+#include <string>
 
-#define SELECTED_MAGIC "\uE071 "
+class Clickable;
 
-class Scrollable;
-
-class CheatManager {
+class ErrorOverlay : public Overlay {
 public:
-    static CheatManager& getInstance(void)
-    {
-        static CheatManager mCheatManager;
-        return mCheatManager;
-    }
-
-    bool areCheatsAvailable(const std::string& key);
-    void save(const std::string& key, const std::vector<std::string>& s);
-
-    std::shared_ptr<nlohmann::json> cheats(void) { return mCheats; }
+    ErrorOverlay(Screen& screen, Result res, const std::string& mtext);
+    ~ErrorOverlay(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
+    void update(touchPosition* touch) override;
 
 private:
-    CheatManager(void);
-    ~CheatManager(void){};
-
-    CheatManager(CheatManager const&) = delete;
-    void operator=(CheatManager const&) = delete;
-
-    std::shared_ptr<nlohmann::json> mCheats;
+    u32 posx, posy;
+    const float size = 0.6f;
+    C2D_Text text, error;
+    C2D_TextBuf textBuf;
+    std::unique_ptr<Clickable> button;
 };
 
 #endif

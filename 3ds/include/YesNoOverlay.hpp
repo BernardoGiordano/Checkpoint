@@ -24,42 +24,35 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef CHEATMANAGER_HPP
-#define CHEATMANAGER_HPP
+#ifndef YESNOOVERLAY_HPP
+#define YESNOOVERLAY_HPP
 
-#include "json.hpp"
-#include "main.hpp"
-#include <bzlib.h>
-#include <errno.h>
-#include <stdio.h>
-#include <switch.h>
-#include <sys/stat.h>
+#include "Overlay.hpp"
+#include "clickable.hpp"
+#include "colors.hpp"
+#include "gui.hpp"
+#include "hid.hpp"
+#include <functional>
+#include <memory>
+#include <string>
 
-#define SELECTED_MAGIC "\uE071 "
+class Clickable;
 
-class Scrollable;
-
-class CheatManager {
+class YesNoOverlay : public Overlay {
 public:
-    static CheatManager& getInstance(void)
-    {
-        static CheatManager mCheatManager;
-        return mCheatManager;
-    }
-
-    bool areCheatsAvailable(const std::string& key);
-    void save(const std::string& key, const std::vector<std::string>& s);
-
-    std::shared_ptr<nlohmann::json> cheats(void) { return mCheats; }
+    YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
+    ~YesNoOverlay(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
+    void update(touchPosition* touch) override;
 
 private:
-    CheatManager(void);
-    ~CheatManager(void){};
-
-    CheatManager(CheatManager const&) = delete;
-    void operator=(CheatManager const&) = delete;
-
-    std::shared_ptr<nlohmann::json> mCheats;
+    u32 posx, posy;
+    C2D_TextBuf textBuf;
+    C2D_Text text;
+    std::unique_ptr<Clickable> buttonYes, buttonNo;
+    HidHorizontal hid;
+    std::function<void()> yesFunc, noFunc;
 };
 
 #endif

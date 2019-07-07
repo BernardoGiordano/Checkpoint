@@ -30,10 +30,13 @@
 #include "Screen.hpp"
 #include <citro2d.h>
 #include <memory>
+#include <vector>
 
 inline std::shared_ptr<Screen> g_screen = nullptr;
 inline bool g_bottomScrollEnabled       = false;
 inline float g_timer                    = 0;
+inline std::string g_selectedCheatKey;
+inline std::vector<std::string> g_selectedCheatCodes;
 
 void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color);
 void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color);

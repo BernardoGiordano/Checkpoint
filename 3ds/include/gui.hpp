@@ -27,9 +27,8 @@
 #ifndef GUI_HPP
 #define GUI_HPP
 
-#include "archive.hpp"
 #include "colors.hpp"
-#include "multiselection.hpp"
+#include "main.hpp"
 #include "sprites.h"
 #include "title.hpp"
 #include "util.hpp"
@@ -47,15 +46,9 @@ inline C2D_SpriteSheet spritesheet;
 inline C2D_Image flag;
 inline C2D_Sprite checkbox, star;
 
-inline C2D_TextBuf g_staticBuf, g_dynamicBuf;
-
 namespace Gui {
     void init(void);
     void exit(void);
-
-    bool askForConfirmation(const std::string& text);
-    void showError(Result res, const std::string& message);
-    void showInfo(const std::string& message);
     void frameEnd(void);
 
     C2D_Image TWLIcon(void);

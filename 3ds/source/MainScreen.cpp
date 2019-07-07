@@ -33,6 +33,9 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     selectionTimer = 0;
     refreshTimer   = 0;
 
+    staticBuf  = C2D_TextBufNew(256);
+    dynamicBuf = C2D_TextBufNew(256);
+
     buttonBackup    = std::make_unique<Clickable>(204, 102, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Backup \uE004", true);
     buttonRestore   = std::make_unique<Clickable>(204, 139, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Restore \uE005", true);
     buttonCheats    = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "Cheats", true);
@@ -45,22 +48,22 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
 
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 
-    C2D_TextParse(&ins1, g_staticBuf, "Hold SELECT to see commands. Press \uE002 for ");
-    C2D_TextParse(&ins2, g_staticBuf, "extdata");
-    C2D_TextParse(&ins3, g_staticBuf, ".");
-    C2D_TextParse(&ins4, g_staticBuf, "Press \uE073 or START to exit.");
-    C2D_TextParse(&version, g_staticBuf, ver);
-    C2D_TextParse(&checkpoint, g_staticBuf, "checkpoint");
-    C2D_TextParse(&c2dId, g_staticBuf, "ID:");
-    C2D_TextParse(&c2dMediatype, g_staticBuf, "Mediatype:");
+    C2D_TextParse(&ins1, staticBuf, "Hold SELECT to see commands. Press \uE002 for ");
+    C2D_TextParse(&ins2, staticBuf, "extdata");
+    C2D_TextParse(&ins3, staticBuf, ".");
+    C2D_TextParse(&ins4, staticBuf, "Press \uE073 or START to exit.");
+    C2D_TextParse(&version, staticBuf, ver);
+    C2D_TextParse(&checkpoint, staticBuf, "checkpoint");
+    C2D_TextParse(&c2dId, staticBuf, "ID:");
+    C2D_TextParse(&c2dMediatype, staticBuf, "Mediatype:");
 
-    C2D_TextParse(&top_move, g_staticBuf, "\uE006 to move between titles");
-    C2D_TextParse(&top_a, g_staticBuf, "\uE000 to enter target");
-    C2D_TextParse(&top_y, g_staticBuf, "\uE003 to multiselect a title");
-    C2D_TextParse(&top_my, g_staticBuf, "\uE003 hold to multiselect all titles");
-    C2D_TextParse(&top_b, g_staticBuf, "\uE001 to exit target or deselect all titles");
-    C2D_TextParse(&bot_ts, g_staticBuf, "\uE01D \uE006 to move\nbetween backups");
-    C2D_TextParse(&bot_x, g_staticBuf, "\uE002 to delete backups");
+    C2D_TextParse(&top_move, staticBuf, "\uE006 to move between titles");
+    C2D_TextParse(&top_a, staticBuf, "\uE000 to enter target");
+    C2D_TextParse(&top_y, staticBuf, "\uE003 to multiselect a title");
+    C2D_TextParse(&top_my, staticBuf, "\uE003 hold to multiselect all titles");
+    C2D_TextParse(&top_b, staticBuf, "\uE001 to exit target or deselect all titles");
+    C2D_TextParse(&bot_ts, staticBuf, "\uE01D \uE006 to move\nbetween backups");
+    C2D_TextParse(&bot_x, staticBuf, "\uE002 to delete backups");
 
     C2D_TextOptimize(&ins1);
     C2D_TextOptimize(&ins2);
@@ -82,6 +85,12 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     C2D_PlainImageTint(&checkboxTint, C2D_Color32(88, 88, 88, 255), 1.0f);
 }
 
+MainScreen::~MainScreen(void)
+{
+    C2D_TextBufDelete(dynamicBuf);
+    C2D_TextBufDelete(staticBuf);
+}
+
 void MainScreen::drawTop(void) const
 {
     auto selEnt          = MS::selectedEntries();
@@ -96,7 +105,7 @@ void MainScreen::drawTop(void) const
     C2D_DrawRectSolid(0, 221, 0.5f, 400, 19, COLOR_GREY_DARK);
 
     C2D_Text timeText;
-    C2D_TextParse(&timeText, g_dynamicBuf, DateTime::timeStr().c_str());
+    C2D_TextParse(&timeText, dynamicBuf, DateTime::timeStr().c_str());
     C2D_TextOptimize(&timeText);
     C2D_DrawText(&timeText, C2D_WithColor, 4.0f, 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
 
@@ -151,6 +160,8 @@ void MainScreen::drawTop(void) const
 
 void MainScreen::drawBottom(void) const
 {
+    C2D_TextBufClear(dynamicBuf);
+
     const Mode_t mode = Archive::mode();
 
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 19, COLOR_GREY_DARK);
@@ -172,10 +183,10 @@ void MainScreen::drawBottom(void) const
         char lowid[18];
         snprintf(lowid, 9, "%08X", (int)title.lowId());
 
-        C2D_TextParse(&shortDesc, g_dynamicBuf, title.shortDescription().c_str());
-        C2D_TextParse(&longDesc, g_dynamicBuf, title.longDescription().c_str());
-        C2D_TextParse(&id, g_dynamicBuf, lowid);
-        C2D_TextParse(&media, g_dynamicBuf, title.mediaTypeString().c_str());
+        C2D_TextParse(&shortDesc, dynamicBuf, title.shortDescription().c_str());
+        C2D_TextParse(&longDesc, dynamicBuf, title.longDescription().c_str());
+        C2D_TextParse(&id, dynamicBuf, lowid);
+        C2D_TextParse(&media, dynamicBuf, title.mediaTypeString().c_str());
 
         C2D_TextOptimize(&shortDesc);
         C2D_TextOptimize(&longDesc);
@@ -193,7 +204,7 @@ void MainScreen::drawBottom(void) const
         C2D_DrawText(&id, C2D_WithColor, 25, 31 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
 
         snprintf(lowid, 18, "(%s)", title.productCode);
-        C2D_TextParse(&prodCode, g_dynamicBuf, lowid);
+        C2D_TextParse(&prodCode, dynamicBuf, lowid);
         C2D_TextOptimize(&prodCode);
         C2D_DrawText(&prodCode, C2D_WithColor, 30 + lowidWidth, 32 + longDescHeight, 0.5f, 0.42f, 0.42f, COLOR_GREY_LIGHT);
         C2D_DrawText(&c2dMediatype, C2D_WithColor, 4, 47 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
@@ -255,11 +266,33 @@ void MainScreen::handleEvents(touchPosition* touch)
         if (g_bottomScrollEnabled) {
             // If the "New..." entry is selected...
             if (0 == directoryList->index()) {
-                io::backup(hid.fullIndex(), 0);
+                currentOverlay = std::make_shared<YesNoOverlay>(
+                    *this, "Backup selected title?",
+                    [this]() {
+                        auto result = io::backup(hid.fullIndex(), 0);
+                        if (std::get<0>(result)) {
+                            currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                        }
+                        else {
+                            currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                        }
+                    },
+                    [this]() { this->removeOverlay(); });
             }
             else {
-                size_t cellIndex = directoryList->index();
-                io::restore(hid.fullIndex(), cellIndex, nameFromCell(cellIndex));
+                currentOverlay = std::make_shared<YesNoOverlay>(
+                    *this, "Restore selected title?",
+                    [this]() {
+                        size_t cellIndex = directoryList->index();
+                        auto result      = io::restore(hid.fullIndex(), cellIndex, nameFromCell(cellIndex));
+                        if (std::get<0>(result)) {
+                            currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                        }
+                        else {
+                            currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                        }
+                    },
+                    [this]() { this->removeOverlay(); });
             }
         }
         else {
@@ -283,13 +316,19 @@ void MainScreen::handleEvents(touchPosition* touch)
             bool isSaveMode = Archive::mode() == MODE_SAVE;
             size_t index    = directoryList->index();
             // avoid actions if X is pressed on "New..."
-            if (index > 0 && Gui::askForConfirmation("Delete selected backup?")) {
-                Title title;
-                getTitle(title, hid.fullIndex());
-                std::u16string path = isSaveMode ? title.fullSavePath(index) : title.fullExtdataPath(index);
-                io::deleteBackupFolder(path);
-                refreshDirectories(title.id());
-                directoryList->setIndex(index - 1);
+            if (index > 0) {
+                currentOverlay = std::make_shared<YesNoOverlay>(
+                    *this, "Delete selected backup?",
+                    [this, isSaveMode, index]() {
+                        Title title;
+                        getTitle(title, hid.fullIndex());
+                        std::u16string path = isSaveMode ? title.fullSavePath(index) : title.fullExtdataPath(index);
+                        io::deleteBackupFolder(path);
+                        refreshDirectories(title.id());
+                        directoryList->setIndex(index - 1);
+                        this->removeOverlay();
+                    },
+                    [this]() { this->removeOverlay(); });
             }
         }
         else {
@@ -344,24 +383,52 @@ void MainScreen::handleEvents(touchPosition* touch)
             directoryList->resetIndex();
             std::vector<size_t> list = MS::selectedEntries();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                io::backup(list.at(i), directoryList->index());
+                auto result = io::backup(list.at(i), directoryList->index());
+                if (std::get<0>(result)) {
+                    currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                }
+                else {
+                    currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                }
             }
             MS::clearSelectedEntries();
             updateButtons();
         }
         else if (g_bottomScrollEnabled) {
-            io::backup(hid.fullIndex(), directoryList->index());
+            currentOverlay = std::make_shared<YesNoOverlay>(
+                *this, "Backup selected save?",
+                [this]() {
+                    auto result = io::backup(hid.fullIndex(), 0);
+                    if (std::get<0>(result)) {
+                        currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                    }
+                    else {
+                        currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                    }
+                },
+                [this]() { this->removeOverlay(); });
         }
     }
 
     if (buttonRestore->released() || (kDown & KEY_R)) {
+        size_t cellIndex = directoryList->index();
         if (MS::multipleSelectionEnabled()) {
             MS::clearSelectedEntries();
             updateButtons();
         }
-        else if (g_bottomScrollEnabled) {
-            size_t cellIndex = directoryList->index();
-            io::restore(hid.fullIndex(), cellIndex, nameFromCell(cellIndex));
+        else if (g_bottomScrollEnabled && cellIndex > 0) {
+            currentOverlay = std::make_shared<YesNoOverlay>(
+                *this, "Restore selected save?",
+                [this, cellIndex]() {
+                    auto result = io::restore(hid.fullIndex(), cellIndex, nameFromCell(cellIndex));
+                    if (std::get<0>(result)) {
+                        currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                    }
+                    else {
+                        currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                    }
+                },
+                [this]() { this->removeOverlay(); });
         }
     }
 
@@ -371,23 +438,23 @@ void MainScreen::handleEvents(touchPosition* touch)
         if (title.isActivityLog()) {
             if (buttonPlayCoins->released()) {
                 if (!Archive::setPlayCoins()) {
-                    Gui::showError(-1, "Failed to set play coins.");
+                    currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");
                 }
             }
         }
         else {
-            if (buttonCheats->released() && CheatManager::loaded()) {
+            if (buttonCheats->released() && CheatManager::getInstance().cheats() != nullptr) {
                 if (MS::multipleSelectionEnabled()) {
                     MS::clearSelectedEntries();
                     updateButtons();
                 }
                 else {
                     std::string key = StringUtils::format("%016llX", title.id());
-                    if (CheatManager::availableCodes(key)) {
-                        CheatManager::manageCheats(key);
+                    if (CheatManager::getInstance().areCheatsAvailable(key)) {
+                        currentOverlay = std::make_shared<CheatManagerOverlay>(*this, key);
                     }
                     else {
-                        Gui::showInfo("No available cheat codes for this title.");
+                        currentOverlay = std::make_shared<InfoOverlay>(*this, "No available cheat codes for this title.");
                     }
                 }
             }
@@ -450,19 +517,6 @@ void MainScreen::updateButtons(void)
         buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-    }
-
-    static bool shouldCheckCheatManager = true;
-    if (CheatManager::loaded() && shouldCheckCheatManager) {
-        buttonCheats->c2dText("Cheats");
-        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        shouldCheckCheatManager = false;
-    }
-    else if (!CheatManager::loaded()) {
-        buttonCheats->c2dText("Loading...");
-        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
-        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
     }
 }
 

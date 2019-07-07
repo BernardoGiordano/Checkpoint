@@ -28,7 +28,6 @@
 
 void servicesExit(void)
 {
-    CheatManager::exit();
     Gui::exit();
     pxiDevExit();
     Archive::exit();
@@ -65,7 +64,6 @@ Result servicesInit(void)
     mkdir("sdmc:/cheats", 777);
 
     Gui::init();
-    Threads::create((ThreadFunc)CheatManager::init);
 
     // consoleDebugInit(debugDevice_SVC);
     // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }

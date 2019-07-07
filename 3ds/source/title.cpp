@@ -106,7 +106,9 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
             if (!io::directoryExists(Archive::sdmc(), mSavePath)) {
                 Result res = io::createDirectory(Archive::sdmc(), mSavePath);
                 if (R_FAILED(res)) {
-                    Gui::showError(res, "Failed to create backup directory.");
+                    loadTitle = false;
+                    // TODO: log this
+                    // Gui::showError(res, "Failed to create backup directory.");
                 }
             }
         }
@@ -116,7 +118,9 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
             if (!io::directoryExists(Archive::sdmc(), mExtdataPath)) {
                 Result res = io::createDirectory(Archive::sdmc(), mExtdataPath);
                 if (R_FAILED(res)) {
-                    Gui::showError(res, "Failed to create backup directory.");
+                    loadTitle = false;
+                    // TODO: log this
+                    // Gui::showError(res, "Failed to create backup directory.");
                 }
             }
         }
@@ -165,7 +169,9 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         if (!io::directoryExists(Archive::sdmc(), mSavePath)) {
             res = io::createDirectory(Archive::sdmc(), mSavePath);
             if (R_FAILED(res)) {
-                Gui::showError(res, "Failed to create backup directory.");
+                loadTitle = false;
+                // TODO: log this
+                // Gui::showError(res, "Failed to create backup directory.");
             }
         }
 
@@ -277,7 +283,7 @@ void Title::refreshDirectories(void)
         }
         else {
             // fprintf(stderr, "Title 0x%016llX, %s\n", id(), shortDescription().c_str());
-            Gui::showError(savelist.error(), "Couldn't retrieve the directory list\nfor the title " + shortDescription());
+            // LOG THIS Gui::showError(savelist.error(), "Couldn't retrieve the directory list\nfor the title " + shortDescription());
         }
 
         // save backups from configuration
@@ -314,7 +320,7 @@ void Title::refreshDirectories(void)
         }
         else {
             // fprintf(stderr, "Title 0x%016llX, %s\n", id(), shortDescription().c_str());
-            Gui::showError(extlist.error(), "Couldn't retrieve the extdata list\nfor the title " + shortDescription());
+            // LOG THIS Gui::showError(extlist.error(), "Couldn't retrieve the extdata list\nfor the title " + shortDescription());
         }
 
         // extdata backups from configuration

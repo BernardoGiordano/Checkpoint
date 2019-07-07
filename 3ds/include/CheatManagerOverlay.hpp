@@ -24,42 +24,45 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef CHEATMANAGER_HPP
-#define CHEATMANAGER_HPP
+#ifndef CHEATMANAGEROVERLAY_HPP
+#define CHEATMANAGEROVERLAY_HPP
 
-#include "json.hpp"
-#include "main.hpp"
-#include <bzlib.h>
-#include <errno.h>
-#include <stdio.h>
-#include <switch.h>
-#include <sys/stat.h>
+#include "Overlay.hpp"
+#include "YesNoOverlay.hpp"
+#include "cheatmanager.hpp"
+#include "clickable.hpp"
+#include "colors.hpp"
+#include "directory.hpp"
+#include "gui.hpp"
+#include "scrollable.hpp"
+#include <memory>
+#include <string>
 
-#define SELECTED_MAGIC "\uE071 "
-
+class Clickable;
 class Scrollable;
 
-class CheatManager {
+class CheatManagerOverlay : public Overlay {
 public:
-    static CheatManager& getInstance(void)
-    {
-        static CheatManager mCheatManager;
-        return mCheatManager;
-    }
+    CheatManagerOverlay(Screen& screen, const std::string& mtext);
+    ~CheatManagerOverlay(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
+    void update(touchPosition* touch) override;
 
-    bool areCheatsAvailable(const std::string& key);
-    void save(const std::string& key, const std::vector<std::string>& s);
-
-    std::shared_ptr<nlohmann::json> cheats(void) { return mCheats; }
+protected:
+    void save(const std::string& key, Scrollable* s);
 
 private:
-    CheatManager(void);
-    ~CheatManager(void){};
+    bool multiSelected;
+    std::string existingCheat;
+    std::string key;
+    const size_t MAGIC_LEN = strlen(SELECTED_MAGIC);
+    std::shared_ptr<Scrollable> scrollable;
+    size_t currentIndex;
+    const float scale = 0.47f;
 
-    CheatManager(CheatManager const&) = delete;
-    void operator=(CheatManager const&) = delete;
-
-    std::shared_ptr<nlohmann::json> mCheats;
+    C2D_Text multiSelectText, multiDeselectText;
+    C2D_TextBuf staticBuf, dynamicBuf;
 };
 
 #endif

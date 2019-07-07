@@ -47,7 +47,6 @@ int main()
 
         updateCard();
 
-        C2D_TextBufClear(g_dynamicBuf);
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         g_screen->doDrawTop();
         C2D_SceneBegin(g_bottom);

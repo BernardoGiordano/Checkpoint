@@ -27,15 +27,23 @@
 #ifndef MAINSCREEN_HPP
 #define MAINSCREEN_HPP
 
+#include "CheatManagerOverlay.hpp"
+#include "ErrorOverlay.hpp"
+#include "InfoOverlay.hpp"
 #include "Screen.hpp"
+#include "YesNoOverlay.hpp"
 #include "clickable.hpp"
 #include "gui.hpp"
+#include "multiselection.hpp"
 #include "scrollable.hpp"
+#include "thread.hpp"
 #include <memory>
+#include <tuple>
 
 class MainScreen : public Screen {
 public:
     MainScreen(void);
+    ~MainScreen(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(touchPosition* touch) override;
@@ -59,6 +67,7 @@ private:
     C2D_Text checkpoint, version;
     // instructions text
     C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_x;
+    C2D_TextBuf dynamicBuf, staticBuf;
 
     const float scaleInst = 0.7f;
     C2D_ImageTint checkboxTint;

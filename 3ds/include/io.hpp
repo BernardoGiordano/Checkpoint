@@ -30,15 +30,18 @@
 #include "KeyboardManager.hpp"
 #include "directory.hpp"
 #include "fsstream.hpp"
-#include "gui.hpp"
+#include "multiselection.hpp"
+#include "spi.hpp"
+#include "title.hpp"
 #include "util.hpp"
 #include <3ds.h>
+#include <tuple>
 
 #define BUFFER_SIZE 0x50000
 
 namespace io {
-    void backup(size_t index, size_t cellIndex);
-    void restore(size_t index, size_t cellIndex, const std::string& nameFromCell);
+    std::tuple<bool, Result, std::string> backup(size_t index, size_t cellIndex);
+    std::tuple<bool, Result, std::string> restore(size_t index, size_t cellIndex, const std::string& nameFromCell);
 
     Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
     void copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
