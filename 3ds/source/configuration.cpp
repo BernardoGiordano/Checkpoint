@@ -29,7 +29,7 @@
 Configuration::Configuration(void)
 {
     // check for existing config.json files on the sd card, BASEPATH
-    if (!io::fileExists(Archive::sdmc(), StringUtils::UTF8toUTF16(BASEPATH.c_str()))) {
+    if (!mJson.is_object() || mJson.find("version") == mJson.end() || !mJson["version"].is_number_integer()) {
         store();
     }
 
@@ -41,10 +41,66 @@ Configuration::Configuration(void)
         store();
     }
     else {
-        // 3.4.2 -> 3.5.0
-        if (mJson["version"] < 2) {
+        if (mJson["version"] < CONFIG_VERSION) {
+            mJson["version"] = CONFIG_VERSION;
+            updateJson       = true;
+        }
+        if (!(mJson.contains("nand_saves") && mJson["nand_saves"].is_boolean())) {
+            mJson["nand_saves"] = false;
+            updateJson           = true;
+        }
+        if (!(mJson.contains("ftp-enabled") && mJson["ftp-enabled"].is_boolean())) {
+            mJson["ftp-enabled"] = false;
+            updateJson           = true;
+        }
+        if (!(mJson.contains("scan_cart") && mJson["scan_cart"].is_boolean())) {
+            mJson["scan_cart"] = false;
+            updateJson           = true;
+        }
+        if (!(mJson.contains("filter") && mJson["filter"].is_array())) {
+            mJson["filter"] = nlohmann::json::array();
+            updateJson      = true;
+        }
+        if (!(mJson.contains("favorites") && mJson["favorites"].is_array())) {
             mJson["favorites"] = nlohmann::json::array();
             updateJson         = true;
+        }
+        if (!(mJson.contains("additional_save_folders") && mJson["additional_save_folders"].is_array())) {
+            mJson["additional_save_folders"] = nlohmann::json::array();
+            updateJson                       = true;
+        }
+        if (!(mJson.contains("additional_extdata_folders") && mJson["additional_extdata_folders"].is_array())) {
+            mJson["additional_extdata_folders"] = nlohmann::json::array();
+            updateJson                       = true;
+        }
+        // check every single entry in the arrays...
+        for (auto& obj : mJson["filter"]) {
+            if (!obj.is_string()) {
+                mJson["filter"] = nlohmann::json::array();
+                updateJson      = true;
+                break;
+            }
+        }
+        for (auto& obj : mJson["favorites"]) {
+            if (!obj.is_string()) {
+                mJson["favorites"] = nlohmann::json::array();
+                updateJson         = true;
+                break;
+            }
+        }
+        for (auto& obj : mJson["additional_save_folders"]) {
+            if (!obj.is_string()) {
+                mJson["additional_save_folders"] = nlohmann::json::array();
+                updateJson                       = true;
+                break;
+            }
+        }
+        for (auto& obj : mJson["additional_extdata_folders"]) {
+            if (!obj.is_string()) {
+                mJson["additional_extdata_folders"] = nlohmann::json::array();
+                updateJson                       = true;
+                break;
+            }
         }
     }
 
@@ -65,8 +121,9 @@ Configuration::Configuration(void)
         mFavoriteIds.emplace(strtoull(id.c_str(), NULL, 16));
     }
 
-    // parse nand saves
     mNandSaves = mJson["nand_saves"];
+    mScanCard = mJson["scan_cart"];
+    mFTPEnabled = mJson["ftp-enabled"];
 
     // parse additional save folders
     auto js = mJson["additional_save_folders"];
@@ -148,4 +205,14 @@ std::vector<std::u16string> Configuration::additionalExtdataFolders(u64 id)
     std::vector<std::u16string> emptyvec;
     auto folders = mAdditionalExtdataFolders.find(id);
     return folders == mAdditionalExtdataFolders.end() ? emptyvec : folders->second;
+}
+
+bool Configuration::shouldScanCard(void)
+{
+    return mScanCard;
+}
+
+bool Configuration::isFTPEnabled(void)
+{
+    return mFTPEnabled;
 }

@@ -41,10 +41,10 @@ void Title::load(void)
     mMedia = MEDIATYPE_SD;
     mCard  = CARD_CTR;
     memset(productCode, 0, 16);
-    mShortDescription  = StringUtils::UTF8toUTF16(" ");
-    mLongDescription   = StringUtils::UTF8toUTF16(" ");
-    mSavePath          = StringUtils::UTF8toUTF16(" ");
-    mExtdataPath       = StringUtils::UTF8toUTF16(" ");
+    mShortDescription  = StringUtils::UTF8toUTF16("");
+    mLongDescription   = StringUtils::UTF8toUTF16("");
+    mSavePath          = StringUtils::UTF8toUTF16("");
+    mExtdataPath       = StringUtils::UTF8toUTF16("");
     mIcon              = Gui::noIcon();
     mAccessibleSave    = false;
     mAccessibleExtdata = false;
@@ -946,8 +946,8 @@ void updateCard(void)
 
     FSUSER_CardSlotIsInserted(&cardIn);
     if (cardIn != oldCardIn) {
-        bool power;
         if (cardIn) {
+            bool power;
             FSUSER_CardSlotPowerOn(&power);
             while (!power) {
                 FSUSER_CardSlotGetCardIFPowerStatus(&power);

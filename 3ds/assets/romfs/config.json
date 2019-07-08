@@ -12,5 +12,7 @@
 
   },
   "nand_saves": false,
-  "version": 2
+  "scan_cart": false,
+  "ftp-enabled": false,
+  "version": 3
 }
