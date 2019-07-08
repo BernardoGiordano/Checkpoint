@@ -1,6 +1,12 @@
 #ifndef FTP_H
 #define FTP_H
 
+#if defined(_3DS)
+#include <3ds.h>
+#elif defined(__SWITCH__)
+#include <switch.h>
+#endif
+
 /*! Loop status */
 typedef enum {
   LOOP_CONTINUE, /*!< Continue looping */

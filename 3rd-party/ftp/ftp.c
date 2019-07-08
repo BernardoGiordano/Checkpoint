@@ -9,6 +9,7 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,7 +18,6 @@
 #include <sys/statvfs.h>
 #include <time.h>
 #include <unistd.h>
-#include <switch.h>
 
 #include "ftp.h"
 
@@ -215,8 +215,6 @@ static int ftp_command_cmp(const void *p1, const void *p2) {
   return strcasecmp(c1->name, c2->name);
 }
 
-/*! appletHook cookie */
-static AppletHookCookie cookie;
 /*! server listen address */
 static struct sockaddr_in serv_addr;
 /*! listen file descriptor */
@@ -1654,31 +1652,11 @@ static int update_status(void) {
   return 0;
 }
 
-/*! Handle applet events
- *
- *  @param[in] type    Event type
- *  @param[in] closure Callback closure
- */
-static void applet_hook(AppletHookType type, void *closure)
-{
-  (void)closure;
-  (void)type;
-  /* stubbed for now */
-  switch(type)
-  {
-    default:
-      break;
-  }
-}
-
 /*! initialize ftp subsystem */
 int ftp_init(void) {
   int rc;
 
   start_time = time(NULL);
-
-  /* register applet hook */
-  appletHook(&cookie, applet_hook, NULL);
 
   /* allocate socket to listen for clients */
   listenfd = socket(AF_INET, SOCK_STREAM, 0);
