@@ -83,5 +83,5 @@ void Clickable::draw(float size, u32 overlay)
 
 void Clickable::drawOutline(u32 color)
 {
-    drawPulsingOutline(mx, my, mw, mh, 2, color);
+    Gui::drawPulsingOutline(mx, my, mw, mh, 2, color);
 }

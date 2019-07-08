@@ -30,14 +30,7 @@
 #include "colors.hpp"
 #include "main.hpp"
 #include "sprites.h"
-#include "title.hpp"
-#include "util.hpp"
-#include <algorithm>
 #include <citro2d.h>
-#include <codecvt>
-#include <locale>
-#include <string>
-#include <vector>
 
 inline C3D_RenderTarget* g_top;
 inline C3D_RenderTarget* g_bottom;
@@ -50,6 +43,9 @@ namespace Gui {
     void init(void);
     void exit(void);
     void frameEnd(void);
+
+    void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color);
+    void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, u32 color);
 
     C2D_Image TWLIcon(void);
     C2D_Image noIcon(void);

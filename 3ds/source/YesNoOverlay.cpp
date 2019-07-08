@@ -65,10 +65,10 @@ void YesNoOverlay::drawBottom(void) const
     buttonNo->draw(0.7, 0);
 
     if (hid.index() == 0) {
-        drawPulsingOutline(42, 162, 116, 36, 2, COLOR_BLUE);
+        Gui::drawPulsingOutline(42, 162, 116, 36, 2, COLOR_BLUE);
     }
     else {
-        drawPulsingOutline(162, 162, 116, 36, 2, COLOR_BLUE);
+        Gui::drawPulsingOutline(162, 162, 116, 36, 2, COLOR_BLUE);
     }
 }
 

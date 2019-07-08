@@ -28,6 +28,7 @@
 #define CLICKABLE_HPP
 
 #include "colors.hpp"
+#include "gui.hpp"
 #include "iclickable.hpp"
 #include "main.hpp"
 #include <citro2d.h>

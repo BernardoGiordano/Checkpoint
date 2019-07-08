@@ -58,7 +58,7 @@ void ErrorOverlay::drawBottom(void) const
     C2D_DrawText(&error, C2D_WithColor, 44, 44, 0.5f, 0.5f, 0.5f, COLOR_RED);
     C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, size, size, COLOR_WHITE);
     button->draw(0.7f, COLOR_RED);
-    drawPulsingOutline(42, 162, 236, 36, 2, COLOR_RED);
+    Gui::drawPulsingOutline(42, 162, 236, 36, 2, COLOR_RED);
 }
 
 void ErrorOverlay::update(touchPosition* touch)

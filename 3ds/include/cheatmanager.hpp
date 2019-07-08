@@ -27,7 +27,7 @@
 #ifndef CHEATMANAGER_HPP
 #define CHEATMANAGER_HPP
 
-#include "gui.hpp"
+#include "io.hpp"
 #include "json.hpp"
 #include "main.hpp"
 #include <3ds.h>

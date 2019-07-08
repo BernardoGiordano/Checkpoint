@@ -33,7 +33,6 @@
 #include "clickable.hpp"
 #include "colors.hpp"
 #include "directory.hpp"
-#include "gui.hpp"
 #include "scrollable.hpp"
 #include <memory>
 #include <string>

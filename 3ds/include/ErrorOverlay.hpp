@@ -31,6 +31,7 @@
 #include "clickable.hpp"
 #include "colors.hpp"
 #include "gui.hpp"
+#include "util.hpp"
 #include <memory>
 #include <string>
 

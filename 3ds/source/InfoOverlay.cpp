@@ -54,7 +54,7 @@ void InfoOverlay::drawBottom(void) const
     C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
     C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, size, size, COLOR_WHITE);
     button->draw(0.7f, COLOR_BLUE);
-    drawPulsingOutline(42, 162, 236, 36, 2, COLOR_BLUE);
+    Gui::drawPulsingOutline(42, 162, 236, 36, 2, COLOR_BLUE);
 }
 
 void InfoOverlay::update(touchPosition* touch)

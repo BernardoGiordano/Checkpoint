@@ -82,7 +82,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     C2D_TextOptimize(&bot_ts);
     C2D_TextOptimize(&bot_x);
 
-    C2D_PlainImageTint(&checkboxTint, C2D_Color32(88, 88, 88, 255), 1.0f);
+    C2D_PlainImageTint(&checkboxTint, COLOR_GREY_MEDIUM, 1.0f);
 }
 
 MainScreen::~MainScreen(void)
@@ -140,7 +140,7 @@ void MainScreen::drawTop(void) const
     if (hidKeysHeld() & KEY_SELECT) {
         const u32 inst_lh = scaleInst * fontGetInfo(NULL)->lineFeed;
         const u32 inst_h  = ceilf((240 - scaleInst * inst_lh * 6) / 2);
-        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, C2D_Color32(0, 0, 0, 190));
+        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
         C2D_DrawText(&top_move, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_move, scaleInst)) / 2), inst_h, 0.9f, scaleInst, scaleInst,
             COLOR_WHITE);
         C2D_DrawText(&top_a, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_a, scaleInst)) / 2), inst_h + inst_lh * 1, 0.9f, scaleInst,
@@ -228,7 +228,7 @@ void MainScreen::drawBottom(void) const
     C2D_DrawText(&ins4, C2D_WithColor, ceilf((320 - ins4.width * 0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
 
     if (hidKeysHeld() & KEY_SELECT) {
-        C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, C2D_Color32(0, 0, 0, 190));
+        C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
         C2D_DrawText(&bot_ts, C2D_WithColor, 16, 124, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
         C2D_DrawText(&bot_x, C2D_WithColor, 16, 168, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
     }
@@ -483,7 +483,7 @@ void MainScreen::drawSelector(void) const
     u8 b                       = (COLOR_SELECTOR >> 16) & 0xFF;
     u32 color = C2D_Color32(r + (255 - r) * highlight_multiplier, g + (255 - g) * highlight_multiplier, b + (255 - b) * highlight_multiplier, 255);
 
-    C2D_DrawRectSolid(x, y, 0.5f, 50, 50, C2D_Color32(255, 255, 255, 100));
+    C2D_DrawRectSolid(x, y, 0.5f, 50, 50, COLOR_WHITEMASK);
     C2D_DrawRectSolid(x, y, 0.5f, 50, w, color);                      // top
     C2D_DrawRectSolid(x, y + w, 0.5f, w, 50 - 2 * w, color);          // left
     C2D_DrawRectSolid(x + 50 - w, y + w, 0.5f, w, 50 - 2 * w, color); // right
