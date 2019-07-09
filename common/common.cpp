@@ -28,27 +28,21 @@
 
 std::string DateTime::timeStr(void)
 {
-    time_t unixTime       = time(NULL);
-    struct tm* timeStruct = gmtime((const time_t*)&unixTime);
-    return StringUtils::format("%02i:%02i:%02i", timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
+    time_t unixTime;
+    struct tm timeStruct;
+    time(&unixTime);
+    localtime_r(&unixTime, &timeStruct);
+    return StringUtils::format("%02i:%02i:%02i", timeStruct.tm_hour, timeStruct.tm_min, timeStruct.tm_sec);
 }
 
 std::string DateTime::dateTimeStr(void)
 {
-    time_t unixTime       = time(NULL);
-    struct tm* timeStruct = gmtime((const time_t*)&unixTime);
-    return StringUtils::format("%04i%02i%02i-%02i%02i%02i", timeStruct->tm_year + 1900, timeStruct->tm_mon + 1, timeStruct->tm_mday,
-        timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
-}
-
-std::string DateTime::logDateTime(void)
-{
     time_t unixTime;
-    struct tm* timeStruct;
+    struct tm timeStruct;
     time(&unixTime);
-    timeStruct = localtime(&unixTime);
-    return StringUtils::format("%04i-%02i-%02i %02i:%02i:%02i ", timeStruct->tm_year + 1900, timeStruct->tm_mon + 1, timeStruct->tm_mday,
-        timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
+    localtime_r(&unixTime, &timeStruct);
+    return StringUtils::format("%04i%02i%02i-%02i%02i%02i", timeStruct.tm_year + 1900, timeStruct.tm_mon + 1, timeStruct.tm_mday, timeStruct.tm_hour,
+        timeStruct.tm_min, timeStruct.tm_sec);
 }
 
 std::string StringUtils::UTF16toUTF8(const std::u16string& src)
@@ -84,17 +78,6 @@ std::string StringUtils::format(const std::string fmt_str, ...)
     va_end(ap);
     std::unique_ptr<char[]> formatted(fp);
     return std::string(formatted.get());
-}
-
-std::string StringUtils::sizeString(double size)
-{
-    int i                      = 0;
-    static const char* units[] = {"B", "kB", "MB", "GB"};
-    while (size > 1024) {
-        size /= 1024;
-        i++;
-    }
-    return StringUtils::format("%.*f %s", i, size, units[i]);
 }
 
 bool StringUtils::containsInvalidChar(const std::string& str)

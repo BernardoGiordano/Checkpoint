@@ -16,6 +16,6 @@ format:
 	@for dir in $(SUBDIRS); do $(MAKE) -C $$dir format; done
 
 cppcheck:
-	cppcheck . --enable=all 2> cppcheck.log
+	cppcheck . --enable=all --force 2> cppcheck.log
 
 .PHONY: $(SUBDIRS) clean format cppcheck

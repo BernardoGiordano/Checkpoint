@@ -146,8 +146,8 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t 
     FsFileSystem fileSystem;
     res = FileSystem::mount(&fileSystem, title.id(), title.userId());
     if (R_SUCCEEDED(res)) {
-        int ret = FileSystem::mount(fileSystem);
-        if (ret == -1) {
+        int rc = FileSystem::mount(fileSystem);
+        if (rc == -1) {
             FileSystem::unmount();
             return std::make_tuple(false, -2, "Failed to mount save.");
         }
@@ -191,10 +191,10 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t 
     }
 
     if (!isNewFolder || io::directoryExists(dstPath)) {
-        int ret = io::deleteFolderRecursively((dstPath + "/").c_str());
-        if (ret != 0) {
+        int rc = io::deleteFolderRecursively((dstPath + "/").c_str());
+        if (rc != 0) {
             FileSystem::unmount();
-            return std::make_tuple(false, (Result)ret, "Failed to delete the existing backup\ndirectory recursively.");
+            return std::make_tuple(false, (Result)rc, "Failed to delete the existing backup\ndirectory recursively.");
         }
     }
 
@@ -231,8 +231,8 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, u128 uid, size_t
     FsFileSystem fileSystem;
     res = title.systemSave() ? FileSystem::mount(&fileSystem, title.id()) : FileSystem::mount(&fileSystem, title.id(), title.userId());
     if (R_SUCCEEDED(res)) {
-        int ret = FileSystem::mount(fileSystem);
-        if (ret == -1) {
+        int rc = FileSystem::mount(fileSystem);
+        if (rc == -1) {
             FileSystem::unmount();
             return std::make_tuple(false, -2, "Failed to mount save.");
         }

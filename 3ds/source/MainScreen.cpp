@@ -248,7 +248,7 @@ void MainScreen::updateSelector(void)
 {
     if (!g_bottomScrollEnabled) {
         if (getTitleCount() > 0) {
-            size_t count    = getTitleCount();
+            size_t count = getTitleCount();
             hid.update(count);
             // change page
             if (hidKeysDown() & KEY_L) {

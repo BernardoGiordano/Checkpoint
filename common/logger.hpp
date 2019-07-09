@@ -43,7 +43,7 @@ public:
     void log(const std::string& format, Args... args)
     {
         if (mFile != NULL) {
-            fprintf(mFile, (DateUtils::logDateTime() + format + "\n").c_str(), args);
+            fprintf(mFile, (DateUtils::logDateTime() + format + "\n").c_str(), args...);
         }
     }
 

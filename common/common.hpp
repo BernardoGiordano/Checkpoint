@@ -44,7 +44,6 @@
 namespace DateTime {
     std::string timeStr(void);
     std::string dateTimeStr(void);
-    std::string logDateTime(void);
 }
 
 namespace StringUtils {
@@ -52,7 +51,6 @@ namespace StringUtils {
     std::string escapeJson(const std::string& s);
     std::string format(const std::string fmt_str, ...);
     std::string removeForbiddenCharacters(std::string src);
-    std::string sizeString(double size);
     std::string UTF16toUTF8(const std::u16string& src);
     void ltrim(std::string& s);
     void rtrim(std::string& s);
