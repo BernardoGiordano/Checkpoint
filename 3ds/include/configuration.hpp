@@ -48,7 +48,6 @@ public:
     bool favorite(u64 id);
     bool nandSaves(void);
     bool shouldScanCard(void);
-    bool isFTPEnabled(void);
     std::vector<std::u16string> additionalSaveFolders(u64 id);
     std::vector<std::u16string> additionalExtdataFolders(u64 id);
 
@@ -66,7 +65,7 @@ private:
     nlohmann::json mJson;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::u16string>> mAdditionalSaveFolders, mAdditionalExtdataFolders;
-    bool mNandSaves, mScanCard, mFTPEnabled;
+    bool mNandSaves, mScanCard;
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
 };
 

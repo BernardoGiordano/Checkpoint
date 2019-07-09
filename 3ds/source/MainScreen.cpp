@@ -82,7 +82,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     C2D_TextOptimize(&bot_ts);
     C2D_TextOptimize(&bot_x);
 
-    C2D_PlainImageTint(&checkboxTint, COLOR_GREY_MEDIUM, 1.0f);
+    C2D_PlainImageTint(&checkboxTint, COLOR_GREY_DARKER, 1.0f);
 }
 
 MainScreen::~MainScreen(void)

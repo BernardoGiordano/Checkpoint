@@ -49,10 +49,6 @@ Configuration::Configuration(void)
             mJson["nand_saves"] = false;
             updateJson           = true;
         }
-        if (!(mJson.contains("ftp-enabled") && mJson["ftp-enabled"].is_boolean())) {
-            mJson["ftp-enabled"] = false;
-            updateJson           = true;
-        }
         if (!(mJson.contains("scan_cart") && mJson["scan_cart"].is_boolean())) {
             mJson["scan_cart"] = false;
             updateJson           = true;
@@ -123,7 +119,6 @@ Configuration::Configuration(void)
 
     mNandSaves = mJson["nand_saves"];
     mScanCard = mJson["scan_cart"];
-    mFTPEnabled = mJson["ftp-enabled"];
 
     // parse additional save folders
     auto js = mJson["additional_save_folders"];
@@ -210,9 +205,4 @@ std::vector<std::u16string> Configuration::additionalExtdataFolders(u64 id)
 bool Configuration::shouldScanCard(void)
 {
     return mScanCard;
-}
-
-bool Configuration::isFTPEnabled(void)
-{
-    return mFTPEnabled;
 }
