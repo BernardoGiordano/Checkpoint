@@ -248,7 +248,15 @@ void MainScreen::updateSelector(void)
 {
     if (!g_bottomScrollEnabled) {
         if (getTitleCount() > 0) {
-            hid.update(getTitleCount());
+            size_t count    = getTitleCount();
+            hid.update(count);
+            // change page
+            if (hidKeysDown() & KEY_L) {
+                hid.pageBack(count);
+            }
+            else if (hidKeysDown() & KEY_R) {
+                hid.pageForward(count);
+            }
             directoryList->resetIndex();
         }
     }
