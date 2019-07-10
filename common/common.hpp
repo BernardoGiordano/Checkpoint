@@ -41,6 +41,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#define ATEXIT(func) atexit((void (*)())func)
+
 namespace DateTime {
     std::string timeStr(void);
     std::string dateTimeStr(void);

@@ -35,10 +35,6 @@ APP_TITLE		:= 	Checkpoint
 APP_DESCRIPTION	:=	Fast and simple save manager
 APP_AUTHOR		:=	Bernardo Giordano, FlagBrew
 
-VERSION_MAJOR := 4
-VERSION_MINOR := 0
-VERSION_MICRO := 0
-
 TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out
 BUILD			:=	build
@@ -81,7 +77,8 @@ CFLAGS	:=	-g -Wall -Wextra -Wno-psabi -O3 -mword-relocations -flto \
 			$(ARCH) \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
 			-DVERSION_MINOR=${VERSION_MINOR} \
-			-DVERSION_MICRO=${VERSION_MICRO}
+			-DVERSION_MICRO=${VERSION_MICRO} \
+			-DGIT_REV=\"${GIT_REV}\"
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -D_GNU_SOURCE=1
 

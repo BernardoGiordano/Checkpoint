@@ -42,7 +42,6 @@ extern "C" {
 }
 
 void calculateTitleDBHash(u8* hash);
-void servicesExit(void);
 Result servicesInit(void);
 
 namespace StringUtils {
