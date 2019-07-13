@@ -46,6 +46,7 @@
 namespace DateTime {
     std::string timeStr(void);
     std::string dateTimeStr(void);
+    std::string logDateTime(void);
 }
 
 namespace StringUtils {

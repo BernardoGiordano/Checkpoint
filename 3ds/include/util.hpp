@@ -31,6 +31,7 @@
 #include "common.hpp"
 #include "configuration.hpp"
 #include "gui.hpp"
+#include "logger.hpp"
 #include <3ds.h>
 #include <citro2d.h>
 #include <map>

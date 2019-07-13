@@ -40,12 +40,26 @@ public:
     }
 
     template <typename... Args>
-    void log(const std::string& format, Args... args)
+    void info(const std::string& format, Args... args)
     {
-        if (mFile != NULL) {
-            fprintf(mFile, (DateUtils::logDateTime() + format + "\n").c_str(), args...);
-        }
+        log(format, args...);
     }
+
+    template <typename... Args>
+    void error(const std::string& format, Args... args)
+    {
+        log(ERROR, format, args...);
+    }
+
+    template <typename... Args>
+    void debug(const std::string& format, Args... args)
+    {
+        log(DEBUG, format, args...);
+    }
+
+    inline static const std::string INFO  = "[ INFO]";
+    inline static const std::string DEBUG = "[DEBUG]";
+    inline static const std::string ERROR = "[ERROR]";
 
 private:
     Logger(void) { mFile = fopen(mPath.c_str(), "a"); }
@@ -53,6 +67,14 @@ private:
 
     Logger(Logger const&) = delete;
     void operator=(Logger const&) = delete;
+
+    template <typename... Args>
+    void log(const std::string& level = INFO, const std::string& format = {}, Args... args)
+    {
+        if (mFile != NULL) {
+            fprintf(mFile, ("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);
+        }
+    }
 
 #if defined(_3DS)
     const std::string mPath = "/3ds/Checkpoint/checkpoint.log";

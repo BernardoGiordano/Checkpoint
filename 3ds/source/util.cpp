@@ -47,17 +47,21 @@ static Result consoleDisplayError(const std::string& message, Result res)
 
 Result servicesInit(void)
 {
+    sdmcInit();
+    ATEXIT(sdmcExit);
+
+    Logger::getInstance().info("Checkpoint loading started...");
+
     Result res = 0;
 
     Handle hbldrHandle;
-    if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr")))
+    if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
+        Logger::getInstance().error("Error during startup with result %llX. Rosalina not found on this system", res);
         return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
+    }
 
     romfsInit();
     ATEXIT(romfsExit);
-
-    sdmcInit();
-    ATEXIT(sdmcExit);
 
     srvInit();
     ATEXIT(srvExit);
@@ -68,8 +72,10 @@ Result servicesInit(void)
     pxiDevInit();
     ATEXIT(pxiDevExit);
 
-    if (R_FAILED(res = Archive::init()))
+    if (R_FAILED(res = Archive::init())) {
+        Logger::getInstance().error("Archive::init failed with result %llX", res);
         return consoleDisplayError("Archive::init failed.", res);
+    }
     ATEXIT(Archive::exit);
 
     mkdir("sdmc:/3ds", 777);
@@ -86,6 +92,8 @@ Result servicesInit(void)
     // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }
 
     Configuration::getInstance();
+
+    Logger::getInstance().info("Checkpoint loading finished!");
 
     return 0;
 }
