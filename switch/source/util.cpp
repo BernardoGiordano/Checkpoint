@@ -26,29 +26,10 @@
 
 #include "util.hpp"
 
-static Result consoleDisplayError(const std::string& message, Result res)
-{
-    consoleInit(NULL);
-
-    printf("\x1b[2;29HCheckpoint v%d.%d.%d-%s", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO, GIT_REV);
-    printf("\x1b[5;2HError during startup: \x1b[31m0x%08X\x1b[0m", res);
-    printf("\x1b[8;2HDescription: \x1b[33m%s\x1b[0m", message.c_str());
-    printf("\x1b[45;32HPress PLUS to exit.");
-    consoleUpdate(NULL);
-    while (appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_PLUS)) {
-        hidScanInput();
-    }
-
-    consoleExit(NULL);
-    
-    return res;
-}
-
 void servicesExit(void)
 {
     ftp_exit();
     nifmExit();
-    // debug
     socketExit();
 
     freeIcons();
@@ -64,9 +45,11 @@ void servicesExit(void)
 
 Result servicesInit(void)
 {
-    if (appletGetAppletType() != AppletType_Application) {
-        return consoleDisplayError("Please run Checkpoint under Atmosphere title takeover.", -1);
-    }
+    // if (appletGetAppletType() != AppletType_Application) {
+    //     return consoleDisplayError("Please run Checkpoint under Atmosphere title takeover.", -1);
+    // }
+
+    Logger::getInstance().info("Starting Checkpoint loading...");
     
     // debug
     Result socinit = 0;

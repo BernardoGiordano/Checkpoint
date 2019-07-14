@@ -77,7 +77,7 @@ private:
     }
 
 #if defined(_3DS)
-    const std::string mPath = "/3ds/Checkpoint/checkpoint.log";
+    const std::string mPath = "sdmc:/3ds/Checkpoint/checkpoint.log";
 #elif defined(__SWITCH__)
     const std::string mPath = "/switch/Checkpoint/checkpoint.log";
 #else

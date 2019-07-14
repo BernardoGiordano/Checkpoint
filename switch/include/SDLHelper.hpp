@@ -1,6 +1,7 @@
 #ifndef SDLHELPER_HPP
 #define SDLHELPER_HPP
 
+#include "logger.hpp"
 #include "SDL_FontCache.h"
 #include "colors.hpp"
 #include "main.hpp"
