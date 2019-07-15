@@ -267,7 +267,12 @@ void loadTitles(void)
 
     for (auto& vect : titles) {
         std::sort(vect.second.begin(), vect.second.end(), [](Title& l, Title& r) {
-            return l.name() < r.name() && Configuration::getInstance().favorite(l.id()) > Configuration::getInstance().favorite(r.id());
+            if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
+                return Configuration::getInstance().favorite(l.id());
+            }
+            else {
+                return l.shortDescription() < r.shortDescription();
+            }
         });
     }
 }
