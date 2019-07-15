@@ -271,7 +271,7 @@ void loadTitles(void)
                 return Configuration::getInstance().favorite(l.id());
             }
             else {
-                return l.shortDescription() < r.shortDescription();
+                return l.name() < r.name();
             }
         });
     }
