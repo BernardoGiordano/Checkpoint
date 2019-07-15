@@ -42,7 +42,7 @@ public:
     template <typename... Args>
     void info(const std::string& format, Args... args)
     {
-        log(format, args...);
+        log(INFO, format, args...);
     }
 
     template <typename... Args>
@@ -69,7 +69,7 @@ private:
     inline static const std::string ERROR = "[ERROR]";
 
     template <typename... Args>
-    void log(const std::string& level = INFO, const std::string& format = {}, Args... args)
+    void log(const std::string& level, const std::string& format = {}, Args... args)
     {
         if (mFile != NULL) {
             fprintf(mFile, ("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);

@@ -561,23 +561,19 @@ void loadTitles(bool forceRefresh)
     }
 
     std::sort(titleSaves.begin(), titleSaves.end(), [](Title& l, Title& r) {
-        if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id()))
-        {
+        if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
             return Configuration::getInstance().favorite(l.id());
         }
-        else
-        {
+        else {
             return l.shortDescription() < r.shortDescription();
         }
     });
 
     std::sort(titleExtdatas.begin(), titleExtdatas.end(), [](Title& l, Title& r) {
-        if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id()))
-        {
+        if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
             return Configuration::getInstance().favorite(l.id());
         }
-        else
-        {
+        else {
             return l.shortDescription() < r.shortDescription();
         }
     });

@@ -47,11 +47,11 @@ Result servicesInit(void)
 {
     Logger::getInstance().info("Starting Checkpoint loading...");
 
-    // int appletType = (int)appletGetAppletType();
-    // if (appletType != AppletType_Application) {
-    //     Logger::getInstance().error("Please run Checkpoint under Atmosphére title takeover. AppletType is %d", appletType);
-    //     return -1;
-    // }
+    int appletType = (int)appletGetAppletType();
+    if (appletType != AppletType_Application) {
+        Logger::getInstance().error("Please run Checkpoint under Atmosphére title takeover. AppletType is %d", appletType);
+        return -1;
+    }
 
     // debug
     Result socinit = 0;
@@ -112,6 +112,8 @@ Result servicesInit(void)
     else {
         Logger::getInstance().info("Socket not initialized or nifmInitialize error. Result code %X", res);
     }
+
+    Logger::getInstance().info("Checkpoint loading completed!");
 
     return 0;
 }
