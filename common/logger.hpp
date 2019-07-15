@@ -57,16 +57,16 @@ public:
         log(DEBUG, format, args...);
     }
 
-    inline static const std::string INFO  = "[ INFO]";
-    inline static const std::string DEBUG = "[DEBUG]";
-    inline static const std::string ERROR = "[ERROR]";
-
 private:
     Logger(void) { mFile = fopen(mPath.c_str(), "a"); }
     ~Logger(void) { fclose(mFile); }
 
     Logger(Logger const&) = delete;
     void operator=(Logger const&) = delete;
+
+    inline static const std::string INFO  = "[ INFO]";
+    inline static const std::string DEBUG = "[DEBUG]";
+    inline static const std::string ERROR = "[ERROR]";
 
     template <typename... Args>
     void log(const std::string& level = INFO, const std::string& format = {}, Args... args)
