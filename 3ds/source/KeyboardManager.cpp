@@ -6,7 +6,7 @@ std::u16string KeyboardManager::keyboard(const std::string& suggestion)
     char buf[CUSTOM_PATH_LEN] = {0};
     SwkbdButton button        = swkbdInputText(&mSwkbd, buf, CUSTOM_PATH_LEN);
     buf[CUSTOM_PATH_LEN - 1]  = '\0';
-    return button == SWKBD_BUTTON_CONFIRM ? StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(buf)) : StringUtils::UTF8toUTF16(" ");
+    return button == SWKBD_BUTTON_CONFIRM ? StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(buf)) : StringUtils::UTF8toUTF16("");
 }
 
 int KeyboardManager::numericPad(void)

@@ -34,7 +34,7 @@ ErrorOverlay::ErrorOverlay(Screen& screen, Result res, const std::string& mtext)
     std::string t = StringUtils::wrap(mtext, size, 220);
     std::string e = StringUtils::format("Error: 0x%08lX", res);
     C2D_TextParse(&text, textBuf, t.c_str());
-    C2D_TextParse(&text, textBuf, e.c_str());
+    C2D_TextParse(&error, textBuf, e.c_str());
     C2D_TextOptimize(&text);
     C2D_TextOptimize(&error);
     posx = ceilf(320 - StringUtils::textWidth(text, size)) / 2;
