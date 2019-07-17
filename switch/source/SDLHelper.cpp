@@ -24,17 +24,17 @@ static FC_Font* getFontFromMap(int size)
 bool SDLH_Init(void)
 {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) {
-        fprintf(stderr, "SDL_Init: %s\n", SDL_GetError());
+        Logger::getInstance().error("SDL_Init: %s\n", SDL_GetError());
         return false;
     }
     s_window = SDL_CreateWindow("Checkpoint", 0, 0, 1280, 720, SDL_WINDOW_FULLSCREEN);
     if (!s_window) {
-        fprintf(stderr, "SDL_CreateWindow: %s\n", SDL_GetError());
+        Logger::getInstance().error("SDL_CreateWindow: %s\n", SDL_GetError());
         return false;
     }
     s_renderer = SDL_CreateRenderer(s_window, 0, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!s_renderer) {
-        fprintf(stderr, "SDL_CreateRenderer: %s\n", SDL_GetError());
+        Logger::getInstance().error("SDL_CreateRenderer: %s\n", SDL_GetError());
         return false;
     }
     SDL_SetRenderDrawBlendMode(s_renderer, SDL_BLENDMODE_BLEND);
@@ -42,7 +42,7 @@ bool SDLH_Init(void)
 
     const int img_flags = IMG_INIT_PNG | IMG_INIT_JPG;
     if ((IMG_Init(img_flags) & img_flags) != img_flags) {
-        fprintf(stderr, "IMG_Init: %s\n", IMG_GetError());
+        Logger::getInstance().error("IMG_Init: %s\n", IMG_GetError());
         return false;
     }
     SDLH_LoadImage(&s_star, "romfs:/star.png");

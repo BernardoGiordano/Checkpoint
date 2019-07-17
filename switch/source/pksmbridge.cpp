@@ -74,8 +74,8 @@ std::tuple<bool, Result, std::string> sendToPKSMBrigde(size_t index, u128 uid, s
     int fd;
     struct sockaddr_in servaddr;
     if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        return std::make_tuple(false, errno, "Socket creation failed.");
         delete[] data;
+        return std::make_tuple(false, errno, "Socket creation failed.");
     }
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
@@ -90,11 +90,9 @@ std::tuple<bool, Result, std::string> sendToPKSMBrigde(size_t index, u128 uid, s
 
     size_t total = 0;
     size_t chunk = 1024;
-    int n;
-    size_t tosend;
     while (total < size) {
-        tosend = size - total > chunk ? chunk : size - total;
-        n      = send(fd, data + total, tosend, 0);
+        size_t tosend = size - total > chunk ? chunk : size - total;
+        int n         = send(fd, data + total, tosend, 0);
         if (n == -1) {
             break;
         }
@@ -157,11 +155,9 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, u128 uid,
 
     size_t total = 0;
     size_t chunk = 1024;
-    int n;
-    size_t torecv;
     while (total < size) {
-        torecv = size - total > chunk ? chunk : size - total;
-        n      = recv(fdconn, data + total, torecv, 0);
+        size_t torecv = size - total > chunk ? chunk : size - total;
+        int n         = recv(fdconn, data + total, torecv, 0);
         if (n == -1) {
             break;
         }

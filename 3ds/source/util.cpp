@@ -26,35 +26,57 @@
 
 #include "util.hpp"
 
-void servicesExit(void)
+static Result consoleDisplayError(const std::string& message, Result res)
 {
-    Gui::exit();
-    pxiDevExit();
-    Archive::exit();
-    amExit();
-    srvExit();
-    hidExit();
-    sdmcExit();
-    romfsExit();
+    gfxInitDefault();
+    ATEXIT(gfxExit);
+
+    consoleInit(GFX_TOP, nullptr);
+    printf("\x1b[2;13HCheckpoint v%d.%d.%d-%s", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO, GIT_REV);
+    printf("\x1b[5;1HError during startup: \x1b[31m0x%08lX\x1b[0m", res);
+    printf("\x1b[8;1HDescription: \x1b[33m%s\x1b[0m", message.c_str());
+    printf("\x1b[29;16HPress START to exit.");
+    gfxFlushBuffers();
+    gfxSwapBuffers();
+    gspWaitForVBlank();
+    while (aptMainLoop() && !(hidKeysDown() & KEY_START)) {
+        hidScanInput();
+    }
+    return res;
 }
 
 Result servicesInit(void)
 {
+    sdmcInit();
+    ATEXIT(sdmcExit);
+
+    Logger::getInstance().info("Checkpoint loading started...");
+
     Result res = 0;
 
     Handle hbldrHandle;
-    if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr")))
-        return res;
+    if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
+        Logger::getInstance().error("Error during startup with result %llX. Rosalina not found on this system", res);
+        return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
+    }
 
     romfsInit();
-    sdmcInit();
-    hidInit();
-    srvInit();
-    amInit();
-    pxiDevInit();
+    ATEXIT(romfsExit);
 
-    if (R_FAILED(res = Archive::init()))
-        return res;
+    srvInit();
+    ATEXIT(srvExit);
+
+    amInit();
+    ATEXIT(amExit);
+
+    pxiDevInit();
+    ATEXIT(pxiDevExit);
+
+    if (R_FAILED(res = Archive::init())) {
+        Logger::getInstance().error("Archive::init failed with result %llX", res);
+        return consoleDisplayError("Archive::init failed.", res);
+    }
+    ATEXIT(Archive::exit);
 
     mkdir("sdmc:/3ds", 777);
     mkdir("sdmc:/3ds/Checkpoint", 777);
@@ -64,11 +86,14 @@ Result servicesInit(void)
     mkdir("sdmc:/cheats", 777);
 
     Gui::init();
+    ATEXIT(Gui::exit);
 
     // consoleDebugInit(debugDevice_SVC);
     // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }
 
     Configuration::getInstance();
+
+    Logger::getInstance().info("Checkpoint loading finished!");
 
     return 0;
 }

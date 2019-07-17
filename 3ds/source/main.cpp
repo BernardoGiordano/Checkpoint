@@ -32,13 +32,13 @@
 int main()
 {
     if (R_FAILED(servicesInit())) {
-        servicesExit();
         return -1;
     }
 
     g_screen = std::make_unique<MainScreen>();
 
     Threads::create((ThreadFunc)Threads::titles);
+    ATEXIT(Threads::destroy);
 
     while (aptMainLoop() && !(hidKeysDown() & KEY_START)) {
         touchPosition touch;
@@ -56,7 +56,4 @@ int main()
         Gui::frameEnd();
         g_screen->doUpdate(&touch);
     }
-
-    Threads::destroy();
-    servicesExit();
 }

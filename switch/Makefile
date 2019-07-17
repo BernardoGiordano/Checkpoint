@@ -30,10 +30,6 @@ include $(DEVKITPRO)/libnx/switch_rules
 #     - icon.jpg
 #     - <libnx folder>/default_icon.jpg
 #---------------------------------------------------------------------------------
-VERSION_MAJOR := 4
-VERSION_MINOR := 0
-VERSION_MICRO := 0
-
 APP_TITLE	:=	Checkpoint
 APP_AUTHOR	:=	Bernardo Giordano, FlagBrew
 APP_VERSION	:=	${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
@@ -62,6 +58,7 @@ CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections -flto \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
 			-DVERSION_MINOR=${VERSION_MINOR} \
 			-DVERSION_MICRO=${VERSION_MICRO} \
+			-DGIT_REV=\"${GIT_REV}\" \
 			-DCS_PLATFORM=CS_P_CUSTOM \
 			`freetype-config --cflags` \
 			`sdl2-config --cflags` \

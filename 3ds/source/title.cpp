@@ -558,17 +558,29 @@ void loadTitles(bool forceRefresh)
                 }
             }
         }
-
-        std::sort(titleSaves.begin(), titleSaves.end(), [](Title& l, Title& r) {
-            return l.shortDescription() < r.shortDescription() &&
-                   Configuration::getInstance().favorite(l.id()) > Configuration::getInstance().favorite(r.id());
-        });
-
-        std::sort(titleExtdatas.begin(), titleExtdatas.end(), [](Title& l, Title& r) {
-            return l.shortDescription() < r.shortDescription() &&
-                   Configuration::getInstance().favorite(l.id()) > Configuration::getInstance().favorite(r.id());
-        });
     }
+
+    std::sort(titleSaves.begin(), titleSaves.end(), [](Title& l, Title& r) {
+        if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
+            return Configuration::getInstance().favorite(l.id());
+        }
+        else {
+            return l.shortDescription() < r.shortDescription();
+        }
+    });
+
+    std::sort(titleExtdatas.begin(), titleExtdatas.end(), [](Title& l, Title& r) {
+        if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
+            return Configuration::getInstance().favorite(l.id());
+        }
+        else {
+            return l.shortDescription() < r.shortDescription();
+        }
+    });
+
+    // serialize data
+    exportTitleListCache(titleSaves, savecachePath);
+    exportTitleListCache(titleExtdatas, extdatacachePath);
 
     FS_CardType cardType;
     Result res = FSUSER_GetCardType(&cardType);
@@ -600,10 +612,6 @@ void loadTitles(bool forceRefresh)
             }
         }
     }
-
-    // serialize data
-    exportTitleListCache(titleSaves, savecachePath);
-    exportTitleListCache(titleExtdatas, extdatacachePath);
 }
 
 void getTitle(Title& dst, int i)
@@ -701,9 +709,6 @@ static const size_t ENTRYSIZE = 5341;
 
 static void exportTitleListCache(std::vector<Title>& list, const std::u16string& path)
 {
-    if (list.front().mediaType() == MEDIATYPE_GAME_CARD) {
-        list.erase(list.begin());
-    }
     u8* cache = new u8[list.size() * ENTRYSIZE]();
     for (size_t i = 0; i < list.size(); i++) {
         u64 id                       = list.at(i).id();

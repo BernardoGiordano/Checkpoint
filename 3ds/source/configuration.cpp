@@ -29,11 +29,16 @@
 Configuration::Configuration(void)
 {
     // check for existing config.json files on the sd card, BASEPATH
-    if (!mJson.is_object() || mJson.find("version") == mJson.end() || !mJson["version"].is_number_integer()) {
+    if (!io::fileExists(Archive::sdmc(), StringUtils::UTF8toUTF16(BASEPATH.c_str()))) {
         store();
     }
 
     mJson = loadJson(BASEPATH);
+
+    // check if json is valid
+    if (!mJson.is_object()) {
+        store();
+    }
 
     bool updateJson = false;
     if (mJson.find("version") == mJson.end()) {
@@ -47,11 +52,11 @@ Configuration::Configuration(void)
         }
         if (!(mJson.contains("nand_saves") && mJson["nand_saves"].is_boolean())) {
             mJson["nand_saves"] = false;
-            updateJson           = true;
+            updateJson          = true;
         }
         if (!(mJson.contains("scan_cart") && mJson["scan_cart"].is_boolean())) {
             mJson["scan_cart"] = false;
-            updateJson           = true;
+            updateJson         = true;
         }
         if (!(mJson.contains("filter") && mJson["filter"].is_array())) {
             mJson["filter"] = nlohmann::json::array();
@@ -67,7 +72,7 @@ Configuration::Configuration(void)
         }
         if (!(mJson.contains("additional_extdata_folders") && mJson["additional_extdata_folders"].is_array())) {
             mJson["additional_extdata_folders"] = nlohmann::json::array();
-            updateJson                       = true;
+            updateJson                          = true;
         }
         // check every single entry in the arrays...
         for (auto& obj : mJson["filter"]) {
@@ -94,7 +99,7 @@ Configuration::Configuration(void)
         for (auto& obj : mJson["additional_extdata_folders"]) {
             if (!obj.is_string()) {
                 mJson["additional_extdata_folders"] = nlohmann::json::array();
-                updateJson                       = true;
+                updateJson                          = true;
                 break;
             }
         }
@@ -118,7 +123,7 @@ Configuration::Configuration(void)
     }
 
     mNandSaves = mJson["nand_saves"];
-    mScanCard = mJson["scan_cart"];
+    mScanCard  = mJson["scan_cart"];
 
     // parse additional save folders
     auto js = mJson["additional_save_folders"];

@@ -84,11 +84,15 @@ Configuration::Configuration(void)
         store();
     }
 
-    // load json config file
     load();
 
+    // check if json is valid
+    if (!mJson.is_object()) {
+        store();
+    }
+
     bool updateJson = false;
-    if (!mJson.is_object() || mJson.find("version") == mJson.end() || !mJson["version"].is_number_integer()) {
+    if (mJson.find("version") == mJson.end()) {
         // if config is present but is < 3.4.2, override it
         store();
     }

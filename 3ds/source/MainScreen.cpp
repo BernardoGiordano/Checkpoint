@@ -64,6 +64,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     C2D_TextParse(&top_b, staticBuf, "\uE001 to exit target or deselect all titles");
     C2D_TextParse(&bot_ts, staticBuf, "\uE01D \uE006 to move\nbetween backups");
     C2D_TextParse(&bot_x, staticBuf, "\uE002 to delete backups");
+    C2D_TextParse(&coins, staticBuf, "\uE075");
 
     C2D_TextOptimize(&ins1);
     C2D_TextOptimize(&ins2);
@@ -81,6 +82,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     C2D_TextOptimize(&top_b);
     C2D_TextOptimize(&bot_ts);
     C2D_TextOptimize(&bot_x);
+    C2D_TextOptimize(&coins);
 
     C2D_PlainImageTint(&checkboxTint, COLOR_GREY_DARKER, 1.0f);
 }
@@ -231,6 +233,8 @@ void MainScreen::drawBottom(void) const
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
         C2D_DrawText(&bot_ts, C2D_WithColor, 16, 124, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
         C2D_DrawText(&bot_x, C2D_WithColor, 16, 168, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+        // play coins
+        C2D_DrawText(&coins, C2D_WithColor, ceilf(318 - StringUtils::textWidth(coins, scaleInst)), -1, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
     }
 }
 
@@ -244,7 +248,15 @@ void MainScreen::updateSelector(void)
 {
     if (!g_bottomScrollEnabled) {
         if (getTitleCount() > 0) {
-            hid.update(getTitleCount());
+            size_t count = getTitleCount();
+            hid.update(count);
+            // change page
+            if (hidKeysDown() & KEY_L) {
+                hid.pageBack(count);
+            }
+            else if (hidKeysDown() & KEY_R) {
+                hid.pageForward(count);
+            }
             directoryList->resetIndex();
         }
     }
@@ -435,11 +447,9 @@ void MainScreen::handleEvents(touchPosition* touch)
     if (getTitleCount() > 0) {
         Title title;
         getTitle(title, hid.fullIndex());
-        if (title.isActivityLog()) {
-            if (buttonPlayCoins->released()) {
-                if (!Archive::setPlayCoins()) {
-                    currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");
-                }
+        if ((title.isActivityLog() && buttonPlayCoins->released()) || ((hidKeysDown() & KEY_TOUCH) && touch->py < 20 && touch->px > 294)) {
+            if (!Archive::setPlayCoins()) {
+                currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");
             }
         }
         else {

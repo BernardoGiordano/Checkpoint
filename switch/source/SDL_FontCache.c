@@ -303,20 +303,6 @@ char* U8_strdup(const char* string)
     return result;
 }
 
-int U8_strlen(const char* string)
-{
-    int length = 0;
-    if (string == NULL)
-        return 0;
-
-    while (*string != '\0') {
-        string = U8_next(string);
-        ++length;
-    }
-
-    return length;
-}
-
 int U8_charsize(const char* character)
 {
     if (character == NULL)

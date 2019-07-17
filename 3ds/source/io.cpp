@@ -170,7 +170,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
             }
             else {
                 customPath =
-                    isNewFolder ? StringUtils::removeForbiddenCharacters(KeyboardManager::get().keyboard(suggestion)) : StringUtils::UTF8toUTF16("");
+                    isNewFolder ? KeyboardManager::get().keyboard(suggestion) : StringUtils::UTF8toUTF16("");
             }
 
             std::u16string dstPath;

@@ -127,9 +127,6 @@ void FC_GetUTF8FromCodepoint(char* result, Uint32 codepoint);
 /*! Allocates a copy of the given string. */
 char* U8_strdup(const char* string);
 
-/*! Returns the number of UTF-8 characters in the given string. */
-int U8_strlen(const char* string);
-
 /*! Returns the number of bytes in the UTF-8 multibyte character pointed at by 'character'. */
 int U8_charsize(const char* character);
 
