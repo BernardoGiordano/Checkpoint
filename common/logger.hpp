@@ -59,7 +59,12 @@ public:
 
 private:
     Logger(void) { mFile = fopen(mPath.c_str(), "a"); }
-    ~Logger(void) { fclose(mFile); }
+    ~Logger(void)
+    {
+        if (mFile != NULL) {
+            fclose(mFile);
+        }
+    }
 
     Logger(Logger const&) = delete;
     void operator=(Logger const&) = delete;

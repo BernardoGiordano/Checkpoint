@@ -32,7 +32,7 @@
 int main()
 {
     if (R_FAILED(servicesInit())) {
-        return -1;
+        exit(-1);
     }
 
     g_screen = std::make_unique<MainScreen>();
@@ -56,4 +56,6 @@ int main()
         Gui::frameEnd();
         g_screen->doUpdate(&touch);
     }
+
+    exit(-1);
 }
