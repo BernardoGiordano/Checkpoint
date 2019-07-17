@@ -139,7 +139,6 @@ function saveSettings() {
             data.additional_save_folders[id].folders.push(path.textContent);
         });
     });
-    console.log(JSON.stringify(data));
     $.ajax({
         url: '/save',
         method: 'POST',
