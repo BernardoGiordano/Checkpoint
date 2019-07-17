@@ -45,7 +45,7 @@ int main(void)
     Result res = servicesInit();
     if (R_FAILED(res)) {
         servicesExit();
-        return res;
+        exit(res);
     }
 
     g_screen = std::make_unique<MainScreen>();
@@ -76,5 +76,5 @@ int main(void)
     threadClose(&networkThread);
 
     servicesExit();
-    return 0;
+    exit(0);
 }

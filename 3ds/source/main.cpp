@@ -57,5 +57,5 @@ int main()
         g_screen->doUpdate(&touch);
     }
 
-    exit(-1);
+    exit(0);
 }
