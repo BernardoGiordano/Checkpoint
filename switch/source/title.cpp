@@ -229,7 +229,7 @@ void loadTitles(void)
             break;
         }
 
-        if (info.SaveDataType == FsSaveDataType_SaveData) {
+        if (info.saveDataType == FsSaveDataType_SaveData) {
             u64 tid  = info.titleID;
             u64 sid  = info.saveID;
             u128 uid = info.userID;
@@ -239,7 +239,7 @@ void loadTitles(void)
                     res = nacpGetLanguageEntry(&nsacd->nacp, &nle);
                     if (R_SUCCEEDED(res) && nle != NULL) {
                         Title title;
-                        title.init(info.SaveDataType, tid, uid, std::string(nle->name), std::string(nle->author));
+                        title.init(info.saveDataType, tid, uid, std::string(nle->name), std::string(nle->author));
                         title.saveId(sid);
                         loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
 
