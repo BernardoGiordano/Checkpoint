@@ -58,17 +58,20 @@ void Clickable::draw(float font, SDL_Color overlay)
 {
     u32 textw, texth;
     SDLH_GetTextDimensions(font, mText.c_str(), &textw, &texth);
-    const u32 messageWidth = mCentered ? textw : mw - (mSelected ? 20 : 8);
+    const u32 messageWidth = mCentered ? textw : mw - 20;
 
     SDLH_DrawRect(mx, my, mw, mh, mColorBg);
     if (mCanChangeColorWhenSelected && held()) {
         SDLH_DrawRect(mx, my, mw, mh, FC_MakeColor(overlay.r, overlay.g, overlay.b, 100));
     }
-    if (mSelected) {
+    if (!mCentered && mSelected) {
         SDLH_DrawRect(mx + 4, my + 6, 4, mh - 12, COLOR_WHITE);
+    }
+    if (mSelected) {
         SDLH_DrawRect(mx, my, mw, mh, FC_MakeColor(overlay.r, overlay.g, overlay.b, 100));
     }
-    SDLH_DrawTextBox(font, mx + (mSelected ? 8 : 0) + (mw - messageWidth) / 2, my + (mh - texth) / 2 + 2, mColorText, mw - 4 * 2, mText.c_str());
+    u32 offset = mx + (mw - messageWidth) / 2 + (!mCentered ? 8 : 0);
+    SDLH_DrawTextBox(font, offset, my + (mh - texth) / 2 + 2, mColorText, mw - 4 * 2, mText.c_str());
 }
 
 void Clickable::drawOutline(SDL_Color color)
