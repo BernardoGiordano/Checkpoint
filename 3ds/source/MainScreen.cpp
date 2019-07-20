@@ -410,7 +410,7 @@ void MainScreen::handleEvents(touchPosition* touch)
             currentOverlay = std::make_shared<YesNoOverlay>(
                 *this, "Backup selected save?",
                 [this]() {
-                    auto result = io::backup(hid.fullIndex(), 0);
+                    auto result = io::backup(hid.fullIndex(), directoryList->index());
                     if (std::get<0>(result)) {
                         currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                     }
