@@ -30,7 +30,7 @@ void servicesExit(void)
 {
     ftp_exit();
     nifmExit();
-    socketExit();
+    // socketExit();
 
     freeIcons();
     if (g_notificationLedAvailable) {
@@ -56,6 +56,7 @@ Result servicesInit(void)
     // debug
     Result socinit = 0;
     if ((socinit = socketInitializeDefault()) == 0) {
+        ATEXIT(socketExit);
         // nxlinkStdio();
     }
     else {
