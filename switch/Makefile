@@ -62,7 +62,8 @@ CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections -flto \
 			-DCS_PLATFORM=CS_P_CUSTOM \
 			`freetype-config --cflags` \
 			`sdl2-config --cflags` \
-			-DMG_ENABLE_FILESYSTEM
+			-DMG_ENABLE_FILESYSTEM \
+			-DCHEAT_SIZE_DECOMPRESSED=${CHEAT_SIZE_DECOMPRESSED}
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D_GNU_SOURCE=1
 
@@ -162,10 +163,10 @@ endif
 .PHONY: $(BUILD) clean all format
 
 #---------------------------------------------------------------------------------
-all: $(BUILD)
+all: cheats $(BUILD)
 
 $(BUILD):
-	@[ -d $@ ] || mkdir -p $@ $(BUILD) $(OUTDIR) $(ROMFS)/$(CHEATS)
+	@[ -d $@ ] || mkdir -p $@ $(BUILD) $(OUTDIR)
 ifeq ($(OS),Windows_NT)
 	@cd $(SHARKIVE) && py -3 joiner.py switch
 else
@@ -178,6 +179,15 @@ endif
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(OUTDIR)
+#---------------------------------------------------------------------------------
+cheats:
+	@mkdir -p $@ $(ROMFS)/$(CHEATS)
+ifeq ($(OS),Windows_NT)
+	@cd $(SHARKIVE) && py -3 joiner.py switch
+else
+	@cd $(SHARKIVE) && python3 joiner.py switch
+endif
+	@cd $(SHARKIVE)/$(BUILD) && mv switch.json.bz2 ../../switch/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
 #---------------------------------------------------------------------------------
 format:
 	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))

@@ -78,7 +78,8 @@ CFLAGS	:=	-g -Wall -Wextra -Wno-psabi -O3 -mword-relocations -flto \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
 			-DVERSION_MINOR=${VERSION_MINOR} \
 			-DVERSION_MICRO=${VERSION_MICRO} \
-			-DGIT_REV=\"${GIT_REV}\"
+			-DGIT_REV=\"${GIT_REV}\" \
+			-DCHEAT_SIZE_DECOMPRESSED=${CHEAT_SIZE_DECOMPRESSED}
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -D_GNU_SOURCE=1
 
@@ -179,17 +180,11 @@ ifneq ($(ROMFS),)
 	export _3DSXFLAGS += --romfs=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: all clean format
+.PHONY: all clean format cheats
 
 #---------------------------------------------------------------------------------
-all:
-	@mkdir -p $(BUILD) $(GFXBUILD) $(OUTDIR) $(ROMFS)/$(CHEATS)
-ifeq ($(OS),Windows_NT)
-	@cd $(SHARKIVE) && py -3 joiner.py 3ds
-else
-	@cd $(SHARKIVE) && python3 joiner.py 3ds
-endif
-	@cd $(SHARKIVE)/$(BUILD) && mv 3ds.json.bz2 ../../3ds/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
+all: cheats
+	@mkdir -p $(BUILD) $(GFXBUILD) $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $(OUTPUT).3dsx
 	@bannertool makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o $(BUILD)/banner.bnr
 	@bannertool makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i "$(APP_ICON)" -f "$(ICON_FLAGS)" -o $(BUILD)/icon.icn
@@ -198,6 +193,15 @@ endif
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(OUTDIR)
+#---------------------------------------------------------------------------------
+cheats:
+	@mkdir -p $(BUILD) $(ROMFS)/$(CHEATS)
+ifeq ($(OS),Windows_NT)
+	@cd $(SHARKIVE) && py -3 joiner.py 3ds
+else
+	@cd $(SHARKIVE) && python3 joiner.py 3ds
+endif
+	@cd $(SHARKIVE)/$(BUILD) && mv 3ds.json.bz2 ../../3ds/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
 #---------------------------------------------------------------------------------
 format:
 	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))

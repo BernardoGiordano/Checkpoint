@@ -39,22 +39,17 @@ public:
         return mLogger;
     }
 
-    template <typename... Args>
-    void info(const std::string& format, Args... args)
-    {
-        log(INFO, format, args...);
-    }
+    inline static const std::string INFO  = "[ INFO]";
+    inline static const std::string DEBUG = "[DEBUG]";
+    inline static const std::string ERROR = "[ERROR]";
+    inline static const std::string WARN  = "[ WARN]";
 
     template <typename... Args>
-    void error(const std::string& format, Args... args)
+    void log(const std::string& level, const std::string& format = {}, Args... args)
     {
-        log(ERROR, format, args...);
-    }
-
-    template <typename... Args>
-    void debug(const std::string& format, Args... args)
-    {
-        log(DEBUG, format, args...);
+        if (mFile != NULL) {
+            fprintf(mFile, ("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);
+        }
     }
 
 private:
@@ -68,18 +63,6 @@ private:
 
     Logger(Logger const&) = delete;
     void operator=(Logger const&) = delete;
-
-    inline static const std::string INFO  = "[ INFO]";
-    inline static const std::string DEBUG = "[DEBUG]";
-    inline static const std::string ERROR = "[ERROR]";
-
-    template <typename... Args>
-    void log(const std::string& level, const std::string& format = {}, Args... args)
-    {
-        if (mFile != NULL) {
-            fprintf(mFile, ("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);
-        }
-    }
 
 #if defined(_3DS)
     const std::string mPath = "sdmc:/3ds/Checkpoint/checkpoint.log";

@@ -36,6 +36,9 @@ CheatManager::CheatManager(void)
             mCheats = std::make_shared<nlohmann::json>(nlohmann::json::parse(in, nullptr, false));
             fclose(in);
         }
+        else {
+            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d", errno);
+        }
     }
     else {
         const std::string path = "romfs:/cheats/cheats.json.bz2";
@@ -44,7 +47,7 @@ CheatManager::CheatManager(void)
         if (f != NULL) {
             fseek(f, 0, SEEK_END);
             u32 size             = ftell(f);
-            unsigned int destLen = 2 * 1024 * 1024;
+            unsigned int destLen = CHEAT_SIZE_DECOMPRESSED;
             char* s              = new char[size];
             char* d              = new char[destLen]();
             rewind(f);
@@ -58,6 +61,9 @@ CheatManager::CheatManager(void)
             delete[] s;
             delete[] d;
             fclose(f);
+        }
+        else {
+            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d", errno);
         }
     }
 }

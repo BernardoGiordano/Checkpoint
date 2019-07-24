@@ -45,11 +45,11 @@ void servicesExit(void)
 
 Result servicesInit(void)
 {
-    Logger::getInstance().info("Starting Checkpoint loading...");
+    Logger::getInstance().log(Logger::INFO, "Starting Checkpoint loading...");
 
     int appletType = (int)appletGetAppletType();
     if (appletType != AppletType_Application) {
-        Logger::getInstance().error("Please run Checkpoint under Atmosphére title takeover. AppletType is %d", appletType);
+        Logger::getInstance().log(Logger::ERROR, "Please run Checkpoint under Atmosphére title takeover. AppletType is %d", appletType);
         return -1;
     }
 
@@ -59,7 +59,7 @@ Result servicesInit(void)
         // nxlinkStdio();
     }
     else {
-        Logger::getInstance().info("Unable to socketInitialize. Result code %X", socinit);
+        Logger::getInstance().log(Logger::INFO, "Unable to socketInitialize. Result code %X", socinit);
     }
 
     g_shouldExitNetworkLoop = R_FAILED(socinit);
@@ -72,22 +72,22 @@ Result servicesInit(void)
     io::createDirectory("sdmc:/switch/Checkpoint/cheats");
 
     if (R_FAILED(res = plInitialize())) {
-        Logger::getInstance().error("plInitialize failed. Result code %X", res);
+        Logger::getInstance().log(Logger::ERROR, "plInitialize failed. Result code %X", res);
         return res;
     }
 
     if (R_FAILED(res = Account::init())) {
-        Logger::getInstance().error("Account::init failed. Result code %X", res);
+        Logger::getInstance().log(Logger::ERROR, "Account::init failed. Result code %X", res);
         return res;
     }
 
     if (R_FAILED(res = nsInitialize())) {
-        Logger::getInstance().error("nsInitialize failed. Result code %X", res);
+        Logger::getInstance().log(Logger::ERROR, "nsInitialize failed. Result code %X", res);
         return res;
     }
 
     if (!SDLH_Init()) {
-        Logger::getInstance().error("SDLH_Init failed. Result code %X", res);
+        Logger::getInstance().log(Logger::ERROR, "SDLH_Init failed. Result code %X", res);
         return -1;
     }
 
@@ -95,7 +95,7 @@ Result servicesInit(void)
         g_notificationLedAvailable = true;
     }
     else {
-        Logger::getInstance().info("Notification led not available. Result code %X", res);
+        Logger::getInstance().log(Logger::INFO, "Notification led not available. Result code %X", res);
     }
 
     Configuration::getInstance();
@@ -103,17 +103,17 @@ Result servicesInit(void)
     if (R_SUCCEEDED(socinit) && R_SUCCEEDED(res = nifmInitialize())) {
         if (R_SUCCEEDED(res = ftp_init())) {
             g_ftpAvailable = true;
-            Logger::getInstance().info("FTP Server successfully loaded.");
+            Logger::getInstance().log(Logger::INFO, "FTP Server successfully loaded.");
         }
         else {
-            Logger::getInstance().info("FTP Server failed to load. Result code %X", res);
+            Logger::getInstance().log(Logger::INFO, "FTP Server failed to load. Result code %X", res);
         }
     }
     else {
-        Logger::getInstance().info("Socket not initialized or nifmInitialize error. Result code %X", res);
+        Logger::getInstance().log(Logger::INFO, "Socket not initialized or nifmInitialize error. Result code %X", res);
     }
 
-    Logger::getInstance().info("Checkpoint loading completed!");
+    Logger::getInstance().log(Logger::INFO, "Checkpoint loading completed!");
 
     return 0;
 }

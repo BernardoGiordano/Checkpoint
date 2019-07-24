@@ -11,10 +11,12 @@ clean:
 	@for dir in $(SUBDIRS); do $(MAKE) clean -C $$dir; done
 
 3ds:
-	@$(MAKE) -C 3ds VERSION_MAJOR=${VERSION_MAJOR} VERSION_MINOR=${VERSION_MINOR} VERSION_MICRO=${VERSION_MICRO} GIT_REV=${GIT_REV}
+	@$(MAKE) -C 3ds cheats
+	@$(MAKE) -C 3ds VERSION_MAJOR=${VERSION_MAJOR} VERSION_MINOR=${VERSION_MINOR} VERSION_MICRO=${VERSION_MICRO} GIT_REV=${GIT_REV} CHEAT_SIZE_DECOMPRESSED=$(shell stat -t "sharkive/build/3ds.json" | awk '{print $$2}')
 
 switch:
-	@$(MAKE) -C switch VERSION_MAJOR=${VERSION_MAJOR} VERSION_MINOR=${VERSION_MINOR} VERSION_MICRO=${VERSION_MICRO} GIT_REV=${GIT_REV}
+	@$(MAKE) -C switch cheats
+	@$(MAKE) -C switch VERSION_MAJOR=${VERSION_MAJOR} VERSION_MINOR=${VERSION_MINOR} VERSION_MICRO=${VERSION_MICRO} GIT_REV=${GIT_REV} CHEAT_SIZE_DECOMPRESSED=$(shell stat -t "sharkive/build/switch.json" | awk '{print $$2}')
 
 format:
 	@for dir in $(SUBDIRS); do $(MAKE) -C $$dir format; done

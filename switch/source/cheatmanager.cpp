@@ -44,7 +44,7 @@ CheatManager::CheatManager(void)
         if (f != NULL) {
             fseek(f, 0, SEEK_END);
             u32 size             = ftell(f);
-            unsigned int destLen = 1024 * 1024;
+            unsigned int destLen = CHEAT_SIZE_DECOMPRESSED;
             char* s              = new char[size];
             char* d              = new char[destLen]();
             rewind(f);

@@ -80,8 +80,7 @@ void Clickable::draw(float size, u32 overlay)
         C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, C2D_Color32(r, g, b, 100));
     }
     int offset = ceilf(mx + (mw - messageWidth) / 2) + (!mCentered ? 8 : 0);
-    C2D_DrawText(&mC2dText, C2D_WithColor, offset, ceilf(my + (mh - messageHeight) / 2), 0.5f,
-        size, size, mColorText);
+    C2D_DrawText(&mC2dText, C2D_WithColor, offset, ceilf(my + (mh - messageHeight) / 2), 0.5f, size, size, mColorText);
 }
 
 void Clickable::drawOutline(u32 color)

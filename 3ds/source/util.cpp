@@ -50,13 +50,13 @@ Result servicesInit(void)
     sdmcInit();
     ATEXIT(sdmcExit);
 
-    Logger::getInstance().info("Checkpoint loading started...");
+    Logger::getInstance().log(Logger::INFO, "Checkpoint loading started...");
 
     Result res = 0;
 
     Handle hbldrHandle;
     if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
-        Logger::getInstance().error("Error during startup with result %llX. Rosalina not found on this system", res);
+        Logger::getInstance().log(Logger::ERROR, "Error during startup with result %llX. Rosalina not found on this system", res);
         return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
     }
 
@@ -73,7 +73,7 @@ Result servicesInit(void)
     ATEXIT(pxiDevExit);
 
     if (R_FAILED(res = Archive::init())) {
-        Logger::getInstance().error("Archive::init failed with result %llX", res);
+        Logger::getInstance().log(Logger::ERROR, "Archive::init failed with result %llX", res);
         return consoleDisplayError("Archive::init failed.", res);
     }
     ATEXIT(Archive::exit);
@@ -93,7 +93,7 @@ Result servicesInit(void)
 
     Configuration::getInstance();
 
-    Logger::getInstance().info("Checkpoint loading finished!");
+    Logger::getInstance().log(Logger::INFO, "Checkpoint loading finished!");
 
     return 0;
 }
