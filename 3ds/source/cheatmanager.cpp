@@ -37,7 +37,7 @@ CheatManager::CheatManager(void)
             fclose(in);
         }
         else {
-            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d", errno);
+            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d.", errno);
         }
     }
     else {
@@ -63,7 +63,7 @@ CheatManager::CheatManager(void)
             fclose(f);
         }
         else {
-            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d", errno);
+            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d.", errno);
         }
     }
 }

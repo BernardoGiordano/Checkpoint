@@ -38,7 +38,7 @@ Result servicesInit(void)
 
     int appletType = (int)appletGetAppletType();
     if (appletType != AppletType_Application) {
-        Logger::getInstance().log(Logger::ERROR, "Please run Checkpoint under Atmosphére title takeover. AppletType is %d", appletType);
+        Logger::getInstance().log(Logger::ERROR, "Please run Checkpoint under Atmosphére title takeover. AppletType is %d.", appletType);
         return -1;
     }
 
@@ -47,7 +47,7 @@ Result servicesInit(void)
         // nxlinkStdio();
     }
     else {
-        Logger::getInstance().log(Logger::INFO, "Unable to initialize socket. Result code %X", socinit);
+        Logger::getInstance().log(Logger::INFO, "Unable to initialize socket. Result code %X.", socinit);
     }
 
     g_shouldExitNetworkLoop = R_FAILED(socinit);
@@ -63,25 +63,25 @@ Result servicesInit(void)
     io::createDirectory("sdmc:/switch/Checkpoint/cheats");
 
     if (R_FAILED(res = plInitialize())) {
-        Logger::getInstance().log(Logger::ERROR, "plInitialize failed. Result code %X", res);
+        Logger::getInstance().log(Logger::ERROR, "plInitialize failed. Result code %X.", res);
         return res;
     }
     ATEXIT(plExit);
 
     if (R_FAILED(res = Account::init())) {
-        Logger::getInstance().log(Logger::ERROR, "Account::init failed. Result code %X", res);
+        Logger::getInstance().log(Logger::ERROR, "Account::init failed. Result code %X.", res);
         return res;
     }
     ATEXIT(Account::exit);
 
     if (R_FAILED(res = nsInitialize())) {
-        Logger::getInstance().log(Logger::ERROR, "nsInitialize failed. Result code %X", res);
+        Logger::getInstance().log(Logger::ERROR, "nsInitialize failed. Result code %X.", res);
         return res;
     }
     ATEXIT(nsExit);
 
     if (!SDLH_Init()) {
-        Logger::getInstance().log(Logger::ERROR, "SDLH_Init failed. Result code %X", res);
+        Logger::getInstance().log(Logger::ERROR, "SDLH_Init failed. Result code %X.", res);
         return -1;
     }
     ATEXIT(freeIcons);
@@ -91,7 +91,7 @@ Result servicesInit(void)
         ATEXIT(hidsysExit);
     }
     else {
-        Logger::getInstance().log(Logger::INFO, "Notification led not available. Result code %X", res);
+        Logger::getInstance().log(Logger::INFO, "Notification led not available. Result code %X.", res);
     }
 
     Configuration::getInstance();
@@ -103,7 +103,7 @@ Result servicesInit(void)
             Logger::getInstance().log(Logger::INFO, "FTP Server successfully loaded.");
         }
         else {
-            Logger::getInstance().log(Logger::INFO, "FTP Server failed to load. Result code %X", res);
+            Logger::getInstance().log(Logger::INFO, "FTP Server failed to load. Result code %X.", res);
         }
     }
 
