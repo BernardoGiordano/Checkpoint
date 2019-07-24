@@ -36,6 +36,9 @@ CheatManager::CheatManager(void)
             mCheats = std::make_shared<nlohmann::json>(nlohmann::json::parse(in, nullptr, false));
             fclose(in);
         }
+        else {
+            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d", errno);
+        }
     }
     else {
         const std::string path = "romfs:/cheats/cheats.json.bz2";
@@ -58,6 +61,9 @@ CheatManager::CheatManager(void)
             delete[] s;
             delete[] d;
             fclose(f);
+        }
+        else {
+            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d", errno);
         }
     }
 }
@@ -94,10 +100,14 @@ void CheatManager::save(const std::string& key, const std::vector<std::string>& 
             }
         }
 
-        FILE* f = fopen((rootfolder + "/" + buildid + ".txt").c_str(), "w");
+        std::string outPath = rootfolder + "/" + buildid + ".txt";
+        FILE* f = fopen(outPath.c_str(), "w");
         if (f != NULL) {
             fwrite(cheatFile.c_str(), 1, cheatFile.length(), f);
             fclose(f);
+        }
+        else {
+            Logger::getInstance().log(Logger::ERROR, "Failed to write " + outPath + " with errno %d", errno);
         }
     }
 }
