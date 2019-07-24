@@ -28,19 +28,8 @@
 
 void servicesExit(void)
 {
-    ftp_exit();
-    nifmExit();
-    // socketExit();
-
-    freeIcons();
-    if (g_notificationLedAvailable) {
-        hidsysExit();
-    }
-    nsExit();
-    Account::exit();
+    socketExit();
     SDLH_Exit();
-    plExit();
-    romfsExit();
 }
 
 Result servicesInit(void)
@@ -53,20 +42,21 @@ Result servicesInit(void)
         return -1;
     }
 
-    // debug
     Result socinit = 0;
     if ((socinit = socketInitializeDefault()) == 0) {
-        ATEXIT(socketExit);
         // nxlinkStdio();
     }
     else {
-        Logger::getInstance().log(Logger::INFO, "Unable to socketInitialize. Result code %X", socinit);
+        Logger::getInstance().log(Logger::INFO, "Unable to initialize socket. Result code %X", socinit);
     }
 
     g_shouldExitNetworkLoop = R_FAILED(socinit);
 
     Result res = 0;
+
     romfsInit();
+    ATEXIT(romfsExit);
+
     io::createDirectory("sdmc:/switch");
     io::createDirectory("sdmc:/switch/Checkpoint");
     io::createDirectory("sdmc:/switch/Checkpoint/saves");
@@ -76,24 +66,29 @@ Result servicesInit(void)
         Logger::getInstance().log(Logger::ERROR, "plInitialize failed. Result code %X", res);
         return res;
     }
+    ATEXIT(plExit);
 
     if (R_FAILED(res = Account::init())) {
         Logger::getInstance().log(Logger::ERROR, "Account::init failed. Result code %X", res);
         return res;
     }
+    ATEXIT(Account::exit);
 
     if (R_FAILED(res = nsInitialize())) {
         Logger::getInstance().log(Logger::ERROR, "nsInitialize failed. Result code %X", res);
         return res;
     }
+    ATEXIT(nsExit);
 
     if (!SDLH_Init()) {
         Logger::getInstance().log(Logger::ERROR, "SDLH_Init failed. Result code %X", res);
         return -1;
     }
+    ATEXIT(freeIcons);
 
     if (R_SUCCEEDED(res = hidsysInitialize())) {
         g_notificationLedAvailable = true;
+        ATEXIT(hidsysExit);
     }
     else {
         Logger::getInstance().log(Logger::INFO, "Notification led not available. Result code %X", res);
@@ -101,17 +96,15 @@ Result servicesInit(void)
 
     Configuration::getInstance();
 
-    if (R_SUCCEEDED(socinit) && R_SUCCEEDED(res = nifmInitialize())) {
+    if (R_SUCCEEDED(socinit)) {
         if (R_SUCCEEDED(res = ftp_init())) {
+            ATEXIT(ftp_exit);
             g_ftpAvailable = true;
             Logger::getInstance().log(Logger::INFO, "FTP Server successfully loaded.");
         }
         else {
             Logger::getInstance().log(Logger::INFO, "FTP Server failed to load. Result code %X", res);
         }
-    }
-    else {
-        Logger::getInstance().log(Logger::INFO, "Socket not initialized or nifmInitialize error. Result code %X", res);
     }
 
     Logger::getInstance().log(Logger::INFO, "Checkpoint loading completed!");
