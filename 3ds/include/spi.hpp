@@ -45,6 +45,7 @@
 #ifndef SPI_HPP
 #define SPI_HPP
 
+#include "logger.hpp"
 #include <3ds.h>
 #include <stdio.h>
 #include <string.h>

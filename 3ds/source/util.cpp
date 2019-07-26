@@ -56,7 +56,7 @@ Result servicesInit(void)
 
     Handle hbldrHandle;
     if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
-        Logger::getInstance().log(Logger::ERROR, "Error during startup with result %llX. Rosalina not found on this system.", res);
+        Logger::getInstance().log(Logger::ERROR, "Error during startup with result 0x%08lX. Rosalina not found on this system.", res);
         return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
     }
 
@@ -73,7 +73,7 @@ Result servicesInit(void)
     ATEXIT(pxiDevExit);
 
     if (R_FAILED(res = Archive::init())) {
-        Logger::getInstance().log(Logger::ERROR, "Archive::init failed with result %llX.", res);
+        Logger::getInstance().log(Logger::ERROR, "Archive::init failed with result 0x%08lX", res);
         return consoleDisplayError("Archive::init failed.", res);
     }
     ATEXIT(Archive::exit);
@@ -90,8 +90,6 @@ Result servicesInit(void)
 
     // consoleDebugInit(debugDevice_SVC);
     // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }
-
-    Configuration::getInstance();
 
     Logger::getInstance().log(Logger::INFO, "Checkpoint loading finished!");
 

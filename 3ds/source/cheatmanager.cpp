@@ -91,9 +91,13 @@ void CheatManager::save(const std::string& key, const std::vector<std::string>& 
         }
     }
 
-    FILE* f = fopen(("/cheats/" + key + ".txt").c_str(), "w");
+    const std::string outPath = "/cheats/" + key + ".txt";
+    FILE* f                   = fopen(outPath.c_str(), "w");
     if (f != NULL) {
         fwrite(cheatFile.c_str(), 1, cheatFile.length(), f);
         fclose(f);
+    }
+    else {
+        Logger::getInstance().log(Logger::ERROR, "Failed to write " + outPath + " with errno %d.", errno);
     }
 }

@@ -116,7 +116,7 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, u128 uid,
     int fd;
     struct sockaddr_in servaddr;
     if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_IP)) < 0) {
-        Logger::getInstance().log(Logger::ERROR, "Socket creation failed.");
+        Logger::getInstance().log(Logger::ERROR, "Socket creation failed: %d.", fd);
         return std::make_tuple(false, errno, "Socket creation failed.");
     }
 
@@ -127,12 +127,12 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, u128 uid,
 
     if (bind(fd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0) {
         close(fd);
-        Logger::getInstance().log(Logger::ERROR, "Socket bind failed.");
+        Logger::getInstance().log(Logger::ERROR, "Socket bind failed with errno %d.", errno);
         return std::make_tuple(false, errno, "Socket bind failed.");
     }
     if (listen(fd, 5) < 0) {
         close(fd);
-        Logger::getInstance().log(Logger::ERROR, "Socket listen failed.");
+        Logger::getInstance().log(Logger::ERROR, "Socket listen failed with errno %d.", errno);
         return std::make_tuple(false, errno, "Socket listen failed.");
     }
 
@@ -140,7 +140,7 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, u128 uid,
     int addrlen = sizeof(servaddr);
     if ((fdconn = accept(fd, (struct sockaddr*)&servaddr, (socklen_t*)&addrlen)) < 0) {
         close(fd);
-        Logger::getInstance().log(Logger::ERROR, "Socket accept failed.");
+        Logger::getInstance().log(Logger::ERROR, "Socket accept failed: %d.", fdconn);
         return std::make_tuple(false, errno, "Socket accept failed.");
     }
 
@@ -152,7 +152,7 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, u128 uid,
     if (save == NULL) {
         close(fd);
         close(fdconn);
-        Logger::getInstance().log(Logger::ERROR, "Failed to open destination file.");
+        Logger::getInstance().log(Logger::ERROR, "Failed to open destination file with errno %d.", errno);
         return std::make_tuple(false, errno, "Failed to open destination file.");
     }
 

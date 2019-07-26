@@ -51,8 +51,9 @@ static void handle_save(struct mg_connection* nc, struct http_message* hm)
         fwrite(hm->body.p, 1, hm->body.len, f);
         fclose(f);
         Logger::getInstance().log(Logger::INFO, "Configurations have been updated.");
-    } else {
-        Logger::getInstance().log(Logger::ERROR, "Failed to write to configuration file.");
+    }
+    else {
+        Logger::getInstance().log(Logger::ERROR, "Failed to write to configuration file with errno %d.", errno);
     }
     Configuration::getInstance().load();
     Configuration::getInstance().parse();

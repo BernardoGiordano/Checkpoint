@@ -86,6 +86,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
             smdh = loadSMDH(lowId(), highId(), mMedia);
         }
         if (smdh == NULL) {
+            Logger::getInstance().log(Logger::ERROR, "Failed to load title 0x%lX due to smdh == NULL", mId);
             return false;
         }
 
@@ -107,8 +108,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
                 Result res = io::createDirectory(Archive::sdmc(), mSavePath);
                 if (R_FAILED(res)) {
                     loadTitle = false;
-                    // TODO: log this
-                    // Gui::showError(res, "Failed to create backup directory.");
+                    Logger::getInstance().log(Logger::ERROR, "Failed to create backup directory with result 0x%08lX.", res);
                 }
             }
         }
@@ -119,8 +119,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
                 Result res = io::createDirectory(Archive::sdmc(), mExtdataPath);
                 if (R_FAILED(res)) {
                     loadTitle = false;
-                    // TODO: log this
-                    // Gui::showError(res, "Failed to create backup directory.");
+                    Logger::getInstance().log(Logger::ERROR, "Failed to create backup directory with result 0x%08lX.", res);
                 }
             }
         }
@@ -136,6 +135,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         Result res     = FSUSER_GetLegacyRomHeader(mMedia, 0LL, headerData);
         if (R_FAILED(res)) {
             delete[] headerData;
+            Logger::getInstance().log(Logger::ERROR, "Failed get legacy rom header with result 0x%08lX.", res);
             return false;
         }
 
@@ -150,6 +150,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         res = SPIGetCardType(&mCardType, (_gameCode[0] == 'I') ? 1 : 0);
         if (R_FAILED(res)) {
             delete[] headerData;
+            Logger::getInstance().log(Logger::ERROR, "Failed get SPI Card Type with result 0x%08lX.", res);
             return false;
         }
 
@@ -170,8 +171,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
             res = io::createDirectory(Archive::sdmc(), mSavePath);
             if (R_FAILED(res)) {
                 loadTitle = false;
-                // TODO: log this
-                // Gui::showError(res, "Failed to create backup directory.");
+                Logger::getInstance().log(Logger::ERROR, "Failed to create backup with result 0x%08lX.", res);
             }
         }
 
@@ -282,8 +282,7 @@ void Title::refreshDirectories(void)
             mFullSavePaths.insert(mFullSavePaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
         else {
-            // fprintf(stderr, "Title 0x%016llX, %s\n", id(), shortDescription().c_str());
-            // LOG THIS Gui::showError(savelist.error(), "Couldn't retrieve the directory list\nfor the title " + shortDescription());
+            Logger::getInstance().log(Logger::ERROR, "Couldn't retrieve the save directory list for the title " + shortDescription());
         }
 
         // save backups from configuration
@@ -319,8 +318,7 @@ void Title::refreshDirectories(void)
             mFullExtdataPaths.insert(mFullExtdataPaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
         else {
-            // fprintf(stderr, "Title 0x%016llX, %s\n", id(), shortDescription().c_str());
-            // LOG THIS Gui::showError(extlist.error(), "Couldn't retrieve the extdata list\nfor the title " + shortDescription());
+            Logger::getInstance().log(Logger::ERROR, "Couldn't retrieve the extdata directory list for the title " + shortDescription());
         }
 
         // extdata backups from configuration

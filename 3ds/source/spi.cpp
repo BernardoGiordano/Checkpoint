@@ -44,6 +44,8 @@
 
 #include "spi.hpp"
 
+static std::vector<u32> knownJEDECs = {0x204012, 0x621600, 0x204013, 0x621100, 0x204014, 0x202017, 0x204017, 0x208013};
+
 u8* fill_buf = NULL;
 
 Result SPIWriteRead(CardType type, void* cmd, u32 cmdSize, void* answer, u32 answerSize, void* data, u32 dataSize)
@@ -404,9 +406,20 @@ Result SPIGetCardType(CardType* type, int infrared)
     u32 maxTries = (infrared == -1) ? 2 : 1; // note: infrared = -1 fails 1/3 of the time
     while (tries < maxTries) {
         res = SPIReadJEDECIDAndStatusReg(t, &jedec, &sr); // dummy
-        // fprintf(stderr, "JEDEC: 0x%016lX\n", jedec);
-        // fprintf(stderr, "SPIReadJEDECIDAndStatusReg: %016lX\n", res);
-        // fprintf(stderr, "CardType (While inside maxTries loop): %016lX\n", t);
+        if (R_SUCCEEDED(res)) {
+            Logger::getInstance().log(Logger::INFO, "Found JEDEC: 0x%016lX", jedec);
+            Logger::getInstance().log(Logger::INFO, "CardType (While inside maxTries loop): %016lX", t);
+            if (std::find(knownJEDECs.begin(), knownJEDECs.end(), jedec) != knownJEDECs.end()) {
+                Logger::getInstance().log(Logger::INFO, "Found a jedec equal to one in the ordered list. Type: %016lX", *type);
+            }
+            else {
+                Logger::getInstance().log(Logger::INFO, "JEDEC ID not documented yet!");
+            }
+        }
+        else {
+            Logger::getInstance().log(Logger::WARN, "Unable to retrieve JEDEC id with result 0x%08lX.", res);
+        }
+
         if (res)
             return res;
 
@@ -426,10 +439,10 @@ Result SPIGetCardType(CardType* type, int infrared)
         t = FLASH_INFRARED_DUMMY;
     }
 
-    // fprintf(stderr, "CardType (after the maxTries loop): %016lX\n", t);
+    Logger::getInstance().log(Logger::INFO, "CardType (after the maxTries loop): %016lX", t);
 
     if (t == EEPROM_512B) {
-        // fprintf(stderr, "Type is EEPROM_512B: %d\n", t);
+        Logger::getInstance().log(Logger::INFO, "Type is EEPROM_512B: %d", t);
         *type = t;
         return 0;
     }
@@ -451,7 +464,7 @@ Result SPIGetCardType(CardType* type, int infrared)
         }
 
         *type = t;
-        // fprintf(stderr, "Type: %d\n", t);
+        Logger::getInstance().log(Logger::INFO, "Type: %d", t);
         return 0;
     }
     else if (t == FLASH_INFRARED_DUMMY) {
@@ -466,7 +479,7 @@ Result SPIGetCardType(CardType* type, int infrared)
     else {
         if (infrared == 1) {
             *type = NO_CHIP; // did anything go wrong?
-            // fprintf(stderr, "infrared is 1, *type = NO_CHIP\n");
+            Logger::getInstance().log(Logger::INFO, "infrared is 1, *type = NO_CHIP");
         }
         if (jedec == 0x204017) {
             *type = FLASH_8MB;
@@ -480,12 +493,11 @@ Result SPIGetCardType(CardType* type, int infrared)
         for (int i = 0; i < 6; ++i) {
             if (jedec == jedecOrderedList[i]) {
                 *type = (CardType)((int)FLASH_256KB_1 + i);
-                // fprintf(stderr, "Found a jedec equal to one in the ordered list. Type: %016lX", *type);
                 return 0;
             }
         }
 
-        // fprintf(stderr, "*type = NO_CHIP\n");
+        Logger::getInstance().log(Logger::INFO, "*type = NO_CHIP");
         *type = NO_CHIP;
         return 0;
     }

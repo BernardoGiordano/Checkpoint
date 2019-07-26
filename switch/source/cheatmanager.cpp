@@ -101,7 +101,7 @@ void CheatManager::save(const std::string& key, const std::vector<std::string>& 
         }
 
         std::string outPath = rootfolder + "/" + buildid + ".txt";
-        FILE* f = fopen(outPath.c_str(), "w");
+        FILE* f             = fopen(outPath.c_str(), "w");
         if (f != NULL) {
             fwrite(cheatFile.c_str(), 1, cheatFile.length(), f);
             fclose(f);
