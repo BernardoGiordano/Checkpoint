@@ -255,9 +255,10 @@ void loadTitles(void)
                         PdmPlayStatistics stats;
                         res = pdmqryQueryPlayStatisticsByApplicationIdAndUserAccountId(tid, uid, &stats);
                         if (R_SUCCEEDED(res)) {
-                            title.playTime(StringUtils::format("%d", stats.playtimeMinutes / 60) + ":" + StringUtils::format("%02d", stats.playtimeMinutes % 60) + " hours");
+                            title.playTime(StringUtils::format("%d", stats.playtimeMinutes / 60) + ":" +
+                                           StringUtils::format("%02d", stats.playtimeMinutes % 60) + " hours");
                         }
-                        
+
                         loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
 
                         // check if the vector is already created

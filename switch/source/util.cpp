@@ -109,7 +109,8 @@ Result servicesInit(void)
 
     if (R_SUCCEEDED(res = pdmqryInitialize())) {
         ATEXIT(pdmqryExit);
-    } else {
+    }
+    else {
         Logger::getInstance().log(Logger::WARN, "pdmqryInitialize failed with result 0x%08lX.", res);
     }
 

@@ -161,8 +161,9 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t 
         }
     }
     else {
-        Logger::getInstance().log(Logger::ERROR, "Failed to mount filesystem during backup with result 0x%08lX. Title id: 0x%016lX; User id: 0x%lX%lX.",
-            res, title.id(), (u64)(title.userId() >> 8), (u64)(title.userId()));
+        Logger::getInstance().log(Logger::ERROR,
+            "Failed to mount filesystem during backup with result 0x%08lX. Title id: 0x%016lX; User id: 0x%lX%lX.", res, title.id(),
+            (u64)(title.userId() >> 8), (u64)(title.userId()));
         return std::make_tuple(false, res, "Failed to mount save.");
     }
 
@@ -259,8 +260,9 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, u128 uid, size_t
         }
     }
     else {
-        Logger::getInstance().log(Logger::ERROR, "Failed to mount filesystem during restore with result 0x%08lX. Title id: 0x%016lX; User id: 0x%lX%lX.",
-            res, title.id(), (u64)(title.userId() >> 8), (u64)(title.userId()));
+        Logger::getInstance().log(Logger::ERROR,
+            "Failed to mount filesystem during restore with result 0x%08lX. Title id: 0x%016lX; User id: 0x%lX%lX.", res, title.id(),
+            (u64)(title.userId() >> 8), (u64)(title.userId()));
         return std::make_tuple(false, res, "Failed to mount save.");
     }
 
