@@ -63,14 +63,28 @@ void MainScreen::draw() const
     SDLH_DrawRect(0, 0, 532, 662, FC_MakeColor(theme().c1.r + 5, theme().c1.g + 5, theme().c1.b + 5, 255));
     SDLH_DrawRect(1280 - SIDEBAR_w, 0, SIDEBAR_w, 720, colorBar);
 
-    u32 nick_w, nick_h;
-    SDLH_GetTextDimensions(13, Account::username(g_currentUId).c_str(), &nick_w, &nick_h);
     drawPulsingOutline(
         1280 - SIDEBAR_w + (SIDEBAR_w - USER_ICON_SIZE) / 2, 720 - USER_ICON_SIZE - 30, USER_ICON_SIZE, USER_ICON_SIZE, 2, COLOR_GREEN);
     SDLH_DrawImageScale(
         Account::icon(g_currentUId), 1280 - SIDEBAR_w + (SIDEBAR_w - USER_ICON_SIZE) / 2, 720 - USER_ICON_SIZE - 30, USER_ICON_SIZE, USER_ICON_SIZE);
-    SDLH_DrawTextBox(13, 1280 - SIDEBAR_w + (SIDEBAR_w - nick_w) / 2, 720 - 28 + (28 - nick_h) / 2, theme().c6, SIDEBAR_w,
-        Account::username(g_currentUId).c_str());
+
+    // TODO: optimize this
+    u32 username_dotsize;
+    u32 username_w, username_h;
+    SDLH_GetTextDimensions(13, "...", &username_dotsize, NULL);
+    std::string username = "";
+    for (size_t i = 0, len = Account::username(g_currentUId).length(); i < len; i++) {
+        SDLH_GetTextDimensions(13, username.c_str(), &username_w, NULL);
+        if (username_w < SIDEBAR_w - username_dotsize * 2) {
+            username += Account::username(g_currentUId)[i];
+        }
+        else {
+            username += "...";
+            break;
+        }
+    }
+    SDLH_GetTextDimensions(13, username.c_str(), &username_w, &username_h);
+    SDLH_DrawTextBox(13, 1280 - SIDEBAR_w + (SIDEBAR_w - username_w) / 2, 720 - 28 + (28 - username_h) / 2, theme().c6, SIDEBAR_w, username.c_str());
 
     // title icons
     for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
