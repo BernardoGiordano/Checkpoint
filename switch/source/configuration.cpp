@@ -121,8 +121,8 @@ Configuration::Configuration(void)
             mJson["favorites"] = nlohmann::json::array();
             updateJson         = true;
         }
-        if (!(mJson.contains("additional_save_folders") && mJson["additional_save_folders"].is_array())) {
-            mJson["additional_save_folders"] = nlohmann::json::array();
+        if (!(mJson.contains("additional_save_folders") && mJson["additional_save_folders"].is_object())) {
+            mJson["additional_save_folders"] = nlohmann::json::object();
             updateJson                       = true;
         }
         // check every single entry in the arrays...
@@ -141,8 +141,8 @@ Configuration::Configuration(void)
             }
         }
         for (auto& obj : mJson["additional_save_folders"]) {
-            if (!obj.is_string()) {
-                mJson["additional_save_folders"] = nlohmann::json::array();
+            if (!obj.is_object()) {
+                mJson["additional_save_folders"] = nlohmann::json::object();
                 updateJson                       = true;
                 break;
             }
