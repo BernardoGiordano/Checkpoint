@@ -107,6 +107,12 @@ Result servicesInit(void)
         }
     }
 
+    if (R_SUCCEEDED(res = pdmqryInitialize())) {
+        ATEXIT(pdmqryExit);
+    } else {
+        Logger::getInstance().log(Logger::WARN, "pdmqryInitialize failed with result 0x%08lX.", res);
+    }
+
     Logger::getInstance().log(Logger::INFO, "Checkpoint loading completed!");
 
     return 0;

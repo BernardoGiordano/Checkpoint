@@ -118,7 +118,7 @@ void MainScreen::draw() const
         }
 
         // draw infos
-        u32 title_w, title_h, h, titleid_w, producer_w, user_w, subtitle_w;
+        u32 title_w, title_h, h, titleid_w, producer_w, user_w, subtitle_w, playtime_w;
         auto displayName = title.displayName();
         SDLH_GetTextDimensions(28, displayName.first.c_str(), &title_w, &title_h);
         SDLH_GetTextDimensions(23, "Title: ", &subtitle_w, NULL);
@@ -126,12 +126,19 @@ void MainScreen::draw() const
         SDLH_GetTextDimensions(23, "Author: ", &producer_w, NULL);
         SDLH_GetTextDimensions(23, "User: ", &user_w, NULL);
 
+        u8 boxRows = (displayName.second.length() > 0 ? 4 : 3);
+
         h += 6;
+        if (!title.playTime().empty()) {
+            boxRows++;
+            SDLH_GetTextDimensions(23, "Play Time: ", &playtime_w, NULL);
+        }
+
         u32 offset = 10 + title_h + h / 2;
         int i      = 0;
 
         SDLH_DrawRect(534, 2, 482, 16 + title_h, theme().c3);
-        SDLH_DrawRect(534, offset - h / 2 - 2, 480, h * (displayName.second.length() > 0 ? 4 : 3) + h / 2, theme().c2);
+        SDLH_DrawRect(534, offset - h / 2 - 2, 480, h * boxRows + h / 2, theme().c2);
 
         SDLH_DrawText(28, 538 - 8 + 482 - title_w, 8, theme().c5, displayName.first.c_str());
         if (displayName.second.length() > 0) {
@@ -148,6 +155,11 @@ void MainScreen::draw() const
 
         SDLH_DrawText(23, 538, offset + h * i, theme().c5, "User:");
         SDLH_DrawTextBox(23, 538 + user_w, offset + h * (i++), theme().c6, 478 - 4 * 2 - user_w, title.userName().c_str());
+
+        if (!title.playTime().empty()) {
+            SDLH_DrawText(23, 538, offset + h * i, theme().c5, "Play Time:");
+            SDLH_DrawTextBox(23, 538 + playtime_w, offset + h * (i++), theme().c6, 478 - 4 * 2 - playtime_w, title.playTime().c_str());
+        }
 
         drawOutline(538, 276, 414, 380, 4, theme().c3);
         drawOutline(956, 276, 220, 80, 4, theme().c3);

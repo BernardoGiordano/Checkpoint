@@ -161,6 +161,16 @@ SDL_Texture* Title::icon(void)
     return it != icons.end() ? it->second : NULL;
 }
 
+std::string Title::playTime(void)
+{
+    return mPlayTime;
+}
+
+void Title::playTime(std::string playTime)
+{
+    mPlayTime = playTime;
+}
+
 void Title::refreshDirectories(void)
 {
     mSaves.clear();
@@ -181,8 +191,7 @@ void Title::refreshDirectories(void)
         mFullSavePaths.insert(mFullSavePaths.begin(), "New...");
     }
     else {
-        // Gui::showError(savelist.error(), "Couldn't retrieve the directory list for the title " + name() + ".");
-        // TODO: log this
+        Logger::getInstance().log(Logger::ERROR, "Couldn't retrieve the extdata directory list for the title " + name());
     }
 
     // save backups from configuration
@@ -241,6 +250,14 @@ void loadTitles(void)
                         Title title;
                         title.init(info.saveDataType, tid, uid, std::string(nle->name), std::string(nle->author));
                         title.saveId(sid);
+
+                        // load play statistics
+                        PdmPlayStatistics stats;
+                        res = pdmqryQueryPlayStatisticsByApplicationIdAndUserAccountId(tid, uid, &stats);
+                        if (R_SUCCEEDED(res)) {
+                            title.playTime(StringUtils::format("%d", stats.playtimeMinutes / 60) + ":" + StringUtils::format("%02d", stats.playtimeMinutes % 60) + " hours");
+                        }
+                        
                         loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
 
                         // check if the vector is already created

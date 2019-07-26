@@ -50,6 +50,8 @@ public:
     u64 id(void);
     std::string name(void);
     std::string path(void);
+    std::string playTime(void);
+    void playTime(std::string playTime);
     std::string fullPath(size_t index);
     void refreshDirectories(void);
     u64 saveId();
@@ -73,6 +75,7 @@ private:
     std::vector<std::string> mFullSavePaths;
     u8 mSaveDataType;
     std::pair<std::string, std::string> mDisplayName;
+    std::string mPlayTime;
 };
 
 void getTitle(Title& dst, u128 uid, size_t i);
