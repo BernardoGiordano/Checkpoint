@@ -39,6 +39,7 @@
 struct User {
     u128 id;
     std::string name;
+    std::string shortName;
     SDL_Texture* icon;
 };
 
@@ -50,6 +51,7 @@ namespace Account {
     SDL_Texture* icon(u128 id);
     u128 selectAccount(void);
     std::string username(u128 id);
+    std::string shortName(u128 id);
 }
 
 #endif

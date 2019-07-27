@@ -68,21 +68,8 @@ void MainScreen::draw() const
     SDLH_DrawImageScale(
         Account::icon(g_currentUId), 1280 - SIDEBAR_w + (SIDEBAR_w - USER_ICON_SIZE) / 2, 720 - USER_ICON_SIZE - 30, USER_ICON_SIZE, USER_ICON_SIZE);
 
-    // TODO: optimize this
-    u32 username_dotsize;
     u32 username_w, username_h;
-    SDLH_GetTextDimensions(13, "...", &username_dotsize, NULL);
-    std::string username = "";
-    for (size_t i = 0, len = Account::username(g_currentUId).length(); i < len; i++) {
-        SDLH_GetTextDimensions(13, username.c_str(), &username_w, NULL);
-        if (username_w < SIDEBAR_w - username_dotsize * 2) {
-            username += Account::username(g_currentUId)[i];
-        }
-        else {
-            username += "...";
-            break;
-        }
-    }
+    std::string username = Account::shortName(g_currentUId);
     SDLH_GetTextDimensions(13, username.c_str(), &username_w, &username_h);
     SDLH_DrawTextBox(13, 1280 - SIDEBAR_w + (SIDEBAR_w - username_w) / 2, 720 - 28 + (28 - username_h) / 2, theme().c6, SIDEBAR_w, username.c_str());
 

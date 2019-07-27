@@ -52,13 +52,14 @@ std::vector<u128> Account::ids(void)
 
 static User getUser(u128 id)
 {
-    User user{id, "", NULL};
+    User user{id, "", "", NULL};
     AccountProfile profile;
     AccountProfileBase profilebase;
     memset(&profilebase, 0, sizeof(profilebase));
 
     if (R_SUCCEEDED(accountGetProfile(&profile, id)) && R_SUCCEEDED(accountProfileGet(&profile, NULL, &profilebase))) {
-        user.name = std::string(profilebase.username, 0x20);
+        user.name      = std::string(profilebase.username, 0x20);
+        user.shortName = trimToFit(user.name, 96 - g_username_dotsize * 2, 13);
 
         // load icon
         u8* buffer;
@@ -84,6 +85,18 @@ std::string Account::username(u128 id)
     }
 
     return got->second.name;
+}
+
+std::string Account::shortName(u128 id)
+{
+    std::map<u128, User>::const_iterator got = mUsers.find(id);
+    if (got == mUsers.end()) {
+        User user = getUser(id);
+        mUsers.insert({id, user});
+        return user.shortName;
+    }
+
+    return got->second.shortName;
 }
 
 SDL_Texture* Account::icon(u128 id)

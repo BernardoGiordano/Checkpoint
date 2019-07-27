@@ -52,6 +52,9 @@ bool SDLH_Init(void)
     plGetSharedFontByType(&fontData, PlSharedFontType_Standard);
     plGetSharedFontByType(&fontExtData, PlSharedFontType_NintendoExt);
 
+    // utils
+    SDLH_GetTextDimensions(13, "...", &g_username_dotsize, NULL);
+
     return true;
 }
 
@@ -193,4 +196,21 @@ void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
     color                      = FC_MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier,
         color.b + (255 - color.b) * highlight_multiplier, 255);
     drawOutline(x, y, w, h, size, color);
+}
+
+std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize)
+{
+    u32 width;
+    std::string newtext = "";
+    for (size_t i = 0, len = text.length(); i < len; i++) {
+        SDLH_GetTextDimensions(textsize, newtext.c_str(), &width, NULL);
+        if (width < maxsize) {
+            newtext += text[i];
+        }
+        else {
+            newtext += "...";
+            break;
+        }
+    }
+    return newtext;
 }

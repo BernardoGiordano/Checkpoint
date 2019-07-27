@@ -28,5 +28,6 @@ void SDLH_Render(void);
 
 void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color);
 void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color);
+std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize);
 
 #endif

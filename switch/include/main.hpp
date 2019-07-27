@@ -42,5 +42,6 @@ inline bool g_ftpAvailable              = false;
 inline bool g_shouldExitNetworkLoop     = false;
 inline std::string g_selectedCheatKey;
 inline std::vector<std::string> g_selectedCheatCodes;
+inline u32 g_username_dotsize;
 
 #endif
