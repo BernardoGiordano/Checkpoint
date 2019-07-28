@@ -112,18 +112,12 @@ SDL_Texture* Account::icon(u128 id)
 
 u128 Account::selectAccount(void)
 {
-    struct UserReturnData {
-        u64 result;
-        u128 UID;
-    } PACKED;
-
-    struct UserReturnData outdata;
-
     AppletHolder aph;
     AppletStorage ast;
     AppletStorage hast1;
     LibAppletArgs args;
 
+    u8 out[24] = {0};
     u8 indata[0xA0] = {0};
     indata[0x96]    = 1;
 
@@ -136,17 +130,17 @@ u128 Account::selectAccount(void)
     appletStorageWrite(&hast1, 0, indata, 0xA0);
     appletHolderPushInData(&aph, &hast1);
     appletHolderStart(&aph);
+    appletStorageClose(&hast1);
 
     while (appletHolderWaitInteractiveOut(&aph))
         ;
 
     appletHolderJoin(&aph);
     appletHolderPopOutData(&aph, &ast);
-    appletStorageRead(&ast, 0, &outdata, 24);
+    appletStorageRead(&ast, 0, out, 24);
 
-    appletHolderClose(&aph);
     appletStorageClose(&ast);
-    appletStorageClose(&hast1);
+    appletHolderClose(&aph);
 
-    return outdata.UID;
+    return *(u128*)&out[8];
 }
