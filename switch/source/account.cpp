@@ -112,35 +112,20 @@ SDL_Texture* Account::icon(u128 id)
 
 u128 Account::selectAccount(void)
 {
-    AppletHolder aph;
-    AppletStorage ast;
-    AppletStorage hast1;
+    u128 out_id = 0;
     LibAppletArgs args;
+    libappletArgsCreate(&args, 0x10000);
+    u8 st_in[0xA0]  = {0};
+    u8 st_out[0x18] = {0};
+    size_t repsz;
 
-    u8 out[24] = {0};
-    u8 indata[0xA0] = {0};
-    indata[0x96]    = 1;
+    Result res = libappletLaunch(AppletId_playerSelect, &args, st_in, 0xA0, st_out, 0x18, &repsz);
+    if (R_SUCCEEDED(res)) {
+        u64 lres = *(u64*)st_out;
+        u128 uid = *(u128*)&st_out[8];
+        if (lres == 0)
+            out_id = uid;
+    }
 
-    appletCreateLibraryApplet(&aph, AppletId_playerSelect, LibAppletMode_AllForeground);
-    libappletArgsCreate(&args, 0);
-    libappletArgsPush(&args, &aph);
-
-    appletCreateStorage(&hast1, 0xA0);
-
-    appletStorageWrite(&hast1, 0, indata, 0xA0);
-    appletHolderPushInData(&aph, &hast1);
-    appletHolderStart(&aph);
-    appletStorageClose(&hast1);
-
-    while (appletHolderWaitInteractiveOut(&aph))
-        ;
-
-    appletHolderJoin(&aph);
-    appletHolderPopOutData(&aph, &ast);
-    appletStorageRead(&ast, 0, out, 24);
-
-    appletStorageClose(&ast);
-    appletHolderClose(&aph);
-
-    return *(u128*)&out[8];
+    return out_id;
 }
