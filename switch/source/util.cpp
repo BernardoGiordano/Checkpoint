@@ -28,8 +28,18 @@
 
 void servicesExit(void)
 {
+    if (g_ftpAvailable)
+        ftp_exit();
+    if (g_notificationLedAvailable)
+        hidsysExit();
+    pdmqryExit();
     socketExit();
+    Account::exit();
+    freeIcons();
     SDLH_Exit();
+    nsExit();
+    plExit();
+    romfsExit();
 }
 
 Result servicesInit(void)
@@ -55,7 +65,6 @@ Result servicesInit(void)
     Result res = 0;
 
     romfsInit();
-    ATEXIT(romfsExit);
 
     io::createDirectory("sdmc:/switch");
     io::createDirectory("sdmc:/switch/Checkpoint");
@@ -66,29 +75,24 @@ Result servicesInit(void)
         Logger::getInstance().log(Logger::ERROR, "plInitialize failed. Result code 0x%08lX.", res);
         return res;
     }
-    ATEXIT(plExit);
 
     if (R_FAILED(res = Account::init())) {
         Logger::getInstance().log(Logger::ERROR, "Account::init failed. Result code 0x%08lX.", res);
         return res;
     }
-    ATEXIT(Account::exit);
 
     if (R_FAILED(res = nsInitialize())) {
         Logger::getInstance().log(Logger::ERROR, "nsInitialize failed. Result code 0x%08lX.", res);
         return res;
     }
-    ATEXIT(nsExit);
 
     if (!SDLH_Init()) {
         Logger::getInstance().log(Logger::ERROR, "SDLH_Init failed. Result code 0x%08lX.", res);
         return -1;
     }
-    ATEXIT(freeIcons);
 
     if (R_SUCCEEDED(res = hidsysInitialize())) {
         g_notificationLedAvailable = true;
-        ATEXIT(hidsysExit);
     }
     else {
         Logger::getInstance().log(Logger::INFO, "Notification led not available. Result code 0x%08lX.", res);
@@ -98,7 +102,6 @@ Result servicesInit(void)
 
     if (R_SUCCEEDED(socinit)) {
         if (R_SUCCEEDED(res = ftp_init())) {
-            ATEXIT(ftp_exit);
             g_ftpAvailable = true;
             Logger::getInstance().log(Logger::INFO, "FTP Server successfully loaded.");
         }
@@ -108,7 +111,7 @@ Result servicesInit(void)
     }
 
     if (R_SUCCEEDED(res = pdmqryInitialize())) {
-        ATEXIT(pdmqryExit);
+
     }
     else {
         Logger::getInstance().log(Logger::WARN, "pdmqryInitialize failed with result 0x%08lX.", res);
