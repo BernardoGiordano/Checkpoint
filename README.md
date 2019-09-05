@@ -1,4 +1,4 @@
-# Checkpoint
+# Checkpoint <a href="https://github.com/FlagBrew/Checkpoint/releases/latest"><img src="https://img.shields.io/github/downloads/FlagBrew/Checkpoint/total.svg"></a>
 
 A fast and simple homebrew save manager for 3DS and Switch written in C++.
 
@@ -21,7 +21,7 @@ You can use Checkpoint for 3DS with both cfw and Rosalina-based Homebrew Launche
 
 Checkpoint for Switch runs on homebrew launcher. Make sure you're running up-to-date payloads.
 
-The first launch will take considerably longer than usual (usually 1-2 minutes depending on how many titles you have installed), due to the working directories being created - Checkpoint will be significatively faster upon launch from then on.
+The first launch of the 3DS version will take considerably longer than usual (usually 1-2 minutes depending on how many titles you have installed), due to the working directories being created - Checkpoint will be significatively faster upon launch from then on.
 
 You can scroll between the title list with the DPAD/LR and target a title with A when the selector is on it. Now, you can use the DPAD or the touchscreen to select a target backup to restore/overwrite.
 
@@ -90,11 +90,11 @@ devkitARM and devkitA64 are required to compile Checkpoint for 3DS and Switch, r
 
 ### 3DS version
 
-`pacman -S libctru citro3d citro2d`
+`dkp-pacman -S libctru citro3d citro2d`
 
 ### Switch version
 
-`pacman -S libnx switch-freetype switch-libpng switch-libjpeg-turbo switch-sdl2 switch-sdl2_image switch-sdl2_ttf`
+`dkp-pacman -S libnx switch-freetype switch-libpng switch-libjpeg-turbo switch-sdl2 switch-sdl2_image switch-sdl2_ttf`
 
 ## License
 
@@ -102,19 +102,17 @@ This project is licensed under the GNU GPLv3. Additional Terms 7.b and 7.c of GP
 
 ## Credits
 
-Even though this is the result of independent research and work, Checkpoint for 3DS couldn't be possible without J-D-K's original [JKSM](https://github.com/J-D-K/JKSM) version, which is an incredible piece of software that you should all be using.
+Even though this is the result of independent research and work, Checkpoint for 3DS couldn't be possible without J-D-K's original [JKSM](https://github.com/J-D-K/JKSM) version.
 
 TuxSH for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which SPI code has been taken.
 
-WinterMute and [devkitPro](https://devkitpro.org/) contributors for devkitARM, devkitA64 and [dkp-pacman](https://github.com/devkitPro/pacman/releases).
-
-All the maintainers for [nx-hbmenu](https://github.com/switchbrew/nx-hbmenu), for all the Switch rendering functions.
+WinterMute, fincs and [devkitPro](https://devkitpro.org/) contributors for devkitARM, devkitA64 and [dkp-pacman](https://github.com/devkitPro/pacman/releases).
 
 Yellows8 and all the mantainers for [switch-examples](https://github.com/switchbrew/switch-examples).
 
 [rakujira](https://twitter.com/rakujira) for the awesome Checkpoint logo.
 
-Hikari-chin and all the other testers for their help with testing.
+Fellow testers and troubleshooters for their help.
 
 ---
 
