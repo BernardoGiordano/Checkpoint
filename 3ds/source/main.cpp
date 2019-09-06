@@ -40,10 +40,16 @@ int main()
     Threads::create((ThreadFunc)Threads::titles);
     ATEXIT(Threads::destroy);
 
-    while (aptMainLoop() && !(hidKeysDown() & KEY_START)) {
+    while (aptMainLoop()) {
         touchPosition touch;
         hidScanInput();
         hidTouchRead(&touch);
+
+        if (hidKeysDown() & KEY_START) {
+            if (!g_isLoadingTitles) {
+                break;
+            }
+        }
 
         if (Configuration::getInstance().shouldScanCard()) {
             updateCard();

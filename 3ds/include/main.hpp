@@ -38,5 +38,6 @@ inline bool g_bottomScrollEnabled       = false;
 inline float g_timer                    = 0;
 inline std::string g_selectedCheatKey;
 inline std::vector<std::string> g_selectedCheatCodes;
+inline volatile bool g_isLoadingTitles = false;
 
 #endif
