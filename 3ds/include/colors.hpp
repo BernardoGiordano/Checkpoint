@@ -3,7 +3,7 @@
 
 #include <citro2d.h>
 
-inline const u32 COLOR_OVERLAY   = C2D_Color32(0, 0, 0, 160);
+inline const u32 COLOR_OVERLAY   = C2D_Color32(0, 0, 0, 190);
 inline const u32 COLOR_WHITEMASK = C2D_Color32(255, 255, 255, 100);
 inline const u32 COLOR_BG        = C2D_Color32(51, 51, 51, 255);
 inline const u32 COLOR_WHITE     = C2D_Color32(255, 255, 255, 255);

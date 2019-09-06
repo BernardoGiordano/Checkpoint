@@ -35,7 +35,7 @@ inline const SDL_Color COLOR_BLUE      = FC_MakeColor(29, 50, 243, 255);
 inline const SDL_Color COLOR_GREEN     = FC_MakeColor(0, 254, 197, 255);
 inline const SDL_Color COLOR_RED       = FC_MakeColor(255, 81, 48, 255);
 inline const SDL_Color COLOR_GOLD      = FC_MakeColor(255, 215, 0, 255);
-inline const SDL_Color COLOR_OVERLAY   = FC_MakeColor(0, 0, 0, 160);
+inline const SDL_Color COLOR_OVERLAY   = FC_MakeColor(0, 0, 0, 190);
 inline const SDL_Color COLOR_WHITEMASK = FC_MakeColor(255, 255, 255, 80);
 inline const SDL_Color COLOR_NULL      = FC_MakeColor(0, 0, 0, 0);
 
