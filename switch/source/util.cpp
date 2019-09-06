@@ -110,9 +110,7 @@ Result servicesInit(void)
         }
     }
 
-    if (R_SUCCEEDED(res = pdmqryInitialize())) {
-
-    }
+    if (R_SUCCEEDED(res = pdmqryInitialize())) {}
     else {
         Logger::getInstance().log(Logger::WARN, "pdmqryInitialize failed with result 0x%08lX.", res);
     }

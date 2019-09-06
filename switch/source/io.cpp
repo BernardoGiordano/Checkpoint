@@ -34,6 +34,8 @@ bool io::fileExists(const std::string& path)
 
 void io::copyFile(const std::string& srcPath, const std::string& dstPath)
 {
+    g_isTransferringFile = true;
+
     FILE* src = fopen(srcPath.c_str(), "rb");
     if (src == NULL) {
         Logger::getInstance().log(Logger::ERROR, "Failed to open source file " + srcPath + " during copy with errno %d. Skipping...", errno);
@@ -52,10 +54,19 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
 
     u8* buf    = new u8[BUFFER_SIZE];
     u64 offset = 0;
+
+    size_t slashpos = srcPath.rfind("/");
+    g_currentFile   = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
+
     while (offset < sz) {
         u32 count = fread((char*)buf, 1, BUFFER_SIZE, src);
         fwrite((char*)buf, 1, count, dst);
         offset += count;
+
+        // avoid freezing the UI
+        // this will be made less horrible next time...
+        g_screen->draw();
+        SDLH_Render();
     }
 
     delete[] buf;
@@ -67,6 +78,8 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
         Logger::getInstance().log(Logger::ERROR, "Committing file " + dstPath + " to the save archive.");
         fsdevCommitDevice("save");
     }
+
+    g_isTransferringFile = false;
 }
 
 Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath)
@@ -234,6 +247,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t 
             false, systemKeyboardAvailable.second, "System keyboard applet not accessible.\nThe suggested destination folder was used\ninstead.");
     }
 
+    ret = std::make_tuple(true, 0, "Progress correctly saved to disk.");
     Logger::getInstance().log(Logger::INFO, "Backup succeeded.");
     return ret;
 }

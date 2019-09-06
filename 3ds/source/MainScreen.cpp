@@ -158,6 +158,17 @@ void MainScreen::drawTop(void) const
     C2D_DrawText(&version, C2D_WithColor, 400 - 4 - ceilf(0.45f * version.width), 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
     C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, NULL, 1.0f, 1.0f);
     C2D_DrawText(&checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
+
+    if (g_isTransferringFile) {
+        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
+
+        float size = 0.7f;
+        C2D_Text text;
+        C2D_TextParse(&text, dynamicBuf, StringUtils::UTF16toUTF8(g_currentFile).c_str());
+        C2D_TextOptimize(&text);
+        C2D_DrawText(&text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(text, size)) / 2),
+            ceilf((240 - size * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, size, size, COLOR_WHITE);
+    }
 }
 
 void MainScreen::drawBottom(void) const
@@ -235,6 +246,10 @@ void MainScreen::drawBottom(void) const
         C2D_DrawText(&bot_x, C2D_WithColor, 16, 168, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
         // play coins
         C2D_DrawText(&coins, C2D_WithColor, ceilf(318 - StringUtils::textWidth(coins, scaleInst)), -1, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+    }
+
+    if (g_isTransferringFile) {
+        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
     }
 }
 

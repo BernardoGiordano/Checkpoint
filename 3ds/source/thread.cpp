@@ -28,7 +28,7 @@
 
 static std::vector<Thread> threads;
 
-static bool forceRefresh             = false;
+static bool forceRefresh = false;
 
 void Threads::create(ThreadFunc entrypoint)
 {
@@ -55,6 +55,6 @@ void Threads::titles(void)
 
     g_isLoadingTitles = true;
     loadTitles(forceRefresh);
-    forceRefresh    = true;
+    forceRefresh      = true;
     g_isLoadingTitles = false;
 }

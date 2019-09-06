@@ -40,4 +40,7 @@ inline std::string g_selectedCheatKey;
 inline std::vector<std::string> g_selectedCheatCodes;
 inline volatile bool g_isLoadingTitles = false;
 
+inline std::u16string g_currentFile;
+inline bool g_isTransferringFile = false;
+
 #endif

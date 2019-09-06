@@ -204,6 +204,14 @@ void MainScreen::draw() const
     SDLH_DrawText(26, 16, 672 + (40 - checkpoint_h) / 2 + 2, theme().c6, "checkpoint");
     SDLH_DrawText(20, 16 + checkpoint_w + 8, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - ver_h, theme().c6, ver);
     SDLH_DrawText(24, 16 * 3 + checkpoint_w + 8 + ver_w, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, theme().c6, "\ue046 Instructions");
+
+    if (g_isTransferringFile) {
+        SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
+
+        u32 w, h;
+        SDLH_GetTextDimensions(28, g_currentFile.c_str(), &w, &h);
+        SDLH_DrawText(28, (1280 - w) / 2, (720 - h) / 2, COLOR_WHITE, g_currentFile.c_str());
+    }
 }
 
 void MainScreen::update(touchPosition* touch)

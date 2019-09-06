@@ -42,6 +42,8 @@ bool io::fileExists(FS_Archive archive, const std::u16string& path)
 
 void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath)
 {
+    g_isTransferringFile = true;
+
     u32 size = 0;
     FSStream input(srcArch, srcPath, FS_OPEN_READ);
     if (input.good()) {
@@ -55,11 +57,22 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
 
     FSStream output(dstArch, dstPath, FS_OPEN_WRITE, input.size());
     if (output.good()) {
+        size_t slashpos = srcPath.rfind(StringUtils::UTF8toUTF16("/"));
+        g_currentFile   = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
+
         u32 rd;
         u8* buf = new u8[size];
         do {
             rd = input.read(buf, size);
             output.write(buf, rd);
+
+            // avoid freezing the UI
+            // this will be made less horrible next time...
+            C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+            g_screen->drawTop();
+            C2D_SceneBegin(g_bottom);
+            g_screen->drawBottom();
+            Gui::frameEnd();
         } while (!input.eof());
         delete[] buf;
     }
@@ -71,6 +84,8 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
 
     input.close();
     output.close();
+
+    g_isTransferringFile = false;
 }
 
 Result io::copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath)

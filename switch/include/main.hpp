@@ -44,4 +44,7 @@ inline std::string g_selectedCheatKey;
 inline std::vector<std::string> g_selectedCheatCodes;
 inline u32 g_username_dotsize;
 
+inline std::string g_currentFile = "";
+inline bool g_isTransferringFile = false;
+
 #endif
