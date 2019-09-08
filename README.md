@@ -2,8 +2,8 @@
 
 A fast and simple homebrew save manager for 3DS and Switch written in C++.
 
-<p align="center"><img src="https://i.imgur.com/nwQtZhe.jpg" />
-<img src="https://i.imgur.com/29P9w61.png" /> <img src="https://i.imgur.com/CzDTcSf.png" /></p>
+<p align="center"><img src="https://i.imgur.com/GmXss73.jpg" />
+<img src="https://i.imgur.com/Y4xJiHs.png" /></p>
 
 ## Why use Checkpoint?
 
