@@ -46,11 +46,11 @@ Result servicesInit(void)
 {
     Logger::getInstance().log(Logger::INFO, "Starting Checkpoint loading...");
 
-    int appletType = (int)appletGetAppletType();
-    if (appletType != AppletType_Application) {
-        Logger::getInstance().log(Logger::ERROR, "Please run Checkpoint under Atmosphére title takeover. AppletType is %d.", appletType);
-        return -1;
-    }
+    // int appletType = (int)appletGetAppletType();
+    // if (appletType != AppletType_Application) {
+    //     Logger::getInstance().log(Logger::ERROR, "Please run Checkpoint under Atmosphére title takeover. AppletType is %d.", appletType);
+    //     return -1;
+    // }
 
     Result socinit = 0;
     if ((socinit = socketInitializeDefault()) == 0) {
