@@ -47,9 +47,6 @@ static Result consoleDisplayError(const std::string& message, Result res)
 
 Result servicesInit(void)
 {
-    // sdmcInit();
-    // ATEXIT(sdmcExit);
-
     Result res = 0;
 
     if (R_FAILED(res = Archive::init())) {
