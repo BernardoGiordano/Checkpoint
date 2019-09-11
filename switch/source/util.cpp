@@ -44,13 +44,18 @@ void servicesExit(void)
 
 Result servicesInit(void)
 {
+    io::createDirectory("sdmc:/switch");
+    io::createDirectory("sdmc:/switch/Checkpoint");
+    io::createDirectory("sdmc:/switch/Checkpoint/saves");
+    io::createDirectory("sdmc:/switch/Checkpoint/cheats");
+    
     Logger::getInstance().log(Logger::INFO, "Starting Checkpoint loading...");
 
-    int appletType = (int)appletGetAppletType();
-    if (appletType != AppletType_Application) {
-        Logger::getInstance().log(Logger::ERROR, "Please run Checkpoint under Atmosphére title takeover. AppletType is %d.", appletType);
-        return -1;
-    }
+    // int appletType = (int)appletGetAppletType();
+    // if (appletType != AppletType_Application) {
+    //     Logger::getInstance().log(Logger::ERROR, "Please run Checkpoint under Atmosphére title takeover. AppletType is %d.", appletType);
+    //     return -1;
+    // }
 
     Result socinit = 0;
     if ((socinit = socketInitializeDefault()) == 0) {
@@ -65,11 +70,6 @@ Result servicesInit(void)
     Result res = 0;
 
     romfsInit();
-
-    io::createDirectory("sdmc:/switch");
-    io::createDirectory("sdmc:/switch/Checkpoint");
-    io::createDirectory("sdmc:/switch/Checkpoint/saves");
-    io::createDirectory("sdmc:/switch/Checkpoint/cheats");
 
     if (R_FAILED(res = plInitialize())) {
         Logger::getInstance().log(Logger::ERROR, "plInitialize failed. Result code 0x%08lX.", res);
