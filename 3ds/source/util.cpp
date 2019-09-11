@@ -47,12 +47,24 @@ static Result consoleDisplayError(const std::string& message, Result res)
 
 Result servicesInit(void)
 {
-    sdmcInit();
-    ATEXIT(sdmcExit);
-
-    Logger::getInstance().log(Logger::INFO, "Checkpoint loading started...");
+    // sdmcInit();
+    // ATEXIT(sdmcExit);
 
     Result res = 0;
+
+    if (R_FAILED(res = Archive::init())) {
+        return consoleDisplayError("Archive::init failed.", res);
+    }
+    ATEXIT(Archive::exit);
+
+    mkdir("sdmc:/3ds", 777);
+    mkdir("sdmc:/3ds/Checkpoint", 777);
+    mkdir("sdmc:/3ds/Checkpoint/saves", 777);
+    mkdir("sdmc:/3ds/Checkpoint/extdata", 777);
+    mkdir("sdmc:/3ds/Checkpoint/cheats", 777);
+    mkdir("sdmc:/cheats", 777);
+
+    Logger::getInstance().log(Logger::INFO, "Checkpoint loading started...");
 
     Handle hbldrHandle;
     if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
@@ -71,19 +83,6 @@ Result servicesInit(void)
 
     pxiDevInit();
     ATEXIT(pxiDevExit);
-
-    if (R_FAILED(res = Archive::init())) {
-        Logger::getInstance().log(Logger::ERROR, "Archive::init failed with result 0x%08lX", res);
-        return consoleDisplayError("Archive::init failed.", res);
-    }
-    ATEXIT(Archive::exit);
-
-    mkdir("sdmc:/3ds", 777);
-    mkdir("sdmc:/3ds/Checkpoint", 777);
-    mkdir("sdmc:/3ds/Checkpoint/saves", 777);
-    mkdir("sdmc:/3ds/Checkpoint/extdata", 777);
-    mkdir("sdmc:/3ds/Checkpoint/cheats", 777);
-    mkdir("sdmc:/cheats", 777);
 
     Gui::init();
     ATEXIT(Gui::exit);

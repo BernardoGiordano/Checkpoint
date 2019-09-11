@@ -47,18 +47,18 @@ public:
     template <typename... Args>
     void log(const std::string& level, const std::string& format = {}, Args... args)
     {
-        if (mFile != NULL) {
-            fprintf(mFile, ("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);
-        }
+        // if (mFile != NULL) {
+        //     fprintf(mFile, ("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);
+        // }
     }
 
 private:
-    Logger(void) { mFile = fopen(mPath.c_str(), "a"); }
+    Logger(void) { /* mFile = fopen(mPath.c_str(), "a"); */ }
     ~Logger(void)
     {
-        if (mFile != NULL) {
-            fclose(mFile);
-        }
+        // if (mFile != NULL) {
+        //     fclose(mFile);
+        // }
     }
 
     Logger(Logger const&) = delete;
