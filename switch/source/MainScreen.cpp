@@ -193,7 +193,7 @@ void MainScreen::draw() const
         if (gethostid() != INADDR_LOOPBACK) {
             if (g_ftpAvailable && Configuration::getInstance().isFTPEnabled()) {
                 SDLH_DrawText(24, 16 * 6 + checkpoint_w + 8 + ver_w + inst_w, 642 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
-                    StringUtils::format("FTP server running on %s:5000", getConsoleIP()).c_str());
+                    StringUtils::format("FTP server running on %s:50000", getConsoleIP()).c_str());
             }
             SDLH_DrawText(24, 16 * 6 + checkpoint_w + 8 + ver_w + inst_w, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
                 StringUtils::format("Configuration server running on %s:8000", getConsoleIP()).c_str());

@@ -27,7 +27,7 @@
 #define SOCK_BUFFERSIZE 65536
 #define FILE_BUFFERSIZE 1048576
 #define CMD_BUFFERSIZE  4096
-#define LISTEN_PORT     5000
+#define LISTEN_PORT     50000
 #define DATA_PORT       0 /* ephemeral port */
 
 typedef struct ftp_session_t ftp_session_t;
