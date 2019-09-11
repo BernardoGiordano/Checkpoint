@@ -48,14 +48,8 @@ Result servicesInit(void)
     io::createDirectory("sdmc:/switch/Checkpoint");
     io::createDirectory("sdmc:/switch/Checkpoint/saves");
     io::createDirectory("sdmc:/switch/Checkpoint/cheats");
-    
-    Logger::getInstance().log(Logger::INFO, "Starting Checkpoint loading...");
 
-    // int appletType = (int)appletGetAppletType();
-    // if (appletType != AppletType_Application) {
-    //     Logger::getInstance().log(Logger::ERROR, "Please run Checkpoint under Atmosphére title takeover. AppletType is %d.", appletType);
-    //     return -1;
-    // }
+    Logger::getInstance().log(Logger::INFO, "Starting Checkpoint loading...");
 
     Result socinit = 0;
     if ((socinit = socketInitializeDefault()) == 0) {

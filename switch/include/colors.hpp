@@ -45,6 +45,7 @@ inline const SDL_Color COLOR_GREY_DARK   = FC_MakeColor(79, 79, 79, 255);
 inline const SDL_Color COLOR_GREY_MEDIUM = FC_MakeColor(94, 94, 94, 255);
 inline const SDL_Color COLOR_GREY_LIGHT  = FC_MakeColor(138, 138, 138, 255);
 inline const SDL_Color COLOR_HIGHBLUE    = FC_MakeColor(48, 65, 106, 255);
+inline const SDL_Color COLOR_WATERMARK   = FC_MakeColor(255, 0, 0, 140);
 
 struct Theme {
     SDL_Color c0;
