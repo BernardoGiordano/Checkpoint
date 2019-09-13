@@ -1,5 +1,5 @@
 /*
-SDL_FontCache v0.9.0: A font cache for SDL and SDL_ttf
+SDL_FontCache v0.10.0: A font cache for SDL and SDL_ttf
 by Jonathan Dearborn
 Dedicated to the memory of Florian Hufsky
 
@@ -221,6 +221,20 @@ SDL_Color FC_GetDefaultColor(FC_Font* font);
 Uint8 FC_InRect(float x, float y, FC_Rect input_rect);
 // Given an offset (x,y) from the text draw position (the upper-left corner), returns the character position (UTF-8 index)
 Uint16 FC_GetPositionFromOffset(FC_Font* font, float x, float y, int column_width, FC_AlignEnum align, const char* formatted_text, ...);
+
+FC_Rect FC_GetBounds(FC_Font* font, float x, float y, FC_AlignEnum align, FC_Scale scale, const char* formatted_text, ...);
+
+// Returns the number of characters in the new wrapped text written into `result`.
+int FC_GetWrappedText(FC_Font* font, char* result, int max_result_size, Uint16 width, const char* formatted_text, ...);
+
+// note: handle SDL event types SDL_RENDER_TARGETS_RESET(>= SDL 2.0.2) and SDL_RENDER_DEVICE_RESET(>= SDL 2.0.4)
+void FC_ResetFontFromRendererReset(FC_Font* font, SDL_Renderer* renderer, Uint32 evType);
+
+/*! Returns the width of a single horizontal tab in multiples of the width of a space (default: 4) */
+unsigned int FC_GetTabWidth(void);
+
+/*! Changes the width of a horizontal tab in multiples of the width of a space (default: 4) */
+void FC_SetTabWidth(unsigned int width_in_spaces);
 
 // Setters
 
