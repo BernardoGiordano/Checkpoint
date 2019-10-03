@@ -29,11 +29,59 @@
 static bool validId(u64 id);
 static C2D_Image loadTextureIcon(smdh_s* smdh);
 
+static constexpr Tex3DS_SubTexture dsIconSubt3x = {32, 32, 0.0f, 1.0f, 1.0f, 0.0f};
+static C2D_Image dsIcon                         = {nullptr, &dsIconSubt3x};
+
 static std::vector<Title> titleSaves;
 static std::vector<Title> titleExtdatas;
 
 static void exportTitleListCache(std::vector<Title>& list, const std::u16string& path);
 static void importTitleListCache(void);
+
+static void loadDSIcon(u8* banner)
+{
+    static constexpr int WIDTH_POW2  = 32;
+    static constexpr int HEIGHT_POW2 = 32;
+    if (!dsIcon.tex)
+    {
+        dsIcon.tex = new C3D_Tex;
+        C3D_TexInit(dsIcon.tex, WIDTH_POW2, HEIGHT_POW2, GPU_RGB565);
+    }
+
+    struct bannerData
+    {
+        u16 version;
+        u16 crc;
+        u8 reserved[28];
+        u8 data[512];
+        u16 palette[16];
+    };
+    bannerData* iconData = (bannerData*)banner;
+
+    u16* output = (u16*)dsIcon.tex->data;
+    for (size_t x = 0; x < 32; x++)
+    {
+        for (size_t y = 0; y < 32; y++)
+        {
+            u32 srcOff   = (((y >> 3) * 4 + (x >> 3)) * 8 + (y & 7)) * 4 + ((x & 7) >> 1);
+            u32 srcShift = (x & 1) * 4;
+
+            u16 pIndex = (iconData->data[srcOff] >> srcShift) & 0xF;
+            u16 color  = 0xFFFF;
+            if (pIndex != 0)
+            {
+                u16 r = iconData->palette[pIndex] & 0x1F;
+                u16 g = (iconData->palette[pIndex] >> 5) & 0x1F;
+                u16 b = (iconData->palette[pIndex] >> 10) & 0x1F;
+                color = (r << 11) | (g << 6) | (g >> 4) | (b);
+            }
+
+            u32 dst     = ((((y >> 3) * (WIDTH_POW2 >> 3) + (x >> 3)) << 6) +
+                       ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3)));
+            output[dst] = color;
+        }
+    }
+}
 
 void Title::load(void)
 {
@@ -155,6 +203,11 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         }
 
         delete[] headerData;
+        headerData = new u8[0x23C0];
+        FSUSER_GetLegacyBannerData(mMedia, 0LL, headerData);
+        loadDSIcon(headerData);
+        mIcon = dsIcon;
+        delete[] headerData;
 
         mShortDescription = StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(_cardTitle));
         mLongDescription  = mShortDescription;
@@ -174,8 +227,6 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
                 Logger::getInstance().log(Logger::ERROR, "Failed to create backup with result 0x%08lX.", res);
             }
         }
-
-        mIcon = Gui::TWLIcon();
     }
 
     refreshDirectories();
@@ -814,7 +865,8 @@ static void importTitleListCache(void)
             title.setIcon(smallIcon);
         }
         else {
-            title.setIcon(Gui::TWLIcon());
+            // TODO: fix this to load icon from banner data
+            title.setIcon(Gui::noIcon());
         }
 
         titleSaves.at(i) = title;
@@ -860,7 +912,8 @@ static void importTitleListCache(void)
                 title.setIcon(smallIcon);
             }
             else {
-                title.setIcon(Gui::TWLIcon());
+                // TODO: fix this to load icon from banner data
+                title.setIcon(Gui::noIcon());
             }
 
             titleExtdatas.at(i) = title;
