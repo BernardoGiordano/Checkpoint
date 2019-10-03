@@ -497,8 +497,8 @@ static bool validId(u64 id)
 
 void loadTitles(bool forceRefresh)
 {
-    std::u16string savecachePath    = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache");
-    std::u16string extdatacachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache");
+    static const std::u16string savecachePath    = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache");
+    static const std::u16string extdatacachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache");
 
     // on refreshing
     titleSaves.clear();
@@ -865,7 +865,7 @@ static void importTitleListCache(void)
             title.setIcon(smallIcon);
         }
         else {
-            // TODO: fix this to load icon from banner data
+            // this cannot happen
             title.setIcon(Gui::noIcon());
         }
 
@@ -912,7 +912,7 @@ static void importTitleListCache(void)
                 title.setIcon(smallIcon);
             }
             else {
-                // TODO: fix this to load icon from banner data
+                // this cannot happen
                 title.setIcon(Gui::noIcon());
             }
 
