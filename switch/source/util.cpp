@@ -50,6 +50,10 @@ Result servicesInit(void)
 
     Logger::getInstance().log(Logger::INFO, "Starting Checkpoint loading...");
 
+    if (appletGetAppletType() != AppletType_Application) {
+        Logger::getInstance().log(Logger::WARN, "Please do not run Checkpoint in applet mode.");
+    }
+
     Result socinit = 0;
     if ((socinit = socketInitializeDefault()) == 0) {
         // nxlinkStdio();
