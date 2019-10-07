@@ -224,7 +224,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
             res = io::createDirectory(Archive::sdmc(), mSavePath);
             if (R_FAILED(res)) {
                 loadTitle = false;
-                Logger::getInstance().log(Logger::ERROR, "Failed to create backup with result 0x%08lX.", res);
+                Logger::getInstance().log(Logger::ERROR, "Failed to create backup directory with result 0x%08lX.", res);
             }
         }
     }

@@ -112,7 +112,13 @@ void MainScreen::drawTop(void) const
     C2D_DrawText(&timeText, C2D_WithColor, 4.0f, 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
 
     for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-        C2D_DrawImageAt(icon(k), selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
+        C2D_Image titleIcon = icon(k);
+        if (titleIcon.subtex->width == 48) {
+            C2D_DrawImageAt(titleIcon, selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
+        }
+        else {
+            C2D_DrawImageAt(titleIcon, selectorX(k) + 9, selectorY(k) + 9, 0.5f, NULL, 1.0f, 1.0f);
+        }
     }
 
     if (getTitleCount() > 0) {
