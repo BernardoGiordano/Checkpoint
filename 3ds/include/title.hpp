@@ -49,6 +49,8 @@ extern "C" {
 
 class Title {
 public:
+    ~Title(void);
+
     bool accessibleSave(void);
     bool accessibleExtdata(void);
     FS_CardType cardType(void);

@@ -35,10 +35,19 @@ static std::vector<Title> titleExtdatas;
 static void exportTitleListCache(std::vector<Title>& list, const std::u16string& path);
 static void importTitleListCache(void);
 
+static constexpr Tex3DS_SubTexture dsIconSubt3x = {32, 32, 0.0f, 1.0f, 1.0f, 0.0f};
+static C2D_Image dsIcon                         = {nullptr, &dsIconSubt3x};
+
 static void loadDSIcon(u8* banner)
 {
-    struct bannerData
-    {
+    static constexpr int WIDTH_POW2  = 32;
+    static constexpr int HEIGHT_POW2 = 32;
+    if (!dsIcon.tex) {
+        dsIcon.tex = new C3D_Tex;
+        C3D_TexInit(dsIcon.tex, WIDTH_POW2, HEIGHT_POW2, GPU_RGB565);
+    }
+
+    struct bannerData {
         u16 version;
         u16 crc;
         u8 reserved[28];
@@ -48,17 +57,14 @@ static void loadDSIcon(u8* banner)
     bannerData* iconData = (bannerData*)banner;
 
     u16* output = (u16*)dsIcon.tex->data;
-    for (size_t x = 0; x < 32; x++)
-    {
-        for (size_t y = 0; y < 32; y++)
-        {
+    for (size_t x = 0; x < 32; x++) {
+        for (size_t y = 0; y < 32; y++) {
             u32 srcOff   = (((y >> 3) * 4 + (x >> 3)) * 8 + (y & 7)) * 4 + ((x & 7) >> 1);
             u32 srcShift = (x & 1) * 4;
 
             u16 pIndex = (iconData->data[srcOff] >> srcShift) & 0xF;
             u16 color  = 0xFFFF;
-            if (pIndex != 0)
-            {
+            if (pIndex != 0) {
                 u16 r = iconData->palette[pIndex] & 0x1F;
                 u16 g = (iconData->palette[pIndex] >> 5) & 0x1F;
                 u16 b = (iconData->palette[pIndex] >> 10) & 0x1F;
@@ -82,7 +88,6 @@ void Title::load(void)
     mLongDescription   = StringUtils::UTF8toUTF16("");
     mSavePath          = StringUtils::UTF8toUTF16("");
     mExtdataPath       = StringUtils::UTF8toUTF16("");
-    mIcon              = Gui::noIcon();
     mAccessibleSave    = false;
     mAccessibleExtdata = false;
     mSaves.clear();
@@ -102,7 +107,6 @@ void Title::load(u64 id, u8* _productCode, bool accessibleSave, bool accessibleE
     mMedia             = media;
     mCard              = cardType;
     mCardType          = card;
-    mIcon              = Gui::noIcon();
 
     memcpy(productCode, _productCode, 16);
 }
@@ -184,19 +188,18 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         _cardTitle[13] = '\0';
         _gameCode[5]   = '\0';
 
-        res = SPIGetCardType(&mCardType, (_gameCode[0] == 'I') ? 1 : 0);
-        if (R_FAILED(res)) {
-            delete[] headerData;
-            Logger::getInstance().log(Logger::ERROR, "Failed get SPI Card Type with result 0x%08lX.", res);
-            return false;
-        }
-
         delete[] headerData;
         headerData = new u8[0x23C0];
         FSUSER_GetLegacyBannerData(mMedia, 0LL, headerData);
         loadDSIcon(headerData);
         mIcon = dsIcon;
         delete[] headerData;
+
+        res = SPIGetCardType(&mCardType, (_gameCode[0] == 'I') ? 1 : 0);
+        if (R_FAILED(res)) {
+            Logger::getInstance().log(Logger::ERROR, "Failed get SPI Card Type with result 0x%08lX.", res);
+            return false;
+        }
 
         mShortDescription = StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(_cardTitle));
         mLongDescription  = mShortDescription;
@@ -221,6 +224,8 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
     refreshDirectories();
     return loadTitle;
 }
+
+Title::~Title(void) {}
 
 bool Title::accessibleSave(void)
 {

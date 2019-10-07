@@ -42,8 +42,5 @@ inline volatile bool g_isLoadingTitles = false;
 
 inline std::u16string g_currentFile;
 inline bool g_isTransferringFile = false;
-static inline constexpr Tex3DS_SubTexture dsIconSubt3x = {32, 32, 0.0f, 1.0f, 1.0f, 0.0f};
-inline C2D_Image dsIcon                         = {nullptr, &dsIconSubt3x};
-
 
 #endif
