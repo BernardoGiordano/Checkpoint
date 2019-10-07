@@ -35,6 +35,9 @@ int main()
         exit(-1);
     }
 
+    dsIcon.tex = new C3D_Tex;
+    C3D_TexInit(dsIcon.tex, 32, 32, GPU_RGB565);
+
     g_screen = std::make_unique<MainScreen>();
 
     Threads::create((ThreadFunc)Threads::titles);
