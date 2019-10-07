@@ -112,7 +112,13 @@ void MainScreen::drawTop(void) const
     C2D_DrawText(&timeText, C2D_WithColor, 4.0f, 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
 
     for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-        C2D_DrawImageAt(icon(k), selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
+        C2D_Image titleIcon = icon(k);
+        if (titleIcon.subtex->width == 48) {
+            C2D_DrawImageAt(titleIcon, selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
+        }
+        else {
+            C2D_DrawImageAt(titleIcon, selectorX(k) + 9, selectorY(k) + 9, 0.5f, NULL, 1.0f, 1.0f);
+        }
     }
 
     if (getTitleCount() > 0) {
@@ -224,7 +230,12 @@ void MainScreen::drawBottom(void) const
         C2D_DrawText(&media, C2D_WithColor, 75, 47 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
 
         C2D_DrawRectSolid(260, 27, 0.5f, 52, 52, COLOR_BLACK);
-        C2D_DrawImageAt(title.icon(), 262, 29, 0.5f, NULL, 1.0f, 1.0f);
+        if (title.icon().subtex->width == 48) {
+            C2D_DrawImageAt(title.icon(), 262, 29, 0.5f, NULL, 1.0f, 1.0f);
+        }
+        else {
+            C2D_DrawImageAt(title.icon(), 262 + 8, 29 + 8, 0.5f, NULL, 1.0f, 1.0f);
+        }
 
         C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_GREY_DARK);
         directoryList->draw(g_bottomScrollEnabled);

@@ -26,11 +26,6 @@
 
 #include "gui.hpp"
 
-C2D_Image Gui::TWLIcon(void)
-{
-    return C2D_SpriteSheetGetImage(spritesheet, sprites_twlcart_idx);
-}
-
 C2D_Image Gui::noIcon(void)
 {
     return C2D_SpriteSheetGetImage(spritesheet, sprites_noicon_idx);
