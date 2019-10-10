@@ -51,7 +51,7 @@ Result servicesInit(void)
     Logger::getInstance().log(Logger::INFO, "Starting Checkpoint loading...");
 
     if (appletGetAppletType() != AppletType_Application) {
-        Logger::getInstance().log(Logger::WARN, "Please do not run Checkpoint in applet mode.");
+        Logger::getInstance().log(Logger::WARN, "Please do not run Checkpoint in applet mode.\nYou need to go back to your home screen then press and hold R then tap on one of your games.");
     }
 
     Result socinit = 0;
