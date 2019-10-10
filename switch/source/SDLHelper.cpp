@@ -81,13 +81,6 @@ void SDLH_ClearScreen(SDL_Color color)
 
 void SDLH_Render(void)
 {
-    // show watermark for album users
-    if (appletGetAppletType() != AppletType_Application) {
-        static const char* s = "Please do not run Checkpoint in applet mode.";
-        SDLH_DrawRect(0, 0, 1280, 720, COLOR_WATERMARK);
-        SDLH_DrawText(36, 240, 340, COLOR_WHITE, s);
-    }
-
     g_currentTime = SDL_GetTicks() / 1000.f;
     SDL_RenderPresent(s_renderer);
 }

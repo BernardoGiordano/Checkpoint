@@ -47,9 +47,12 @@ Result servicesInit(void)
     io::createDirectory("sdmc:/switch");
     io::createDirectory("sdmc:/switch/Checkpoint");
     io::createDirectory("sdmc:/switch/Checkpoint/saves");
-    io::createDirectory("sdmc:/switch/Checkpoint/cheats");
 
     Logger::getInstance().log(Logger::INFO, "Starting Checkpoint loading...");
+
+    if (appletGetAppletType() != AppletType_Application) {
+        Logger::getInstance().log(Logger::WARN, "Please do not run Checkpoint in applet mode.");
+    }
 
     Result socinit = 0;
     if ((socinit = socketInitializeDefault()) == 0) {
