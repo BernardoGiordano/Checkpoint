@@ -918,7 +918,7 @@ static void importTitleListCache(void)
             // avoid to copy a cartridge title into the extdata list twice
             if (i != 0 && pos == 0) {
                 auto newpos         = find(alreadystored.rbegin(), alreadystored.rend(), id);
-                titleExtdatas.at(i) = titleSaves.at(alreadystored.rend() - newpos);
+                titleExtdatas.at(i) = titleSaves.at(alreadystored.rend() - newpos - 1);
             }
             else {
                 titleExtdatas.at(i) = titleSaves.at(pos);
