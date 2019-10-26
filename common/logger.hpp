@@ -47,19 +47,22 @@ public:
     template <typename... Args>
     void log(const std::string& level, const std::string& format = {}, Args... args)
     {
+        buffer += StringUtils::format(("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);
+    }
+
+    void flush(void)
+    {
+        mFile = fopen(mPath.c_str(), "a");
         if (mFile != NULL) {
-            fprintf(mFile, ("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);
+            fprintf(mFile, buffer.c_str());
+            fprintf(stderr, buffer.c_str());
+            fclose(mFile);
         }
     }
 
 private:
-    Logger(void) { mFile = fopen(mPath.c_str(), "a"); }
-    ~Logger(void)
-    {
-        if (mFile != NULL) {
-            fclose(mFile);
-        }
-    }
+    Logger(void) { buffer = ""; }
+    ~Logger(void) {}
 
     Logger(Logger const&) = delete;
     void operator=(Logger const&) = delete;
@@ -73,6 +76,8 @@ private:
 #endif
 
     FILE* mFile;
+
+    std::string buffer;
 };
 
 #endif
