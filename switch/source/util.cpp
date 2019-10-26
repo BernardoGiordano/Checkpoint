@@ -28,6 +28,8 @@
 
 void servicesExit(void)
 {
+    Logger::getInstance().flush();
+
     if (g_ftpAvailable)
         ftp_exit();
     if (g_notificationLedAvailable)
