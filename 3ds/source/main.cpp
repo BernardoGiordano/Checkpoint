@@ -32,6 +32,7 @@
 int main()
 {
     if (R_FAILED(servicesInit())) {
+        Logger::getInstance().flush();
         exit(-1);
     }
 
@@ -62,6 +63,8 @@ int main()
         Gui::frameEnd();
         g_screen->doUpdate(&touch);
     }
+
+    Logger::getInstance().flush();
 
     exit(0);
 }
