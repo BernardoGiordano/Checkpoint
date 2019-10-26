@@ -30,7 +30,6 @@
 #include "Overlay.hpp"
 #include "YesNoOverlay.hpp"
 #include "cheatmanager.hpp"
-#include "clickable.hpp"
 #include "colors.hpp"
 #include "directory.hpp"
 #include "scrollable.hpp"
