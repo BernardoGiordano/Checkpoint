@@ -29,11 +29,13 @@
 KeyboardManager::KeyboardManager(void)
 {
     systemKeyboardAvailable = false;
-    SwkbdConfig kbd;
-    res = swkbdCreate(&kbd, 0);
-    if (R_SUCCEEDED(res)) {
-        systemKeyboardAvailable = true;
-        swkbdClose(&kbd);
+    if (appletGetAppletType() == AppletType_Application) {
+        SwkbdConfig kbd;
+        res = swkbdCreate(&kbd, 0);
+        if (R_SUCCEEDED(res)) {
+            systemKeyboardAvailable = true;
+            swkbdClose(&kbd);
+        }
     }
 }
 

@@ -191,14 +191,19 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t 
     }
     else {
         if (isNewFolder) {
-            std::pair<bool, std::string> keyboardResponse = KeyboardManager::get().keyboard(suggestion);
-            if (keyboardResponse.first) {
-                customPath = StringUtils::removeForbiddenCharacters(keyboardResponse.second);
+            if (KeyboardManager::get().isSystemKeyboardAvailable().first) {
+                std::pair<bool, std::string> keyboardResponse = KeyboardManager::get().keyboard(suggestion);
+                if (keyboardResponse.first) {
+                    customPath = StringUtils::removeForbiddenCharacters(keyboardResponse.second);
+                }
+                else {
+                    FileSystem::unmount();
+                    Logger::getInstance().log(Logger::INFO, "Copy operation aborted by the user through the system keyboard.");
+                    return std::make_tuple(false, 0, "Operation aborted by the user.");
+                }
             }
             else {
-                FileSystem::unmount();
-                Logger::getInstance().log(Logger::INFO, "Copy operation aborted by the user through the system keyboard.");
-                return std::make_tuple(false, 0, "Operation aborted by the user.");
+                customPath = suggestion;
             }
         }
         else {
@@ -243,8 +248,8 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t 
     // TODO: figure out if this code can be accessed at all
     auto systemKeyboardAvailable = KeyboardManager::get().isSystemKeyboardAvailable();
     if (!systemKeyboardAvailable.first) {
-        return std::make_tuple(
-            false, systemKeyboardAvailable.second, "System keyboard applet not accessible.\nThe suggested destination folder was used\ninstead.");
+        return std::make_tuple(true, systemKeyboardAvailable.second,
+            "Progress correctly saved to disk.\nSystem keyboard applet was not\naccessible. The suggested destination\nfolder was used instead.");
     }
 
     ret = std::make_tuple(true, 0, "Progress correctly saved to disk.");
