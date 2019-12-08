@@ -32,7 +32,7 @@ CheatManagerOverlay::CheatManagerOverlay(Screen& screen, const std::string& mkey
     multiSelected             = false;
     std::string existingCheat = "";
 
-    std::string root = StringUtils::format("/atmosphere/titles/%s/cheats", key.c_str());
+    std::string root = StringUtils::format("/atmosphere/contents/%s/cheats", key.c_str());
     Directory dir(root);
     if (dir.good()) {
         for (size_t i = 0; i < dir.size(); i++) {

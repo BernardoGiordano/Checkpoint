@@ -77,7 +77,7 @@ void CheatManager::save(const std::string& key, const std::vector<std::string>& 
 {
     static size_t MAGIC_LEN = strlen(SELECTED_MAGIC);
 
-    std::string idfolder   = StringUtils::format("/atmosphere/titles/%s", key.c_str());
+    std::string idfolder   = StringUtils::format("/atmosphere/contents/%s", key.c_str());
     std::string rootfolder = idfolder + "/cheats";
     mkdir(idfolder.c_str(), 777);
     mkdir(rootfolder.c_str(), 777);
