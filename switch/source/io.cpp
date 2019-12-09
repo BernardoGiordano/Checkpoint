@@ -245,7 +245,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t 
         blinkLed(4);
         ret = std::make_tuple(true, 0, "Progress correctly saved to disk.");
     }
-    // TODO: figure out if this code can be accessed at all
+
     auto systemKeyboardAvailable = KeyboardManager::get().isSystemKeyboardAvailable();
     if (!systemKeyboardAvailable.first) {
         return std::make_tuple(true, systemKeyboardAvailable.second,
