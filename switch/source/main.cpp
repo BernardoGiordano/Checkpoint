@@ -52,13 +52,13 @@ int main(void)
 
     loadTitles();
     // get the user IDs
-    std::vector<u128> userIds = Account::ids();
+    std::vector<AccountUid> userIds = Account::ids();
     // set g_currentUId to a default user in case we loaded at least one user
     if (g_currentUId == 0)
         g_currentUId = userIds.at(0);
 
     Thread networkThread;
-    threadCreate(&networkThread, (ThreadFunc)networkLoop, nullptr, 16 * 1000, 0x2C, -2);
+    threadCreate(&networkThread, (ThreadFunc)networkLoop, nullptr, nullptr, 16 * 1000, 0x2C, -2);
     threadStart(&networkThread);
 
     while (appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_PLUS)) {

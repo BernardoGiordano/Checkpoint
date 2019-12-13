@@ -28,6 +28,7 @@
 #define IO_HPP
 
 #include "KeyboardManager.hpp"
+#include "account.hpp"
 #include "directory.hpp"
 #include "multiselection.hpp"
 #include "title.hpp"
@@ -42,8 +43,8 @@
 #define BUFFER_SIZE 0x80000
 
 namespace io {
-    std::tuple<bool, Result, std::string> backup(size_t index, u128 uid, size_t cellIndex);
-    std::tuple<bool, Result, std::string> restore(size_t index, u128 uid, size_t cellIndex, const std::string& nameFromCell);
+    std::tuple<bool, Result, std::string> backup(size_t index, AccountUid uid, size_t cellIndex);
+    std::tuple<bool, Result, std::string> restore(size_t index, AccountUid uid, size_t cellIndex, const std::string& nameFromCell);
 
     Result copyDirectory(const std::string& srcPath, const std::string& dstPath);
     void copyFile(const std::string& srcPath, const std::string& dstPath);

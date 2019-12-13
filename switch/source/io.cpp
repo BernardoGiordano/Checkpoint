@@ -151,7 +151,7 @@ Result io::deleteFolderRecursively(const std::string& path)
     return 0;
 }
 
-std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t cellIndex)
+std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, size_t cellIndex)
 {
     const bool isNewFolder                    = cellIndex == 0;
     Result res                                = 0;
@@ -160,7 +160,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t 
     getTitle(title, uid, index);
 
     Logger::getInstance().log(Logger::INFO, "Started backup of %s. Title id: 0x%016lX; User id: 0x%lX%lX.", title.name().c_str(), title.id(),
-        (u64)(title.userId() >> 8), (u64)(title.userId()));
+        title.userId().uid[1], title.userId().uid[0]);
 
     FsFileSystem fileSystem;
     res = FileSystem::mount(&fileSystem, title.id(), title.userId());
@@ -169,14 +169,14 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t 
         if (rc == -1) {
             FileSystem::unmount();
             Logger::getInstance().log(Logger::ERROR, "Failed to mount filesystem during backup. Title id: 0x%016lX; User id: 0x%lX%lX.", title.id(),
-                (u64)(title.userId() >> 8), (u64)(title.userId()));
+                title.userId().uid[1], title.userId().uid[0]);
             return std::make_tuple(false, -2, "Failed to mount save.");
         }
     }
     else {
         Logger::getInstance().log(Logger::ERROR,
             "Failed to mount filesystem during backup with result 0x%08lX. Title id: 0x%016lX; User id: 0x%lX%lX.", res, title.id(),
-            (u64)(title.userId() >> 8), (u64)(title.userId()));
+            title.userId().uid[1], title.userId().uid[0]);
         return std::make_tuple(false, res, "Failed to mount save.");
     }
 
@@ -257,7 +257,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, u128 uid, size_t 
     return ret;
 }
 
-std::tuple<bool, Result, std::string> io::restore(size_t index, u128 uid, size_t cellIndex, const std::string& nameFromCell)
+std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, size_t cellIndex, const std::string& nameFromCell)
 {
     Result res                                = 0;
     std::tuple<bool, Result, std::string> ret = std::make_tuple(false, -1, "");
@@ -265,23 +265,23 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, u128 uid, size_t
     getTitle(title, uid, index);
 
     Logger::getInstance().log(Logger::INFO, "Started restore of %s. Title id: 0x%016lX; User id: 0x%lX%lX.", title.name().c_str(), title.id(),
-        (u64)(title.userId() >> 8), (u64)(title.userId()));
+        title.userId().uid[1], title.userId().uid[0]);
 
     FsFileSystem fileSystem;
-    res = title.systemSave() ? FileSystem::mount(&fileSystem, title.id()) : FileSystem::mount(&fileSystem, title.id(), title.userId());
+    res = FileSystem::mount(&fileSystem, title.id(), title.userId());
     if (R_SUCCEEDED(res)) {
         int rc = FileSystem::mount(fileSystem);
         if (rc == -1) {
             FileSystem::unmount();
             Logger::getInstance().log(Logger::ERROR, "Failed to mount filesystem during restore. Title id: 0x%016lX; User id: 0x%lX%lX.", title.id(),
-                (u64)(title.userId() >> 8), (u64)(title.userId()));
+                title.userId().uid[1], title.userId().uid[0]);
             return std::make_tuple(false, -2, "Failed to mount save.");
         }
     }
     else {
         Logger::getInstance().log(Logger::ERROR,
             "Failed to mount filesystem during restore with result 0x%08lX. Title id: 0x%016lX; User id: 0x%lX%lX.", res, title.id(),
-            (u64)(title.userId() >> 8), (u64)(title.userId()));
+            title.userId().uid[1], title.userId().uid[0]);
         return std::make_tuple(false, res, "Failed to mount save.");
     }
 

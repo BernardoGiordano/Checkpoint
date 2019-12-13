@@ -176,13 +176,13 @@ HidsysNotificationLedPattern blinkLedPattern(u8 times)
 void blinkLed(u8 times)
 {
     if (g_notificationLedAvailable) {
-        size_t n;
+        s32 n;
         u64 uniquePadIds[2];
         HidsysNotificationLedPattern pattern = blinkLedPattern(times);
         memset(uniquePadIds, 0, sizeof(uniquePadIds));
         Result res = hidsysGetUniquePadsFromNpad(hidGetHandheldMode() ? CONTROLLER_HANDHELD : CONTROLLER_PLAYER_1, uniquePadIds, 2, &n);
         if (R_SUCCEEDED(res)) {
-            for (size_t i = 0; i < n; i++) {
+            for (s32 i = 0; i < n; i++) {
                 hidsysSetNotificationLedPattern(&pattern, uniquePadIds[i]);
             }
         }
