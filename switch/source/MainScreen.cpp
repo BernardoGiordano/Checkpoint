@@ -186,12 +186,13 @@ void MainScreen::draw() const
         SDLH_DrawText(24, 100, 300, theme().c6, "\ue004 \ue005 to scroll between pages");
         SDLH_DrawText(24, 100, 330, theme().c6, "\ue000 to enter the selected title");
         SDLH_DrawText(24, 100, 360, theme().c6, "\ue001 to exit the selected title");
-        SDLH_DrawText(24, 100, 390, theme().c6, "\ue003 to multiselect title");
-        SDLH_DrawText(24, 100, 420, theme().c6, "Hold \ue003 to select all titles");
+        SDLH_DrawText(24, 100, 390, theme().c6, "\ue002 to change sort mode");
+        SDLH_DrawText(24, 100, 420, theme().c6, "\ue003 to multiselect title");
+        SDLH_DrawText(24, 100, 450, theme().c6, "Hold \ue003 to select all titles");
         if (Configuration::getInstance().isPKSMBridgeEnabled()) {
-            SDLH_DrawText(24, 100, 420, theme().c6, "\ue004 + \ue005 to enable PKSM bridge");
+            SDLH_DrawText(24, 100, 450, theme().c6, "\ue004 + \ue005 to enable PKSM bridge");
         }
-        SDLH_DrawText(24, 616, 450, theme().c6, "\ue002 to delete a backup");
+        SDLH_DrawText(24, 616, 480, theme().c6, "\ue002 to delete a backup");
         if (gethostid() != INADDR_LOOPBACK) {
             if (g_ftpAvailable && Configuration::getInstance().isFTPEnabled()) {
                 SDLH_DrawText(24, 16 * 6 + checkpoint_w + 8 + ver_w + inst_w, 642 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
@@ -389,6 +390,9 @@ void MainScreen::handleEvents(touchPosition* touch)
                     },
                     [this]() { this->removeOverlay(); });
             }
+        }
+        else {
+            rotateSortMode();
         }
     }
 

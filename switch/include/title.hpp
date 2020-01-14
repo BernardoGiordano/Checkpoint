@@ -40,6 +40,8 @@
 #include <utility>
 #include <vector>
 
+typedef enum { SORT_LAST_PLAYED, SORT_PLAY_TIME, SORT_ALPHA, SORT_MODES_COUNT } Sort_t;
+
 class Title {
 public:
     void init(u8 saveDataType, u64 titleid, AccountUid userID, const std::string& name, const std::string& author);
@@ -51,8 +53,11 @@ public:
     u64 id(void);
     std::string name(void);
     std::string path(void);
+    u32 playTimeMinutes(void);
     std::string playTime(void);
-    void playTime(std::string playTime);
+    void playTimeMinutes(u32 playTimeMinutes);
+    u32 lastPlayedTimestamp(void);
+    void lastPlayedTimestamp(u32 lastPlayedTimestamp);
     std::string fullPath(size_t index);
     void refreshDirectories(void);
     u64 saveId();
@@ -75,12 +80,15 @@ private:
     std::vector<std::string> mFullSavePaths;
     u8 mSaveDataType;
     std::pair<std::string, std::string> mDisplayName;
-    std::string mPlayTime;
+    u32 mPlayTimeMinutes;
+    u32 mLastPlayedTimestamp;
 };
 
 void getTitle(Title& dst, AccountUid uid, size_t i);
 size_t getTitleCount(AccountUid uid);
 void loadTitles(void);
+void sortTitles(void);
+void rotateSortMode(void);
 void refreshDirectories(u64 id);
 bool favorite(AccountUid uid, int i);
 void freeIcons(void);

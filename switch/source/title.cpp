@@ -28,6 +28,7 @@
 
 static std::unordered_map<AccountUid, std::vector<Title>> titles;
 static std::unordered_map<u64, SDL_Texture*> icons;
+static Sort_t sortMode;
 
 void freeIcons(void)
 {
@@ -156,15 +157,33 @@ SDL_Texture* Title::icon(void)
     return it != icons.end() ? it->second : NULL;
 }
 
-std::string Title::playTime(void)
+u32 Title::playTimeMinutes(void)
 {
-    return mPlayTime;
+    return mPlayTimeMinutes;
 }
 
-void Title::playTime(std::string playTime)
+
+std::string Title::playTime(void)
 {
-    mPlayTime = playTime;
+    return StringUtils::format("%d", mPlayTimeMinutes / 60) + ":" +
+           StringUtils::format("%02d", mPlayTimeMinutes % 60) + " hours";
 }
+
+void Title::playTimeMinutes(u32 playTimeMinutes)
+{
+    mPlayTimeMinutes = playTimeMinutes;
+}
+
+u32 Title::lastPlayedTimestamp(void)
+{
+    return mLastPlayedTimestamp;
+}
+
+void Title::lastPlayedTimestamp(u32 lastPlayedTimestamp)
+{
+    mLastPlayedTimestamp = lastPlayedTimestamp;
+}
+
 
 void Title::refreshDirectories(void)
 {
@@ -250,8 +269,8 @@ void loadTitles(void)
                         PdmPlayStatistics stats;
                         res = pdmqryQueryPlayStatisticsByApplicationIdAndUserAccountId(tid, uid, &stats);
                         if (R_SUCCEEDED(res)) {
-                            title.playTime(StringUtils::format("%d", stats.playtimeMinutes / 60) + ":" +
-                                           StringUtils::format("%02d", stats.playtimeMinutes % 60) + " hours");
+                            title.playTimeMinutes(stats.playtimeMinutes);
+                            title.lastPlayedTimestamp(stats.last_timestampUser);
                         }
 
                         loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
@@ -278,16 +297,31 @@ void loadTitles(void)
     free(nsacd);
     fsSaveDataInfoReaderClose(&reader);
 
+    sortTitles();
+}
+
+void sortTitles(void) {
     for (auto& vect : titles) {
         std::sort(vect.second.begin(), vect.second.end(), [](Title& l, Title& r) {
             if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
                 return Configuration::getInstance().favorite(l.id());
             }
-            else {
+            switch (sortMode) {
+            case SORT_LAST_PLAYED:
+                return l.lastPlayedTimestamp() > r.lastPlayedTimestamp();
+            case SORT_PLAY_TIME:
+                return l.playTimeMinutes() > r.playTimeMinutes();
+            case SORT_ALPHA:
+            default:
                 return l.name() < r.name();
             }
         });
     }
+}
+
+void rotateSortMode(void) {
+    sortMode = static_cast<Sort_t>((sortMode + 1) % SORT_MODES_COUNT);
+    sortTitles();
 }
 
 void getTitle(Title& dst, AccountUid uid, size_t i)
