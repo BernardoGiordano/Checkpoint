@@ -40,8 +40,6 @@
 #include <utility>
 #include <vector>
 
-typedef enum { SORT_LAST_PLAYED, SORT_PLAY_TIME, SORT_ALPHA, SORT_MODES_COUNT } Sort_t;
-
 class Title {
 public:
     void init(u8 saveDataType, u64 titleid, AccountUid userID, const std::string& name, const std::string& author);

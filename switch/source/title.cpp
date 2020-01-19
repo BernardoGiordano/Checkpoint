@@ -28,7 +28,6 @@
 
 static std::unordered_map<AccountUid, std::vector<Title>> titles;
 static std::unordered_map<u64, SDL_Texture*> icons;
-static Sort_t sortMode;
 
 void freeIcons(void)
 {
@@ -72,11 +71,11 @@ void Title::init(u8 saveDataType, u64 id, AccountUid userID, const std::string& 
     }
     else {
         // check for parenthesis
-        size_t pos1 = aname.find("(");
+        size_t pos1 = aname.rfind("(");
         size_t pos2 = aname.rfind(")");
         if (pos1 != std::string::npos && pos2 != std::string::npos) {
             std::string name1 = aname.substr(0, pos1);
-            std::string name2 = aname.substr(pos1 + 1, pos2 - pos1);
+            std::string name2 = aname.substr(pos1 + 1, pos2 - 1 - pos1);
             StringUtils::trim(name1);
             StringUtils::trim(name2);
             mDisplayName.first  = name1;
@@ -162,11 +161,9 @@ u32 Title::playTimeMinutes(void)
     return mPlayTimeMinutes;
 }
 
-
 std::string Title::playTime(void)
 {
-    return StringUtils::format("%d", mPlayTimeMinutes / 60) + ":" +
-           StringUtils::format("%02d", mPlayTimeMinutes % 60) + " hours";
+    return StringUtils::format("%d", mPlayTimeMinutes / 60) + ":" + StringUtils::format("%02d", mPlayTimeMinutes % 60) + " hours";
 }
 
 void Title::playTimeMinutes(u32 playTimeMinutes)
@@ -183,7 +180,6 @@ void Title::lastPlayedTimestamp(u32 lastPlayedTimestamp)
 {
     mLastPlayedTimestamp = lastPlayedTimestamp;
 }
-
 
 void Title::refreshDirectories(void)
 {
@@ -300,27 +296,29 @@ void loadTitles(void)
     sortTitles();
 }
 
-void sortTitles(void) {
+void sortTitles(void)
+{
     for (auto& vect : titles) {
         std::sort(vect.second.begin(), vect.second.end(), [](Title& l, Title& r) {
             if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
                 return Configuration::getInstance().favorite(l.id());
             }
-            switch (sortMode) {
-            case SORT_LAST_PLAYED:
-                return l.lastPlayedTimestamp() > r.lastPlayedTimestamp();
-            case SORT_PLAY_TIME:
-                return l.playTimeMinutes() > r.playTimeMinutes();
-            case SORT_ALPHA:
-            default:
-                return l.name() < r.name();
+            switch (g_sortMode) {
+                case SORT_LAST_PLAYED:
+                    return l.lastPlayedTimestamp() > r.lastPlayedTimestamp();
+                case SORT_PLAY_TIME:
+                    return l.playTimeMinutes() > r.playTimeMinutes();
+                case SORT_ALPHA:
+                default:
+                    return l.name() < r.name();
             }
         });
     }
 }
 
-void rotateSortMode(void) {
-    sortMode = static_cast<Sort_t>((sortMode + 1) % SORT_MODES_COUNT);
+void rotateSortMode(void)
+{
+    g_sortMode = static_cast<sort_t>((g_sortMode + 1) % SORT_MODES_COUNT);
     sortTitles();
 }
 
