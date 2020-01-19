@@ -26,11 +26,11 @@
 
 #include "account.hpp"
 
-static std::map<u128, User> mUsers;
+static std::map<AccountUid, User> mUsers;
 
 Result Account::init(void)
 {
-    return accountInitialize();
+    return accountInitialize(AccountServiceType_Application);
 }
 
 void Account::exit(void)
@@ -41,16 +41,16 @@ void Account::exit(void)
     accountExit();
 }
 
-std::vector<u128> Account::ids(void)
+std::vector<AccountUid> Account::ids(void)
 {
-    std::vector<u128> v;
+    std::vector<AccountUid> v;
     for (auto& value : mUsers) {
         v.push_back(value.second.id);
     }
     return v;
 }
 
-static User getUser(u128 id)
+static User getUser(AccountUid id)
 {
     User user{id, "", "", NULL};
     AccountProfile profile;
@@ -58,12 +58,12 @@ static User getUser(u128 id)
     memset(&profilebase, 0, sizeof(profilebase));
 
     if (R_SUCCEEDED(accountGetProfile(&profile, id)) && R_SUCCEEDED(accountProfileGet(&profile, NULL, &profilebase))) {
-        user.name      = std::string(profilebase.username, 0x20);
+        user.name      = std::string(profilebase.nickname, 0x20);
         user.shortName = trimToFit(user.name, 96 - g_username_dotsize * 2, 13);
 
         // load icon
         u8* buffer;
-        size_t image_size, real_size;
+        u32 image_size, real_size;
         if (R_SUCCEEDED(accountProfileGetImageSize(&profile, &image_size)) && (buffer = (u8*)malloc(image_size)) != NULL &&
             R_SUCCEEDED(accountProfileLoadImage(&profile, buffer, image_size, &real_size))) {
             SDLH_LoadImage(&user.icon, buffer, image_size);
@@ -75,9 +75,9 @@ static User getUser(u128 id)
     return user;
 }
 
-std::string Account::username(u128 id)
+std::string Account::username(AccountUid id)
 {
-    std::map<u128, User>::const_iterator got = mUsers.find(id);
+    std::map<AccountUid, User>::const_iterator got = mUsers.find(id);
     if (got == mUsers.end()) {
         User user = getUser(id);
         mUsers.insert({id, user});
@@ -87,9 +87,9 @@ std::string Account::username(u128 id)
     return got->second.name;
 }
 
-std::string Account::shortName(u128 id)
+std::string Account::shortName(AccountUid id)
 {
-    std::map<u128, User>::const_iterator got = mUsers.find(id);
+    std::map<AccountUid, User>::const_iterator got = mUsers.find(id);
     if (got == mUsers.end()) {
         User user = getUser(id);
         mUsers.insert({id, user});
@@ -99,9 +99,9 @@ std::string Account::shortName(u128 id)
     return got->second.shortName;
 }
 
-SDL_Texture* Account::icon(u128 id)
+SDL_Texture* Account::icon(AccountUid id)
 {
-    std::map<u128, User>::const_iterator got = mUsers.find(id);
+    std::map<AccountUid, User>::const_iterator got = mUsers.find(id);
     if (got == mUsers.end()) {
         User user = getUser(id);
         mUsers.insert({id, user});
@@ -110,9 +110,9 @@ SDL_Texture* Account::icon(u128 id)
     return got->second.icon;
 }
 
-u128 Account::selectAccount(void)
+AccountUid Account::selectAccount(void)
 {
-    u128 out_id = 0;
+    AccountUid out_id;
     LibAppletArgs args;
     libappletArgsCreate(&args, 0x10000);
     u8 st_in[0xA0]  = {0};
@@ -121,8 +121,8 @@ u128 Account::selectAccount(void)
 
     Result res = libappletLaunch(AppletId_playerSelect, &args, st_in, 0xA0, st_out, 0x18, &repsz);
     if (R_SUCCEEDED(res)) {
-        u64 lres = *(u64*)st_out;
-        u128 uid = *(u128*)&st_out[8];
+        u64 lres       = *(u64*)st_out;
+        AccountUid uid = *(AccountUid*)&st_out[8];
         if (lres == 0)
             out_id = uid;
     }

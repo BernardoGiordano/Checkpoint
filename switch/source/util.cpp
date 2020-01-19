@@ -130,8 +130,8 @@ std::u16string StringUtils::UTF8toUTF16(const char* src)
 std::string StringUtils::removeAccents(std::string str)
 {
     std::u16string src = UTF8toUTF16(str.c_str());
-    const std::u16string illegal = UTF8toUTF16("ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿ");
-    const std::u16string fixed = UTF8toUTF16("AAAAAAECEEEEIIIIDNOOOOOx0UUUUYPsaaaaaaeceeeeiiiiOnooooo/0uuuuypy");
+    const std::u16string illegal = UTF8toUTF16("ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüūýþÿ");
+    const std::u16string fixed = UTF8toUTF16("AAAAAAECEEEEIIIIDNOOOOOx0UUUUYPsaaaaaaeceeeeiiiiOnooooo/0uuuuuypy");
 
     for (size_t i = 0, sz = src.length(); i < sz; i++) {
         size_t index = illegal.find(src[i]);
@@ -176,13 +176,13 @@ HidsysNotificationLedPattern blinkLedPattern(u8 times)
 void blinkLed(u8 times)
 {
     if (g_notificationLedAvailable) {
-        size_t n;
+        s32 n;
         u64 uniquePadIds[2];
         HidsysNotificationLedPattern pattern = blinkLedPattern(times);
         memset(uniquePadIds, 0, sizeof(uniquePadIds));
         Result res = hidsysGetUniquePadsFromNpad(hidGetHandheldMode() ? CONTROLLER_HANDHELD : CONTROLLER_PLAYER_1, uniquePadIds, 2, &n);
         if (R_SUCCEEDED(res)) {
-            for (size_t i = 0; i < n; i++) {
+            for (s32 i = 0; i < n; i++) {
                 hidsysSetNotificationLedPattern(&pattern, uniquePadIds[i]);
             }
         }

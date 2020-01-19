@@ -25,6 +25,7 @@
  */
 
 #include "KeyboardManager.hpp"
+#include "account.hpp"
 #include "title.hpp"
 #include <arpa/inet.h>
 #include <errno.h>
@@ -41,5 +42,5 @@
 #define PKSM_PORT 34567
 
 bool isPKSMBridgeTitle(u64 id);
-std::tuple<bool, Result, std::string> sendToPKSMBrigde(size_t index, u128 uid, size_t cellIndex);
-std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, u128 uid, size_t cellIndex);
+std::tuple<bool, Result, std::string> sendToPKSMBrigde(size_t index, AccountUid uid, size_t cellIndex);
+std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUid uid, size_t cellIndex);

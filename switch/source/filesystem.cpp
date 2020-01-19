@@ -26,14 +26,9 @@
 
 #include "filesystem.hpp"
 
-Result FileSystem::mount(FsFileSystem* fileSystem, u64 titleID, u128 userID)
+Result FileSystem::mount(FsFileSystem* fileSystem, u64 titleID, AccountUid userID)
 {
-    return fsMount_SaveData(fileSystem, titleID, userID);
-}
-
-Result FileSystem::mount(FsFileSystem* fileSystem, u64 saveID)
-{
-    return fsMount_SystemSaveData(fileSystem, saveID);
+    return fsOpen_SaveData(fileSystem, titleID, userID);
 }
 
 int FileSystem::mount(FsFileSystem fs)

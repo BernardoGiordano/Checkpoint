@@ -28,13 +28,14 @@
 #define MAIN_HPP
 
 #include "Screen.hpp"
+#include "account.hpp"
 #include "title.hpp"
 #include "util.hpp"
 #include <memory>
 #include <switch.h>
 
-inline float g_currentTime              = 0;
-inline u128 g_currentUId                = 0;
+inline float g_currentTime = 0;
+inline AccountUid g_currentUId;
 inline bool g_backupScrollEnabled       = 0;
 inline bool g_notificationLedAvailable  = false;
 inline std::shared_ptr<Screen> g_screen = nullptr;

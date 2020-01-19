@@ -26,8 +26,9 @@
 
 #include "title.hpp"
 
-static std::unordered_map<u128, std::vector<Title>> titles;
+static std::unordered_map<AccountUid, std::vector<Title>> titles;
 static std::unordered_map<u64, SDL_Texture*> icons;
+static Sort_t sortMode;
 
 void freeIcons(void)
 {
@@ -47,7 +48,7 @@ static void loadIcon(u64 id, NsApplicationControlData* nsacd, size_t iconsize)
     }
 }
 
-void Title::init(u8 saveDataType, u64 id, u128 userID, const std::string& name, const std::string& author)
+void Title::init(u8 saveDataType, u64 id, AccountUid userID, const std::string& name, const std::string& author)
 {
     mId           = id;
     mUserId       = userID;
@@ -90,11 +91,6 @@ void Title::init(u8 saveDataType, u64 id, u128 userID, const std::string& name, 
     refreshDirectories();
 }
 
-bool Title::systemSave(void)
-{
-    return mSaveDataType != FsSaveDataType_SaveData;
-}
-
 u8 Title::saveDataType(void)
 {
     return mSaveDataType;
@@ -115,7 +111,7 @@ void Title::saveId(u64 saveId)
     mSaveId = saveId;
 }
 
-u128 Title::userId(void)
+AccountUid Title::userId(void)
 {
     return mUserId;
 }
@@ -161,15 +157,33 @@ SDL_Texture* Title::icon(void)
     return it != icons.end() ? it->second : NULL;
 }
 
-std::string Title::playTime(void)
+u32 Title::playTimeMinutes(void)
 {
-    return mPlayTime;
+    return mPlayTimeMinutes;
 }
 
-void Title::playTime(std::string playTime)
+
+std::string Title::playTime(void)
 {
-    mPlayTime = playTime;
+    return StringUtils::format("%d", mPlayTimeMinutes / 60) + ":" +
+           StringUtils::format("%02d", mPlayTimeMinutes % 60) + " hours";
 }
+
+void Title::playTimeMinutes(u32 playTimeMinutes)
+{
+    mPlayTimeMinutes = playTimeMinutes;
+}
+
+u32 Title::lastPlayedTimestamp(void)
+{
+    return mLastPlayedTimestamp;
+}
+
+void Title::lastPlayedTimestamp(u32 lastPlayedTimestamp)
+{
+    mLastPlayedTimestamp = lastPlayedTimestamp;
+}
+
 
 void Title::refreshDirectories(void)
 {
@@ -214,10 +228,10 @@ void loadTitles(void)
 {
     titles.clear();
 
-    FsSaveDataIterator iterator;
+    FsSaveDataInfoReader reader;
     FsSaveDataInfo info;
-    size_t total_entries = 0;
-    size_t outsize       = 0;
+    s64 total_entries = 0;
+    size_t outsize    = 0;
 
     NacpLanguageEntry* nle          = NULL;
     NsApplicationControlData* nsacd = (NsApplicationControlData*)malloc(sizeof(NsApplicationControlData));
@@ -226,43 +240,43 @@ void loadTitles(void)
     }
     memset(nsacd, 0, sizeof(NsApplicationControlData));
 
-    Result res = fsOpenSaveDataIterator(&iterator, FsSaveDataSpaceId_NandUser);
+    Result res = fsOpenSaveDataInfoReader(&reader, FsSaveDataSpaceId_User);
     if (R_FAILED(res)) {
         free(nsacd);
         return;
     }
 
     while (1) {
-        res = fsSaveDataIteratorRead(&iterator, &info, 1, &total_entries);
+        res = fsSaveDataInfoReaderRead(&reader, &info, 1, &total_entries);
         if (R_FAILED(res) || total_entries == 0) {
             break;
         }
 
-        if (info.saveDataType == FsSaveDataType_SaveData) {
-            u64 tid  = info.titleID;
-            u64 sid  = info.saveID;
-            u128 uid = info.userID;
+        if (info.save_data_type == FsSaveDataType_Account) {
+            u64 tid        = info.application_id;
+            u64 sid        = info.save_data_id;
+            AccountUid uid = info.uid;
             if (!Configuration::getInstance().filter(tid)) {
-                res = nsGetApplicationControlData(1, tid, nsacd, sizeof(NsApplicationControlData), &outsize);
+                res = nsGetApplicationControlData(NsApplicationControlSource_Storage, tid, nsacd, sizeof(NsApplicationControlData), &outsize);
                 if (R_SUCCEEDED(res) && !(outsize < sizeof(nsacd->nacp))) {
                     res = nacpGetLanguageEntry(&nsacd->nacp, &nle);
                     if (R_SUCCEEDED(res) && nle != NULL) {
                         Title title;
-                        title.init(info.saveDataType, tid, uid, std::string(nle->name), std::string(nle->author));
+                        title.init(info.save_data_type, tid, uid, std::string(nle->name), std::string(nle->author));
                         title.saveId(sid);
 
                         // load play statistics
                         PdmPlayStatistics stats;
                         res = pdmqryQueryPlayStatisticsByApplicationIdAndUserAccountId(tid, uid, &stats);
                         if (R_SUCCEEDED(res)) {
-                            title.playTime(StringUtils::format("%d", stats.playtimeMinutes / 60) + ":" +
-                                           StringUtils::format("%02d", stats.playtimeMinutes % 60) + " hours");
+                            title.playTimeMinutes(stats.playtimeMinutes);
+                            title.lastPlayedTimestamp(stats.last_timestampUser);
                         }
 
                         loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
 
                         // check if the vector is already created
-                        std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+                        std::unordered_map<AccountUid, std::vector<Title>>::iterator it = titles.find(uid);
                         if (it != titles.end()) {
                             // found
                             it->second.push_back(title);
@@ -281,37 +295,52 @@ void loadTitles(void)
     }
 
     free(nsacd);
-    fsSaveDataIteratorClose(&iterator);
+    fsSaveDataInfoReaderClose(&reader);
 
+    sortTitles();
+}
+
+void sortTitles(void) {
     for (auto& vect : titles) {
         std::sort(vect.second.begin(), vect.second.end(), [](Title& l, Title& r) {
             if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
                 return Configuration::getInstance().favorite(l.id());
             }
-            else {
+            switch (sortMode) {
+            case SORT_LAST_PLAYED:
+                return l.lastPlayedTimestamp() > r.lastPlayedTimestamp();
+            case SORT_PLAY_TIME:
+                return l.playTimeMinutes() > r.playTimeMinutes();
+            case SORT_ALPHA:
+            default:
                 return l.name() < r.name();
             }
         });
     }
 }
 
-void getTitle(Title& dst, u128 uid, size_t i)
+void rotateSortMode(void) {
+    sortMode = static_cast<Sort_t>((sortMode + 1) % SORT_MODES_COUNT);
+    sortTitles();
+}
+
+void getTitle(Title& dst, AccountUid uid, size_t i)
 {
-    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+    std::unordered_map<AccountUid, std::vector<Title>>::iterator it = titles.find(uid);
     if (it != titles.end() && i < getTitleCount(uid)) {
         dst = it->second.at(i);
     }
 }
 
-size_t getTitleCount(u128 uid)
+size_t getTitleCount(AccountUid uid)
 {
-    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+    std::unordered_map<AccountUid, std::vector<Title>>::iterator it = titles.find(uid);
     return it != titles.end() ? it->second.size() : 0;
 }
 
-bool favorite(u128 uid, int i)
+bool favorite(AccountUid uid, int i)
 {
-    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+    std::unordered_map<AccountUid, std::vector<Title>>::iterator it = titles.find(uid);
     return it != titles.end() ? Configuration::getInstance().favorite(it->second.at(i).id()) : false;
 }
 
@@ -326,9 +355,9 @@ void refreshDirectories(u64 id)
     }
 }
 
-SDL_Texture* smallIcon(u128 uid, size_t i)
+SDL_Texture* smallIcon(AccountUid uid, size_t i)
 {
-    std::unordered_map<u128, std::vector<Title>>::iterator it = titles.find(uid);
+    std::unordered_map<AccountUid, std::vector<Title>>::iterator it = titles.find(uid);
     return it != titles.end() ? it->second.at(i).icon() : NULL;
 }
 

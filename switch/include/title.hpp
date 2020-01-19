@@ -28,6 +28,7 @@
 #define TITLE_HPP
 
 #include "SDLHelper.hpp"
+#include "account.hpp"
 #include "configuration.hpp"
 #include "filesystem.hpp"
 #include "io.hpp"
@@ -39,9 +40,11 @@
 #include <utility>
 #include <vector>
 
+typedef enum { SORT_LAST_PLAYED, SORT_PLAY_TIME, SORT_ALPHA, SORT_MODES_COUNT } Sort_t;
+
 class Title {
 public:
-    void init(u8 saveDataType, u64 titleid, u128 userID, const std::string& name, const std::string& author);
+    void init(u8 saveDataType, u64 titleid, AccountUid userID, const std::string& name, const std::string& author);
     ~Title(void){};
 
     std::string author(void);
@@ -50,22 +53,24 @@ public:
     u64 id(void);
     std::string name(void);
     std::string path(void);
+    u32 playTimeMinutes(void);
     std::string playTime(void);
-    void playTime(std::string playTime);
+    void playTimeMinutes(u32 playTimeMinutes);
+    u32 lastPlayedTimestamp(void);
+    void lastPlayedTimestamp(u32 lastPlayedTimestamp);
     std::string fullPath(size_t index);
     void refreshDirectories(void);
     u64 saveId();
     void saveId(u64 id);
     std::vector<std::string> saves(void);
     u8 saveDataType(void);
-    bool systemSave(void);
-    u128 userId(void);
+    AccountUid userId(void);
     std::string userName(void);
 
 private:
     u64 mId;
     u64 mSaveId;
-    u128 mUserId;
+    AccountUid mUserId;
     std::string mUserName;
     std::string mName;
     std::string mSafeName;
@@ -75,16 +80,19 @@ private:
     std::vector<std::string> mFullSavePaths;
     u8 mSaveDataType;
     std::pair<std::string, std::string> mDisplayName;
-    std::string mPlayTime;
+    u32 mPlayTimeMinutes;
+    u32 mLastPlayedTimestamp;
 };
 
-void getTitle(Title& dst, u128 uid, size_t i);
-size_t getTitleCount(u128 uid);
+void getTitle(Title& dst, AccountUid uid, size_t i);
+size_t getTitleCount(AccountUid uid);
 void loadTitles(void);
+void sortTitles(void);
+void rotateSortMode(void);
 void refreshDirectories(u64 id);
-bool favorite(u128 uid, int i);
+bool favorite(AccountUid uid, int i);
 void freeIcons(void);
-SDL_Texture* smallIcon(u128 uid, size_t i);
+SDL_Texture* smallIcon(AccountUid uid, size_t i);
 std::unordered_map<std::string, std::string> getCompleteTitleList(void);
 
 #endif

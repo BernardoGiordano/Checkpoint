@@ -36,8 +36,30 @@
 
 #define USER_ICON_SIZE 64
 
+namespace std {
+    template <>
+    struct hash<AccountUid> {
+        size_t operator()(const AccountUid& a) const { return ((hash<u64>()(a.uid[0]) ^ (hash<u64>()(a.uid[1]) << 1)) >> 1); }
+    };
+}
+
+inline bool operator==(const AccountUid& x, const AccountUid& y)
+{
+    return x.uid[0] == y.uid[0] && x.uid[1] == y.uid[1];
+}
+
+inline bool operator==(const AccountUid& x, u64 y)
+{
+    return x.uid[0] == y && x.uid[1] == y;
+}
+
+inline bool operator<(const AccountUid& x, const AccountUid& y)
+{
+    return x.uid[0] < y.uid[0] && x.uid[1] == y.uid[1];
+}
+
 struct User {
-    u128 id;
+    AccountUid id;
     std::string name;
     std::string shortName;
     SDL_Texture* icon;
@@ -47,11 +69,11 @@ namespace Account {
     Result init(void);
     void exit(void);
 
-    std::vector<u128> ids(void);
-    SDL_Texture* icon(u128 id);
-    u128 selectAccount(void);
-    std::string username(u128 id);
-    std::string shortName(u128 id);
+    std::vector<AccountUid> ids(void);
+    SDL_Texture* icon(AccountUid id);
+    AccountUid selectAccount(void);
+    std::string username(AccountUid id);
+    std::string shortName(AccountUid id);
 }
 
 #endif
