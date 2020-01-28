@@ -65,6 +65,7 @@ protected:
     bool getPKSMBridgeFlag(void) const;
     void setPKSMBridgeFlag(bool f);
     void updateButtons(void);
+    std::string sortMode(void) const;
 
 private:
     entryType_t type;

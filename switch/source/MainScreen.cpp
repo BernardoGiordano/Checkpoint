@@ -127,6 +127,11 @@ void MainScreen::draw() const
         SDLH_GetTextDimensions(23, "Author: ", &producer_w, NULL);
         SDLH_GetTextDimensions(23, "User: ", &user_w, NULL);
 
+        if (title_w >= 534) {
+            displayName.first = displayName.first.substr(0, 24) + "...";
+            SDLH_GetTextDimensions(28, displayName.first.c_str(), &title_w, &title_h);
+        }
+
         u8 boxRows = (displayName.second.length() > 0 ? 4 : 3);
 
         h += 6;
@@ -182,6 +187,7 @@ void MainScreen::draw() const
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
         SDLH_DrawText(27, 1205, 646, theme().c6, "\ue085\ue086");
         SDLH_DrawText(24, 58, 69, theme().c6, "\ue058 Tap to select title");
+        SDLH_DrawText(24, 58, 109, theme().c6, ("\ue026 Sort: " + sortMode()).c_str());
         SDLH_DrawText(24, 100, 270, theme().c6, "\ue006 \ue080 to scroll between titles");
         SDLH_DrawText(24, 100, 300, theme().c6, "\ue004 \ue005 to scroll between pages");
         SDLH_DrawText(24, 100, 330, theme().c6, "\ue000 to enter the selected title");
@@ -189,10 +195,10 @@ void MainScreen::draw() const
         SDLH_DrawText(24, 100, 390, theme().c6, "\ue002 to change sort mode");
         SDLH_DrawText(24, 100, 420, theme().c6, "\ue003 to multiselect title");
         SDLH_DrawText(24, 100, 450, theme().c6, "Hold \ue003 to select all titles");
-        if (Configuration::getInstance().isPKSMBridgeEnabled()) {
-            SDLH_DrawText(24, 100, 450, theme().c6, "\ue004 + \ue005 to enable PKSM bridge");
-        }
         SDLH_DrawText(24, 616, 480, theme().c6, "\ue002 to delete a backup");
+        if (Configuration::getInstance().isPKSMBridgeEnabled()) {
+            SDLH_DrawText(24, 100, 480, theme().c6, "\ue004 + \ue005 to enable PKSM bridge");
+        }
         if (gethostid() != INADDR_LOOPBACK) {
             if (g_ftpAvailable && Configuration::getInstance().isFTPEnabled()) {
                 SDLH_DrawText(24, 16 * 6 + checkpoint_w + 8 + ver_w + inst_w, 642 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
@@ -615,4 +621,19 @@ void MainScreen::updateButtons(void)
         buttonBackup->text("Backup \ue004");
         buttonRestore->text("Restore \ue005");
     }
+}
+
+std::string MainScreen::sortMode() const
+{
+    switch (g_sortMode) {
+        case SORT_LAST_PLAYED:
+            return "Last played";
+        case SORT_PLAY_TIME:
+            return "Play time";
+        case SORT_ALPHA:
+            return "Alphabetical";
+        default:
+            break;
+    }
+    return "";
 }

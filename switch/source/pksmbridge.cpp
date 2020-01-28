@@ -26,12 +26,19 @@
 
 #include "pksmbridge.hpp"
 
+static bool isLGPE(u64 id)
+{
+    return id == 0x0100187003A36000 || id == 0x010003F003A34000;
+}
+
+static bool isSWSH(u64 id)
+{
+    return id == 0x0100ABF008968000 || id == 0x01008DB008C2C000;
+}
+
 bool isPKSMBridgeTitle(u64 id)
 {
-    if (id == 0x0100187003A36000 || id == 0x010003F003A34000) {
-        return true;
-    }
-    return false;
+    return isLGPE(id) || isSWSH(id);
 }
 
 bool validateIpAddress(const std::string& ip)
@@ -50,7 +57,18 @@ std::tuple<bool, Result, std::string> sendToPKSMBrigde(size_t index, AccountUid 
     // load data
     Title title;
     getTitle(title, uid, index);
-    std::string srcPath = title.fullPath(cellIndex) + "/savedata.bin";
+    std::string filename;
+    if (isLGPE(title.id())) {
+        filename = "/savedata.bin";
+    }
+    else if (isSWSH(title.id())) {
+        filename = "/backup";
+    }
+    else {
+        return std::make_tuple(false, systemKeyboardAvailable.second, "Invalid title.");
+    }
+
+    std::string srcPath = title.fullPath(cellIndex) + filename;
     FILE* save          = fopen(srcPath.c_str(), "rb");
     if (save == NULL) {
         return std::make_tuple(false, systemKeyboardAvailable.second, "Failed to open source file.");
@@ -147,7 +165,17 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUi
     size_t size = 0x100000;
     Title title;
     getTitle(title, uid, index);
-    std::string srcPath = title.fullPath(cellIndex) + "/savedata.bin";
+    std::string filename;
+    if (isLGPE(title.id())) {
+        filename = "/savedata.bin";
+    }
+    else if (isSWSH(title.id())) {
+        filename = "/backup";
+    }
+    else {
+        filename = "DEFAULT";
+    }
+    std::string srcPath = title.fullPath(cellIndex) + filename;
     FILE* save          = fopen(srcPath.c_str(), "wb");
     if (save == NULL) {
         close(fd);
