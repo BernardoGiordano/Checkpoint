@@ -648,7 +648,7 @@ void loadTitles(bool forceRefresh)
                 }
             }
         }
-        else {
+        else if (validId(0)) {
             Title title;
             if (title.load(0, MEDIATYPE_GAME_CARD, cardType)) {
                 titleSaves.insert(titleSaves.begin(), title);
@@ -969,7 +969,7 @@ static bool scanCard(void)
                 }
             }
         }
-        else {
+        else if (validId(0)) {
             Title title;
             if (title.load(0, MEDIATYPE_GAME_CARD, cardType)) {
                 ret = true;
