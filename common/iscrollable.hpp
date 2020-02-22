@@ -33,7 +33,6 @@
 template <typename T>
 class IScrollable {
 public:
-    IScrollable(void) {}
     IScrollable(int x, int y, u16 w, u16 h, size_t visibleEntries) : mx(x), my(y), mw(w), mh(h), mVisibleEntries(visibleEntries)
     {
         mIndex = 0;

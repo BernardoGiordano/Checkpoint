@@ -30,44 +30,28 @@
 #include "ihid.hpp"
 #include <switch.h>
 
-class HidVertical : public IHidVertical {
+#define DELAY_TICKS 2500000
+
+template <HidDirection ListDirection, HidDirection PageDirection>
+class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS>
+{
 public:
-    HidVertical(size_t entries, size_t columns) : IHidVertical(entries, columns) { mDelayTicks = 2500000; }
+    Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns) {}
 
-    virtual ~HidVertical(void) {}
-
-    u64 down(void) override { return hidKeysDown(CONTROLLER_P1_AUTO); }
-
-    u64 held(void) override { return hidKeysHeld(CONTROLLER_P1_AUTO); }
-
-    u64 tick(void) override { return armGetSystemTick(); }
-
-    u64 _KEY_ZL(void) override { return 0; }
-    u64 _KEY_ZR(void) override { return 0; }
-    u64 _KEY_LEFT(void) override { return KEY_LEFT; }
-    u64 _KEY_RIGHT(void) override { return KEY_RIGHT; }
-    u64 _KEY_UP(void) override { return KEY_UP; }
-    u64 _KEY_DOWN(void) override { return KEY_DOWN; }
-};
-
-class HidHorizontal : public IHidHorizontal {
-public:
-    HidHorizontal(size_t entries, size_t columns) : IHidHorizontal(entries, columns) { mDelayTicks = 2500000; }
-
-    virtual ~HidHorizontal(void) {}
-
-    u64 down(void) override { return hidKeysDown(CONTROLLER_P1_AUTO); }
-
-    u64 held(void) override { return hidKeysHeld(CONTROLLER_P1_AUTO); }
-
-    u64 tick(void) override { return armGetSystemTick(); }
-
-    u64 _KEY_ZL(void) override { return 0; }
-    u64 _KEY_ZR(void) override { return 0; }
-    u64 _KEY_LEFT(void) override { return KEY_LEFT; }
-    u64 _KEY_RIGHT(void) override { return KEY_RIGHT; }
-    u64 _KEY_UP(void) override { return KEY_UP; }
-    u64 _KEY_DOWN(void) override { return KEY_DOWN; }
+private:
+    bool downDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_DOWN; }
+    bool upDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_UP; }
+    bool leftDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_LEFT; }
+    bool rightDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RIGHT; }
+    bool leftTriggerDown() const override { return false; }
+    bool rightTriggerDown() const override { return false; }
+    bool downHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_DOWN; }
+    bool upHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_UP; }
+    bool leftHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_LEFT; }
+    bool rightHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_RIGHT; }
+    bool leftTriggerHeld() const override { return false; }
+    bool rightTriggerHeld() const override { return false; }
+    u64 tick() const override { return armGetSystemTick(); }
 };
 
 #endif
