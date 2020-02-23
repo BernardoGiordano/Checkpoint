@@ -43,14 +43,14 @@ private:
     bool upDown() const override { return hidKeysDown() & KEY_UP; }
     bool leftDown() const override { return hidKeysDown() & KEY_LEFT; }
     bool rightDown() const override { return hidKeysDown() & KEY_RIGHT; }
-    bool leftTriggerDown() const override { return hidKeysDown() & KEY_L; }
-    bool rightTriggerDown() const override { return hidKeysDown() & KEY_R; }
+    bool leftTriggerDown() const override { return hidKeysDown() & KEY_L || hidKeysDown() & KEY_ZL; }
+    bool rightTriggerDown() const override { return hidKeysDown() & KEY_R || hidKeysDown() & KEY_ZR; }
     bool downHeld() const override { return hidKeysHeld() & KEY_DOWN; }
     bool upHeld() const override { return hidKeysHeld() & KEY_UP; }
     bool leftHeld() const override { return hidKeysHeld() & KEY_LEFT; }
     bool rightHeld() const override { return hidKeysHeld() & KEY_RIGHT; }
-    bool leftTriggerHeld() const override { return hidKeysHeld() & KEY_L; }
-    bool rightTriggerHeld() const override { return hidKeysHeld() & KEY_R; }
+    bool leftTriggerHeld() const override { return hidKeysHeld() & KEY_L || hidKeysHeld() & KEY_ZL; }
+    bool rightTriggerHeld() const override { return hidKeysHeld() & KEY_R || hidKeysHeld() & KEY_ZR; }
     u64 tick() const override { return svcGetSystemTick(); }
 };
 

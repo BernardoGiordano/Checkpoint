@@ -235,13 +235,6 @@ void MainScreen::updateSelector(touchPosition* touch)
         size_t count    = getTitleCount(g_currentUId);
         size_t oldindex = hid.index();
         hid.update(count);
-        // change page
-        if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_L) {
-            hid.pageBack(count);
-        }
-        else if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_R) {
-            hid.pageForward(count);
-        }
 
         // loop through every rendered title
         for (u8 row = 0; row < rowlen; row++) {

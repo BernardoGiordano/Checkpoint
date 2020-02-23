@@ -57,7 +57,7 @@ public:
 
     size_t fullIndex(void) const { return mIndex + mPage * mMaxVisibleEntries; }
     size_t index(void) const { return mIndex; }
-    void index(size_t v) { mIndex = v;}
+    void index(size_t v) { mIndex = v; }
     size_t maxVisibleEntries(void) const { return mMaxVisibleEntries; }
     int page(void) const { return mPage; }
     void page(int v) { mPage = v; }
@@ -65,7 +65,7 @@ public:
     {
         return (count - mPage * mMaxVisibleEntries) > mMaxVisibleEntries ? mMaxVisibleEntries - 1 : count - mPage * mMaxVisibleEntries - 1;
     }
-    void pageBack(size_t count)
+    void pageBack()
     {
         if (mPage > 0)
         {
@@ -75,12 +75,8 @@ public:
         {
             mPage = mMaxPages - 1;
         }
-        if (mIndex > maxEntries(count))
-        {
-            mIndex = maxEntries(count);
-        }
     }
-    void pageForward(size_t count)
+    void pageForward()
     {
         if (mPage < (int)mMaxPages - 1)
         {
@@ -90,15 +86,30 @@ public:
         {
             mPage = 0;
         }
-        if (mIndex > maxEntries(count))
-        {
-            mIndex = maxEntries(count);
-        }
     }
     void reset(void)
     {
         mIndex = 0;
         mPage  = 0;
+    }
+    void correctIndex(size_t count)
+    {
+        if (mIndex > maxEntries(count))
+        {
+            if constexpr (ListDirection == HidDirection::HORIZONTAL)
+            {
+                mIndex = mIndex % mColumns;
+            }
+            else
+            {
+                mIndex = mIndex % mRows;
+            }
+            // If the above doesn't fix, then forcibly fix
+            if (mIndex > maxEntries(count))
+            {
+                mIndex = maxEntries(count);
+            }
+        }
     }
 
     void update(size_t count);
