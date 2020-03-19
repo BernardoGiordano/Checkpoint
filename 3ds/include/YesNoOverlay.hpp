@@ -51,7 +51,7 @@ private:
     C2D_TextBuf textBuf;
     C2D_Text text;
     std::unique_ptr<Clickable> buttonYes, buttonNo;
-    HidHorizontal hid;
+    Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::function<void()> yesFunc, noFunc;
 };
 

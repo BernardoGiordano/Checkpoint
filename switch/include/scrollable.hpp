@@ -37,14 +37,9 @@
 
 class Scrollable : public IScrollable<SDL_Color> {
 public:
-    Scrollable(void) : IScrollable() {}
+    Scrollable(u32 x, u32 y, u32 w, u32 h, size_t visibleEntries) : IScrollable(x, y, w, h, visibleEntries), mHid(visibleEntries, 1) {}
 
-    Scrollable(u32 x, u32 y, u32 w, u32 h, size_t visibleEntries) : IScrollable(x, y, w, h, visibleEntries)
-    {
-        mHid = new HidVertical(visibleEntries, 1);
-    }
-
-    virtual ~Scrollable(void) { delete mHid; };
+    virtual ~Scrollable(void) {}
 
     void draw(bool condition = false) override;
     void setIndex(size_t i);
@@ -54,7 +49,7 @@ public:
     void text(size_t i, const std::string& v);
 
 protected:
-    HidVertical* mHid;
+    Hid<HidDirection::VERTICAL, HidDirection::HORIZONTAL> mHid;
 };
 
 #endif

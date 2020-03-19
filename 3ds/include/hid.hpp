@@ -30,44 +30,28 @@
 #include "ihid.hpp"
 #include <3ds.h>
 
-class HidHorizontal : public IHidHorizontal {
+#define DELAY_TICKS 50000000
+
+template <HidDirection ListDirection, HidDirection PageDirection>
+class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS>
+{
 public:
-    HidHorizontal(size_t entries, size_t columns) : IHidHorizontal(entries, columns) { mDelayTicks = 35000000; }
+    Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns) {}
 
-    virtual ~HidHorizontal(void) {}
-
-    u64 down(void) override { return (u64)hidKeysDown(); }
-
-    u64 held(void) override { return (u64)hidKeysHeld(); }
-
-    u64 tick(void) override { return svcGetSystemTick(); }
-
-    u64 _KEY_ZL(void) override { return KEY_ZL; }
-    u64 _KEY_ZR(void) override { return KEY_ZR; }
-    u64 _KEY_LEFT(void) override { return KEY_LEFT; }
-    u64 _KEY_RIGHT(void) override { return KEY_RIGHT; }
-    u64 _KEY_UP(void) override { return KEY_UP; }
-    u64 _KEY_DOWN(void) override { return KEY_DOWN; }
-};
-
-class HidVertical : public IHidVertical {
-public:
-    HidVertical(size_t entries, size_t columns) : IHidVertical(entries, columns) { mDelayTicks = 50000000; }
-
-    virtual ~HidVertical(void) {}
-
-    u64 down(void) override { return (u64)hidKeysDown(); }
-
-    u64 held(void) override { return (u64)hidKeysHeld(); }
-
-    u64 tick(void) override { return svcGetSystemTick(); }
-
-    u64 _KEY_ZL(void) override { return KEY_ZL; }
-    u64 _KEY_ZR(void) override { return KEY_ZR; }
-    u64 _KEY_LEFT(void) override { return KEY_LEFT; }
-    u64 _KEY_RIGHT(void) override { return KEY_RIGHT; }
-    u64 _KEY_UP(void) override { return KEY_UP; }
-    u64 _KEY_DOWN(void) override { return KEY_DOWN; }
+private:
+    bool downDown() const override { return hidKeysDown() & KEY_DOWN; }
+    bool upDown() const override { return hidKeysDown() & KEY_UP; }
+    bool leftDown() const override { return hidKeysDown() & KEY_LEFT; }
+    bool rightDown() const override { return hidKeysDown() & KEY_RIGHT; }
+    bool leftTriggerDown() const override { return hidKeysDown() & KEY_L || hidKeysDown() & KEY_ZL; }
+    bool rightTriggerDown() const override { return hidKeysDown() & KEY_R || hidKeysDown() & KEY_ZR; }
+    bool downHeld() const override { return hidKeysHeld() & KEY_DOWN; }
+    bool upHeld() const override { return hidKeysHeld() & KEY_UP; }
+    bool leftHeld() const override { return hidKeysHeld() & KEY_LEFT; }
+    bool rightHeld() const override { return hidKeysHeld() & KEY_RIGHT; }
+    bool leftTriggerHeld() const override { return hidKeysHeld() & KEY_L || hidKeysHeld() & KEY_ZL; }
+    bool rightTriggerHeld() const override { return hidKeysHeld() & KEY_R || hidKeysHeld() & KEY_ZR; }
+    u64 tick() const override { return svcGetSystemTick(); }
 };
 
 #endif

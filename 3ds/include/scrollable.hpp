@@ -37,12 +37,9 @@
 
 class Scrollable : public IScrollable<u32> {
 public:
-    Scrollable(int x, int y, u32 w, u32 h, size_t visibleEntries) : IScrollable(x, y, w, h, visibleEntries)
-    {
-        mHid = new HidVertical(visibleEntries, 1);
-    }
+    Scrollable(int x, int y, u32 w, u32 h, size_t visibleEntries) : IScrollable(x, y, w, h, visibleEntries), mHid(visibleEntries, 1) {}
 
-    virtual ~Scrollable(void) { delete mHid; }
+    virtual ~Scrollable(void) {}
 
     void c2dText(size_t i, const std::string& v);
     void draw(bool condition = false) override;
@@ -52,7 +49,7 @@ public:
     void updateSelection(void) override;
 
 protected:
-    HidVertical* mHid;
+    Hid<HidDirection::VERTICAL, HidDirection::HORIZONTAL> mHid;
 };
 
 #endif

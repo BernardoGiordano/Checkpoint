@@ -49,7 +49,7 @@ private:
     u32 textw, texth;
     std::string text;
     std::unique_ptr<Clickable> buttonYes, buttonNo;
-    HidHorizontal hid;
+    Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::function<void()> yesFunc, noFunc;
 };
 

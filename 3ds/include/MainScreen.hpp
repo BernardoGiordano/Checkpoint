@@ -58,7 +58,7 @@ protected:
     std::string nameFromCell(size_t index) const;
 
 private:
-    HidHorizontal hid;
+    Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
     std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonCheats, buttonPlayCoins;
     std::unique_ptr<Scrollable> directoryList;
     char ver[10];

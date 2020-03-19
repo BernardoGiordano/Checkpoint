@@ -33,71 +33,111 @@
 
 typedef uint64_t u64;
 
+enum class HidDirection
+{
+    VERTICAL,
+    HORIZONTAL
+};
+
+template <HidDirection ListDirection, HidDirection PageDirection, u64 Delay>
 class IHid {
 public:
-    IHid(size_t entries, size_t columns) : mMaxVisibleEntries(entries), mColumns(columns)
+    IHid(size_t entries, size_t columns)
     {
-        reset();
-        mMaxPages    = 0;
-        mCurrentTime = 0;
-        mLastTime    = 0;
-        mDelayTicks  = 1e10;
+        mMaxVisibleEntries = entries;
+        mColumns           = columns;
+        mRows              = entries / columns;
+        mIndex             = 0;
+        mPage              = 0;
+        mMaxPages          = 0;
+        mLastTime          = 0;
     }
 
-    virtual ~IHid(void) {}
+    virtual ~IHid() {}
 
-    size_t fullIndex(void) const;
-    size_t index(void) const;
-    void index(size_t v);
-    size_t maxEntries(size_t max) const;
-    size_t maxVisibleEntries(void) const;
-    int page(void) const;
-    void page(int v);
-    void reset(void);
-    void pageBack(size_t count);
-    void pageForward(size_t count);
+    size_t fullIndex(void) const { return mIndex + mPage * mMaxVisibleEntries; }
+    size_t index(void) const { return mIndex; }
+    void index(size_t v) { mIndex = v; }
+    size_t maxVisibleEntries(void) const { return mMaxVisibleEntries; }
+    int page(void) const { return mPage; }
+    void page(int v) { mPage = v; }
+    size_t maxEntries(size_t count) const
+    {
+        return (count - mPage * mMaxVisibleEntries) > mMaxVisibleEntries ? mMaxVisibleEntries - 1 : count - mPage * mMaxVisibleEntries - 1;
+    }
+    void pageBack()
+    {
+        if (mPage > 0)
+        {
+            mPage--;
+        }
+        else if (mPage == 0)
+        {
+            mPage = mMaxPages - 1;
+        }
+    }
+    void pageForward()
+    {
+        if (mPage < (int)mMaxPages - 1)
+        {
+            mPage++;
+        }
+        else if (mPage == (int)mMaxPages - 1)
+        {
+            mPage = 0;
+        }
+    }
+    void reset(void)
+    {
+        mIndex = 0;
+        mPage  = 0;
+    }
+    void correctIndex(size_t count)
+    {
+        if (mIndex > maxEntries(count))
+        {
+            if constexpr (ListDirection == HidDirection::HORIZONTAL)
+            {
+                mIndex = mIndex % mColumns;
+            }
+            else
+            {
+                mIndex = mIndex % mRows;
+            }
+            // If the above doesn't fix, then forcibly fix
+            if (mIndex > maxEntries(count))
+            {
+                mIndex = maxEntries(count);
+            }
+        }
+    }
 
-protected:
-    void page_back(void);
-    void page_forward(void);
-    virtual void update(size_t count) = 0;
+    void update(size_t count);
 
-    virtual u64 down(void)       = 0;
-    virtual u64 held(void)       = 0;
-    virtual u64 tick(void)       = 0;
-    virtual u64 _KEY_ZL(void)    = 0;
-    virtual u64 _KEY_ZR(void)    = 0;
-    virtual u64 _KEY_LEFT(void)  = 0;
-    virtual u64 _KEY_RIGHT(void) = 0;
-    virtual u64 _KEY_UP(void)    = 0;
-    virtual u64 _KEY_DOWN(void)  = 0;
-
+private:
     size_t mIndex;
     int mPage;
     size_t mMaxPages;
     size_t mMaxVisibleEntries;
     size_t mColumns;
-    u64 mCurrentTime;
+    size_t mRows;
     u64 mLastTime;
-    u64 mDelayTicks;
+
+    virtual bool downDown() const         = 0;
+    virtual bool upDown() const           = 0;
+    virtual bool leftDown() const         = 0;
+    virtual bool rightDown() const        = 0;
+    virtual bool leftTriggerDown() const  = 0;
+    virtual bool rightTriggerDown() const = 0;
+    virtual bool downHeld() const         = 0;
+    virtual bool upHeld() const           = 0;
+    virtual bool leftHeld() const         = 0;
+    virtual bool rightHeld() const        = 0;
+    virtual bool leftTriggerHeld() const  = 0;
+    virtual bool rightTriggerHeld() const = 0;
+    virtual u64 tick() const              = 0;
 };
 
-class IHidVertical : public IHid {
-public:
-    IHidVertical(size_t entries, size_t columns) : IHid(entries, columns) {}
-
-    virtual ~IHidVertical(void) {}
-
-    void update(size_t count) override;
-};
-
-class IHidHorizontal : public IHid {
-public:
-    IHidHorizontal(size_t entries, size_t columns) : IHid(entries, columns) {}
-
-    virtual ~IHidHorizontal(void) {}
-
-    void update(size_t count) override;
-};
+#include "ihid.tcc"
 
 #endif

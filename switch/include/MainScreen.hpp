@@ -71,7 +71,7 @@ private:
     entryType_t type;
     int selectionTimer;
     bool pksmBridge;
-    HidHorizontal hid;
+    Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::unique_ptr<Scrollable> backupList;
     std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;
     char ver[8];
