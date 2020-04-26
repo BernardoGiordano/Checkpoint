@@ -768,7 +768,7 @@ static void exportTitleListCache(std::vector<Title>& list, const std::u16string&
     u8* cache = new u8[list.size() * ENTRYSIZE]();
     for (size_t i = 0; i < list.size(); i++) {
         u64 id                       = list.at(i).id();
-        u8 accessibleSaveRaw         = list.at(i).accessibleSave() ? (list.at(i).isGBAVC() ? (2 | 1) : 1) : 0;
+        u8 accessibleSaveRaw         = list.at(i).accessibleSave() ? 1 : (list.at(i).isGBAVC() ? 2 : 0);
         bool accessibleExtdata       = list.at(i).accessibleExtdata();
         std::string shortDescription = StringUtils::UTF16toUTF8(list.at(i).getShortDescription());
         std::string longDescription  = StringUtils::UTF16toUTF8(list.at(i).getLongDescription());
