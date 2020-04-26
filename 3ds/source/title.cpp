@@ -25,6 +25,7 @@
  */
 
 #include "title.hpp"
+#include "fspxi.hpp"
 
 static bool validId(u64 id);
 static C2D_Image loadTextureIcon(smdh_s* smdh);
@@ -90,15 +91,17 @@ void Title::load(void)
     mExtdataPath       = StringUtils::UTF8toUTF16("");
     mAccessibleSave    = false;
     mAccessibleExtdata = false;
+    mGBA               = false;
     mSaves.clear();
     mExtdata.clear();
 }
 
-void Title::load(u64 id, u8* _productCode, bool accessibleSave, bool accessibleExtdata, std::u16string shortDescription,
+void Title::load(u64 id, u8* _productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::u16string shortDescription,
     std::u16string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card)
 {
     mId                = id;
     mAccessibleSave    = accessibleSave;
+    mGBA               = saveIsGBA;
     mAccessibleExtdata = accessibleExtdata;
     mShortDescription  = shortDescription;
     mLongDescription   = longDescription;
@@ -141,9 +144,10 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         AM_GetTitleProductCode(mMedia, mId, productCode);
 
         mAccessibleSave    = Archive::accessible(mediaType(), lowId(), highId());
+        mGBA               = (!mAccessibleSave) && FSPXI::accessible(mediaType(), lowId(), highId());
         mAccessibleExtdata = mMedia == MEDIATYPE_NAND ? false : Archive::accessible(extdataId());
 
-        if (mAccessibleSave) {
+        if (mAccessibleSave || mGBA) {
             loadTitle = true;
             if (!io::directoryExists(Archive::sdmc(), mSavePath)) {
                 Result res = io::createDirectory(Archive::sdmc(), mSavePath);
@@ -210,6 +214,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 
         mAccessibleSave    = true;
         mAccessibleExtdata = false;
+        mGBA               = false;
 
         loadTitle = true;
         if (!io::directoryExists(Archive::sdmc(), mSavePath)) {
@@ -230,6 +235,11 @@ Title::~Title(void) {}
 bool Title::accessibleSave(void)
 {
     return mAccessibleSave;
+}
+
+bool Title::isGBAVC(void)
+{
+    return mGBA;
 }
 
 bool Title::accessibleExtdata(void)
@@ -755,7 +765,7 @@ static void exportTitleListCache(std::vector<Title>& list, const std::u16string&
     u8* cache = new u8[list.size() * ENTRYSIZE]();
     for (size_t i = 0; i < list.size(); i++) {
         u64 id                       = list.at(i).id();
-        bool accessibleSave          = list.at(i).accessibleSave();
+        u8 accessibleSaveRaw         = list.at(i).accessibleSave() ? (list.at(i).isGBAVC() ? (2 | 1) : 1) : 0;
         bool accessibleExtdata       = list.at(i).accessibleExtdata();
         std::string shortDescription = StringUtils::UTF16toUTF8(list.at(i).getShortDescription());
         std::string longDescription  = StringUtils::UTF16toUTF8(list.at(i).getLongDescription());
@@ -775,7 +785,7 @@ static void exportTitleListCache(std::vector<Title>& list, const std::u16string&
 
         memcpy(cache + i * ENTRYSIZE + 0, &id, sizeof(u64));
         memcpy(cache + i * ENTRYSIZE + 8, list.at(i).productCode, 16);
-        memcpy(cache + i * ENTRYSIZE + 24, &accessibleSave, sizeof(u8));
+        memcpy(cache + i * ENTRYSIZE + 24, &accessibleSaveRaw, sizeof(u8));
         memcpy(cache + i * ENTRYSIZE + 25, &accessibleExtdata, sizeof(u8));
         memcpy(cache + i * ENTRYSIZE + 26, shortDescription.c_str(), shortDescription.length());
         memcpy(cache + i * ENTRYSIZE + 90, longDescription.c_str(), longDescription.length());
@@ -825,7 +835,9 @@ static void importTitleListCache(void)
     for (size_t i = 0; i < sizesaves; i++) {
         u64 id;
         u8 productCode[16];
+        u8 accessibleSaveRaw;
         bool accessibleSave;
+        bool saveIsGBA;
         bool accessibleExtdata;
         char shortDescription[0x40];
         char longDescription[0x80];
@@ -837,7 +849,7 @@ static void importTitleListCache(void)
 
         memcpy(&id, cachesaves + i * ENTRYSIZE, sizeof(u64));
         memcpy(productCode, cachesaves + i * ENTRYSIZE + 8, 16);
-        memcpy(&accessibleSave, cachesaves + i * ENTRYSIZE + 24, sizeof(u8));
+        memcpy(&accessibleSaveRaw, cachesaves + i * ENTRYSIZE + 24, sizeof(u8));
         memcpy(&accessibleExtdata, cachesaves + i * ENTRYSIZE + 25, sizeof(u8));
         memcpy(shortDescription, cachesaves + i * ENTRYSIZE + 26, 0x40);
         memcpy(longDescription, cachesaves + i * ENTRYSIZE + 90, 0x80);
@@ -847,8 +859,11 @@ static void importTitleListCache(void)
         memcpy(&cardType, cachesaves + i * ENTRYSIZE + 731, sizeof(u8));
         memcpy(&card, cachesaves + i * ENTRYSIZE + 732, sizeof(u8));
 
+        accessibleSave = accessibleSaveRaw & 1;
+        saveIsGBA = accessibleSaveRaw & 2;
+
         Title title;
-        title.load(id, productCode, accessibleSave, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
+        title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
             StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType,
             card);
 
@@ -873,7 +888,9 @@ static void importTitleListCache(void)
         std::vector<u64>::iterator it = find(alreadystored.begin(), alreadystored.end(), id);
         if (it == alreadystored.end()) {
             u8 productCode[16];
+            u8 accessibleSaveRaw;
             bool accessibleSave;
+            bool saveIsGBA;
             bool accessibleExtdata;
             char shortDescription[0x40];
             char longDescription[0x80];
@@ -884,7 +901,7 @@ static void importTitleListCache(void)
             CardType card;
 
             memcpy(productCode, cacheextdatas + i * ENTRYSIZE + 8, 16);
-            memcpy(&accessibleSave, cacheextdatas + i * ENTRYSIZE + 24, sizeof(u8));
+            memcpy(&accessibleSaveRaw, cacheextdatas + i * ENTRYSIZE + 24, sizeof(u8));
             memcpy(&accessibleExtdata, cacheextdatas + i * ENTRYSIZE + 25, sizeof(u8));
             memcpy(shortDescription, cacheextdatas + i * ENTRYSIZE + 26, 0x40);
             memcpy(longDescription, cacheextdatas + i * ENTRYSIZE + 90, 0x80);
@@ -894,8 +911,12 @@ static void importTitleListCache(void)
             memcpy(&cardType, cacheextdatas + i * ENTRYSIZE + 731, sizeof(u8));
             memcpy(&card, cacheextdatas + i * ENTRYSIZE + 732, sizeof(u8));
 
+
+            accessibleSave = accessibleSaveRaw & 1;
+            saveIsGBA = accessibleSaveRaw & 2;
+
             Title title;
-            title.load(id, productCode, accessibleSave, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
+            title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
                 StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType,
                 card);
 

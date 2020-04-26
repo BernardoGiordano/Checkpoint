@@ -25,6 +25,7 @@
  */
 
 #include "io.hpp"
+#include "fspxi.hpp"
 
 bool io::fileExists(const std::string& path)
 {
@@ -177,70 +178,128 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
     Logger::getInstance().log(Logger::INFO, "Started backup of %s. Title id: 0x%08lX.", title.shortDescription().c_str(), title.lowId());
 
     if (title.cardType() == CARD_CTR) {
-        FS_Archive archive;
-        if (mode == MODE_SAVE) {
-            res = Archive::save(&archive, title.mediaType(), title.lowId(), title.highId());
-        }
-        else if (mode == MODE_EXTDATA) {
-            res = Archive::extdata(&archive, title.extdataId());
-        }
+        if(title.isGBAVC()) {
+            FSPXI::PArchive archive;
+            Result res = FSPXI::gbasave(&archive, title.mediaType(), title.lowId(), title.highId());
+            if(R_SUCCEEDED(res))
+            {
+                std::string suggestion = DateTime::dateTimeStr();
 
-        if (R_SUCCEEDED(res)) {
-            std::string suggestion = DateTime::dateTimeStr();
-
-            std::u16string customPath;
-            if (MS::multipleSelectionEnabled()) {
-                customPath = isNewFolder ? StringUtils::UTF8toUTF16(suggestion.c_str()) : StringUtils::UTF8toUTF16("");
-            }
-            else {
-                customPath = isNewFolder ? KeyboardManager::get().keyboard(suggestion) : StringUtils::UTF8toUTF16("");
-            }
-
-            std::u16string dstPath;
-            if (!isNewFolder) {
-                // we're overriding an existing folder
-                dstPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
-            }
-            else {
-                dstPath = mode == MODE_SAVE ? title.savePath() : title.extdataPath();
-                dstPath += StringUtils::UTF8toUTF16("/") + customPath;
-            }
-
-            if (!isNewFolder || io::directoryExists(Archive::sdmc(), dstPath)) {
-                res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-                if (R_FAILED(res)) {
-                    FSUSER_CloseArchive(archive);
-                    Logger::getInstance().log(Logger::ERROR, "Failed to delete the existing backup directory recursively with result 0x%08lX.", res);
-                    return std::make_tuple(false, res, "Failed to delete the existing backup\ndirectory recursively.");
+                std::u16string customPath;
+                if (MS::multipleSelectionEnabled()) {
+                    customPath = isNewFolder ? StringUtils::UTF8toUTF16(suggestion.c_str()) : StringUtils::UTF8toUTF16("");
                 }
+                else {
+                    customPath = isNewFolder ? KeyboardManager::get().keyboard(suggestion) : StringUtils::UTF8toUTF16("");
+                }
+
+                std::u16string dstPath;
+                if (!isNewFolder) {
+                    // we're overriding an existing folder
+                    dstPath = title.fullSavePath(cellIndex);
+                }
+                else {
+                    dstPath = title.savePath();
+                    dstPath += StringUtils::UTF8toUTF16("/") + customPath;
+                }
+
+                if (!isNewFolder || io::directoryExists(Archive::sdmc(), dstPath)) {
+                    res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
+                    if (R_FAILED(res)) {
+                        FSPXI::closeArchive(archive);
+                        Logger::getInstance().log(Logger::ERROR, "Failed to delete the existing backup directory recursively with result 0x%08lX.", res);
+                        return std::make_tuple(false, res, "Failed to delete the existing backup\ndirectory recursively.");
+                    }
+                }
+
+                res = io::createDirectory(Archive::sdmc(), dstPath);
+                if (R_FAILED(res)) {
+                    FSPXI::closeArchive(archive);
+                    Logger::getInstance().log(Logger::ERROR, "Failed to create destination directory.");
+                    return std::make_tuple(false, res, "Failed to create destination directory.");
+                }
+
+                std::vector<u8> data;
+                FSPXI::readFromFile(archive, data);
+                FSStream output(Archive::sdmc(), dstPath, FS_OPEN_WRITE, data.size());
+                FSPXI::closeArchive(archive);
+
+                output.write(data.data(), data.size());
+
+                refreshDirectories(title.id());
             }
-
-            res = io::createDirectory(Archive::sdmc(), dstPath);
-            if (R_FAILED(res)) {
-                FSUSER_CloseArchive(archive);
-                Logger::getInstance().log(Logger::ERROR, "Failed to create destination directory.");
-                return std::make_tuple(false, res, "Failed to create destination directory.");
+            else {
+                Logger::getInstance().log(Logger::ERROR, "Failed to open GBA save archive with result 0x%08lX.", res);
+                return std::make_tuple(false, res, "Failed to open GBA save archive.");
             }
-
-            std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/");
-
-            res = io::copyDirectory(archive, Archive::sdmc(), StringUtils::UTF8toUTF16("/"), copyPath);
-            if (R_FAILED(res)) {
-                std::string message = mode == MODE_SAVE ? "Failed to backup save." : "Failed to backup extdata.";
-                FSUSER_CloseArchive(archive);
-                FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-                Logger::getInstance().log(Logger::ERROR, message + " Result 0x%08lX.", res);
-                return std::make_tuple(false, res, message);
-            }
-
-            refreshDirectories(title.id());
         }
         else {
-            Logger::getInstance().log(Logger::ERROR, "Failed to open save archive with result 0x%08lX.", res);
-            return std::make_tuple(false, res, "Failed to open save archive.");
-        }
+            FS_Archive archive;
+            if (mode == MODE_SAVE) {
+                res = Archive::save(&archive, title.mediaType(), title.lowId(), title.highId());
+            }
+            else if (mode == MODE_EXTDATA) {
+                res = Archive::extdata(&archive, title.extdataId());
+            }
 
-        FSUSER_CloseArchive(archive);
+            if (R_SUCCEEDED(res)) {
+                std::string suggestion = DateTime::dateTimeStr();
+
+                std::u16string customPath;
+                if (MS::multipleSelectionEnabled()) {
+                    customPath = isNewFolder ? StringUtils::UTF8toUTF16(suggestion.c_str()) : StringUtils::UTF8toUTF16("");
+                }
+                else {
+                    customPath = isNewFolder ? KeyboardManager::get().keyboard(suggestion) : StringUtils::UTF8toUTF16("");
+                }
+
+                std::u16string dstPath;
+                if (!isNewFolder) {
+                    // we're overriding an existing folder
+                    dstPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
+                }
+                else {
+                    dstPath = mode == MODE_SAVE ? title.savePath() : title.extdataPath();
+                    dstPath += StringUtils::UTF8toUTF16("/") + customPath;
+                }
+
+                if (!isNewFolder || io::directoryExists(Archive::sdmc(), dstPath)) {
+                    res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
+                    if (R_FAILED(res)) {
+                        FSUSER_CloseArchive(archive);
+                        Logger::getInstance().log(Logger::ERROR, "Failed to delete the existing backup directory recursively with result 0x%08lX.", res);
+                        return std::make_tuple(false, res, "Failed to delete the existing backup\ndirectory recursively.");
+                    }
+                }
+
+                res = io::createDirectory(Archive::sdmc(), dstPath);
+                if (R_FAILED(res)) {
+                    FSUSER_CloseArchive(archive);
+                    Logger::getInstance().log(Logger::ERROR, "Failed to create destination directory.");
+                    return std::make_tuple(false, res, "Failed to create destination directory.");
+                }
+
+                std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/");
+
+                res = io::copyDirectory(archive, Archive::sdmc(), StringUtils::UTF8toUTF16("/"), copyPath);
+                if (R_FAILED(res)) {
+                    std::string message = mode == MODE_SAVE ? "Failed to backup save." : "Failed to backup extdata.";
+                    FSUSER_CloseArchive(archive);
+                    FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
+                    Logger::getInstance().log(Logger::ERROR, message + " Result 0x%08lX.", res);
+                    return std::make_tuple(false, res, message);
+                }
+
+                refreshDirectories(title.id());
+            }
+            else {
+                Logger::getInstance().log(Logger::ERROR, "Failed to open save archive with result 0x%08lX.", res);
+                return std::make_tuple(false, res, "Failed to open save archive.");
+            }
+
+            FSUSER_CloseArchive(archive);
+        }
+        
     }
     else {
         CardType cardType = title.SPICardType();
@@ -333,58 +392,85 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
     Logger::getInstance().log(Logger::INFO, "Started restore of %s. Title id: 0x%08lX.", title.shortDescription().c_str(), title.lowId());
 
     if (title.cardType() == CARD_CTR) {
-        FS_Archive archive;
-        if (mode == MODE_SAVE) {
-            res = Archive::save(&archive, title.mediaType(), title.lowId(), title.highId());
-        }
-        else if (mode == MODE_EXTDATA) {
-            res = Archive::extdata(&archive, title.extdataId());
-        }
-
-        if (R_SUCCEEDED(res)) {
-            std::u16string srcPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
-            srcPath += StringUtils::UTF8toUTF16("/");
-            std::u16string dstPath = StringUtils::UTF8toUTF16("/");
-
-            if (mode != MODE_EXTDATA) {
-                FSUSER_DeleteDirectoryRecursively(archive, fsMakePath(PATH_UTF16, dstPath.data()));
+        if(title.isGBAVC()) {
+            FSPXI::PArchive archive;
+            Result res = FSPXI::gbasave(&archive, title.mediaType(), title.lowId(), title.highId());
+            if(R_SUCCEEDED(res))
+            {
+                std::u16string srcPath = title.fullSavePath(cellIndex) + StringUtils::UTF8toUTF16("/00000001.sav");
+                FSStream input(Archive::sdmc(), srcPath, FS_OPEN_READ);
+                if (input.good()) {
+                    std::vector<u8> data(input.size());  // relax, max size is about 3Mbit. can handle that in 1 pass, yeah?
+                    input.read(data.data(), data.size());
+                    FSPXI::writeToFile(archive, data);
+                    FSPXI::closeArchive(archive);
+                }
+                else {
+                    FSPXI::closeArchive(archive);
+                    Logger::getInstance().log(Logger::ERROR,
+                        "Failed to open source file " + StringUtils::UTF16toUTF8(srcPath) + " during restore with result 0x%08lX.", input.result());
+                    return std::make_tuple(false, res, "Failed to open save file.");
+                }
             }
             else {
-                deleteFolderRecursively(archive, dstPath);
-            }
-
-            res = io::copyDirectory(Archive::sdmc(), archive, srcPath, dstPath);
-            if (R_FAILED(res)) {
-                std::string message = mode == MODE_SAVE ? "Failed to restore save." : "Failed to restore extdata.";
-                FSUSER_CloseArchive(archive);
-                Logger::getInstance().log(Logger::ERROR, message + ". Result 0x%08lX.", res);
-                return std::make_tuple(false, res, message);
-            }
-
-            if (mode == MODE_SAVE) {
-                res = FSUSER_ControlArchive(archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
-                if (R_FAILED(res)) {
-                    FSUSER_CloseArchive(archive);
-                    Logger::getInstance().log(Logger::ERROR, "Failed to commit save data with result 0x%08lX.", res);
-                    return std::make_tuple(false, res, "Failed to commit save data.");
-                }
-
-                u8 out;
-                u64 secureValue = ((u64)SECUREVALUE_SLOT_SD << 32) | (title.uniqueId() << 8);
-                res             = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &secureValue, 8, &out, 1);
-                if (R_FAILED(res)) {
-                    FSUSER_CloseArchive(archive);
-                    Logger::getInstance().log(Logger::ERROR, "Failed to fix secure value with result 0x%08lX.", res);
-                    return std::make_tuple(false, res, "Failed to fix secure value.");
-                }
+                Logger::getInstance().log(Logger::ERROR, "Failed to open GBA save archive with result 0x%08lX.", res);
+                return std::make_tuple(false, res, "Failed to open GBA save archive.");
             }
         }
         else {
-            Logger::getInstance().log(Logger::ERROR, "Failed to open save archive with result 0x%08lX.", res);
-            return std::make_tuple(false, res, "Failed to open save archive.");
-        }
+            FS_Archive archive;
+            if (mode == MODE_SAVE) {
+                res = Archive::save(&archive, title.mediaType(), title.lowId(), title.highId());
+            }
+            else if (mode == MODE_EXTDATA) {
+                res = Archive::extdata(&archive, title.extdataId());
+            }
 
-        FSUSER_CloseArchive(archive);
+            if (R_SUCCEEDED(res)) {
+                std::u16string srcPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
+                srcPath += StringUtils::UTF8toUTF16("/");
+                std::u16string dstPath = StringUtils::UTF8toUTF16("/");
+
+                if (mode != MODE_EXTDATA) {
+                    FSUSER_DeleteDirectoryRecursively(archive, fsMakePath(PATH_UTF16, dstPath.data()));
+                }
+                else {
+                    deleteFolderRecursively(archive, dstPath);
+                }
+
+                res = io::copyDirectory(Archive::sdmc(), archive, srcPath, dstPath);
+                if (R_FAILED(res)) {
+                    std::string message = mode == MODE_SAVE ? "Failed to restore save." : "Failed to restore extdata.";
+                    FSUSER_CloseArchive(archive);
+                    Logger::getInstance().log(Logger::ERROR, message + ". Result 0x%08lX.", res);
+                    return std::make_tuple(false, res, message);
+                }
+
+                if (mode == MODE_SAVE) {
+                    res = FSUSER_ControlArchive(archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+                    if (R_FAILED(res)) {
+                        FSUSER_CloseArchive(archive);
+                        Logger::getInstance().log(Logger::ERROR, "Failed to commit save data with result 0x%08lX.", res);
+                        return std::make_tuple(false, res, "Failed to commit save data.");
+                    }
+
+                    u8 out;
+                    u64 secureValue = ((u64)SECUREVALUE_SLOT_SD << 32) | (title.uniqueId() << 8);
+                    res             = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &secureValue, 8, &out, 1);
+                    if (R_FAILED(res)) {
+                        FSUSER_CloseArchive(archive);
+                        Logger::getInstance().log(Logger::ERROR, "Failed to fix secure value with result 0x%08lX.", res);
+                        return std::make_tuple(false, res, "Failed to fix secure value.");
+                    }
+                }
+            }
+            else {
+                Logger::getInstance().log(Logger::ERROR, "Failed to open save archive with result 0x%08lX.", res);
+                return std::make_tuple(false, res, "Failed to open save archive.");
+            }
+
+            FSUSER_CloseArchive(archive);
+        }
     }
     else {
         CardType cardType = title.SPICardType();

@@ -25,6 +25,7 @@
  */
 
 #include "archive.hpp"
+#include "fspxi.hpp"
 
 static FS_Archive mSdmc;
 static Mode_t mMode = MODE_SAVE;
