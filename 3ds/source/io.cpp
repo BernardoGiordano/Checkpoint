@@ -219,6 +219,8 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
                     return std::make_tuple(false, res, "Failed to create destination directory.");
                 }
 
+                dstPath += StringUtils::UTF8toUTF16("/00000001.sav");
+
                 std::vector<u8> data;
                 FSPXI::readFromFile(archive, data);
                 FSStream output(Archive::sdmc(), dstPath, FS_OPEN_WRITE, data.size());

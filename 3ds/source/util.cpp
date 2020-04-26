@@ -25,6 +25,7 @@
  */
 
 #include "util.hpp"
+#include "fspxi.hpp"
 
 static Result consoleDisplayError(const std::string& message, Result res)
 {
@@ -49,6 +50,7 @@ Result servicesInit(void)
 {
     Result res = 0;
 
+    FSPXI::init();
     if (R_FAILED(res = Archive::init())) {
         return consoleDisplayError("Archive::init failed.", res);
     }

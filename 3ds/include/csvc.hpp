@@ -27,12 +27,15 @@ enum ServiceOp
     SERVICEOP_GET_NAME,                 ///< Get the name of a service or global port given a client or session handle
 };
 
-/**
- * @brief Performs actions related to services or global handles.
- * @param op The operation to perform, see @ref ServiceOp.
- *
- * Examples:
- *     svcControlService(SERVICEOP_GET_NAME, (char [12])outName, (Handle)clientOrSessionHandle);
- *     svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, (Handle *)&outHandle, (const char *)name);
- */
-Result svcControlService(ServiceOp op, ...);
+extern "C"
+{
+    /**
+     * @brief Performs actions related to services or global handles.
+     * @param op The operation to perform, see @ref ServiceOp.
+     *
+     * Examples:
+     *     svcControlService(SERVICEOP_GET_NAME, (char [12])outName, (Handle)clientOrSessionHandle);
+     *     svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, (Handle *)&outHandle, (const char *)name);
+     */
+    Result svcControlService(ServiceOp op, ...);
+}

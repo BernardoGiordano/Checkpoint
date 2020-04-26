@@ -183,10 +183,14 @@ Result FSPXI::gbasave(PArchive* archive, FS_MediaType mediatype, u32 lowid, u32 
     res = svcSendSyncRequest(mFsPxiHandle);
     if(R_FAILED(res)) return res;
 
+    res = cmdbuf[1];
+    if(R_FAILED(res)) return res;
+
     archive->lower = cmdbuf[2];
     archive->upper = cmdbuf[3];
 
-    return cmdbuf[1];
+    PFile f;
+    return openFile(&f, *archive, FS_OPEN_READ);
 }
 
 bool FSPXI::accessible(FS_MediaType mediatype, u32 lowid, u32 highid)

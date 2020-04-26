@@ -320,7 +320,7 @@ void Title::refreshDirectories(void)
     mFullSavePaths.clear();
     mFullExtdataPaths.clear();
 
-    if (accessibleSave()) {
+    if (accessibleSave() || isGBAVC()) {
         // standard save backups
         Directory savelist(Archive::sdmc(), mSavePath);
         if (savelist.good()) {
@@ -559,8 +559,8 @@ void loadTitles(bool forceRefresh)
 
         if (Configuration::getInstance().nandSaves()) {
             AM_GetTitleCount(MEDIATYPE_NAND, &count);
-            u64 ids_nand[count];
-            AM_GetTitleList(NULL, MEDIATYPE_NAND, count, ids_nand);
+            auto ids_nand = std::make_unique<u64[]>(count);
+            AM_GetTitleList(NULL, MEDIATYPE_NAND, count, ids_nand.get());
 
             for (u32 i = 0; i < count; i++) {
                 if (validId(ids_nand[i])) {
@@ -577,14 +577,17 @@ void loadTitles(bool forceRefresh)
 
         count = 0;
         AM_GetTitleCount(MEDIATYPE_SD, &count);
-        u64 ids[count];
-        AM_GetTitleList(NULL, MEDIATYPE_SD, count, ids);
+        auto ids = std::make_unique<u64[]>(count);
+        AM_GetTitleList(NULL, MEDIATYPE_SD, count, ids.get());
 
         for (u32 i = 0; i < count; i++) {
             if (validId(ids[i])) {
                 Title title;
                 if (title.load(ids[i], MEDIATYPE_SD, CARD_CTR)) {
                     if (title.accessibleSave()) {
+                        titleSaves.push_back(title);
+                    }
+                    else if(title.isGBAVC()) {
                         titleSaves.push_back(title);
                     }
 
