@@ -263,7 +263,7 @@ void loadTitles(void)
 
                         // load play statistics
                         PdmPlayStatistics stats;
-                        res = pdmqryQueryPlayStatisticsByApplicationIdAndUserAccountId(tid, uid, &stats);
+                        res = pdmqryQueryPlayStatisticsByApplicationIdAndUserAccountId(tid, uid, false, &stats);
                         if (R_SUCCEEDED(res)) {
                             title.playTimeMinutes(stats.playtimeMinutes);
                             title.lastPlayedTimestamp(stats.last_timestampUser);
