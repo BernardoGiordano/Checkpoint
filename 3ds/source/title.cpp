@@ -25,7 +25,6 @@
  */
 
 #include "title.hpp"
-#include "fspxi.hpp"
 
 static bool validId(u64 id);
 static C2D_Image loadTextureIcon(smdh_s* smdh);
@@ -144,7 +143,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         AM_GetTitleProductCode(mMedia, mId, productCode);
 
         mAccessibleSave    = Archive::accessible(mediaType(), lowId(), highId());
-        mGBA               = (!mAccessibleSave) && FSPXI::accessible(mediaType(), lowId(), highId());
+        mGBA               = (!mAccessibleSave) && Archive::accessibleRaw(mediaType(), lowId(), highId());
         mAccessibleExtdata = mMedia == MEDIATYPE_NAND ? false : Archive::accessible(extdataId());
 
         if (mAccessibleSave || mGBA) {

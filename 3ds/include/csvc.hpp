@@ -27,6 +27,8 @@ enum ServiceOp
     SERVICEOP_GET_NAME,                 ///< Get the name of a service or global port given a client or session handle
 };
 
+inline Handle FsPxiHandle;
+
 extern "C"
 {
     /**

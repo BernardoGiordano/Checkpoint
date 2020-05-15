@@ -45,6 +45,7 @@ namespace io {
 
     Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
     void copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
+    Result copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const std::u16string& path, bool fromPxi);
     Result createDirectory(FS_Archive archive, const std::u16string& path);
     void deleteBackupFolder(const std::u16string& path);
     Result deleteFolderRecursively(FS_Archive arch, const std::u16string& path);

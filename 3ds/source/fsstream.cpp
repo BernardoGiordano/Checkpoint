@@ -25,16 +25,19 @@
  */
 
 #include "fsstream.hpp"
+#include "csvc.hpp"
 
 FSStream::FSStream(FS_Archive archive, const std::u16string& path, u32 flags)
 {
     mGood   = false;
     mSize   = 0;
     mOffset = 0;
+    Handle hnd;
 
-    mResult = FSUSER_OpenFile(&mHandle, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
+    mResult = FSUSER_OpenFile(&hnd, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
     if (R_SUCCEEDED(mResult)) {
-        FSFILE_GetSize(mHandle, (u64*)&mSize);
+        FSFILE_GetSize(hnd, (u64*)&mSize);
+        mHandle = hnd;
         mGood = true;
     }
 }
@@ -44,12 +47,13 @@ FSStream::FSStream(FS_Archive archive, const std::u16string& path, u32 flags, u3
     mGood   = false;
     mSize   = size;
     mOffset = 0;
+    Handle hnd;
 
-    mResult = FSUSER_OpenFile(&mHandle, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
+    mResult = FSUSER_OpenFile(&hnd, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
     if (R_FAILED(mResult)) {
         mResult = FSUSER_CreateFile(archive, fsMakePath(PATH_UTF16, path.data()), 0, mSize);
         if (R_SUCCEEDED(mResult)) {
-            mResult = FSUSER_OpenFile(&mHandle, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
+            mResult = FSUSER_OpenFile(&hnd, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
             if (R_SUCCEEDED(mResult)) {
                 mGood = true;
             }
@@ -58,11 +62,58 @@ FSStream::FSStream(FS_Archive archive, const std::u16string& path, u32 flags, u3
     else {
         mGood = true;
     }
+    
+    mHandle = hnd;
+}
+
+static const u32 pxi_path[5] = {
+    1,
+    1,
+    3,
+    0,
+    0
+};
+FSStream::FSStream(FSPXI_Archive archive, u32 flags)
+{
+    mGood   = false;
+    mSize   = 0;
+    mOffset = 0;
+    FSPXI_File hnd;
+
+    mResult = FSPXI_OpenFile(FsPxiHandle, &hnd, archive, {PATH_BINARY, 20, pxi_path}, flags, 0);
+    if(R_SUCCEEDED(mResult))
+    {
+        FSPXI_GetFileSize(FsPxiHandle, hnd, (u64*)&mSize);
+        mHandle = hnd;
+        mGood = true;
+    }
+}
+
+FSStream::FSStream(FSPXI_Archive archive, u32 flags, u32 size)
+{
+    mGood   = false;
+    mSize   = size;
+    mOffset = 0;
+    FSPXI_File hnd;
+
+    mResult = FSPXI_OpenFile(FsPxiHandle, &hnd, archive, {PATH_BINARY, 20, pxi_path}, flags, 0);
+    if(R_SUCCEEDED(mResult))
+    {
+        mHandle = hnd;
+        mGood = true;
+    }
 }
 
 Result FSStream::close(void)
 {
-    mResult = FSFILE_Close(mHandle);
+    if(mHandle.index() == 0)
+    {
+        mResult = FSPXI_CloseFile(FsPxiHandle, std::get<0>(mHandle));
+    }
+    else
+    {
+        mResult = FSFILE_Close(std::get<1>(mHandle));
+    }
     return mResult;
 }
 
@@ -81,10 +132,26 @@ u32 FSStream::size(void)
     return mSize;
 }
 
+using ReadFunction = Result(*)(MultiHandle, u32*, u64, void*, u32);
 u32 FSStream::read(void* buf, u32 sz)
 {
     u32 rd  = 0;
-    mResult = FSFILE_Read(mHandle, &rd, mOffset, buf, sz);
+    ReadFunction calling = nullptr;
+
+    if(mHandle.index() == 0)
+    {
+        calling = [](MultiHandle hnd, u32* readAmount, u64 off, void* b, u32 s) -> Result {
+            return FSPXI_ReadFile(FsPxiHandle, std::get<0>(hnd), readAmount, off, b, s);
+        };
+    }
+    else
+    {
+        calling = [](MultiHandle hnd, u32* readAmount, u64 off, void* b, u32 s) -> Result {
+            return FSFILE_Read(std::get<1>(hnd), readAmount, off, b, s);
+        };
+    }
+
+    mResult = calling(mHandle, &rd, mOffset, buf, sz);
     if (R_FAILED(mResult)) {
         if (rd > sz) {
             rd = sz;
@@ -94,10 +161,26 @@ u32 FSStream::read(void* buf, u32 sz)
     return rd;
 }
 
+using WriteFunction = Result(*)(MultiHandle, u32*, u64, const void*, u32);
 u32 FSStream::write(const void* buf, u32 sz)
 {
     u32 wt  = 0;
-    mResult = FSFILE_Write(mHandle, &wt, mOffset, buf, sz, FS_WRITE_FLUSH);
+    WriteFunction calling = nullptr;
+
+    if(mHandle.index() == 0)
+    {
+        calling = [](MultiHandle hnd, u32* readAmount, u64 off, const void* b, u32 s) -> Result {
+            return FSPXI_WriteFile(FsPxiHandle, std::get<0>(hnd), readAmount, off, b, s, FS_WRITE_FLUSH);
+        };
+    }
+    else
+    {
+        calling = [](MultiHandle hnd, u32* readAmount, u64 off, const void* b, u32 s) -> Result {
+            return FSFILE_Write(std::get<1>(hnd), readAmount, off, b, s, FS_WRITE_FLUSH);
+        };
+    }
+
+    mResult = calling(mHandle, &wt, mOffset, buf, sz);
     mOffset += wt;
     return wt;
 }
