@@ -70,7 +70,7 @@ Result servicesInit(void)
 
     romfsInit();
 
-    if (R_FAILED(res = plInitialize())) {
+    if (R_FAILED(res = plInitialize(PlServiceType_User))) {
         Logger::getInstance().log(Logger::ERROR, "plInitialize failed. Result code 0x%08lX.", res);
         return res;
     }
