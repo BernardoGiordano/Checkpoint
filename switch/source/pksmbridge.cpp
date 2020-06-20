@@ -162,15 +162,17 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUi
         return std::make_tuple(false, errno, "Socket accept failed.");
     }
 
-    size_t size = 0x100000;
+    size_t size;
     Title title;
     getTitle(title, uid, index);
     std::string filename;
     if (isLGPE(title.id())) {
         filename = "/savedata.bin";
+        size     = 0x100000;
     }
     else if (isSWSH(title.id())) {
         filename = "/backup";
+        size     = 0x180B19;
     }
     else {
         filename = "DEFAULT";
