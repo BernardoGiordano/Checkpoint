@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,52 +27,46 @@
 #ifndef MAINSCREEN_HPP
 #define MAINSCREEN_HPP
 
-#include "CheatManagerOverlay.hpp"
-#include "ErrorOverlay.hpp"
-#include "InfoOverlay.hpp"
-#include "Screen.hpp"
-#include "YesNoOverlay.hpp"
-#include "clickable.hpp"
-#include "gui.hpp"
-#include "multiselection.hpp"
+#include <citro2d.h>
+
+#include "appdata.hpp"
+#include "ihid.hpp"
 #include "scrollable.hpp"
-#include "thread.hpp"
-#include <memory>
-#include <tuple>
+#include "clickable.hpp"
+#include "dualscreen.hpp"
 
-class MainScreen : public Screen {
+class MainScreen : public DualScreenScreen {
 public:
-    MainScreen(void);
-    ~MainScreen(void);
-    void drawTop(void) const override;
-    void drawBottom(void) const override;
-    void update(touchPosition* touch) override;
-
-protected:
-    int selectorX(size_t i) const;
-    int selectorY(size_t i) const;
-    void drawSelector(void) const;
-    void handleEvents(touchPosition* touch);
-    void updateSelector(void);
-    void updateButtons(void);
-    std::string nameFromCell(size_t index) const;
+    MainScreen(DrawDataHolder& d);
 
 private:
-    Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
-    std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonCheats, buttonPlayCoins;
-    std::unique_ptr<Scrollable> directoryList;
-    char ver[10];
+    virtual void update(InputDataHolder& input) final;
+    virtual void drawTop(DrawDataHolder& d) const final;
+    virtual void drawBottom(DrawDataHolder& d) const final;
 
-    C2D_Text ins1, ins2, ins3, ins4, c2dId, c2dMediatype;
+    void drawSelector(DrawDataHolder& d, int x, int y) const;
+    void updateButtons(InputDataHolder& input);
+    void reloadDirectoryList(InputDataHolder& input);
+    void performBackup(InputDataHolder& input);
+    void performMultiBackup(InputDataHolder& input);
+    void performRestore(InputDataHolder& input);
+
+    Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
+    Clickable buttonBackup, buttonRestore, buttonCheats, buttonPlayCoins;
+    Scrollable directoryList;
+
+    char ver[10];
+    bool inInstructions;
+    bool enteredTarget;
+
+    C2D_Text ins1, ins3, ins4, c2dId, c2dMediatype;
     C2D_Text checkpoint, version;
     // instructions text
     C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_x, coins;
-    C2D_TextBuf dynamicBuf, staticBuf;
-
-    const float scaleInst = 0.7f;
+    static constexpr float scaleInst = 0.7f;
     C2D_ImageTint checkboxTint;
-    int selectionTimer;
-    int refreshTimer;
+    size_t countForCurrentFrame, previousIndex;
+    u64 holdStartTime;
 };
 
 #endif

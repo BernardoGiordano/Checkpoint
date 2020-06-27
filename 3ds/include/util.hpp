@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,27 +27,10 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
-#include "archive.hpp"
-#include "common.hpp"
-#include "configuration.hpp"
-#include "gui.hpp"
-#include "logger.hpp"
-#include <3ds.h>
+#include <string>
 #include <citro2d.h>
-#include <map>
-#include <queue>
-#include <sys/stat.h>
-
-extern "C" {
-#include "sha256.h"
-}
-
-void calculateTitleDBHash(u8* hash);
-Result servicesInit(void);
 
 namespace StringUtils {
-    std::u16string removeForbiddenCharacters(std::u16string src);
-    std::u16string UTF8toUTF16(const char* src);
     std::string splitWord(const std::string& text, float scaleX, float maxWidth);
     float textWidth(const std::string& text, float scaleX);
     float textWidth(const C2D_Text& text, float scaleX);

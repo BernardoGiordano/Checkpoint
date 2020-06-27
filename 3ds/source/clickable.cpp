@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -29,29 +29,26 @@
 void Clickable::c2dText(const std::string& v)
 {
     text(v);
-    mTextBuf = C2D_TextBufNew(64);
+    C2D_TextBufClear(mTextBuf);
     C2D_TextParse(&mC2dText, mTextBuf, v.c_str());
     C2D_TextOptimize(&mC2dText);
 }
 
-bool Clickable::held()
+bool Clickable::held(const InputDataHolder& input)
 {
-    touchPosition touch;
-    hidTouchRead(&touch);
-    return ((hidKeysHeld() & KEY_TOUCH) && touch.px > mx && touch.px < mx + mw && touch.py > my && touch.py < my + mh);
+    mWasHeld = (input.kHeld & KEY_TOUCH) && input.touch.px >= mx && input.touch.px < mx + mw && input.touch.py >= my && input.touch.py < my + mh;
+    return mWasHeld;
 }
 
-bool Clickable::released(void)
+bool Clickable::released(const InputDataHolder& input)
 {
-    touchPosition touch;
-    hidTouchRead(&touch);
-    const bool on = touch.px > mx && touch.px < mx + mw && touch.py > my && touch.py < my + mh;
+    const bool on = input.touch.px >= mx && input.touch.px < mx + mw && input.touch.py >= my && input.touch.py < my + mh;
 
     if (on) {
         mOldPressed = true;
     }
     else {
-        if (mOldPressed && !(touch.px > 0 || touch.py > 0)) {
+        if (mOldPressed && !(input.touch.px > 0 || input.touch.py > 0)) {
             mOldPressed = false;
             return true;
         }
@@ -61,7 +58,7 @@ bool Clickable::released(void)
     return false;
 }
 
-void Clickable::draw(float size, u32 overlay)
+void Clickable::draw(const DrawDataHolder& d, float size, u32 overlay) const
 {
     const u8 r                = overlay & 0xFF;
     const u8 g                = (overlay >> 8) & 0xFF;
@@ -70,7 +67,7 @@ void Clickable::draw(float size, u32 overlay)
     const float messageWidth  = mCentered ? mC2dText.width * size : mw - 8;
 
     C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, mColorBg);
-    if (mCanChangeColorWhenSelected && held()) {
+    if (mCanChangeColorWhenSelected && mWasHeld) {
         C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, C2D_Color32(r, g, b, 100));
     }
     if (!mCentered && mSelected) {
@@ -83,7 +80,7 @@ void Clickable::draw(float size, u32 overlay)
     C2D_DrawText(&mC2dText, C2D_WithColor, offset, ceilf(my + (mh - messageHeight) / 2), 0.5f, size, size, mColorText);
 }
 
-void Clickable::drawOutline(u32 color)
+void Clickable::drawOutline(const DrawDataHolder& d, u32 color) const
 {
-    Gui::drawPulsingOutline(mx, my, mw, mh, 2, color);
+    d.citro.drawPulsingOutline(mx, my, mw, mh, 2, color);
 }

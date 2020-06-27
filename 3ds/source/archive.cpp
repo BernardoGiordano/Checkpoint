@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,97 +25,41 @@
  */
 
 #include "archive.hpp"
+#include "fileptr.hpp"
+#include "keyboard.hpp"
 
-static FS_Archive mSdmc;
-static Mode_t mMode = MODE_SAVE;
-
-Mode_t Archive::mode(void)
+Result Archive::mount(FS_ArchiveID archiveID, FS_Path archivePath)
 {
-    return mMode;
+    return archiveMount(archiveID, archivePath, MOUNT_ARCHIVE_NAME);
 }
-
-void Archive::mode(Mode_t v)
+Result Archive::commitSave()
 {
-    mMode = v;
+    return archiveCommitSaveData(MOUNT_ARCHIVE_NAME);
 }
-
-Result Archive::init(void)
+Result Archive::unmount()
 {
-    return FSUSER_OpenArchive(&mSdmc, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
+    return archiveUnmount(MOUNT_ARCHIVE_NAME);
 }
-
-void Archive::exit(void)
+bool Archive::setPlayCoins()
 {
-    FSUSER_CloseArchive(mSdmc);
-}
-
-FS_Archive Archive::sdmc(void)
-{
-    return mSdmc;
-}
-
-Result Archive::save(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid)
-{
-    if (mediatype == MEDIATYPE_NAND) {
-        const u32 path[2] = {mediatype, (0x00020000 | lowid >> 8)};
-        return FSUSER_OpenArchive(archive, ARCHIVE_SYSTEM_SAVEDATA, {PATH_BINARY, 8, path});
-    }
-    else {
-        const u32 path[3] = {mediatype, lowid, highid};
-        return FSUSER_OpenArchive(archive, ARCHIVE_USER_SAVEDATA, {PATH_BINARY, 12, path});
-    }
-    return 0;
-}
-
-Result Archive::extdata(FS_Archive* archive, u32 ext)
-{
-    const u32 path[3] = {MEDIATYPE_SD, ext, 0};
-    return FSUSER_OpenArchive(archive, ARCHIVE_EXTDATA, {PATH_BINARY, 12, path});
-}
-
-bool Archive::accessible(FS_MediaType mediatype, u32 lowid, u32 highid)
-{
-    FS_Archive archive;
-    Result res = save(&archive, mediatype, lowid, highid);
-    if (R_SUCCEEDED(res)) {
-        FSUSER_CloseArchive(archive);
-        return true;
-    }
-    return false;
-}
-
-bool Archive::accessible(u32 ext)
-{
-    FS_Archive archive;
-    Result res = extdata(&archive, ext);
-    if (R_SUCCEEDED(res)) {
-        FSUSER_CloseArchive(archive);
-        return true;
-    }
-    return false;
-}
-
-bool Archive::setPlayCoins(void)
-{
-    FS_Archive archive;
     const u32 path[3] = {MEDIATYPE_NAND, 0xF000000B, 0x00048000};
-    Result res        = FSUSER_OpenArchive(&archive, ARCHIVE_SHARED_EXTDATA, {PATH_BINARY, 0xC, path});
+    Result res        = mount(ARCHIVE_SHARED_EXTDATA, {PATH_BINARY, 12, path});
+    bool success = false;
     if (R_SUCCEEDED(res)) {
-        FSStream s(archive, StringUtils::UTF8toUTF16("/gamecoin.dat"), FS_OPEN_READ | FS_OPEN_WRITE);
-        if (s.good()) {
-            int coinAmount = KeyboardManager::get().numericPad();
-            if (coinAmount >= 0) {
-                coinAmount = coinAmount > 300 ? 300 : coinAmount;
-                s.offset(4);
-                u8 buf[2] = {(u8)coinAmount, (u8)(coinAmount >> 8)};
-                s.write(buf, 2);
+        { // extra scope to make raii kick in for the unique_ptr, having an open FILE* outlive its device is not good
+            FilePtr fh = openFile("/gamecoin.dat", "r+");
+            if(fh) {
+                int coinAmount = Keyboard::numpad();
+                if (coinAmount >= 0) {
+                    coinAmount = coinAmount > 300 ? 300 : coinAmount;
+                    fseek(fh.get(), 4, SEEK_SET);
+                    u8 buf[2] = {u8(coinAmount & 0xFF), u8((coinAmount >> 8) & 0xFF)};
+                    fwrite(buf, 1, 2, fh.get());
+                    success = true;
+                }
             }
-
-            s.close();
-            FSUSER_CloseArchive(archive);
-            return true;
         }
-        FSUSER_CloseArchive(archive);
+        Archive::unmount();
     }
-    return false;
+    return success;
 }

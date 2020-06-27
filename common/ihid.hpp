@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,14 +24,10 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef IHID_HPP
-#define IHID_HPP
+#ifndef HID_HPP
+#define HID_HPP
 
-#include "common.hpp"
-#include <cmath>
-#include <cstdint>
-
-typedef uint64_t u64;
+#include "inputdata.hpp"
 
 enum class HidDirection
 {
@@ -39,34 +35,46 @@ enum class HidDirection
     HORIZONTAL
 };
 
-template <HidDirection ListDirection, HidDirection PageDirection, u64 Delay>
-class IHid {
+class HidBase {
+protected:
+    bool downDownRepeat(const InputDataHolder& input) const;
+    bool upDownRepeat(const InputDataHolder& input) const;
+    bool leftDownRepeat(const InputDataHolder& input) const;
+    bool rightDownRepeat(const InputDataHolder& input) const;
+    bool leftTriggerDownRepeat(const InputDataHolder& input) const;
+    bool rightTriggerDownRepeat(const InputDataHolder& input) const;
+};
+
+template <HidDirection GrowDirection, HidDirection PageDirection>
+class Hid : HidBase {
 public:
-    IHid(size_t entries, size_t columns)
+    Hid(const size_t visiblePerChunk, const size_t visibleChunks)
+    :
+    mMaxVisibleEntries(visiblePerChunk * visibleChunks),
+    mVisiblePerChunk(visiblePerChunk),
+    mVisibleChunks(visibleChunks)
     {
-        mMaxVisibleEntries = entries;
-        mColumns           = columns;
-        mRows              = entries / columns;
-        mIndex             = 0;
-        mPage              = 0;
-        mMaxPages          = 0;
-        mLastTime          = 0;
+        mIndexInVisible = 0;
+        mPage           = 0;
+        mMaxPages       = 0;
     }
 
-    virtual ~IHid() {}
-
-    size_t fullIndex(void) const { return mIndex + mPage * mMaxVisibleEntries; }
-    size_t index(void) const { return mIndex; }
-    void index(size_t v) { mIndex = v; }
-    size_t maxVisibleEntries(void) const { return mMaxVisibleEntries; }
-    int page(void) const { return mPage; }
-    void page(int v) { mPage = v; }
+    size_t fullIndex() const { return mIndexInVisible + mPage * mMaxVisibleEntries; }
+    size_t index() const { return mIndexInVisible; }
+    void index(size_t v) { mIndexInVisible = v; }
+    size_t maxVisibleEntries() const { return mMaxVisibleEntries; }
+    size_t page() const { return mPage; }
+    void page(size_t v) { mPage = v; }
     size_t maxEntries(size_t count) const
     {
-        return (count - mPage * mMaxVisibleEntries) > mMaxVisibleEntries ? mMaxVisibleEntries - 1 : count - mPage * mMaxVisibleEntries - 1;
+        // if we are not on the last possible page for this value of count
+        // then we can fit an entire page
+        // otherwise, we can fit the remaining amount
+        return ((count / mMaxVisibleEntries) > mPage) ? mMaxVisibleEntries : count % mMaxVisibleEntries;
     }
     void pageBack()
     {
+        /*
         if (mPage > 0)
         {
             mPage--;
@@ -75,9 +83,17 @@ public:
         {
             mPage = mMaxPages - 1;
         }
+        */
+
+        if (mPage == 0)
+        {
+            mPage = mMaxPages;
+        }
+        --mPage;
     }
     void pageForward()
     {
+        /*
         if (mPage < (int)mMaxPages - 1)
         {
             mPage++;
@@ -86,56 +102,36 @@ public:
         {
             mPage = 0;
         }
+        */
+
+        mPage++;
+        if (mPage == mMaxPages) {
+            mPage = 0;
+        }
     }
-    void reset(void)
+    void reset()
     {
-        mIndex = 0;
+        mIndexInVisible = 0;
         mPage  = 0;
     }
     void correctIndex(size_t count)
     {
-        if (mIndex > maxEntries(count))
+        if (mIndexInVisible >= maxEntries(count))
         {
-            if constexpr (ListDirection == HidDirection::HORIZONTAL)
-            {
-                mIndex = mIndex % mColumns;
-            }
-            else
-            {
-                mIndex = mIndex % mRows;
-            }
-            // If the above doesn't fix, then forcibly fix
-            if (mIndex > maxEntries(count))
-            {
-                mIndex = maxEntries(count);
-            }
+            mIndexInVisible = maxEntries(count) - 1;
         }
     }
 
-    void update(size_t count);
+    void update(const InputDataHolder& input, size_t count);
 
 private:
-    size_t mIndex;
-    int mPage;
-    size_t mMaxPages;
-    size_t mMaxVisibleEntries;
-    size_t mColumns;
-    size_t mRows;
-    u64 mLastTime;
+    const size_t mMaxVisibleEntries;
+    const size_t mVisiblePerChunk;
+    const size_t mVisibleChunks;
 
-    virtual bool downDown() const         = 0;
-    virtual bool upDown() const           = 0;
-    virtual bool leftDown() const         = 0;
-    virtual bool rightDown() const        = 0;
-    virtual bool leftTriggerDown() const  = 0;
-    virtual bool rightTriggerDown() const = 0;
-    virtual bool downHeld() const         = 0;
-    virtual bool upHeld() const           = 0;
-    virtual bool leftHeld() const         = 0;
-    virtual bool rightHeld() const        = 0;
-    virtual bool leftTriggerHeld() const  = 0;
-    virtual bool rightTriggerHeld() const = 0;
-    virtual u64 tick() const              = 0;
+    size_t mIndexInVisible;
+    size_t mPage;
+    size_t mMaxPages;
 };
 
 #include "ihid.tcc"

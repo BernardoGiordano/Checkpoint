@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -26,17 +26,19 @@
 
 #include "colors.hpp"
 
-static const struct Theme defaultTheme = {
-    COLOR_BLACK,       // c0
-    COLOR_GREY_BG,     // c1
-    COLOR_GREY_DARKER, // c2
-    COLOR_GREY_DARK,   // c3
-    COLOR_GREY_MEDIUM, // c4
-    COLOR_GREY_LIGHT,  // c5
-    COLOR_WHITE        // c6
-};
+namespace {
+    const struct Theme defaultTheme = {
+        COLOR_BLACK,       // c0
+        COLOR_GREY_BG,     // c1
+        COLOR_GREY_DARKER, // c2
+        COLOR_GREY_DARK,   // c3
+        COLOR_GREY_MEDIUM, // c4
+        COLOR_GREY_LIGHT,  // c5
+        COLOR_WHITE        // c6
+    };
 
-static struct Theme currentTheme = defaultTheme;
+    Theme currentTheme = defaultTheme;
+}
 
 void theme(int t)
 {
@@ -47,7 +49,7 @@ void theme(int t)
     }
 }
 
-struct Theme theme(void)
+const Theme& theme()
 {
     return currentTheme;
 }

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,42 +27,20 @@
 #include "Screen.hpp"
 #include "Overlay.hpp"
 
-#if defined(_3DS)
-
-void Screen::doDrawTop() const
-{
-    drawTop();
-    if (currentOverlay) {
-        currentOverlay->drawTop();
-    }
-}
-
-void Screen::doDrawBottom() const
-{
-    drawBottom();
-    if (currentOverlay) {
-        currentOverlay->drawBottom();
-    }
-}
-
-#elif defined(__SWITCH__)
-
-void Screen::doDraw() const
-{
-    draw();
-    if (currentOverlay) {
-        currentOverlay->draw();
-    }
-}
-
-#endif
-
-void Screen::doUpdate(touchPosition* touch)
+void Screen::doUpdate(InputDataHolder& i)
 {
     if (currentOverlay) {
-        currentOverlay->update(touch);
+        currentOverlay->update(i);
     }
     else {
-        update(touch);
+        update(i);
+    }
+}
+
+void Screen::doDraw(DrawDataHolder& d) const
+{
+    draw(d);
+    if (currentOverlay) {
+        currentOverlay->draw(d);
     }
 }

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,7 +27,10 @@
 #ifndef ICLICKABLE_HPP
 #define ICLICKABLE_HPP
 
+#include "drawdata.hpp"
+#include "inputdata.hpp"
 #include <string>
+#include <cstdint>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -44,12 +47,13 @@ public:
         mCanChangeColorWhenSelected = false;
     }
 
-    virtual ~IClickable(void) {}
+    virtual ~IClickable() {}
 
-    virtual void draw(float size, T overlay) = 0;
-    virtual void drawOutline(T color)        = 0;
-    virtual bool held(void)                  = 0;
-    virtual bool released(void)              = 0;
+    virtual void draw(const DrawDataHolder& d, float size, T overlay) const = 0;
+    virtual void drawOutline(const DrawDataHolder& d, T color) const        = 0;
+    
+    virtual bool held(const InputDataHolder& input)     = 0;
+    virtual bool released(const InputDataHolder& input) = 0;
 
     void setColors(T bg, T text)
     {
@@ -57,11 +61,11 @@ public:
         mColorText = text;
     }
 
-    std::string text(void) { return mText; }
+    std::string text() { return mText; }
 
     void text(const std::string& v) { mText = v; }
 
-    bool selected(void) { return mSelected; }
+    bool selected() { return mSelected; }
 
     void selected(bool selected) { mSelected = selected; }
 

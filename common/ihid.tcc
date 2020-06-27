@@ -24,352 +24,184 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef IHID_HPP
+#ifndef HID_HPP
 #error "This file should not be directly included!"
 #endif
 
-template <HidDirection ListDirection, HidDirection PageDirection, u64 Delay>
-void IHid<ListDirection, PageDirection, Delay>::update(size_t count)
+template <HidDirection GrowDirection, HidDirection PageDirection>
+void Hid<GrowDirection, PageDirection>::update(const InputDataHolder& input, size_t count)
 {
-    u64 currentTime = tick();
+    mMaxPages = ((count % mMaxVisibleEntries) == 0) ? count / mMaxVisibleEntries : count / mMaxVisibleEntries + 1;
 
-    mMaxPages = (count % mMaxVisibleEntries == 0) ? count / mMaxVisibleEntries : count / mMaxVisibleEntries + 1;
-
-    if (leftTriggerDown())
-    {
+    if (leftTriggerDownRepeat(input)) {
         pageBack();
     }
-    else if (rightTriggerDown())
-    {
-        pageForward();
-    }
-    else if (leftTriggerHeld())
-    {
-        if (currentTime <= mLastTime + Delay)
-        {
-            return;
-        }
-
-        pageBack();
-    }
-    else if (rightTriggerHeld())
-    {
-        if (currentTime <= mLastTime + Delay)
-        {
-            return;
-        }
-
+    else if (rightTriggerDownRepeat(input)) {
         pageForward();
     }
 
-    if constexpr (ListDirection == HidDirection::HORIZONTAL)
-    {
-        if (upDown())
-        {
-            if (mIndex < mColumns)
-            {
-                if constexpr (PageDirection == HidDirection::VERTICAL)
-                {
-                    pageBack();
-                }
-                mIndex += mColumns * (mRows - 1);
-            }
-            else
-            {
-                mIndex -= mColumns;
-            }
-        }
-        else if (downDown())
-        {
-            mIndex += mColumns;
-            if (mIndex > maxEntries(count))
-            {
-                mIndex %= mColumns;
-                if constexpr (PageDirection == HidDirection::VERTICAL)
-                {
-                    pageForward();
-                }
-            }
-        }
-        else if (upHeld())
-        {
-            if (currentTime <= mLastTime + Delay)
-            {
-                return;
-            }
-            if (mIndex < mColumns)
-            {
-                if constexpr (PageDirection == HidDirection::VERTICAL)
-                {
-                    pageBack();
-                }
-                mIndex += mColumns * (mRows - 1);
-            }
-            else
-            {
-                mIndex -= mColumns;
-            }
-        }
-        else if (downHeld())
-        {
-            if (currentTime <= mLastTime + Delay)
-            {
-                return;
-            }
-            mIndex += mColumns;
-            if (mIndex > maxEntries(count))
-            {
-                mIndex %= mColumns;
-                if constexpr (PageDirection == HidDirection::VERTICAL)
-                {
-                    pageForward();
-                }
+    const auto decrementInGrowDir = [&]() {
+        if constexpr (PageDirection == GrowDirection) {
+            if(mIndexInVisible % mVisiblePerChunk == 0) {
+                pageBack();
             }
         }
 
-        if (leftDown())
-        {
-            if (mIndex % mColumns != 0)
-            {
-                mIndex--;
+        if (mIndexInVisible % mVisiblePerChunk == 0) {
+            mIndexInVisible += mVisiblePerChunk;
+        }
+
+        mIndexInVisible -= 1;
+    };
+    const auto incrementInGrowDir = [&]() {
+        mIndexInVisible += 1;
+
+        if constexpr (PageDirection == GrowDirection) {
+            if(mIndexInVisible % mVisiblePerChunk == 0) {
+                pageForward();
             }
-            else
-            {
-                mIndex += mColumns - 1;
-                if constexpr (PageDirection == HidDirection::HORIZONTAL)
-                {
+        }
+
+        if(mIndexInVisible % mVisiblePerChunk == 0) {
+            mIndexInVisible -= mVisiblePerChunk;
+        }
+    };
+
+    const auto decrementInOtherDir = [&]() {
+        if (mIndexInVisible < mVisiblePerChunk) {
+            if constexpr (PageDirection != GrowDirection) {
+                pageBack();
+            }
+            mIndexInVisible += mMaxVisibleEntries; // past the end
+            // go back in bounds
+        }
+
+        mIndexInVisible -= mVisiblePerChunk;
+    };
+    const auto incrementInOtherDir = [&]() {
+        mIndexInVisible += mVisiblePerChunk;
+        if (mIndexInVisible >= mMaxVisibleEntries) {
+            if constexpr (PageDirection != GrowDirection) {
+                pageForward();
+            }
+            mIndexInVisible -= mMaxVisibleEntries;
+        }
+    };
+
+    if constexpr (GrowDirection == HidDirection::HORIZONTAL) {// grow right
+        if (upDownRepeat(input)) decrementInOtherDir();
+        else if (downDownRepeat(input)) incrementInOtherDir();
+
+        if (leftDownRepeat(input)) decrementInGrowDir();
+        else if (rightDownRepeat(input)) incrementInGrowDir();
+
+        /*
+        if (upDownRepeat(input)) {
+            if (mIndexInVisible < mVisiblePerChunk) {
+                if constexpr (PageDirection == HidDirection::VERTICAL) {
+                    pageBack();
+                }
+                mIndexInVisible += mMaxVisibleEntries; // past the end
+                // go back in bounds
+            }
+
+            mIndexInVisible -= mVisiblePerChunk;
+        }
+        else if (downDownRepeat(input)) {
+            mIndexInVisible += mVisiblePerChunk;
+            if (mIndexInVisible >= mMaxVisibleEntries) {
+                if constexpr (PageDirection == HidDirection::VERTICAL) {
+                    pageForward();
+                }
+                mIndexInVisible -= mMaxVisibleEntries;
+            }
+        }
+
+        if (leftDownRepeat(input)) {
+            if constexpr (PageDirection == HidDirection::HORIZONTAL) {
+                if(mIndexInVisible % mVisiblePerChunk == 0) {
                     pageBack();
                 }
             }
-        }
-        else if (rightDown())
-        {
-            if (mIndex % mColumns != mColumns - 1)
-            {
-                mIndex++;
-                if (mIndex > maxEntries(count))
-                {
-                    if constexpr (PageDirection == HidDirection::HORIZONTAL)
-                    {
-                        pageForward();
-                    }
-                    mIndex = mIndex - (mIndex % mColumns);
-                }
+
+            if (mIndexInVisible % mVisiblePerChunk == 0) {
+                mIndexInVisible += mVisiblePerChunk;
             }
-            else
-            {
-                if constexpr (PageDirection == HidDirection::HORIZONTAL)
-                {
+
+            mIndexInVisible -= 1;
+        }
+        else if (rightDownRepeat(input)) {
+            mIndexInVisible += 1;
+
+            if constexpr (PageDirection == HidDirection::HORIZONTAL) {
+                if(mIndexInVisible % mVisiblePerChunk == 0) {
                     pageForward();
                 }
-                mIndex -= mColumns - 1;
+            }
+
+            if(mIndexInVisible % mVisiblePerChunk == 0) {
+                mIndexInVisible -= mVisiblePerChunk;
             }
         }
-        else if (leftHeld())
-        {
-            if (currentTime <= mLastTime + Delay)
-            {
-                return;
-            }
-            if (mIndex % mColumns != 0)
-            {
-                mIndex--;
-            }
-            else
-            {
-                if constexpr (PageDirection == HidDirection::HORIZONTAL)
-                {
-                    pageBack();
-                }
-                mIndex += mColumns - 1;
-            }
-        }
-        else if (rightHeld())
-        {
-            if (currentTime <= mLastTime + Delay)
-            {
-                return;
-            }
-            if (mIndex % mColumns != mColumns - 1)
-            {
-                mIndex++;
-                if (mIndex > maxEntries(count))
-                {
-                    if constexpr (PageDirection == HidDirection::HORIZONTAL)
-                    {
-                        pageForward();
-                    }
-                    mIndex = mIndex - (mIndex % mColumns);
-                }
-            }
-            else
-            {
-                if constexpr (PageDirection == HidDirection::HORIZONTAL)
-                {
-                    pageForward();
-                }
-                mIndex -= mColumns - 1;
-            }
-        }
+        */
     }
-    else
-    {
-        if (leftDown())
-        {
-            if (mIndex / mRows != 0)
-            {
-                mIndex -= mRows;
-            }
-            else
-            {
-                if constexpr (PageDirection == HidDirection::HORIZONTAL)
-                {
-                    pageBack();
-                }
-                mIndex += mRows * (mColumns - 1);
-            }
-        }
-        else if (rightDown())
-        {
-            mIndex += mRows;
-            if (mIndex > maxEntries(count))
-            {
-                if constexpr (PageDirection == HidDirection::HORIZONTAL)
-                {
-                    pageForward();
-                }
-                mIndex %= mRows;
-            }
-        }
-        else if (leftHeld())
-        {
-            if (currentTime <= mLastTime + Delay)
-            {
-                return;
-            }
-            if (mIndex / mRows != 0)
-            {
-                mIndex -= mRows;
-            }
-            else
-            {
-                if constexpr (PageDirection == HidDirection::HORIZONTAL)
-                {
-                    pageBack();
-                }
-                mIndex += mRows * (mColumns - 1);
-            }
-        }
-        else if (rightHeld())
-        {
-            if (currentTime <= mLastTime + Delay)
-            {
-                return;
-            }
-            mIndex += mRows;
-            if (mIndex > maxEntries(count))
-            {
-                if constexpr (PageDirection == HidDirection::HORIZONTAL)
-                {
-                    pageForward();
-                }
-                mIndex %= mRows;
-            }
-        }
+    else { // grow down
+        if (upDownRepeat(input)) decrementInGrowDir();
+        else if (downDownRepeat(input)) incrementInGrowDir();
 
-        if (upDown())
-        {
-            if (mIndex % mRows > 0)
-            {
-                mIndex -= 1;
-            }
-            else
-            {
-                if constexpr (PageDirection == HidDirection::VERTICAL)
-                {
+        if (leftDownRepeat(input)) decrementInOtherDir();
+        else if (rightDownRepeat(input)) incrementInOtherDir();
+
+        /*
+        if (upDownRepeat(input)) {
+            if constexpr (PageDirection == HidDirection::VERTICAL) {
+                if(mIndexInVisible % mVisiblePerChunk == 0) {
                     pageBack();
                 }
-                mIndex = mIndex + mRows - 1;
             }
+
+            if (mIndexInVisible % mVisiblePerChunk == 0) {
+                mIndexInVisible += mVisiblePerChunk;
+            }
+
+            mIndexInVisible -= 1;
         }
-        else if (downDown())
-        {
-            if ((mIndex % mRows) < mRows - 1)
-            {
-                if (mIndex + mPage * mMaxVisibleEntries == count - 1)
-                {
-                    if constexpr (PageDirection == HidDirection::VERTICAL)
-                    {
-                        pageForward();
-                    }
-                    mIndex = mIndex - (mIndex % mRows);
-                }
-                else
-                {
-                    mIndex += 1;
-                }
-            }
-            else
-            {
-                if constexpr (PageDirection == HidDirection::VERTICAL)
-                {
+        else if (downDownRepeat(input)) {
+            mIndexInVisible += 1;
+
+            if constexpr (PageDirection == HidDirection::VERTICAL) {
+                if(mIndexInVisible % mVisiblePerChunk == 0) {
                     pageForward();
                 }
-                mIndex = mIndex + 1 - mRows;
+            }
+
+            if(mIndexInVisible % mVisiblePerChunk == 0) {
+                mIndexInVisible -= mVisiblePerChunk;
             }
         }
-        else if (upHeld())
-        {
-            if (currentTime <= mLastTime + Delay)
-            {
-                return;
-            }
-            if (mIndex % mRows > 0)
-            {
-                mIndex -= 1;
-            }
-            else
-            {
-                if constexpr (PageDirection == HidDirection::VERTICAL)
-                {
+        
+        if (leftDownRepeat(input)) {
+            if (mIndexInVisible < mVisiblePerChunk) {
+                if constexpr (PageDirection == HidDirection::HORIZONTAL) {
                     pageBack();
                 }
-                mIndex = mIndex + mRows - 1;
+                mIndexInVisible += mMaxVisibleEntries; // past the end
+                // go back in bounds
             }
+
+            mIndexInVisible -= mVisiblePerChunk;
         }
-        else if (downHeld())
-        {
-            if (currentTime <= mLastTime + Delay)
-            {
-                return;
-            }
-            if ((mIndex % mRows) < mRows - 1)
-            {
-                if (mIndex + mPage * mMaxVisibleEntries == count - 1)
-                {
-                    if constexpr (PageDirection == HidDirection::VERTICAL)
-                    {
-                        pageForward();
-                    }
-                    mIndex = mIndex - (mIndex % mRows);
-                }
-                else
-                {
-                    mIndex += 1;
-                }
-            }
-            else
-            {
-                if constexpr (PageDirection == HidDirection::VERTICAL)
-                {
+        else if (rightDownRepeat(input)) {
+            mIndexInVisible += mVisiblePerChunk;
+            if (mIndexInVisible >= mMaxVisibleEntries) {
+                if constexpr (PageDirection == HidDirection::HORIZONTAL) {
                     pageForward();
                 }
-                mIndex = mIndex + 1 - mRows;
+                mIndexInVisible -= mMaxVisibleEntries;
             }
         }
+        */
     }
 
     correctIndex(count);
-
-    mLastTime = currentTime;
 }

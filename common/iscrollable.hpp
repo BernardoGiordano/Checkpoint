@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #define ISCROLLABLE_HPP
 
 #include "iclickable.hpp"
+#include "inputdata.hpp"
 #include <vector>
 
 template <typename T>
@@ -35,52 +36,55 @@ class IScrollable {
 public:
     IScrollable(int x, int y, u16 w, u16 h, size_t visibleEntries) : mx(x), my(y), mw(w), mh(h), mVisibleEntries(visibleEntries)
     {
-        mIndex = 0;
+        mIndexInVisible = 0;
         mPage  = 0;
     }
 
-    virtual ~IScrollable(void) { flush(); }
+    virtual ~IScrollable() { }
 
-    virtual void draw(bool condition = false)                                                  = 0;
+    virtual void draw(const DrawDataHolder& d, bool condition = false) const                   = 0;
     virtual void push_back(T color, T colorMessage, const std::string& message, bool selected) = 0;
-    virtual void updateSelection(void)                                                         = 0;
+    virtual void updateSelection(const InputDataHolder& input)                                 = 0;
 
     std::string cellName(size_t index) const { return mCells.at(index)->text(); }
 
     void cellName(size_t index, const std::string& name) { mCells.at(index)->text(name); }
 
-    void flush(void)
+    void flush()
     {
-        for (size_t i = 0; i < size(); i++) {
-            delete mCells[i];
-        }
         mCells.clear();
     }
 
-    size_t size(void) const { return mCells.size(); }
+    size_t size() const { return mCells.size(); }
 
-    size_t maxVisibleEntries(void)
+    size_t maxVisibleEntries()
     {
+        if(size() > mPage * mVisibleEntries)
         return (size() - mPage * mVisibleEntries) > mVisibleEntries ? mVisibleEntries : size() - mPage * mVisibleEntries;
     }
 
-    size_t index(void) { return mIndex + mPage * mVisibleEntries; }
+    size_t index() { return mIndexInVisible + mPage * mVisibleEntries; }
 
-    int page(void) { return mPage; }
+    int page() { return mPage; }
 
-    virtual void resetIndex(void)
+    virtual void resetIndex()
     {
-        mIndex = 0;
+        mIndexInVisible = 0;
         mPage  = 0;
     }
 
     void index(size_t i)
     {
         mPage  = i / mVisibleEntries;
-        mIndex = i - mPage * mVisibleEntries;
+        mIndexInVisible = i - mPage * mVisibleEntries;
     }
 
-    size_t visibleEntries(void) { return mVisibleEntries; }
+    void removeEntry(size_t entry) 
+    {
+        mCells.erase(mCells.begin() + entry);
+    }
+
+    size_t visibleEntries() { return mVisibleEntries; }
 
     void selectRow(size_t i, bool selected) { mCells.at(i)->selected(selected); }
 
@@ -90,9 +94,9 @@ protected:
     u16 mw;
     u16 mh;
     size_t mVisibleEntries;
-    size_t mIndex;
+    size_t mIndexInVisible;
     int mPage;
-    std::vector<IClickable<T>*> mCells;
+    std::vector<std::unique_ptr<IClickable<T>>> mCells;
 };
 
 #endif

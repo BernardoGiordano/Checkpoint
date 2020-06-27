@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,17 +28,17 @@
 
 void Scrollable::c2dText(size_t i, const std::string& v)
 {
-    ((Clickable*)mCells.at(i))->c2dText(v);
+    ((Clickable*)(mCells.at(i).get()))->c2dText(v);
 }
 
 void Scrollable::setIndex(size_t i)
 {
     IScrollable::index(i);
-    mHid.index(mIndex);
+    mHid.index(mIndexInVisible);
     mHid.page(mPage);
 }
 
-void Scrollable::resetIndex(void)
+void Scrollable::resetIndex()
 {
     setIndex(0);
 }
@@ -46,33 +46,34 @@ void Scrollable::resetIndex(void)
 void Scrollable::push_back(u32 color, u32 colorMessage, const std::string& message, bool selected)
 {
     const float spacing = mh / mVisibleEntries;
-    Clickable* cell     = new Clickable(mx, my + (size() % mVisibleEntries) * spacing, mw, spacing, color, colorMessage, message, false);
+    auto cell = std::make_unique<Clickable>(mx, my + (size() % mVisibleEntries) * spacing, mw, spacing, color, colorMessage, message, false);
     cell->selected(selected);
-    mCells.push_back(cell);
+    mCells.push_back(std::move(cell));
 }
 
-void Scrollable::updateSelection(void)
+void Scrollable::updateSelection(const InputDataHolder& input)
 {
-    touchPosition touch;
-    hidTouchRead(&touch);
+    const u32 hu = mHid.maxEntries(size()) * mh / mVisibleEntries;
 
-    const u32 hu = (mHid.maxEntries(size()) + 1) * mh / mVisibleEntries;
-
-    if (hidKeysHeld() & KEY_TOUCH && touch.py > (float)my && touch.py < (float)(my + hu) && touch.px > (float)mx && touch.px < (float)(mx + mw)) {
-        mHid.index((size_t)((touch.py - my) * mVisibleEntries / mh));
+    if ((input.kHeld & KEY_TOUCH) && input.touch.py > (float)my && input.touch.py < (float)(my + hu) && input.touch.px > (float)mx && input.touch.px < (float)(mx + mw)) {
+        mHid.index((input.touch.py - my) * mVisibleEntries / mh);
     }
 
-    mHid.update(size());
-    mIndex = mHid.index();
-    mPage  = mHid.page();
+    mCells[mHid.fullIndex()]->selected(false);
+
+    mHid.update(input, size());
+    mIndexInVisible = mHid.index();
+    mPage           = mHid.page();
+
+    mCells[mHid.fullIndex()]->selected(true);
 }
 
-void Scrollable::draw(bool condition)
+void Scrollable::draw(const DrawDataHolder& d, bool condition) const
 {
     const size_t baseIndex = mVisibleEntries * mPage;
     const size_t sz        = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
-        mCells.at(i)->draw(0.5f, 0);
+        mCells.at(i)->draw(d, 0.5f, 0);
     }
 
     size_t blankRows = mVisibleEntries - sz;
@@ -82,7 +83,7 @@ void Scrollable::draw(bool condition)
     // draw selector
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
         if (mCells.at(i)->selected()) {
-            mCells.at(i)->drawOutline(condition ? COLOR_BLUE : COLOR_GREY_LIGHT);
+            mCells.at(i)->drawOutline(d, condition ? COLOR_BLUE : COLOR_GREY_LIGHT);
             break;
         }
     }

@@ -27,30 +27,27 @@
 #ifndef ERROROVERLAY_HPP
 #define ERROROVERLAY_HPP
 
-#include "Overlay.hpp"
-#include "clickable.hpp"
-#include "colors.hpp"
-#include "gui.hpp"
-#include "util.hpp"
-#include <memory>
 #include <string>
 
-class Clickable;
+#include "Screen.hpp"
+#include "clickable.hpp"
+#include "dualscreen.hpp"
+#include "backupable.hpp"
 
-class ErrorOverlay : public Overlay {
+class ErrorOverlay : public DualScreenOverlay {
 public:
-    ErrorOverlay(Screen& screen, Result res, const std::string& mtext);
-    ~ErrorOverlay(void);
-    void drawTop(void) const override;
-    void drawBottom(void) const override;
-    void update(touchPosition* touch) override;
+    ErrorOverlay(Screen& screen, const Backupable::ActionResult& res);
+    ~ErrorOverlay();
+    void drawTop(DrawDataHolder& d) const override;
+    void drawBottom(DrawDataHolder& d) const override;
+    void update(InputDataHolder& input) override;
 
 private:
     u32 posx, posy;
     const float size = 0.6f;
     C2D_Text text, error;
     C2D_TextBuf textBuf;
-    std::unique_ptr<Clickable> button;
+    Clickable button;
 };
 
 #endif

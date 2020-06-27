@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -45,70 +45,63 @@
 #ifndef SPI_HPP
 #define SPI_HPP
 
-#include "logger.hpp"
 #include <3ds.h>
-#include <stdio.h>
-#include <string.h>
 
-extern "C" {
+namespace SPI {
+    inline constexpr u8 EEPROM_512B_CMD_WRLO = 2;
+    inline constexpr u8 EEPROM_512B_CMD_WRHI = 10;
+    inline constexpr u8 EEPROM_512B_CMD_RDLO = 3;
+    inline constexpr u8 EEPROM_512B_CMD_RDHI = 11;
 
-#define SPI_512B_EEPROM_CMD_WRLO 2
-#define SPI_512B_EEPROM_CMD_WRHI 10
-#define SPI_512B_EEPROM_CMD_RDLO 3
-#define SPI_512B_EEPROM_CMD_RDHI 11
+    inline constexpr u8 EEPROM_CMD_WRITE = 2;
 
-#define SPI_EEPROM_CMD_WRITE 2
+    inline constexpr u8 CMD_PP = 2;
+    inline constexpr u8 CMD_READ = 3;
+    inline constexpr u8 CMD_RDSR = 5;
+    inline constexpr u8 CMD_WREN = 6;
 
-#define SPI_CMD_PP 2
-#define SPI_CMD_READ 3
-#define SPI_CMD_RDSR 5
-#define SPI_CMD_WREN 6
+    inline constexpr u8 FLASH_CMD_PW = 10;
+    inline constexpr u8 FLASH_CMD_RDID = 0x9f;
+    inline constexpr u8 FLASH_CMD_SE = 0xd8;
 
-#define SPI_FLASH_CMD_PW 10
-#define SPI_FLASH_CMD_RDID 0x9f
-#define SPI_FLASH_CMD_SE 0xd8
+    inline constexpr u8 FLG_WIP = 1;
+    inline constexpr u8 FLG_WEL = 2;
 
-#define SPI_FLG_WIP 1
-#define SPI_FLG_WEL 2
+    enum CardType {
+        NO_CHIP = -1,
 
-extern u8* fill_buf;
+        EEPROM_512B = 0,
 
-typedef enum {
-    NO_CHIP = -1,
+        EEPROM_8KB       = 1,
+        EEPROM_64KB      = 2,
+        EEPROM_128KB     = 3,
+        EEPROM_STD_DUMMY = 1,
 
-    EEPROM_512B = 0,
+        FLASH_256KB_1   = 4,
+        FLASH_256KB_2   = 5,
+        FLASH_512KB_1   = 6,
+        FLASH_512KB_2   = 7,
+        FLASH_1MB       = 8,
+        FLASH_8MB       = 9, // <- can't restore savegames, and maybe not read them atm
+        FLASH_STD_DUMMY = 4,
 
-    EEPROM_8KB       = 1,
-    EEPROM_64KB      = 2,
-    EEPROM_128KB     = 3,
-    EEPROM_STD_DUMMY = 1,
+        FLASH_512KB_INFRARED = 10,
+        FLASH_256KB_INFRARED = 11, // AFAIK, only "Active Health with Carol Vorderman" has such a flash save memory
+        FLASH_INFRARED_DUMMY = 9,
 
-    FLASH_256KB_1   = 4,
-    FLASH_256KB_2   = 5,
-    FLASH_512KB_1   = 6,
-    FLASH_512KB_2   = 7,
-    FLASH_1MB       = 8,
-    FLASH_8MB       = 9, // <- can't restore savegames, and maybe not read them atm
-    FLASH_STD_DUMMY = 4,
+        CHIP_LAST = 11,
+    };
 
-    FLASH_512KB_INFRARED = 10,
-    FLASH_256KB_INFRARED = 11, // AFAIK, only "Active Health with Carol Vorderman" has such a flash save memory
-    FLASH_INFRARED_DUMMY = 9,
-
-    CHIP_LAST = 11,
-} CardType;
-
-Result SPIWriteRead(CardType type, void* cmd, u32 cmdSize, void* answer, u32 answerSize, void* data, u32 dataSize);
-Result SPIWaitWriteEnd(CardType type);
-Result SPIEnableWriting(CardType type);
-Result SPIReadJEDECIDAndStatusReg(CardType type, u32* id, u8* statusReg);
-Result SPIGetCardType(CardType* type, int infrared);
-u32 SPIGetPageSize(CardType type);
-u32 SPIGetCapacity(CardType type);
-Result SPIWriteSaveData(CardType type, u32 offset, void* data, u32 size);
-Result SPIReadSaveData(CardType type, u32 offset, void* data, u32 size);
-Result SPIEraseSector(CardType type, u32 offset);
-
-} // extern "C"
+    Result WriteRead(CardType type, void* cmd, u32 cmdSize, void* answer, u32 answerSize, void* data, u32 dataSize);
+    Result WaitWriteEnd(CardType type);
+    Result EnableWriting(CardType type);
+    Result ReadJEDECIDAndStatusReg(CardType type, u32* id, u8* statusReg);
+    Result GetCardType(CardType* type, int infrared);
+    u32 GetPageSize(CardType type);
+    u32 GetCapacity(CardType type);
+    Result WriteSaveData(CardType type, u32 offset, void* data, u32 size);
+    Result ReadSaveData(CardType type, u32 offset, void* data, u32 size);
+    Result EraseSector(CardType type, u32 offset);
+}
 
 #endif

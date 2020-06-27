@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,30 +27,28 @@
 #ifndef YESNOOVERLAY_HPP
 #define YESNOOVERLAY_HPP
 
-#include "Overlay.hpp"
-#include "clickable.hpp"
-#include "colors.hpp"
-#include "gui.hpp"
-#include "hid.hpp"
 #include <functional>
-#include <memory>
 #include <string>
 
-class Clickable;
+#include "Screen.hpp"
+#include "clickable.hpp"
+#include "dualscreen.hpp"
+#include "ihid.hpp"
 
-class YesNoOverlay : public Overlay {
+class YesNoOverlay : public DualScreenOverlay {
 public:
     YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
-    ~YesNoOverlay(void);
-    void drawTop(void) const override;
-    void drawBottom(void) const override;
-    void update(touchPosition* touch) override;
+    ~YesNoOverlay();
 
 private:
+    void drawTop(DrawDataHolder& d) const override;
+    void drawBottom(DrawDataHolder& d) const override;
+    void update(InputDataHolder& input) override;
+
     u32 posx, posy;
     C2D_TextBuf textBuf;
     C2D_Text text;
-    std::unique_ptr<Clickable> buttonYes, buttonNo;
+    Clickable buttonYes, buttonNo;
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::function<void()> yesFunc, noFunc;
 };

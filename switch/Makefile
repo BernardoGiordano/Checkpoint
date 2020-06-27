@@ -37,10 +37,10 @@ APP_VERSION	:=	${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
 TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out
 BUILD			:=	build
-FORMATSOURCES	:=	source ../common
+FORMATSOURCES	:=	source source/dataholders ../common
 SOURCES			:=	$(FORMATSOURCES) ../3rd-party/mongoose ../3rd-party/ftp
 DATA			:=	data
-FORMATINCLUDES	:=	include ../common
+FORMATINCLUDES	:=	include include/dataholders ../common 
 INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/mongoose ../3rd-party/json ../3rd-party/ftp
 EXEFS_SRC		:=	exefs_src
 ROMFS			:=	romfs
@@ -72,7 +72,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-no-as-needed,-Map,$(notdir $*.map)
 
-LIBS	:=	`aarch64-none-elf-pkg-config SDL2_ttf SDL2_image --libs`
+LIBS	:=	`aarch64-none-elf-pkg-config SDL2_ttf SDL2_image --libs` -lstdc++fs
 
 CXX		:= `which ccache` $(CXX)
 CC		:= `which ccache` $(CC)

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,7 +28,10 @@
 
 YesNoOverlay::YesNoOverlay(
     Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo)
-    : Overlay(screen), hid(2, 2)
+    : DualScreenOverlay(screen),
+    buttonYes(42, 162, 116, 36, COLOR_GREY_DARK, COLOR_WHITE, "\uE000 Yes", true),
+    buttonNo(162, 162, 116, 36, COLOR_GREY_DARK, COLOR_WHITE, "\uE001 No", true),
+    hid(2, 2)
 {
     textBuf = C2D_TextBufNew(64);
     C2D_TextParse(&text, textBuf, mtext.c_str());
@@ -39,51 +42,48 @@ YesNoOverlay::YesNoOverlay(
 
     posx = ceilf(320 - text.width * 0.6) / 2;
     posy = 40 + ceilf(120 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2;
-
-    buttonYes = std::make_unique<Clickable>(42, 162, 116, 36, COLOR_GREY_DARK, COLOR_WHITE, "\uE000 Yes", true);
-    buttonNo  = std::make_unique<Clickable>(162, 162, 116, 36, COLOR_GREY_DARK, COLOR_WHITE, "\uE001 No", true);
 }
 
-YesNoOverlay::~YesNoOverlay(void)
+YesNoOverlay::~YesNoOverlay()
 {
     C2D_TextBufDelete(textBuf);
 }
 
-void YesNoOverlay::drawTop(void) const
+void YesNoOverlay::drawTop(DrawDataHolder& d) const
 {
     C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
 }
 
-void YesNoOverlay::drawBottom(void) const
+void YesNoOverlay::drawBottom(DrawDataHolder& d) const
 {
     C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
     C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
     C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, 0.6f, 0.6f, COLOR_WHITE);
     C2D_DrawRectSolid(40, 160, 0.5f, 240, 40, COLOR_GREY_LIGHT);
 
-    buttonYes->draw(0.7, 0);
-    buttonNo->draw(0.7, 0);
+    buttonYes.draw(d, 0.7, 0);
+    buttonNo.draw(d, 0.7, 0);
 
     if (hid.index() == 0) {
-        Gui::drawPulsingOutline(42, 162, 116, 36, 2, COLOR_BLUE);
+        d.citro.drawPulsingOutline(42, 162, 116, 36, 2, COLOR_BLUE);
     }
     else {
-        Gui::drawPulsingOutline(162, 162, 116, 36, 2, COLOR_BLUE);
+        d.citro.drawPulsingOutline(162, 162, 116, 36, 2, COLOR_BLUE);
     }
 }
 
-void YesNoOverlay::update(touchPosition* touch)
+void YesNoOverlay::update(InputDataHolder& input)
 {
-    hid.update(2);
+    hid.update(input, 2);
 
-    hid.index(buttonYes->held() ? 0 : buttonNo->held() ? 1 : hid.index());
-    buttonYes->selected(hid.index() == 0);
-    buttonNo->selected(hid.index() == 1);
+    hid.index(buttonYes.held(input) ? 0 : buttonNo.held(input) ? 1 : hid.index());
+    buttonYes.selected(hid.index() == 0);
+    buttonNo.selected(hid.index() == 1);
 
-    if (buttonYes->released() || ((hidKeysDown() & KEY_A) && hid.index() == 0)) {
+    if (buttonYes.released(input) || ((input.kDown & KEY_A) && hid.index() == 0)) {
         yesFunc();
     }
-    else if (buttonNo->released() || (hidKeysDown() & KEY_B) || ((hidKeysDown() & KEY_A) && hid.index() == 1)) {
+    else if (buttonNo.released(input) || (input.kDown & KEY_B) || ((input.kDown & KEY_A) && hid.index() == 1)) {
         noFunc();
     }
 }

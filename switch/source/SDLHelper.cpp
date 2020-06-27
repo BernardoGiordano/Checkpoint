@@ -1,211 +1,201 @@
+/*
+ *   This file is part of Checkpoint
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+ *       * Requiring preservation of specified reasonable legal notices or
+ *         author attributions in that material or in the Appropriate Legal
+ *         Notices displayed by works containing it.
+ *       * Prohibiting misrepresentation of the origin of that material,
+ *         or requiring that modified versions of such material be marked in
+ *         reasonable ways as different from the original version.
+ */
+
 #include "SDLHelper.hpp"
+#include "logger.hpp"
 
-static SDL_Window* s_window;
-static SDL_Renderer* s_renderer;
-static SDL_Texture* s_star;
-static SDL_Texture* s_checkbox;
-
-static PlFontData fontData, fontExtData;
-static std::unordered_map<int, FC_Font*> s_fonts;
-
-static FC_Font* getFontFromMap(int size)
-{
-    std::unordered_map<int, FC_Font*>::const_iterator got = s_fonts.find(size);
-    if (got == s_fonts.end() || got->second == NULL) {
-        FC_Font* f = FC_CreateFont();
-        FC_LoadFont_RW(f, s_renderer, SDL_RWFromMem((void*)fontData.address, fontData.size),
-            SDL_RWFromMem((void*)fontExtData.address, fontExtData.size), 1, size, COLOR_BLACK, TTF_STYLE_NORMAL);
-        s_fonts.insert({size, f});
-        return f;
+struct SurfaceDeleter {
+    void operator()(SDL_Surface* s)
+    {
+        SDL_FreeSurface(s);
     }
-    return got->second;
+};
+
+using SurfacePtr = std::unique_ptr<SDL_Surface, SurfaceDeleter>;
+
+namespace {
+    PlFontData fontData, fontExtData;
+    float g_currentTime;
 }
 
-bool SDLH_Init(void)
+SDLH::SDLH(u32& username_dotsize) : ready(false)
 {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) {
-        Logger::getInstance().log(Logger::ERROR, "SDL_Init: %s.", SDL_GetError());
-        return false;
+        Logger::log(Logger::ERROR, "SDL_Init: %s.", SDL_GetError());
+        return;
     }
-    s_window = SDL_CreateWindow("Checkpoint", 0, 0, 1280, 720, SDL_WINDOW_FULLSCREEN);
+    s_window.reset(SDL_CreateWindow("Checkpoint", 0, 0, 1280, 720, SDL_WINDOW_FULLSCREEN));
     if (!s_window) {
-        Logger::getInstance().log(Logger::ERROR, "SDL_CreateWindow: %s.", SDL_GetError());
-        return false;
+        Logger::log(Logger::ERROR, "SDL_CreateWindow: %s.", SDL_GetError());
+        return;
     }
-    s_renderer = SDL_CreateRenderer(s_window, 0, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    s_renderer.reset(SDL_CreateRenderer(s_window, 0, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC));
     if (!s_renderer) {
-        Logger::getInstance().log(Logger::ERROR, "SDL_CreateRenderer: %s.", SDL_GetError());
-        return false;
+        Logger::log(Logger::ERROR, "SDL_CreateRenderer: %s.", SDL_GetError());
+        return;
     }
-    SDL_SetRenderDrawBlendMode(s_renderer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawBlendMode(s_renderer.get(), SDL_BLENDMODE_BLEND);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "2");
 
     const int img_flags = IMG_INIT_PNG | IMG_INIT_JPG;
     if ((IMG_Init(img_flags) & img_flags) != img_flags) {
-        Logger::getInstance().log(Logger::ERROR, "IMG_Init: %s.", IMG_GetError());
+        Logger::log(Logger::ERROR, "IMG_Init: %s.", IMG_GetError());
         return false;
     }
-    SDLH_LoadImage(&s_star, "romfs:/star.png");
-    SDLH_LoadImage(&s_checkbox, "romfs:/checkbox.png");
+    LoadImage(&s_star, "romfs:/star.png");
+    LoadImage(&s_checkbox, "romfs:/checkbox.png");
     SDL_SetTextureColorMod(s_checkbox, theme().c1.r, theme().c1.g, theme().c1.b);
 
     plGetSharedFontByType(&fontData, PlSharedFontType_Standard);
     plGetSharedFontByType(&fontExtData, PlSharedFontType_NintendoExt);
 
     // utils
-    SDLH_GetTextDimensions(13, "...", &g_username_dotsize, NULL);
+    GetTextDimensions(13, "...", &username_dotsize, NULL);
 
-    return true;
+    ready = true;
 }
 
-void SDLH_Exit(void)
+SDLH::~SDLH()
 {
-    for (auto& value : s_fonts) {
-        FC_FreeFont(value.second);
-    }
+    s_fonts.~FontHolder();
+    s_checkbox = nullptr;
+    s_star = nullptr;
+    s_renderer = nullptr;
+    s_window = nullptr;
 
     TTF_Quit();
-    SDL_DestroyTexture(s_star);
-    SDL_DestroyTexture(s_checkbox);
     IMG_Quit();
-    SDL_DestroyRenderer(s_renderer);
-    SDL_DestroyWindow(s_window);
     SDL_Quit();
 }
 
-void SDLH_ClearScreen(SDL_Color color)
+void SDLH::clearScreen(SDL_Color color)
 {
-    SDL_SetRenderDrawColor(s_renderer, color.r, color.g, color.b, color.a);
-    SDL_RenderClear(s_renderer);
+    SDL_SetRenderDrawColor(s_renderer.get(), color.r, color.g, color.b, color.a);
+    SDL_RenderClear(s_renderer.get());
 }
-
-void SDLH_Render(void)
-{
-    g_currentTime = SDL_GetTicks() / 1000.f;
-    SDL_RenderPresent(s_renderer);
-}
-
-void SDLH_DrawRect(int x, int y, int w, int h, SDL_Color color)
+void SDLH::drawRect(int x, int y, int w, int h, SDL_Color color)
 {
     SDL_Rect rect;
     rect.x = x;
     rect.y = y;
     rect.w = w;
     rect.h = h;
-    SDL_SetRenderDrawColor(s_renderer, color.r, color.g, color.b, color.a);
-    SDL_RenderFillRect(s_renderer, &rect);
+    SDL_SetRenderDrawColor(s_renderer.get(), color.r, color.g, color.b, color.a);
+    SDL_RenderFillRect(s_renderer.get(), &rect);
 }
 
-void SDLH_DrawText(int size, int x, int y, SDL_Color color, const char* text)
+void SDLH::drawText(int size, int x, int y, SDL_Color color, const char* text)
 {
-    FC_DrawColor(getFontFromMap(size), s_renderer, x, y, color, text);
+    FC_DrawColor(getFontFromMap(size), s_renderer.get(), x, y, color, text);
 }
-
-void SDLH_DrawTextBox(int size, int x, int y, SDL_Color color, int max, const char* text)
+void SDLH::drawTextBox(int size, int x, int y, SDL_Color color, int max, const char* text)
 {
     u32 h;
     FC_Font* font = getFontFromMap(size);
-    SDLH_GetTextDimensions(size, text, NULL, &h);
+    GetTextDimensions(size, text, NULL, &h);
     FC_Rect rect = FC_MakeRect(x, y, max, h);
-    FC_DrawBoxColor(font, s_renderer, rect, color, text);
+    FC_DrawBoxColor(font, s_renderer.get(), rect, color, text);
 }
 
-void SDLH_LoadImage(SDL_Texture** texture, char* path)
+void SDLH::loadImage(TexPtr& texture, const char* path)
 {
-    SDL_Surface* loaded_surface = NULL;
-    loaded_surface              = IMG_Load(path);
+    SurfacePtr loaded_surface(IMG_Load(path));
 
     if (loaded_surface) {
         Uint32 colorkey = SDL_MapRGB(loaded_surface->format, 0, 0, 0);
-        SDL_SetColorKey(loaded_surface, SDL_TRUE, colorkey);
-        *texture = SDL_CreateTextureFromSurface(s_renderer, loaded_surface);
+        SDL_SetColorKey(loaded_surface.get(), SDL_TRUE, colorkey);
+        texture.reset(SDL_CreateTextureFromSurface(s_renderer.get(), loaded_surface.get()));
     }
-
-    SDL_FreeSurface(loaded_surface);
 }
-
-void SDLH_LoadImage(SDL_Texture** texture, u8* buff, size_t size)
+void SDLH::loadImage(TexPtr& texture, u8* buff, size_t size)
 {
-    SDL_Surface* loaded_surface = NULL;
-    loaded_surface              = IMG_Load_RW(SDL_RWFromMem(buff, size), 1);
+    SurfacePtr loaded_surface(IMG_Load_RW(SDL_RWFromMem(buff, size), 1));
 
     if (loaded_surface) {
         Uint32 colorkey = SDL_MapRGB(loaded_surface->format, 0, 0, 0);
-        SDL_SetColorKey(loaded_surface, SDL_TRUE, colorkey);
-        *texture = SDL_CreateTextureFromSurface(s_renderer, loaded_surface);
+        SDL_SetColorKey(loaded_surface.get(), SDL_TRUE, colorkey);
+        texture.reset(SDL_CreateTextureFromSurface(s_renderer.get(), loaded_surface.get()));
     }
-
-    SDL_FreeSurface(loaded_surface);
 }
 
-void SDLH_DrawImage(SDL_Texture* texture, int x, int y)
+void SDLH::drawImage(SDL_Texture* texture, int x, int y)
 {
     SDL_Rect position;
     position.x = x;
     position.y = y;
-    SDL_QueryTexture(texture, NULL, NULL, &position.w, &position.h);
-    SDL_RenderCopy(s_renderer, texture, NULL, &position);
+    SDL_QueryTexture(texture, nullptr, nullptr, &position.w, &position.h);
+    SDL_RenderCopy(s_renderer.get(), texture, nullptr, &position);
 }
-
-void SDLH_DrawImageScale(SDL_Texture* texture, int x, int y, int w, int h)
+void SDLH::drawImageScale(SDL_Texture* texture, int x, int y, int w, int h)
 {
     SDL_Rect position;
     position.x = x;
     position.y = y;
     position.w = w;
     position.h = h;
-    SDL_RenderCopy(s_renderer, texture, NULL, &position);
+    SDL_RenderCopy(s_renderer.get(), texture, nullptr, &position);
 }
-
-void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h)
+void SDLH::drawIcon(const std::string& icon, int x, int y);
+void SDLH::getTextDimensions(int size, const char* text, u32* w, u32* h)
 {
     FC_Font* f = getFontFromMap(size);
-    if (w != NULL)
+    if (w)
         *w = FC_GetWidth(f, text);
-    if (h != NULL)
+    if (h)
         *h = FC_GetHeight(f, text);
 }
 
-void SDLH_DrawIcon(std::string icon, int x, int y)
+void SDLH::render()
 {
-    SDL_Texture* t = nullptr;
-    if (icon.compare("checkbox") == 0) {
-        t = s_checkbox;
-        SDLH_DrawRect(x + 8, y + 8, 24, 24, theme().c6);
-    }
-    else if (icon.compare("star") == 0) {
-        t = s_star;
-    }
-
-    if (t != nullptr) {
-        SDLH_DrawImage(t, x, y);
-    }
+    g_currentTime = SDL_GetTicks() / 1000.f;
+    SDL_RenderPresent(s_renderer.get());
 }
 
-void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
+void SDLH::drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
 {
     SDLH_DrawRect(x - size, y - size, w + 2 * size, size, color); // top
     SDLH_DrawRect(x - size, y, size, h, color);                   // left
     SDLH_DrawRect(x + w, y, size, h, color);                      // right
     SDLH_DrawRect(x - size, y + h, w + 2 * size, size, color);    // bottom
 }
-
-void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
+void SDLH::drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
 {
-    float highlight_multiplier = fmax(0.0, fabs(fmod(g_currentTime, 1.0) - 0.5) / 0.5);
+    const float highlight_multiplier = fmax(0.0, fabs(fmod(g_currentTime, 1.0) - 0.5) / 0.5);
     color                      = FC_MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier,
         color.b + (255 - color.b) * highlight_multiplier, 255);
     drawOutline(x, y, w, h, size, color);
 }
-
 std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize)
 {
     u32 width;
     std::string newtext = "";
-    for (size_t i = 0, len = text.length(); i < len; i++) {
-        SDLH_GetTextDimensions(textsize, newtext.c_str(), &width, NULL);
+    for (const auto c : text) {
+        GetTextDimensions(textsize, newtext.c_str(), &width, nullptr);
         if (width < maxsize) {
-            newtext += text[i];
+            newtext += c;
         }
         else {
             newtext += "...";
@@ -213,4 +203,20 @@ std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize)
         }
     }
     return newtext;
+}
+
+FC_Font* SDLH::getFontFromMap(int size)
+{
+    if(auto it = s_fonts.find(size); it == s_fonts.end())
+    {
+        FC_Font* f = FC_CreateFont();
+        FC_LoadFont_RW(f, s_renderer.get(), SDL_RWFromMem((void*)fontData.address, fontData.size),
+            SDL_RWFromMem((void*)fontExtData.address, fontExtData.size), 1, size, COLOR_BLACK, TTF_STYLE_NORMAL);
+        s_fonts.try_emplace(size, f);
+        return f;
+    }
+    else
+    {
+        return it->second.get();
+    }
 }

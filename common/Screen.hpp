@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,11 +27,9 @@
 #ifndef SCREEN_HPP
 #define SCREEN_HPP
 
-#if defined(_3DS)
-#include <3ds.h>
-#elif defined(__SWITCH__)
-#include <switch.h>
-#endif
+#include "inputdata.hpp"
+#include "drawdata.hpp"
+
 #include <memory>
 
 class Overlay;
@@ -40,25 +38,20 @@ class Screen {
     friend class Overlay;
 
 public:
-    Screen(void) {}
-    virtual ~Screen(void) {}
+    Screen() {}
+    virtual ~Screen() {}
     // Call currentOverlay->update if it exists, and update if it doesn't
-    virtual void doUpdate(touchPosition* touch) final;
-    virtual void update(touchPosition* touch) = 0;
+    void doUpdate(InputDataHolder& i);
     // Call draw, then currentOverlay->draw if it exists
-#if defined(_3DS)
-    virtual void doDrawTop(void) const final;
-    virtual void doDrawBottom(void) const final;
-    virtual void drawTop(void) const    = 0;
-    virtual void drawBottom(void) const = 0;
-#elif defined(__SWITCH__)
-    virtual void doDraw() const final;
-    virtual void draw() const = 0;
-#endif
+    void doDraw(DrawDataHolder& d) const;
+
     void removeOverlay() { currentOverlay = nullptr; }
     void setOverlay(std::shared_ptr<Overlay>& overlay) { currentOverlay = overlay; }
 
 protected:
+    virtual void update(InputDataHolder& i) = 0;
+    virtual void draw(DrawDataHolder& d) const = 0;
+
     // No point in restricting this to only being editable during update, especially since it's drawn afterwards. Allows setting it before the first
     // draw loop is done
     mutable std::shared_ptr<Overlay> currentOverlay = nullptr;

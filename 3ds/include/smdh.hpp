@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,8 +28,9 @@
 #define SMDH_HPP
 
 #include <3ds.h>
-#include <stdio.h>
+#include <cstdio>
 #include <string>
+#include <memory>
 
 typedef struct {
     u32 magic;
@@ -38,9 +39,9 @@ typedef struct {
 } smdhHeader_s;
 
 typedef struct {
-    u16 shortDescription[0x40];
-    u16 longDescription[0x80];
-    u16 publisher[0x40];
+    char16_t shortDescription[0x40];
+    char16_t longDescription[0x80];
+    char16_t publisher[0x40];
 } smdhTitle_s;
 
 typedef struct {
@@ -63,7 +64,7 @@ typedef struct {
     u16 bigIconData[0x900];
 } smdh_s;
 
-smdh_s* loadSMDH(u32 low, u32 high, u8 media);
-smdh_s* loadSMDH(const std::string& path);
+std::unique_ptr<smdh_s> loadSMDH(u32 low, u32 high, u8 media);
+std::unique_ptr<smdh_s> loadSMDH(const std::string& path);
 
 #endif
