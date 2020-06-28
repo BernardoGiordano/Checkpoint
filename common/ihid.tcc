@@ -65,6 +65,9 @@ void Hid<GrowDirection, PageDirection>::update(const InputDataHolder& input, siz
         if (mIndexInVisible % mVisiblePerChunk == 0) {
             mIndexInVisible -= mVisiblePerChunk;
         }
+        else if (mIndexInVisible == maxEntries(count)) {
+            mIndexInVisible -= maxEntries(count) % mVisiblePerChunk;
+        }
     };
 
     const auto decrementInOtherDir = [&]() {

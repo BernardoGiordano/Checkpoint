@@ -57,7 +57,7 @@ namespace {
     }
 }
 
-int __stacksize__ = 64 * 1024;
+int __stacksize__ = 128 * 1024;
 
 extern "C" void userAppInit()
 {
@@ -126,7 +126,7 @@ Checkpoint::Checkpoint()
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
 
     LightEvent_Init(&data.shouldPerformAction, RESET_ONESHOT);
-    data.actionThread = threadCreate(Action::performActionThreadFunc, &data, 64 * 1024, prio - 2, -2, false);
+    data.actionThread = threadCreate(Action::performActionThreadFunc, &data, __stacksize__, prio - 2, -2, false);
     data.actionThreadKeepGoing.test_and_set();
 
     data.multiSelectedCount.fill(0);
@@ -136,7 +136,7 @@ Checkpoint::Checkpoint()
 
     LightEvent_Init(&data.titleLoadingThreadBeginEvent, RESET_ONESHOT);
     LightLock_Init(&data.backupableVectorLock);
-    data.titleLoadingThread = threadCreate(Title::loaderThreadFunc, &data, 64 * 1024, prio - 1, -2, false);
+    data.titleLoadingThread = threadCreate(Title::loaderThreadFunc, &data, __stacksize__, prio - 1, -2, false);
 
     data.titleLoadingThreadKeepGoing.test_and_set();
     LightEvent_Signal(&data.titleLoadingThreadBeginEvent);

@@ -30,6 +30,7 @@
 #include "logger.hpp"
 #include "platform.hpp"
 #include "stringutils.hpp"
+#include "fileptr.hpp"
 #include "io.hpp"
 #include "archive.hpp"
 #include "config.hpp"
@@ -193,6 +194,115 @@ namespace DSIcon {
     }
 }
 
+namespace Cache {
+    constexpr size_t ENTRYSIZE = 5028;
+    /**
+     * CACHE STRUCTURE
+     * start, len
+     * id (0, 8)
+     * uniqueId text (8, 8)
+     * productCode (16, 16)
+     * accessibleSave + isGBA + accessibleExtdata (32, 1)
+     * mediaType (33, 1)
+     * we don't care about carts because they are never written to the cache
+     * but still align to 4 byte bounds as if cart info was there
+     * shortDescription (36, 128)
+     * longDescription (164, 256)
+     * bigIconData (420, 4608)
+     */
+    void exportTitleList(const std::vector<Title>& titles)
+    {
+        auto buffer = std::make_unique<char[]>(ENTRYSIZE * 5);
+        {
+            FilePtr fh = openFile(Platform::Files::Cache, "wb");
+            if (fh) {
+                setvbuf(fh.get(), buffer.get(), _IOFBF, ENTRYSIZE * 5);
+                char entry[ENTRYSIZE];
+                char * const ptr = &entry[0];
+                for(const auto& t : titles) {
+                    memset(ptr, 0, sizeof(entry));
+
+                    const u8 media               = t.mInfo.mMedia;
+
+                    #define IS_BIT_OR_ZERO(val, idx) val ? BIT(idx) : 0 
+                    const u8 accessibleSaveInfo    = IS_BIT_OR_ZERO(t.mInfo.mHasSave, 0);
+                    const u8 isGBAInfo             = IS_BIT_OR_ZERO(t.mInfo.mIsGBAVC, 1);
+                    const u8 accessibleExtdataInfo = IS_BIT_OR_ZERO(t.mInfo.mHasExtdata, 2);
+                    #undef IS_BIT_OR_ZERO
+                    const u8 dataInfo = accessibleSaveInfo | isGBAInfo | accessibleExtdataInfo;
+
+                    memcpy(ptr + 0, &t.mInfo.mId, sizeof(u64));
+                    memcpy(ptr + 8, t.mInfo.mUniqueIdText, 8);
+                    memcpy(ptr + 16, t.mInfo.mProductCode, 16);
+                    memcpy(ptr + 32, &dataInfo, 1);
+                    memcpy(ptr + 33, &media, 1);
+                    strncpy(ptr + 36, t.mInfo.mShortDesc, 0x80);
+                    strncpy(ptr + 164, t.mInfo.mLongDesc, 0x100);
+                    memcpy(ptr + 420, t.mInfo.mIconData, 48 * 48 * 2);
+
+                    fwrite(ptr, 1, ENTRYSIZE, fh.get());
+                }
+            }
+        }
+    }
+    void importTitleList(DataHolder& data)
+    {
+        auto buffer = std::make_unique<char[]>(ENTRYSIZE * 5);
+        {
+            FilePtr fh = openFile(Platform::Files::Cache, "rb");
+            if (fh) {
+                setvbuf(fh.get(), buffer.get(), _IOFBF, ENTRYSIZE * 5);
+                char entry[ENTRYSIZE];
+                char * const ptr = &entry[0];
+                do {
+                    size_t amountRead = fread(ptr, 1, ENTRYSIZE, fh.get());
+                    if (amountRead == ENTRYSIZE) {
+                        
+                        u64 id;
+                        u8 dataInfo = 0;
+                        u8 media = 0;
+
+                        memcpy(&id, ptr + 0, sizeof(u64));
+                        memcpy(&media, ptr + 33, 1);
+                        memcpy(&dataInfo, ptr + 32, 1);
+
+                        TitleInfo info(id, FS_MediaType(media), CARD_CTR);
+
+                        memcpy(info.mUniqueIdText, ptr + 8, 8);
+                        memcpy(info.mProductCode, ptr + 16, 16);
+                        memcpy(info.mShortDesc, ptr + 36, 0x80);
+                        memcpy(info.mLongDesc, ptr + 164, 0x100);
+                        memcpy(info.mIconData, ptr + 420, 48 * 48 * 2);
+
+                        Icon::addIcon(info, data.titles.size());
+
+                        if (dataInfo & BIT(0)) {
+                            info.mHasSave = true;
+                            if (dataInfo & BIT(1)) {
+                                info.mIsGBAVC = true;
+                                auto holder = std::make_unique<BackupableWithData<GBASaveTitleHolder>>(data.titles);
+                                data.thingsToActOn[BackupTypes::Save].push_back(std::move(holder));
+                            }
+                            else {
+                                auto holder = std::make_unique<BackupableWithData<SaveTitleHolder>>(data.titles);
+                                data.thingsToActOn[BackupTypes::Save].push_back(std::move(holder));
+                            }
+                        }
+                        if (dataInfo & BIT(2)) {
+                            info.mHasExtdata = true;
+                            auto holder = std::make_unique<BackupableWithData<ExtdataTitleHolder>>(data.titles);
+                            data.thingsToActOn[BackupTypes::Extdata].push_back(std::move(holder));
+                        }
+
+                        data.titles.emplace_back(std::move(info));
+                        data.titles.back().refreshDirectories();
+                    }
+                } while(!feof(fh.get()) && !ferror(fh.get()));
+            }
+        }
+    }
+}
+
 TitleInfo::TitleInfo(u64 _id, FS_MediaType _media, FS_CardType _card)
 {
     mId = _id;
@@ -275,6 +385,8 @@ const char* TitleInfo::mediatypeString() const
 
 void Title::loaderThreadFunc(void* arg)
 {
+    bool firstLoad = true;
+    bool loadedCache = false;
     DataHolder& data = *static_cast<DataHolder*>(arg);
     while(LightEvent_Wait(&data.titleLoadingThreadBeginEvent), data.titleLoadingThreadKeepGoing.test_and_set()) // ayy, comma operator saves the day
     {
@@ -285,6 +397,21 @@ void Title::loaderThreadFunc(void* arg)
         data.thingsToActOn[BackupTypes::Extdata].clear();
         data.titles.clear();
         LightLock_Unlock(&data.backupableVectorLock);
+
+        if (firstLoad) {
+            IODataHolder iodata;
+            iodata.srcPath = Platform::Files::Cache;
+            if (io::fileExists(iodata)) {
+                LightLock_Lock(&data.backupableVectorLock);
+                Cache::importTitleList(data);
+                LightLock_Unlock(&data.backupableVectorLock);
+                loadedCache = true;
+            }
+            firstLoad = false;
+        }
+        else {
+            loadedCache = false;
+        }
 
         #define ADD_TITLE(TypSav) { \
             LightLock_Lock(&data.backupableVectorLock); \
@@ -310,41 +437,47 @@ void Title::loaderThreadFunc(void* arg)
             LightLock_Unlock(&data.backupableVectorLock); \
         }
 
-        u32 count = 0;
-        if (Configuration::get().nandSaves()) {
-            AM_GetTitleCount(MEDIATYPE_NAND, &count);
-            auto ids_nand = std::make_unique<u64[]>(count);
-            AM_GetTitleList(nullptr, MEDIATYPE_NAND, count, ids_nand.get());
+        if (!loadedCache) {
+            u32 count = 0;
+            if (Configuration::get().nandSaves()) {
+                AM_GetTitleCount(MEDIATYPE_NAND, &count);
+                auto ids_nand = std::make_unique<u64[]>(count);
+                AM_GetTitleList(nullptr, MEDIATYPE_NAND, count, ids_nand.get());
+
+                for (u32 i = 0; i < count; i++) {
+                    if (!data.titleLoadingThreadKeepGoing.test_and_set()) return;
+
+                    if (Validation::titleId(ids_nand[i])) {
+                        Title title(ids_nand[i], MEDIATYPE_NAND, CARD_CTR);
+                        if (title.mValid) ADD_TITLE(SaveTitleHolder);
+                    }
+                }
+            }
+
+            AM_GetTitleCount(MEDIATYPE_SD, &count);
+            auto ids_sd = std::make_unique<u64[]>(count);
+            AM_GetTitleList(nullptr, MEDIATYPE_SD, count, ids_sd.get());
 
             for (u32 i = 0; i < count; i++) {
                 if (!data.titleLoadingThreadKeepGoing.test_and_set()) return;
 
-                if (Validation::titleId(ids_nand[i])) {
-                    Title title(ids_nand[i], MEDIATYPE_NAND, CARD_CTR);
+                if (Validation::titleId(ids_sd[i])) {
+                    Title title(ids_sd[i], MEDIATYPE_SD, CARD_CTR);
                     if (title.mValid) ADD_TITLE(SaveTitleHolder);
                 }
             }
-        }
 
-        AM_GetTitleCount(MEDIATYPE_SD, &count);
-        auto ids_sd = std::make_unique<u64[]>(count);
-        AM_GetTitleList(nullptr, MEDIATYPE_SD, count, ids_sd.get());
-
-        for (u32 i = 0; i < count; i++) {
             if (!data.titleLoadingThreadKeepGoing.test_and_set()) return;
 
-            if (Validation::titleId(ids_sd[i])) {
-                Title title(ids_sd[i], MEDIATYPE_SD, CARD_CTR);
+            const bool isPKSMIdAlreadyHere = std::find(ids_sd.get(), ids_sd.get() + count, TID_PKSM);
+            if (!isPKSMIdAlreadyHere) {
+                Title title(TID_PKSM, MEDIATYPE_SD, CARD_CTR);
                 if (title.mValid) ADD_TITLE(SaveTitleHolder);
             }
-        }
 
-        if (!data.titleLoadingThreadKeepGoing.test_and_set()) return;
-
-        const bool isPKSMIdAlreadyHere = std::find(ids_sd.get(), ids_sd.get() + count, TID_PKSM);
-        if (!isPKSMIdAlreadyHere) {
-            Title title(TID_PKSM, MEDIATYPE_SD, CARD_CTR);
-            if (title.mValid) ADD_TITLE(SaveTitleHolder);
+            LightLock_Lock(&data.backupableVectorLock);
+            Cache::exportTitleList(data.titles);
+            LightLock_Unlock(&data.backupableVectorLock);
         }
 
         if (!data.titleLoadingThreadKeepGoing.test_and_set()) return;

@@ -115,13 +115,15 @@ void MainScreen::update(InputDataHolder& input)
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Delete selected backup?",
                     [this, idx](InputDataHolder& i) {
-                        this->directoryList.setIndex(idx - 1);
-                        this->directoryList.removeEntry(idx);
-
                         LightLock_Lock(&i.parent.backupableVectorLock);
                         auto& bak = i.parent.thingsToActOn[i.parent.selectedType][this->hid.fullIndex()];
-                        bak->deleteBackup(idx - 1);
+                        i.parent.resultInfo = bak->deleteBackup(idx - 1);
                         LightLock_Unlock(&i.parent.backupableVectorLock);
+
+                        if(std::get<0>(i.parent.resultInfo) == io::ActionResult::Success) {
+                            this->directoryList.setIndex(idx - 1);
+                            this->directoryList.removeEntry(idx);
+                        }
 
                         i.currentScreen->removeOverlay();
                     },
@@ -168,7 +170,7 @@ void MainScreen::update(InputDataHolder& input)
         enteredTarget = false;
         LightLock_Lock(&input.parent.backupableVectorLock);
         input.parent.clearMultiSelection();
-        LightLock_Lock(&input.parent.backupableVectorLock);
+        LightLock_Unlock(&input.parent.backupableVectorLock);
         directoryList.resetIndex();
         updateButtons(input);
         holdStartTime = osGetTime();
@@ -236,7 +238,7 @@ void MainScreen::update(InputDataHolder& input)
         if (input.parent.multiSelectedCount[input.parent.selectedType] != 0) {
             LightLock_Lock(&input.parent.backupableVectorLock);
             input.parent.clearMultiSelection();
-            LightLock_Lock(&input.parent.backupableVectorLock);
+            LightLock_Unlock(&input.parent.backupableVectorLock);
             updateButtons(input);
         }
         else if (enteredTarget && cellIndex > 0) {
@@ -281,7 +283,7 @@ void MainScreen::update(InputDataHolder& input)
         auto& info = input.parent.thingsToActOn[input.parent.selectedType][previousIndex]->getInfo();
         if (info.getSpecialInfo(BackupInfo::SpecialInfo::TitleIsActivityLog) == BackupInfo::SpecialInfoResult::True) {
             buttonExtra.c2dText("\uE075 Coins");
-            if (buttonExtra.released(input) || (input.kDown & KEY_TOUCH && input.touch.py < 20 && input.touch.px > 294)) {
+            if (buttonExtra.released(input)) {
                 if (!Archive::setPlayCoins()) {
                     currentOverlay = std::make_shared<ErrorOverlay>(*this, std::make_tuple(io::ActionResult::Failure, -1, "Failed to set play coins."));
                 }
@@ -289,22 +291,31 @@ void MainScreen::update(InputDataHolder& input)
         }
         else if (info.getSpecialInfo(BackupInfo::SpecialInfo::CanCheat) == BackupInfo::SpecialInfoResult::True) {
             buttonExtra.c2dText("Cheats");
-            if (input.parent.multiSelectedCount[input.parent.selectedType] != 0) {
-                input.parent.clearMultiSelection();
-            }
-            else {
-                const std::string key = info.getCheatKey();
-                if (input.parent.getCheats().areCheatsAvailable(key)) {
-                    currentOverlay = std::make_shared<CheatManagerOverlay>(*this, input.parent, key);
+            if (buttonExtra.released(input)) {
+                if (input.parent.multiSelectedCount[input.parent.selectedType] != 0) {
+                    input.parent.clearMultiSelection();
                 }
                 else {
-                    currentOverlay = std::make_shared<InfoOverlay>(*this, "No available cheat codes for this title.");
+                    const std::string key = info.getCheatKey();
+                    if (input.parent.getCheats().areCheatsAvailable(key)) {
+                        currentOverlay = std::make_shared<CheatManagerOverlay>(*this, input.parent, key);
+                    }
+                    else {
+                        currentOverlay = std::make_shared<InfoOverlay>(*this, "No available cheat codes for this target.");
+                    }
                 }
             }
         }
         else {
             buttonExtra.c2dText("Extra");
         }
+
+        if (input.kDown & KEY_TOUCH && input.touch.py < 20 && input.touch.px > 294) {
+            if (!Archive::setPlayCoins()) {
+                currentOverlay = std::make_shared<ErrorOverlay>(*this, std::make_tuple(io::ActionResult::Failure, -1, "Failed to set play coins."));
+            }
+        }
+
         LightLock_Unlock(&input.parent.backupableVectorLock);
     }
 }
