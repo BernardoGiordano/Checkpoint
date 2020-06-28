@@ -47,7 +47,7 @@ namespace BackupTypes
     inline int after(int current)
     {
         current++;
-        if(current == End) {
+        if (current == End) {
             current = First;
         }
         return current;
@@ -73,6 +73,7 @@ namespace BackupTypes
 struct BackupInfo {
     enum class SpecialInfo {
         TitleIsActivityLog,
+        CanCheat,
         WifiSlotExists,
     };
     enum class SpecialInfoResult {
@@ -89,6 +90,7 @@ struct BackupInfo {
     virtual const std::vector<std::pair<int, std::string>>& getBackupsList() = 0;
     virtual bool favorite() = 0;
     virtual SpecialInfoResult getSpecialInfo(SpecialInfo) = 0;
+    virtual std::string getCheatKey();
 
     bool mMultiSelected = false;
 };

@@ -52,6 +52,7 @@ namespace Wifi {
         virtual bool favorite() override final;
         virtual const std::vector<std::pair<int, std::string>>& getBackupsList() override final;
         virtual BackupInfo::SpecialInfoResult getSpecialInfo(BackupInfo::SpecialInfo special) override final;
+        virtual std::string getCheatKey() override final;
 
     private:
         bool exists();

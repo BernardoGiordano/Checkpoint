@@ -27,7 +27,7 @@
 #include "YesNoOverlay.hpp"
 
 YesNoOverlay::YesNoOverlay(
-    Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo)
+    Screen& screen, const std::string& mtext, const std::function<void(InputDataHolder&)>& callbackYes, const std::function<void(InputDataHolder&)>& callbackNo)
     : DualScreenOverlay(screen),
     buttonYes(42, 162, 116, 36, COLOR_GREY_DARK, COLOR_WHITE, "\uE000 Yes", true),
     buttonNo(162, 162, 116, 36, COLOR_GREY_DARK, COLOR_WHITE, "\uE001 No", true),
@@ -81,9 +81,9 @@ void YesNoOverlay::update(InputDataHolder& input)
     buttonNo.selected(hid.index() == 1);
 
     if (buttonYes.released(input) || ((input.kDown & KEY_A) && hid.index() == 0)) {
-        yesFunc();
+        yesFunc(input);
     }
     else if (buttonNo.released(input) || (input.kDown & KEY_B) || ((input.kDown & KEY_A) && hid.index() == 1)) {
-        noFunc();
+        noFunc(input);
     }
 }

@@ -24,32 +24,31 @@
  *         reasonable ways as different from the original version.
  */
 
-#include <vector>
-#include <memory>
+#ifndef INFOOVERLAY_HPP
+#define INFOOVERLAY_HPP
 
-#include "fileptr.hpp"
-#include "logger.hpp"
+#include <string>
 
-namespace {
-    std::vector<char> buffer;
-    void readBufferIntoFile(FILE* fh)
-    {
-        fwrite(buffer.data(), sizeof(decltype(buffer)::value_type), buffer.size(), fh);
-    }
+#include "Screen.hpp"
+#include "clickable.hpp"
+#include "dualscreen.hpp"
+#include "backupable.hpp"
+
+class InfoOverlay : public DualScreenOverlay {
+public:
+    InfoOverlay(Screen& screen, const std::string& t);
+    InfoOverlay(Screen& screen, const Backupable::ActionResult& res);
+    ~InfoOverlay();
+    void drawTop(DrawDataHolder& d) const override;
+    void drawBottom(DrawDataHolder& d) const override;
+    void update(InputDataHolder& input) override;
+
+private:
+    u32 posx, posy;
+    const float size = 0.6f;
+    C2D_Text text;
+    C2D_TextBuf textBuf;
+    Clickable button;
 };
 
-void Logger::appendToBuffer(const std::string& data)
-{
-    buffer.insert(buffer.end(), data.begin(), data.end());
-    fwrite(data.data(), 1, data.size(), stderr);
-}
-
-void Logger::flush()
-{
-    FilePtr fh = openFile(Platform::Files::Log, "a");
-    if (fh)
-    {
-        readBufferIntoFile(fh.get());
-    }
-    buffer.clear();
-}
+#endif

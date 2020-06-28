@@ -24,32 +24,33 @@
  *         reasonable ways as different from the original version.
  */
 
-#include <vector>
-#include <memory>
+#ifndef YESNOOVERLAY_HPP
+#define YESNOOVERLAY_HPP
 
-#include "fileptr.hpp"
-#include "logger.hpp"
+#include <functional>
+#include <string>
 
-namespace {
-    std::vector<char> buffer;
-    void readBufferIntoFile(FILE* fh)
-    {
-        fwrite(buffer.data(), sizeof(decltype(buffer)::value_type), buffer.size(), fh);
-    }
+#include "Screen.hpp"
+#include "clickable.hpp"
+#include "dualscreen.hpp"
+#include "ihid.hpp"
+
+class YesNoOverlay : public DualScreenOverlay {
+public:
+    YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void(InputDataHolder&)>& callbackYes, const std::function<void(InputDataHolder&)>& callbackNo);
+    ~YesNoOverlay();
+
+private:
+    void drawTop(DrawDataHolder& d) const override;
+    void drawBottom(DrawDataHolder& d) const override;
+    void update(InputDataHolder& input) override;
+
+    u32 posx, posy;
+    C2D_TextBuf textBuf;
+    C2D_Text text;
+    Clickable buttonYes, buttonNo;
+    Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
+    std::function<void(InputDataHolder&)> yesFunc, noFunc;
 };
 
-void Logger::appendToBuffer(const std::string& data)
-{
-    buffer.insert(buffer.end(), data.begin(), data.end());
-    fwrite(data.data(), 1, data.size(), stderr);
-}
-
-void Logger::flush()
-{
-    FilePtr fh = openFile(Platform::Files::Log, "a");
-    if (fh)
-    {
-        readBufferIntoFile(fh.get());
-    }
-    buffer.clear();
-}
+#endif

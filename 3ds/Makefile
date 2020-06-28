@@ -39,10 +39,10 @@ TARGET		:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR		:=	out
 BUILD		:=	build
 
-FORMATSOURCES	:=	source source/dataholders ../common
+FORMATSOURCES	:=	source source/dataholders source/overlays ../common
 SOURCES			:=	$(FORMATSOURCES) ../3rd-party/sha256
 
-FORMATINCLUDES	:=	include include/dataholders ../common
+FORMATINCLUDES	:=	include include/dataholders include/overlays ../common
 INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/sha256
 
 DATA		:=	data

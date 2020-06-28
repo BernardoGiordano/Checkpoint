@@ -97,6 +97,8 @@ struct TitleHolder : public BackupInfo {
     virtual C2D_Image getIcon() override final;
     virtual bool favorite() override final;
     virtual BackupInfo::SpecialInfoResult getSpecialInfo(BackupInfo::SpecialInfo special) override final;
+    virtual std::string getCheatKey() override final;
+    
 };
 
 #define TitleHolderImpl(name) struct name : public TitleHolder { \

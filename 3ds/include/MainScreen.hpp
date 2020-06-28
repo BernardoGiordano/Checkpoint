@@ -52,7 +52,7 @@ private:
     void performRestore(InputDataHolder& input);
 
     Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
-    Clickable buttonBackup, buttonRestore, buttonCheats, buttonPlayCoins;
+    Clickable buttonBackup, buttonRestore, buttonExtra;
     Scrollable directoryList;
 
     char ver[10];

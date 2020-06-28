@@ -48,7 +48,7 @@ bool Archive::setPlayCoins()
     if (R_SUCCEEDED(res)) {
         { // extra scope to make raii kick in for the unique_ptr, having an open FILE* outlive its device is not good
             FilePtr fh = openFile("/gamecoin.dat", "r+");
-            if(fh) {
+            if (fh) {
                 int coinAmount = Keyboard::numpad();
                 if (coinAmount >= 0) {
                     coinAmount = coinAmount > 300 ? 300 : coinAmount;

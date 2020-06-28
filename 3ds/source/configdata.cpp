@@ -28,14 +28,14 @@
 
 ConfigDataHolder::ConfigDataHolder(nlohmann::json* jp, bool isAlreadyValid) : anyChange(false)
 {
-    if(!jp) {
+    if (!jp) {
         return;
     }
 
     jsonPtr = jp;
     auto& json = *jp;
 
-    if(!isAlreadyValid)
+    if (!isAlreadyValid)
     {
         if (json["version"] < CONFIG_VERSION) {
             json["version"] = CONFIG_VERSION;

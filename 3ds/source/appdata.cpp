@@ -26,6 +26,13 @@
 
 #include "appdata.hpp"
 
+CheatManager& DataHolder::getCheats()
+{
+    if (!cheats) cheats = std::unique_ptr<CheatManager>(new CheatManager);
+
+    return *cheats;
+}
+
 void DataHolder::beginBackup(Backupable* on)
 {
     actionType = Action::Type::Backup;
@@ -50,7 +57,7 @@ void DataHolder::setAllMultiSelection()
     auto& vec = thingsToActOn[selectedType];
     for(auto& b : vec) {
         auto& info = b->getInfo();
-        if(!info.mMultiSelected) {
+        if (!info.mMultiSelected) {
             info.mMultiSelected = true;
             multiSelectedCount[selectedType]++;
         }
@@ -59,14 +66,12 @@ void DataHolder::setAllMultiSelection()
 }
 void DataHolder::clearMultiSelection()
 {
-    LightLock_Lock(&backupableVectorLock);
     auto& vec = thingsToActOn[selectedType];
     for(auto& b : vec) {
         auto& info = b->getInfo();
-        if(info.mMultiSelected) {
+        if (info.mMultiSelected) {
             info.mMultiSelected = false;
             multiSelectedCount[selectedType]--;
         }
     }
-    LightLock_Unlock(&backupableVectorLock);
 }

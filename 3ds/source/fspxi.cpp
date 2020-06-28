@@ -80,7 +80,7 @@ Result FSPXI::getHandle()
 }
 void FSPXI::closeHandle()
 {
-    if(fspxiHandle != 0) {
+    if (fspxiHandle != 0) {
         svcCloseHandle(fspxiHandle);
     }
 }
@@ -90,10 +90,10 @@ bool FSPXI::checkHasSave(u32 lowId, u32 highId, FS_MediaType media)
     bool out = false;
     FSPXI_Archive archive;
     Result res = openSaveArchive(&archive, lowId, highId, media);
-    if(R_SUCCEEDED(res)) {
+    if (R_SUCCEEDED(res)) {
         FSPXI_File file;
         res = openSaveFile(&file, archive, FS_OPEN_READ);
-        if(R_SUCCEEDED(res)) {
+        if (R_SUCCEEDED(res)) {
             out = true;
             FSPXI_CloseFile(fspxiHandle, file);
         }
@@ -106,18 +106,18 @@ std::vector<u8> FSPXI::getMostRecentSlot(u32 lowId, u32 highId, FS_MediaType med
     std::vector<u8> data;
     FSPXI_Archive archive;
     Result res = openSaveArchive(&archive, lowId, highId, media);
-    if(R_SUCCEEDED(res)) {
+    if (R_SUCCEEDED(res)) {
         FSPXI_File file;
         res = openSaveFile(&file, archive, FS_OPEN_READ);
-        if(R_SUCCEEDED(res)) {
+        if (R_SUCCEEDED(res)) {
             GbaHeader header;
             u64 off = 0;
             FSPXI_ReadFile(fspxiHandle, file, nullptr, off, &header, sizeof(GbaHeader));
 
-            if(memcpy(&header, ZEROS, sizeof(ZEROS) == 0)) { // top save is not there, grab bottom one
+            if (memcpy(&header, ZEROS, sizeof(ZEROS) == 0)) { // top save is not there, grab bottom one
                 for(const u32 size : POSSIBLE_SAVE_SIZES) {
                     res = FSPXI_ReadFile(fspxiHandle, file, nullptr, size + sizeof(GbaHeader), &header, sizeof(GbaHeader));
-                    if(R_SUCCEEDED(res) && memcmp(header.magic, ".SAV", 4) == 0) {
+                    if (R_SUCCEEDED(res) && memcmp(header.magic, ".SAV", 4) == 0) {
                         off = header.saveSize + sizeof(GbaHeader);
                         break;
                     }
@@ -126,7 +126,7 @@ std::vector<u8> FSPXI::getMostRecentSlot(u32 lowId, u32 highId, FS_MediaType med
             else {
                 GbaHeader headerBottom;
                 FSPXI_ReadFile(fspxiHandle, file, nullptr, header.saveSize + sizeof(header), &header, sizeof(GbaHeader));
-                if(headerBottom.savesMade > header.savesMade) {
+                if (headerBottom.savesMade > header.savesMade) {
                     off = header.saveSize + sizeof(GbaHeader);
                     memcpy(&header, &headerBottom, sizeof(GbaHeader));
                 }
@@ -144,10 +144,10 @@ void FSPXI::writeBackup(u32 lowId, u32 highId, FS_MediaType media, const std::ve
 {
     FSPXI_Archive archive;
     Result res = openSaveArchive(&archive, lowId, highId, media);
-    if(R_SUCCEEDED(res)) {
+    if (R_SUCCEEDED(res)) {
         FSPXI_File file;
         res = openSaveFile(&file, archive, FS_OPEN_READ);
-        if(R_SUCCEEDED(res)) {
+        if (R_SUCCEEDED(res)) {
             // TODO: copy from PKSM
             FSPXI_CloseFile(fspxiHandle, file);
         }

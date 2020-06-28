@@ -42,7 +42,7 @@ void Hid<GrowDirection, PageDirection>::update(const InputDataHolder& input, siz
 
     const auto decrementInGrowDir = [&]() {
         if constexpr (PageDirection == GrowDirection) {
-            if(mIndexInVisible % mVisiblePerChunk == 0) {
+            if (mIndexInVisible % mVisiblePerChunk == 0) {
                 pageBack();
             }
         }
@@ -57,12 +57,12 @@ void Hid<GrowDirection, PageDirection>::update(const InputDataHolder& input, siz
         mIndexInVisible += 1;
 
         if constexpr (PageDirection == GrowDirection) {
-            if(mIndexInVisible % mVisiblePerChunk == 0) {
+            if (mIndexInVisible % mVisiblePerChunk == 0) {
                 pageForward();
             }
         }
 
-        if(mIndexInVisible % mVisiblePerChunk == 0) {
+        if (mIndexInVisible % mVisiblePerChunk == 0) {
             mIndexInVisible -= mVisiblePerChunk;
         }
     };
@@ -119,7 +119,7 @@ void Hid<GrowDirection, PageDirection>::update(const InputDataHolder& input, siz
 
         if (leftDownRepeat(input)) {
             if constexpr (PageDirection == HidDirection::HORIZONTAL) {
-                if(mIndexInVisible % mVisiblePerChunk == 0) {
+                if (mIndexInVisible % mVisiblePerChunk == 0) {
                     pageBack();
                 }
             }
@@ -134,12 +134,12 @@ void Hid<GrowDirection, PageDirection>::update(const InputDataHolder& input, siz
             mIndexInVisible += 1;
 
             if constexpr (PageDirection == HidDirection::HORIZONTAL) {
-                if(mIndexInVisible % mVisiblePerChunk == 0) {
+                if (mIndexInVisible % mVisiblePerChunk == 0) {
                     pageForward();
                 }
             }
 
-            if(mIndexInVisible % mVisiblePerChunk == 0) {
+            if (mIndexInVisible % mVisiblePerChunk == 0) {
                 mIndexInVisible -= mVisiblePerChunk;
             }
         }
@@ -155,7 +155,7 @@ void Hid<GrowDirection, PageDirection>::update(const InputDataHolder& input, siz
         /*
         if (upDownRepeat(input)) {
             if constexpr (PageDirection == HidDirection::VERTICAL) {
-                if(mIndexInVisible % mVisiblePerChunk == 0) {
+                if (mIndexInVisible % mVisiblePerChunk == 0) {
                     pageBack();
                 }
             }
@@ -170,12 +170,12 @@ void Hid<GrowDirection, PageDirection>::update(const InputDataHolder& input, siz
             mIndexInVisible += 1;
 
             if constexpr (PageDirection == HidDirection::VERTICAL) {
-                if(mIndexInVisible % mVisiblePerChunk == 0) {
+                if (mIndexInVisible % mVisiblePerChunk == 0) {
                     pageForward();
                 }
             }
 
-            if(mIndexInVisible % mVisiblePerChunk == 0) {
+            if (mIndexInVisible % mVisiblePerChunk == 0) {
                 mIndexInVisible -= mVisiblePerChunk;
             }
         }

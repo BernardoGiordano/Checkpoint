@@ -33,6 +33,7 @@
 
 #include "drawdata.hpp"
 #include "inputdata.hpp"
+#include "cheatmanager.hpp"
 #include "title.hpp"
 #include "backupable.hpp"
 #include "action.hpp"
@@ -42,6 +43,8 @@ struct DataHolder {
     friend void Action::performActionThreadFunc(void* arg);
 
     DataHolder() : draw(*this), input(*this) { }
+
+    CheatManager& getCheats();
 
     void beginBackup(Backupable* on);
     void beginMultiBackup();
@@ -69,6 +72,8 @@ struct DataHolder {
     LightLock backupableVectorLock;
 
 private: // sub-holders, they have a public reference to the parent holder, but not accessible from the parent to prevent loops
+    std::unique_ptr<CheatManager> cheats;
+
     Action::Type actionType = Action::Type::Invalid;
     Backupable* actOn = nullptr;
 

@@ -59,13 +59,13 @@ public:
 
     size_t maxVisibleEntries()
     {
-        if(size() > mPage * mVisibleEntries)
+        if (size() > mPage * mVisibleEntries)
         return (size() - mPage * mVisibleEntries) > mVisibleEntries ? mVisibleEntries : size() - mPage * mVisibleEntries;
     }
 
-    size_t index() { return mIndexInVisible + mPage * mVisibleEntries; }
+    size_t index() const { return mIndexInVisible + mPage * mVisibleEntries; }
 
-    int page() { return mPage; }
+    int page() const { return mPage; }
 
     virtual void resetIndex()
     {
@@ -84,7 +84,7 @@ public:
         mCells.erase(mCells.begin() + entry);
     }
 
-    size_t visibleEntries() { return mVisibleEntries; }
+    size_t visibleEntries() const { return mVisibleEntries; }
 
     void selectRow(size_t i, bool selected) { mCells.at(i)->selected(selected); }
 

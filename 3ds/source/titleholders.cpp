@@ -99,8 +99,16 @@ bool TitleHolder::favorite()
 }
 BackupInfo::SpecialInfoResult TitleHolder::getSpecialInfo(BackupInfo::SpecialInfo special)
 {
-    if(special == BackupInfo::SpecialInfo::TitleIsActivityLog) {
-        if(Title::isActivityLog(ts->at(titleIdx).mInfo)) {
+    if (special == BackupInfo::SpecialInfo::TitleIsActivityLog) {
+        if (Title::isActivityLog(ts->at(titleIdx).mInfo)) {
+            return BackupInfo::SpecialInfoResult::True;
+        }
+        else {
+            return BackupInfo::SpecialInfoResult::False;
+        }
+    }
+    else if (special == BackupInfo::SpecialInfo::CanCheat) {
+        if (ts->at(titleIdx).mInfo.mCard == CARD_CTR) {
             return BackupInfo::SpecialInfoResult::True;
         }
         else {
@@ -109,6 +117,10 @@ BackupInfo::SpecialInfoResult TitleHolder::getSpecialInfo(BackupInfo::SpecialInf
     }
 
     return BackupInfo::SpecialInfoResult::Invalid;
+}
+std::string TitleHolder::getCheatKey()
+{
+    return StringUtils::format("%016llX", ts->at(titleIdx).mInfo.mId);
 }
 
 Backupable::ActionResult DSSaveTitleHolder::backup(InputDataHolder& i)
@@ -128,7 +140,7 @@ Backupable::ActionResult DSSaveTitleHolder::deleteBackup(size_t idx)
     title.mSaveBackups.erase(title.mSaveBackups.begin() + idx);
 
     IODataHolder data;
-    if(bak.first == - 1) {
+    if (bak.first == - 1) {
         data.srcPath = Platform::Directories::SaveBackupsDir;
     }
     else {
@@ -160,7 +172,7 @@ Backupable::ActionResult GBASaveTitleHolder::deleteBackup(size_t idx)
     title.mSaveBackups.erase(title.mSaveBackups.begin() + idx);
 
     IODataHolder data;
-    if(bak.first == - 1) {
+    if (bak.first == - 1) {
         data.srcPath = Platform::Directories::SaveBackupsDir;
     }
     else {
@@ -182,7 +194,7 @@ Backupable::ActionResult SaveTitleHolder::backup(InputDataHolder& i)
 
     IODataHolder data;
     data.dstPath = MOUNT_ARCHIVE_NAME ":/";
-    if(i.backupName.first < 0) {
+    if (i.backupName.first < 0) {
         data.srcPath = Title::extdataBackupsDir(info);
     }
     else {
@@ -199,8 +211,8 @@ Backupable::ActionResult SaveTitleHolder::backup(InputDataHolder& i)
         const u32 path[3] = {info.mMedia, info.lowId(), info.highId()};
         res = Archive::mount(ARCHIVE_USER_SAVEDATA, {PATH_BINARY, 12, path});
     }
-    if(R_SUCCEEDED(res)) {
-        if(io::directoryExists(data)) {
+    if (R_SUCCEEDED(res)) {
+        if (io::directoryExists(data)) {
             io::deleteFolderRecursively(data);
             io::createDirectory(data);
         }
@@ -209,7 +221,7 @@ Backupable::ActionResult SaveTitleHolder::backup(InputDataHolder& i)
         io::copyDirectory(data);
         Archive::unmount();
 
-        if(i.backupName.first == -2) {
+        if (i.backupName.first == -2) {
             LightLock_Lock(&i.parent.backupableVectorLock);
             auto& backups = ts->at(titleIdx).mSaveBackups;
             backups.push_back(i.backupName);
@@ -232,7 +244,7 @@ Backupable::ActionResult SaveTitleHolder::restore(InputDataHolder& i)
 
     IODataHolder data;
     data.dstPath = MOUNT_ARCHIVE_NAME ":/";
-    if(i.backupName.first < 0) {
+    if (i.backupName.first < 0) {
         data.srcPath = Title::saveBackupsDir(info);
     }
     else {
@@ -250,7 +262,7 @@ Backupable::ActionResult SaveTitleHolder::restore(InputDataHolder& i)
         const u32 path[3] = {info.mMedia, info.lowId(), info.highId()};
         res = Archive::mount(ARCHIVE_USER_SAVEDATA, {PATH_BINARY, 12, path});
     }
-    if(R_SUCCEEDED(res)) {
+    if (R_SUCCEEDED(res)) {
         io::copyDirectory(data);
         Archive::unmount();
 
@@ -266,7 +278,7 @@ Backupable::ActionResult SaveTitleHolder::deleteBackup(size_t idx)
     title.mSaveBackups.erase(title.mSaveBackups.begin() + idx);
 
     IODataHolder data;
-    if(bak.first == - 1) {
+    if (bak.first == - 1) {
         data.srcPath = Platform::Directories::SaveBackupsDir;
     }
     else {
@@ -288,7 +300,7 @@ Backupable::ActionResult ExtdataTitleHolder::backup(InputDataHolder& i)
 
     IODataHolder data;
     data.dstPath = MOUNT_ARCHIVE_NAME ":/";
-    if(i.backupName.first < 0) {
+    if (i.backupName.first < 0) {
         data.srcPath = Title::extdataBackupsDir(info);
     }
     else {
@@ -298,8 +310,8 @@ Backupable::ActionResult ExtdataTitleHolder::backup(InputDataHolder& i)
 
     const u32 path[3] = {MEDIATYPE_SD, info.extdataId(), 0};
     Result res = Archive::mount(ARCHIVE_EXTDATA, {PATH_BINARY, 12, path});
-    if(R_SUCCEEDED(res)) {
-        if(io::directoryExists(data)) {
+    if (R_SUCCEEDED(res)) {
+        if (io::directoryExists(data)) {
             io::deleteFolderRecursively(data);
             io::createDirectory(data);
         }
@@ -308,7 +320,7 @@ Backupable::ActionResult ExtdataTitleHolder::backup(InputDataHolder& i)
         io::copyDirectory(data);
         Archive::unmount();
 
-        if(i.backupName.first == -2) {
+        if (i.backupName.first == -2) {
             LightLock_Lock(&i.parent.backupableVectorLock);
             auto& backups = ts->at(titleIdx).mExtdataBackups;
             backups.push_back(i.backupName);
@@ -331,7 +343,7 @@ Backupable::ActionResult ExtdataTitleHolder::restore(InputDataHolder& i)
 
     IODataHolder data;
     data.dstPath = MOUNT_ARCHIVE_NAME ":/";
-    if(i.backupName.first < 0) {
+    if (i.backupName.first < 0) {
         data.srcPath = Title::extdataBackupsDir(info);
     }
     else {
@@ -341,7 +353,7 @@ Backupable::ActionResult ExtdataTitleHolder::restore(InputDataHolder& i)
 
     const u32 path[3] = {MEDIATYPE_SD, info.extdataId(), 0};
     Result res = Archive::mount(ARCHIVE_EXTDATA, {PATH_BINARY, 12, path});
-    if(R_SUCCEEDED(res)) {
+    if (R_SUCCEEDED(res)) {
         io::copyDirectory(data);
         Archive::unmount();
 
@@ -357,7 +369,7 @@ Backupable::ActionResult ExtdataTitleHolder::deleteBackup(size_t idx)
     title.mExtdataBackups.erase(title.mExtdataBackups.begin() + idx);
 
     IODataHolder data;
-    if(bak.first == - 1) {
+    if (bak.first == - 1) {
         data.srcPath = Platform::Directories::ExtdataBackupsDir;
     }
     else {

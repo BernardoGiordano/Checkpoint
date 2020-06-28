@@ -24,30 +24,34 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef INFOOVERLAY_HPP
-#define INFOOVERLAY_HPP
+#ifndef CHEATMANAGER_HPP
+#define CHEATMANAGER_HPP
 
+#include "json.hpp"
+#include <vector>
 #include <string>
+#include <memory>
+#include <string_view>
 
-#include "Screen.hpp"
-#include "clickable.hpp"
-#include "dualscreen.hpp"
-#include "backupable.hpp"
+struct CheatManager {
+    friend struct DataHolder;
 
-class InfoOverlay : public DualScreenOverlay {
-public:
-    InfoOverlay(Screen& screen, const Backupable::ActionResult& res);
-    ~InfoOverlay();
-    void drawTop(DrawDataHolder& d) const override;
-    void drawBottom(DrawDataHolder& d) const override;
-    void update(InputDataHolder& input) override;
+    static constexpr std::string_view SELECTED_MAGIC = "\uE071 ";
+
+    bool areCheatsAvailable(const std::string& key);
+    void save(const std::string& key, const std::vector<std::string>& s);
+
+    std::shared_ptr<nlohmann::json> cheats() { return mCheats; }
 
 private:
-    u32 posx, posy;
-    const float size = 0.6f;
-    C2D_Text text;
-    C2D_TextBuf textBuf;
-    Clickable button;
+    CheatManager();
+
+    CheatManager(CheatManager const&) = delete;
+    CheatManager(CheatManager &&) = delete;
+    CheatManager& operator=(CheatManager const&) = delete;
+    CheatManager& operator=(CheatManager &&) = delete;
+
+    std::shared_ptr<nlohmann::json> mCheats;
 };
 
 #endif

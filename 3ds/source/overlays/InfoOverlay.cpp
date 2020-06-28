@@ -24,45 +24,48 @@
  *         reasonable ways as different from the original version.
  */
 
-#include "ErrorOverlay.hpp"
+#include "InfoOverlay.hpp"
 #include "stringutils.hpp"
 #include "util.hpp"
 
-ErrorOverlay::ErrorOverlay(Screen& screen, const Backupable::ActionResult& res) : DualScreenOverlay(screen), button(42, 162, 236, 36, COLOR_GREY_DARKER, COLOR_WHITE, "OK", true)
+InfoOverlay::InfoOverlay(Screen& screen, const std::string& t)
+:
+DualScreenOverlay(screen), button(42, 162, 236, 36, COLOR_GREY_DARK, COLOR_WHITE, "OK", true)
 {
-    textBuf = C2D_TextBufNew(128);
+    textBuf = C2D_TextBufNew(64);
     button.selected(true);
-    std::string t = StringUtils::wrap(std::get<2>(res), size, 220);
-    std::string e = StringUtils::format("Error: 0x%08lX", std::get<1>(res));
-    C2D_TextParse(&text, textBuf, t.c_str());
-    C2D_TextParse(&error, textBuf, e.c_str());
+    std::string t2 = StringUtils::wrap(t, size, 220);
+    C2D_TextParse(&text, textBuf, t2.c_str());
     C2D_TextOptimize(&text);
-    C2D_TextOptimize(&error);
     posx = ceilf(320 - StringUtils::textWidth(text, size)) / 2;
-    posy = 40 + ceilf(120 - StringUtils::textHeight(t, size)) / 2;
+    posy = 40 + ceilf(120 - StringUtils::textHeight(t2, size)) / 2;
 }
 
-ErrorOverlay::~ErrorOverlay()
+InfoOverlay::InfoOverlay(Screen& screen, const Backupable::ActionResult& res) : InfoOverlay(screen, std::get<2>(res))
+{
+
+}
+
+InfoOverlay::~InfoOverlay()
 {
     C2D_TextBufDelete(textBuf);
 }
 
-void ErrorOverlay::drawTop(DrawDataHolder& d) const
+void InfoOverlay::drawTop(DrawDataHolder& d) const
 {
     C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
 }
 
-void ErrorOverlay::drawBottom(DrawDataHolder& d) const
+void InfoOverlay::drawBottom(DrawDataHolder& d) const
 {
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
     C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
-    C2D_DrawText(&error, C2D_WithColor, 44, 44, 0.5f, 0.5f, 0.5f, COLOR_RED);
     C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, size, size, COLOR_WHITE);
-    button.draw(d, 0.7f, COLOR_RED);
-    d.citro.drawPulsingOutline(42, 162, 236, 36, 2, COLOR_RED);
+    button.draw(d, 0.7f, COLOR_BLUE);
+    d.citro.drawPulsingOutline(42, 162, 236, 36, 2, COLOR_BLUE);
 }
 
-void ErrorOverlay::update(InputDataHolder& input)
+void InfoOverlay::update(InputDataHolder& input)
 {
     if (button.released(input) || (input.kDown & KEY_A) || (input.kDown & KEY_B)) {
         screen.removeOverlay();

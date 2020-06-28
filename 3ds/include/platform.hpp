@@ -27,19 +27,28 @@
 #ifndef PLATFORM_HPP
 #define PLATFORM_HPP
 
+#define BASE_CKPT_DIR "sdmc:/3ds/Checkpoint"
+
 namespace Platform {
     namespace Files {
-        constexpr const char* Log = "sdmc:/3ds/Checkpoint/checkpoint.log";
-        constexpr const char* Cache = "sdmc:/3ds/Checkpoint/fulltitlecache";
-        constexpr const char* Config = "sdmc:/3ds/Checkpoint/config.json";
+        constexpr const char* Log = BASE_CKPT_DIR "/checkpoint.log";
+        constexpr const char* Cache = BASE_CKPT_DIR "/fulltitlecache";
+        constexpr const char* Config = BASE_CKPT_DIR "/config.json";
+        constexpr const char* Cheats = BASE_CKPT_DIR "/cheats.json";
         constexpr const char* DefaultConfig = "romfs:/config.json";
+        constexpr const char* DefaultCheats = "romfs:/cheats/cheats.json.bz2";
     }
     namespace Directories {
-        constexpr const char* SaveBackupsDir = "sdmc:/3ds/Checkpoint/saves";
-        constexpr const char* ExtdataBackupsDir = "sdmc:/3ds/Checkpoint/extdata";
-        constexpr const char* WifiSlotBackupsDir = "sdmc:/3ds/Checkpoint/wifi";
+        constexpr const char* SaveBackupsDir = BASE_CKPT_DIR "/saves";
+        constexpr const char* ExtdataBackupsDir = BASE_CKPT_DIR "/extdata";
+        constexpr const char* WifiSlotBackupsDir = BASE_CKPT_DIR "/wifi";
+    }
+    namespace Formats {
+        constexpr const char* CheatPath = "sdmc:/cheats/%s.txt";
     }
     constexpr size_t BUFFER_SIZE = 0x50000;
 }
+
+#undef BASE_CKPT_DIR
 
 #endif

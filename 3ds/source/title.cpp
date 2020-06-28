@@ -92,7 +92,7 @@ namespace Icon {
         }
         void init(u16 w, u16 h, GPU_TEXCOLOR format)
         {
-            if(!exists) {
+            if (!exists) {
                 exists = true;
                 C3D_TexInit(&t, w, h, format);
                 t.border = 0xFFFFFFFF;
@@ -102,7 +102,7 @@ namespace Icon {
 
         void clear()
         {
-            if(exists) {
+            if (exists) {
                 exists = false;
                 C3D_TexDelete(&t);
             }
@@ -288,7 +288,7 @@ void Title::loaderThreadFunc(void* arg)
 
         #define ADD_TITLE(TypSav) { \
             LightLock_Lock(&data.backupableVectorLock); \
-            if(title.mInfo.mCard == CARD_CTR) { \
+            if (title.mInfo.mCard == CARD_CTR) { \
                 Icon::addIcon(title.mInfo, data.titles.size()); \
             } \
             title.refreshDirectories(); \
@@ -317,11 +317,11 @@ void Title::loaderThreadFunc(void* arg)
             AM_GetTitleList(nullptr, MEDIATYPE_NAND, count, ids_nand.get());
 
             for (u32 i = 0; i < count; i++) {
-                if(!data.titleLoadingThreadKeepGoing.test_and_set()) return;
+                if (!data.titleLoadingThreadKeepGoing.test_and_set()) return;
 
                 if (Validation::titleId(ids_nand[i])) {
                     Title title(ids_nand[i], MEDIATYPE_NAND, CARD_CTR);
-                    if(title.mValid) ADD_TITLE(SaveTitleHolder);
+                    if (title.mValid) ADD_TITLE(SaveTitleHolder);
                 }
             }
         }
@@ -331,23 +331,23 @@ void Title::loaderThreadFunc(void* arg)
         AM_GetTitleList(nullptr, MEDIATYPE_SD, count, ids_sd.get());
 
         for (u32 i = 0; i < count; i++) {
-            if(!data.titleLoadingThreadKeepGoing.test_and_set()) return;
+            if (!data.titleLoadingThreadKeepGoing.test_and_set()) return;
 
             if (Validation::titleId(ids_sd[i])) {
                 Title title(ids_sd[i], MEDIATYPE_SD, CARD_CTR);
-                if(title.mValid) ADD_TITLE(SaveTitleHolder);
+                if (title.mValid) ADD_TITLE(SaveTitleHolder);
             }
         }
 
-        if(!data.titleLoadingThreadKeepGoing.test_and_set()) return;
+        if (!data.titleLoadingThreadKeepGoing.test_and_set()) return;
 
         const bool isPKSMIdAlreadyHere = std::find(ids_sd.get(), ids_sd.get() + count, TID_PKSM);
         if (!isPKSMIdAlreadyHere) {
             Title title(TID_PKSM, MEDIATYPE_SD, CARD_CTR);
-            if(title.mValid) ADD_TITLE(SaveTitleHolder);
+            if (title.mValid) ADD_TITLE(SaveTitleHolder);
         }
 
-        if(!data.titleLoadingThreadKeepGoing.test_and_set()) return;
+        if (!data.titleLoadingThreadKeepGoing.test_and_set()) return;
 
         FS_CardType cardType;
         Result res = FSUSER_GetCardType(&cardType);
@@ -360,13 +360,13 @@ void Title::loaderThreadFunc(void* arg)
                     AM_GetTitleList(nullptr, MEDIATYPE_GAME_CARD, 1, &id_card);
                     if (Validation::titleId(id_card)) {
                         Title title(id_card, MEDIATYPE_GAME_CARD, cardType);
-                        if(title.mValid) ADD_TITLE(SaveTitleHolder);
+                        if (title.mValid) ADD_TITLE(SaveTitleHolder);
                     }
                 }
             }
             else {
                 Title title(0, MEDIATYPE_GAME_CARD, cardType);
-                if(title.mValid) ADD_TITLE(DSSaveTitleHolder); // the Extdata will never be used for a DS card
+                if (title.mValid) ADD_TITLE(DSSaveTitleHolder); // the Extdata will never be used for a DS card
             }
         }
 
@@ -437,23 +437,23 @@ Title::Title(u64 _id, FS_MediaType _media, FS_CardType _card) : mInfo(_id, _medi
             const u32 path[3] = {mInfo.mMedia, mInfo.lowId(), mInfo.highId()};
             saveResult = Archive::mount(ARCHIVE_USER_SAVEDATA, {PATH_BINARY, 12, path});
         }
-        if(R_SUCCEEDED(saveResult)) {
+        if (R_SUCCEEDED(saveResult)) {
             Archive::unmount();
         }
         else {
-            if(FSPXI::checkHasSave(mInfo.lowId(), mInfo.highId(), mInfo.mMedia)) {
+            if (FSPXI::checkHasSave(mInfo.lowId(), mInfo.highId(), mInfo.mMedia)) {
                 saveResult = 0;
                 isGBA = true;
             }
         }
         
         Result extdataResult = -1;
-        if(mInfo.mMedia != MEDIATYPE_NAND)
+        if (mInfo.mMedia != MEDIATYPE_NAND)
         {
             const u32 path[3] = {MEDIATYPE_SD, mInfo.extdataId(), 0};
             extdataResult = Archive::mount(ARCHIVE_EXTDATA, {PATH_BINARY, 12, path});
         }
-        if(R_SUCCEEDED(extdataResult)) {
+        if (R_SUCCEEDED(extdataResult)) {
             Archive::unmount();
         }
 
@@ -545,7 +545,7 @@ void Title::refreshDirectories()
     if (mInfo.mHasSave) {
         // standard save backups
         for(auto& bak_entry : fs::directory_iterator(Title::saveBackupsDir(mInfo), ec)) {
-            if(bak_entry.is_directory()) {
+            if (bak_entry.is_directory()) {
                 mSaveBackups.push_back(std::make_pair(-1, bak_entry.path().stem().string()));
             }
         }
@@ -555,7 +555,7 @@ void Title::refreshDirectories()
         int idx = 0;
         for(const auto& additionalPath : Configuration::get().additionalSaveFolders(mInfo.mId)) {
             for(auto& bak_entry : fs::directory_iterator(additionalPath, ec)) {
-                if(bak_entry.is_directory()) {
+                if (bak_entry.is_directory()) {
                     mSaveBackups.push_back(std::make_pair(idx, bak_entry.path().stem().string()));
                 }
             }
@@ -571,7 +571,7 @@ void Title::refreshDirectories()
     if (mInfo.mHasExtdata) {
         // standard extdata backups
         for(auto& bak_entry : fs::directory_iterator(Title::extdataBackupsDir(mInfo), ec)) {
-            if(bak_entry.is_directory()) {
+            if (bak_entry.is_directory()) {
                 mExtdataBackups.push_back(std::make_pair(-1, bak_entry.path().stem().string()));
             }
         }
@@ -581,7 +581,7 @@ void Title::refreshDirectories()
         int idx = 0;
         for(const auto& additionalPath : Configuration::get().additionalExtdataFolders(mInfo.mId)) {
             for(auto& bak_entry : fs::directory_iterator(additionalPath, ec)) {
-                if(bak_entry.is_directory()) {
+                if (bak_entry.is_directory()) {
                     mExtdataBackups.push_back(std::make_pair(idx, bak_entry.path().stem().string()));
                 }
             }

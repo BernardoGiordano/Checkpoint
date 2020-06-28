@@ -52,7 +52,7 @@ std::string StringUtils::removeForbiddenCharacters(std::string src)
 
     // remove all trailing whitespace
     size_t last_space_pos = src.find_last_not_of(' ');
-    if(last_space_pos == std::string::npos) // only spaces
+    if (last_space_pos == std::string::npos) // only spaces
         return "";
     else
         src.erase(last_space_pos + 1);
@@ -90,12 +90,12 @@ bool StringUtils::containsInvalidChar(const std::string& str)
 
 void StringUtils::ltrim(std::string& s)
 {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) { return !std::isspace(ch); }));
+    s.erase(s.begin(), std::find_if (s.begin(), s.end(), [](int ch) { return !std::isspace(ch); }));
 }
 
 void StringUtils::rtrim(std::string& s)
 {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) { return !std::isspace(ch); }).base(), s.end());
+    s.erase(std::find_if (s.rbegin(), s.rend(), [](int ch) { return !std::isspace(ch); }).base(), s.end());
 }
 
 void StringUtils::trim(std::string& s)

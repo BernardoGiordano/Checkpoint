@@ -24,33 +24,28 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef YESNOOVERLAY_HPP
-#define YESNOOVERLAY_HPP
+#ifndef CHEATMANAGEROVERLAY_HPP
+#define CHEATMANAGEROVERLAY_HPP
 
-#include <functional>
-#include <string>
-
-#include "Screen.hpp"
-#include "clickable.hpp"
 #include "dualscreen.hpp"
-#include "ihid.hpp"
+#include "scrollable.hpp"
+#include "appdata.hpp"
 
-class YesNoOverlay : public DualScreenOverlay {
+class CheatManagerOverlay : public DualScreenOverlay {
 public:
-    YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
-    ~YesNoOverlay();
+    CheatManagerOverlay(Screen& screen, DataHolder& data, const std::string& mtext);
 
-private:
     void drawTop(DrawDataHolder& d) const override;
     void drawBottom(DrawDataHolder& d) const override;
     void update(InputDataHolder& input) override;
 
-    u32 posx, posy;
-    C2D_TextBuf textBuf;
-    C2D_Text text;
-    Clickable buttonYes, buttonNo;
-    Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
-    std::function<void()> yesFunc, noFunc;
+private:
+    bool multiSelected;
+    std::string existingCheat;
+    std::string key;
+    Scrollable scrollable;
+    size_t currentIndex;
+    const float scale = 0.47f;
 };
 
 #endif

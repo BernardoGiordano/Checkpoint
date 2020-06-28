@@ -85,7 +85,7 @@ void Configuration::load()
 
 void Configuration::save()
 {
-    if(g_data.anyChange) {
+    if (g_data.anyChange) {
         storeJson(g_configJson, Platform::Files::Config);
     }
 }

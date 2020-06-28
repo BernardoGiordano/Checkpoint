@@ -106,7 +106,7 @@ extern "C" void userAppExit()
 
     FSPXI::closeHandle();
 
-    if(Wifi::anyWriteToWifiSlots) {
+    if (Wifi::anyWriteToWifiSlots) {
         archiveUnmountAll();
         fsExit();
 
@@ -154,7 +154,7 @@ Checkpoint::~Checkpoint()
     threadFree(data.actionThread);
 
     Title::freeIcons();
-    if(Wifi::anyWriteToWifiSlots) {
+    if (Wifi::anyWriteToWifiSlots) {
         Wifi::finalizeWrite();
     }
 

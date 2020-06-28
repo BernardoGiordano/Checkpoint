@@ -47,7 +47,7 @@ Wifi::WifiSlotHolder::WifiSlotHolder(u32 idx) : slotIndex(idx), anyWrite(false)
 }
 void Wifi::WifiSlotHolder::writeToCFG()
 {
-    if(anyWrite) {
+    if (anyWrite) {
         CFG_SetConfigInfoBlk8(SlotSize, SlotsBegin + slotIndex, bytes.data());
     }
 }
@@ -55,23 +55,23 @@ void Wifi::WifiSlotHolder::writeToCFG()
 Backupable::ActionResult Wifi::WifiSlotHolder::backup(InputDataHolder& i)
 {
     IODataHolder data;
-    if(i.backupName.first < 0) {
+    if (i.backupName.first < 0) {
         data.srcPath = Platform::Directories::WifiSlotBackupsDir;
     }
     else {
         data.srcPath = Configuration::get().additionalWifiSlotsFolders()[i.backupName.first];
     }
     data.srcPath /= i.backupName.second;
-    if(!io::directoryExists(data)) {
+    if (!io::directoryExists(data)) {
         io::createDirectory(data);
     }
 
     data.srcPath /= "slot.bin";
     FilePtr file = openFile(data.srcPath.c_str(), "wb");
 
-    if(file) {
+    if (file) {
         fwrite(bytes.data(), 1, SlotSize, file.get());
-        if(i.backupName.first == -2) {
+        if (i.backupName.first == -2) {
             knownBackups.push_back(i.backupName);
             knownBackups.back().first = -1;
             std::sort(knownBackups.begin(), knownBackups.end(), [](const auto& a, const auto& b) {
@@ -87,7 +87,7 @@ Backupable::ActionResult Wifi::WifiSlotHolder::backup(InputDataHolder& i)
 Backupable::ActionResult Wifi::WifiSlotHolder::restore(InputDataHolder& i)
 {
     IODataHolder data;
-    if(i.backupName.first < 0) {
+    if (i.backupName.first < 0) {
         data.srcPath = Platform::Directories::WifiSlotBackupsDir;
     }
     else {
@@ -98,7 +98,7 @@ Backupable::ActionResult Wifi::WifiSlotHolder::restore(InputDataHolder& i)
     data.srcPath /= "slot.bin";
     FilePtr file = openFile(data.srcPath.c_str(), "rb");
 
-    if(file) {
+    if (file) {
         fread(bytes.data(), 1, SlotSize, file.get());
         anyWriteToWifiSlots = true;
         anyWrite = true;
@@ -115,7 +115,7 @@ Backupable::ActionResult Wifi::WifiSlotHolder::deleteBackup(size_t idx)
     knownBackups.erase(knownBackups.begin() + idx);
 
     IODataHolder data;
-    if(bak.first == - 1) {
+    if (bak.first == - 1) {
         data.srcPath = Platform::Directories::WifiSlotBackupsDir;
     }
     else {
@@ -139,7 +139,7 @@ void Wifi::WifiSlotHolder::drawInfo(DrawDataHolder& d)
 
     C2D_DrawText(&txt, C2D_WithColor, 4, 1, 0.5f, 0.6f, 0.6f, COLOR_WHITE);
 
-    if(!exists()) {
+    if (!exists()) {
         d.citro.dynamicText(&txt, "Currently empty");
         C2D_DrawText(&txt, C2D_WithColor, 4, 27, 0.5f, 0.55f, 0.55f, COLOR_GREY_LIGHT);
     }
@@ -161,8 +161,8 @@ const std::vector<std::pair<int, std::string>>& Wifi::WifiSlotHolder::getBackups
 }
 BackupInfo::SpecialInfoResult Wifi::WifiSlotHolder::getSpecialInfo(BackupInfo::SpecialInfo special)
 {
-    if(special == BackupInfo::SpecialInfo::WifiSlotExists) {
-        if(exists()) {
+    if (special == BackupInfo::SpecialInfo::WifiSlotExists) {
+        if (exists()) {
             return BackupInfo::SpecialInfoResult::True;
         }
         else {
@@ -171,6 +171,10 @@ BackupInfo::SpecialInfoResult Wifi::WifiSlotHolder::getSpecialInfo(BackupInfo::S
     }
 
     return BackupInfo::SpecialInfoResult::Invalid;
+}
+std::string Wifi::WifiSlotHolder::getCheatKey()
+{
+    return "<wifi>";
 }
 
 bool Wifi::WifiSlotHolder::exists()
@@ -183,7 +187,7 @@ void Wifi::load(std::vector<std::unique_ptr<Backupable>>& out)
     {
         // standard save backups
         for(auto& bak_entry : fs::directory_iterator(Platform::Directories::WifiSlotBackupsDir)) {
-            if(bak_entry.is_directory()) {
+            if (bak_entry.is_directory()) {
                 knownBackups.push_back(std::make_pair(-1, bak_entry.path().stem().string()));
             }
         }

@@ -39,29 +39,29 @@ void Action::performActionThreadFunc(void* arg)
         auto actionType = data.actionType;
         auto actOn = data.actOn;
 
-        if(actionType == Action::Type::Backup) {
+        if (actionType == Action::Type::Backup) {
             data.resultInfo = actOn->backup(data.input);
         }
-        else if(actionType == Action::Type::MultiBackup) {
+        else if (actionType == Action::Type::MultiBackup) {
             size_t errorCount = 0;
             const size_t selectedCount = data.multiSelectedCount[data.selectedType];
             
             LightLock_Lock(&data.backupableVectorLock);
             for(auto& bak : data.thingsToActOn[data.selectedType]) {
                 bool& multi = bak->getInfo().mMultiSelected;
-                if(multi) {
+                if (multi) {
                     multi = false;
                     data.multiSelectedCount[data.selectedType]--;
                     auto res = bak->backup(data.input);
-                    if(std::get<0>(res) == io::ActionResult::Failure) {
+                    if (std::get<0>(res) == io::ActionResult::Failure) {
                         errorCount++;
                     }
                 }
             }
             LightLock_Unlock(&data.backupableVectorLock);
 
-            if(errorCount != 0) {
-                if(errorCount == selectedCount) {
+            if (errorCount != 0) {
+                if (errorCount == selectedCount) {
                     data.resultInfo = std::make_tuple(io::ActionResult::Failure, -1, StringUtils::format(
                         "All %zd backup attempt%s failed.",
                         errorCount,
@@ -80,7 +80,7 @@ void Action::performActionThreadFunc(void* arg)
                 data.resultInfo = std::make_tuple(io::ActionResult::Success, 0, "All backups completed\nsuccessfully.");
             }
         }
-        else if(actionType == Action::Type::Restore) {
+        else if (actionType == Action::Type::Restore) {
             data.resultInfo = actOn->restore(data.input);
         }
 

@@ -27,11 +27,13 @@
 #include "MainScreen.hpp"
 #include "datetime.hpp"
 #include "stringutils.hpp"
+#include "archive.hpp"
 #include "util.hpp"
 #include "keyboard.hpp"
 #include "YesNoOverlay.hpp"
 #include "InfoOverlay.hpp"
 #include "ErrorOverlay.hpp"
+#include "CheatManagerOverlay.hpp"
 
 #include "sprites.h"
 
@@ -40,14 +42,12 @@ static constexpr size_t IconRows = 4, IconsPerRow = 8;
 MainScreen::MainScreen(DrawDataHolder& d) : hid(IconsPerRow, IconRows),
 buttonBackup(204, 102, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Backup \uE004", true),
 buttonRestore(204, 139, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Restore \uE005", true),
-buttonCheats(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "Cheats", true),
-buttonPlayCoins(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "\uE075 Coins", true),
+buttonExtra(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "Extra", true),
 directoryList(6, 102, 196, 110, 5)
 {
     buttonBackup.canChangeColorWhenSelected(true);
     buttonRestore.canChangeColorWhenSelected(true);
-    buttonCheats.canChangeColorWhenSelected(true);
-    buttonPlayCoins.canChangeColorWhenSelected(true);
+    buttonExtra.canChangeColorWhenSelected(true);
 
     previousIndex = 1;
     holdStartTime = 0;
@@ -75,11 +75,11 @@ directoryList(6, 102, 196, 110, 5)
 
 void MainScreen::update(InputDataHolder& input)
 {
-    if(input.parent.actionOngoing.load()) {
+    if (input.parent.actionOngoing.load()) {
         return;
     }
-    else if(!std::get<2>(input.parent.resultInfo).empty()) {
-        if(std::get<0>(input.parent.resultInfo) == io::ActionResult::Success) {
+    else if (!std::get<2>(input.parent.resultInfo).empty()) {
+        if (std::get<0>(input.parent.resultInfo) == io::ActionResult::Success) {
             currentOverlay = std::make_shared<InfoOverlay>(*this, input.parent.resultInfo);
         }
         else {
@@ -102,30 +102,30 @@ void MainScreen::update(InputDataHolder& input)
         return;
     }
 
-    if(input.kDown & KEY_START) {
+    if (input.kDown & KEY_START) {
         input.keepRunning = false;
         return;
     }
 
     bool changedModes = false;
-    if(input.kDown & KEY_X) {
-        if(enteredTarget) {
-            size_t idx = directoryList.index();
+    if (input.kDown & KEY_X) {
+        if (enteredTarget) {
+            const size_t idx = directoryList.index();
             if (idx > 0) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Delete selected backup?",
-                    [this, &input, idx]() {
-                        directoryList.setIndex(idx - 1);
-                        directoryList.removeEntry(idx);
+                    [this, idx](InputDataHolder& i) {
+                        this->directoryList.setIndex(idx - 1);
+                        this->directoryList.removeEntry(idx);
 
-                        LightLock_Lock(&input.parent.backupableVectorLock);
-                        auto& bak = input.parent.thingsToActOn[input.parent.selectedType][this->hid.fullIndex()];
+                        LightLock_Lock(&i.parent.backupableVectorLock);
+                        auto& bak = i.parent.thingsToActOn[i.parent.selectedType][this->hid.fullIndex()];
                         bak->deleteBackup(idx - 1);
-                        LightLock_Unlock(&input.parent.backupableVectorLock);
+                        LightLock_Unlock(&i.parent.backupableVectorLock);
 
-                        this->removeOverlay();
+                        i.currentScreen->removeOverlay();
                     },
-                    [this]() { this->removeOverlay(); });
+                    [](InputDataHolder& i) { i.currentScreen->removeOverlay(); });
             }
         }
         else {
@@ -133,27 +133,27 @@ void MainScreen::update(InputDataHolder& input)
             changedModes = true;
         }
     }
-    else if(input.kDown & KEY_A) {
+    else if (input.kDown & KEY_A) {
         // If backup list is active...
         if (enteredTarget) {
             // If the "New..." entry is selected...
             if (0 == directoryList.index()) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Backup selected target?",
-                    [&, this]() {
-                        this->removeOverlay();
-                        this->performBackup(input);
+                    [this](InputDataHolder& i) {
+                        this->performBackup(i);
+                        i.currentScreen->removeOverlay();
                     },
-                    [this]() { this->removeOverlay(); });
+                    [](InputDataHolder& i) { i.currentScreen->removeOverlay(); });
             }
             else {
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Restore selected target?",
-                    [&, this]() { 
-                        this->removeOverlay();
-                        this->performRestore(input);
+                    [this](InputDataHolder& i) { 
+                        this->performRestore(i);
+                        i.currentScreen->removeOverlay();
                     },
-                    [this]() { this->removeOverlay(); });
+                    [this](InputDataHolder& i) { i.currentScreen->removeOverlay(); });
             }
         }
         else {
@@ -164,17 +164,19 @@ void MainScreen::update(InputDataHolder& input)
             }
         }
     }
-    else if(input.kDown & KEY_B) {
+    else if (input.kDown & KEY_B) {
         enteredTarget = false;
+        LightLock_Lock(&input.parent.backupableVectorLock);
         input.parent.clearMultiSelection();
+        LightLock_Lock(&input.parent.backupableVectorLock);
         directoryList.resetIndex();
         updateButtons(input);
         holdStartTime = osGetTime();
     }
-    else if(input.kDown & KEY_Y) {
+    else if (input.kDown & KEY_Y) {
         LightLock_Lock(&input.parent.backupableVectorLock);
         auto& info = input.parent.thingsToActOn[input.parent.selectedType][previousIndex]->getInfo();
-        if(info.mMultiSelected) {
+        if (info.mMultiSelected) {
             input.parent.multiSelectedCount[input.parent.selectedType]--;
             info.mMultiSelected = false;
         }
@@ -185,19 +187,19 @@ void MainScreen::update(InputDataHolder& input)
         LightLock_Unlock(&input.parent.backupableVectorLock);
         holdStartTime = osGetTime();
     }
-    else if(holdStartTime) {
-        if(input.kHeld & KEY_B) {
-            if((osGetTime() - holdStartTime) >= 1000) {
+    else if (holdStartTime) {
+        if (input.kHeld & KEY_B) {
+            if ((osGetTime() - holdStartTime) >= 1000) {
                 holdStartTime = 0;
-                if(input.parent.titleLoadingComplete.load()) {
+                if (input.parent.titleLoadingComplete.load()) {
                     previousIndex = 1;
                     hid.reset();
                     LightEvent_Signal(&input.parent.titleLoadingThreadBeginEvent);
                 }
             }
         }
-        else if(input.kHeld & KEY_Y) {
-            if((osGetTime() - holdStartTime) >= 1000) {
+        else if (input.kHeld & KEY_Y) {
+            if ((osGetTime() - holdStartTime) >= 1000) {
                 holdStartTime = 0;
                 input.parent.setAllMultiSelection();
             }
@@ -211,38 +213,40 @@ void MainScreen::update(InputDataHolder& input)
         if (input.parent.multiSelectedCount[input.parent.selectedType] != 0) {
             currentOverlay = std::make_shared<YesNoOverlay>(
                 *this, "Backup all the selected targets?",
-                [&, this]() { 
-                    this->removeOverlay();
+                [this](InputDataHolder& i) { 
                     this->directoryList.resetIndex();
-                    this->performMultiBackup(input);
+                    this->performMultiBackup(i);
+                    i.currentScreen->removeOverlay();
                 },
-                [this]() { this->removeOverlay(); });
+                [this](InputDataHolder& i) { i.currentScreen->removeOverlay(); });
         }
         else if (enteredTarget) {
             currentOverlay = std::make_shared<YesNoOverlay>(
                 *this, "Backup to selected folder?",
-                [&, this]() {
-                    this->removeOverlay();
-                    this->performBackup(input);
+                [this](InputDataHolder& i) {
+                    this->performBackup(i);
+                    i.currentScreen->removeOverlay();
                 },
-                [this]() { this->removeOverlay(); });
+                [this](InputDataHolder& i) { i.currentScreen->removeOverlay(); });
         }
     }
 
     if (buttonRestore.released(input) || (input.kDown & KEY_R)) {
         size_t cellIndex = directoryList.index();
         if (input.parent.multiSelectedCount[input.parent.selectedType] != 0) {
+            LightLock_Lock(&input.parent.backupableVectorLock);
             input.parent.clearMultiSelection();
+            LightLock_Lock(&input.parent.backupableVectorLock);
             updateButtons(input);
         }
         else if (enteredTarget && cellIndex > 0) {
             currentOverlay = std::make_shared<YesNoOverlay>(
                 *this, "Restore from selected folder?",
-                [&, this]() {
-                    this->removeOverlay();
-                    this->performRestore(input);
+                [this](InputDataHolder& i) {
+                    this->performRestore(i);
+                    i.currentScreen->removeOverlay();
                 },
-                [this]() { this->removeOverlay(); });
+                [](InputDataHolder& i) { i.currentScreen->removeOverlay(); });
         }
     }
 
@@ -252,7 +256,7 @@ void MainScreen::update(InputDataHolder& input)
     if (!enteredTarget) {
         if (countForCurrentFrame > 0) {
             hid.update(input, countForCurrentFrame);
-            if(previousIndex != hid.fullIndex() || changedModes) {
+            if (previousIndex != hid.fullIndex() || changedModes) {
                 previousIndex = hid.fullIndex();
 
                 directoryList.resetIndex();
@@ -270,6 +274,38 @@ void MainScreen::update(InputDataHolder& input)
     }
     else {
         directoryList.updateSelection(input);
+    }
+
+    if (countForCurrentFrame > 0) {
+        LightLock_Lock(&input.parent.backupableVectorLock);
+        auto& info = input.parent.thingsToActOn[input.parent.selectedType][previousIndex]->getInfo();
+        if (info.getSpecialInfo(BackupInfo::SpecialInfo::TitleIsActivityLog) == BackupInfo::SpecialInfoResult::True) {
+            buttonExtra.c2dText("\uE075 Coins");
+            if (buttonExtra.released(input) || (input.kDown & KEY_TOUCH && input.touch.py < 20 && input.touch.px > 294)) {
+                if (!Archive::setPlayCoins()) {
+                    currentOverlay = std::make_shared<ErrorOverlay>(*this, std::make_tuple(io::ActionResult::Failure, -1, "Failed to set play coins."));
+                }
+            }
+        }
+        else if (info.getSpecialInfo(BackupInfo::SpecialInfo::CanCheat) == BackupInfo::SpecialInfoResult::True) {
+            buttonExtra.c2dText("Cheats");
+            if (input.parent.multiSelectedCount[input.parent.selectedType] != 0) {
+                input.parent.clearMultiSelection();
+            }
+            else {
+                const std::string key = info.getCheatKey();
+                if (input.parent.getCheats().areCheatsAvailable(key)) {
+                    currentOverlay = std::make_shared<CheatManagerOverlay>(*this, input.parent, key);
+                }
+                else {
+                    currentOverlay = std::make_shared<InfoOverlay>(*this, "No available cheat codes for this title.");
+                }
+            }
+        }
+        else {
+            buttonExtra.c2dText("Extra");
+        }
+        LightLock_Unlock(&input.parent.backupableVectorLock);
     }
 }
 
@@ -306,7 +342,7 @@ void MainScreen::drawTop(DrawDataHolder& d) const
                 C2D_DrawImageAt(titleIcon, x + 9, y + 9, 0.25f);
             }
 
-            if(actualIndex == previousIndex) {
+            if (actualIndex == previousIndex) {
                 drawSelector(d, x, y);
             }
 
@@ -359,13 +395,9 @@ void MainScreen::drawBottom(DrawDataHolder& d) const
         LightLock_Lock(&d.parent.backupableVectorLock);
         auto& info = d.parent.thingsToActOn[d.parent.selectedType][previousIndex]->getInfo();
         info.drawInfo(d);
-        if (info.getSpecialInfo(BackupInfo::SpecialInfo::TitleIsActivityLog) == BackupInfo::SpecialInfoResult::True) {
-            buttonPlayCoins.draw(d, 0.7, 0);
-        }
-        else {
-            buttonCheats.draw(d, 0.7, 0);
-        }
         LightLock_Unlock(&d.parent.backupableVectorLock);
+
+        buttonExtra.draw(d, 0.7, 0);
 
         C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_GREY_DARK);
         directoryList.draw(d, enteredTarget);
@@ -403,28 +435,23 @@ void MainScreen::updateButtons(InputDataHolder& input)
     if (input.parent.multiSelectedCount[input.parent.selectedType] != 0) {
         buttonRestore.canChangeColorWhenSelected(true);
         buttonRestore.canChangeColorWhenSelected(false);
-        buttonCheats.canChangeColorWhenSelected(false);
-        buttonPlayCoins.canChangeColorWhenSelected(false);
+        buttonExtra.canChangeColorWhenSelected(false);
         buttonBackup.setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore.setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
-        buttonCheats.setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
-        buttonPlayCoins.setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
+        buttonExtra.setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
     }
     else if (enteredTarget) {
         buttonBackup.canChangeColorWhenSelected(true);
         buttonRestore.canChangeColorWhenSelected(true);
-        buttonCheats.canChangeColorWhenSelected(true);
-        buttonPlayCoins.canChangeColorWhenSelected(true);
+        buttonExtra.canChangeColorWhenSelected(true);
         buttonBackup.setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore.setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonCheats.setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonPlayCoins.setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonExtra.setColors(COLOR_GREY_DARKER, COLOR_WHITE);
     }
     else {
         buttonBackup.setColors(COLOR_GREY_DARKER, COLOR_WHITE);
         buttonRestore.setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonCheats.setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonPlayCoins.setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonExtra.setColors(COLOR_GREY_DARKER, COLOR_WHITE);
     }
 }
 
@@ -433,7 +460,7 @@ void MainScreen::performBackup(InputDataHolder& input)
     LightLock_Lock(&input.parent.backupableVectorLock);
     auto& bak = input.parent.thingsToActOn[input.parent.selectedType][hid.fullIndex()];
     size_t selectedIndex = directoryList.index();
-    if(selectedIndex == 0) {
+    if (selectedIndex == 0) {
         input.backupName.first  = -2; // -2 indicates a new backup
         input.backupName.second = Keyboard::askInput(DateTime::dateTimeStr());
     }
