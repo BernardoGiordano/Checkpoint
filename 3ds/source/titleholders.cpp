@@ -140,8 +140,8 @@ Backupable::ActionResult DSSaveTitleHolder::deleteBackup(size_t idx)
     title.mSaveBackups.erase(title.mSaveBackups.begin() + idx);
 
     IODataHolder data;
-    if (bak.first == - 1) {
-        data.srcPath = Platform::Directories::SaveBackupsDir;
+    if (bak.first == -1) {
+        data.srcPath = Title::saveBackupsDir(title.mInfo);
     }
     else {
         data.srcPath = Configuration::get().additionalSaveFolders(title.mInfo.mId)[bak.first];
@@ -172,8 +172,8 @@ Backupable::ActionResult GBASaveTitleHolder::deleteBackup(size_t idx)
     title.mSaveBackups.erase(title.mSaveBackups.begin() + idx);
 
     IODataHolder data;
-    if (bak.first == - 1) {
-        data.srcPath = Platform::Directories::SaveBackupsDir;
+    if (bak.first == -1) {
+        data.srcPath = Title::saveBackupsDir(title.mInfo);
     }
     else {
         data.srcPath = Configuration::get().additionalSaveFolders(title.mInfo.mId)[bak.first];
@@ -195,7 +195,7 @@ Backupable::ActionResult SaveTitleHolder::backup(InputDataHolder& i)
     IODataHolder data;
     data.dstPath = MOUNT_ARCHIVE_NAME ":/";
     if (i.backupName.first < 0) {
-        data.srcPath = Title::extdataBackupsDir(info);
+        data.srcPath = Title::saveBackupsDir(info);
     }
     else {
         data.srcPath = Configuration::get().additionalSaveFolders(info.mId)[i.backupName.first];
@@ -278,8 +278,8 @@ Backupable::ActionResult SaveTitleHolder::deleteBackup(size_t idx)
     title.mSaveBackups.erase(title.mSaveBackups.begin() + idx);
 
     IODataHolder data;
-    if (bak.first == - 1) {
-        data.srcPath = Platform::Directories::SaveBackupsDir;
+    if (bak.first == -1) {
+        data.srcPath = Title::saveBackupsDir(title.mInfo);
     }
     else {
         data.srcPath = Configuration::get().additionalSaveFolders(title.mInfo.mId)[bak.first];
@@ -369,8 +369,8 @@ Backupable::ActionResult ExtdataTitleHolder::deleteBackup(size_t idx)
     title.mExtdataBackups.erase(title.mExtdataBackups.begin() + idx);
 
     IODataHolder data;
-    if (bak.first == - 1) {
-        data.srcPath = Platform::Directories::ExtdataBackupsDir;
+    if (bak.first == -1) {
+        data.srcPath = Title::extdataBackupsDir(title.mInfo);;
     }
     else {
         data.srcPath = Configuration::get().additionalSaveFolders(title.mInfo.mId)[bak.first];
