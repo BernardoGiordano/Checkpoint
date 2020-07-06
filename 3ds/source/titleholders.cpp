@@ -27,7 +27,9 @@
 #include "title.hpp"
 #include "appdata.hpp"
 #include "logger.hpp"
+#include "fspxi.hpp"
 #include "platform.hpp"
+#include "fileptr.hpp"
 #include "stringutils.hpp"
 #include "io.hpp"
 #include "archive.hpp"
@@ -125,13 +127,93 @@ std::string TitleHolder::getCheatKey()
 
 Backupable::ActionResult DSSaveTitleHolder::backup(InputDataHolder& i)
 {
-    // const TitleInfo& info = ts->at(titleIdx).mInfo;
-    return std::make_tuple(io::ActionResult::Failure, -1, "DS backup not implemented.");
+    TitleInfo info = ts->at(titleIdx).mInfo;
+    const SPI::CardType cardType = info.mCardType;
+    u32 saveSize = SPI::GetCapacity(cardType);
+    u32 pageSize = SPI::GetPageSize(cardType);
+
+    IODataHolder data;
+    if (i.backupName.first < 0) {
+        data.srcPath = Title::saveBackupsDir(info);
+    }
+    else {
+        data.srcPath = Configuration::get().additionalSaveFolders(info.mId)[i.backupName.first];
+    }
+    data.srcPath /= i.backupName.second;
+    if (io::directoryExists(data)) {
+        io::deleteFolderRecursively(data);
+    }
+    io::createDirectory(data);
+    data.srcPath /= StringUtils::format("%s.sav", info.mShortDesc);
+
+    FilePtr fh = openFile(data.srcPath.c_str(), "wb");
+    if(fh) {
+        auto buffer = std::make_unique<char[]>(pageSize * 33);
+        auto buf    = buffer.get();
+        setvbuf(fh.get(), buf + pageSize, _IOFBF, pageSize * 32);
+
+        Result res = 0;
+        for (u32 i = 0; i < saveSize / pageSize; ++i) {
+            res = SPI::ReadSaveData(cardType, pageSize * i, buf, pageSize);
+            if (R_FAILED(res)) {
+                break;
+            }
+            fwrite(buf, 1, pageSize, fh.get());
+        }
+
+        if(R_FAILED(res)) {
+            return std::make_tuple(io::ActionResult::Failure, res, "Failed to backup DS save.");
+        }
+        else {
+            return std::make_tuple(io::ActionResult::Success, 0, "DS save backed up succesfully.");
+        }
+    }
+    else {
+        return std::make_tuple(io::ActionResult::Failure, -1, "Failed to open backup file.");
+    }
 }
 Backupable::ActionResult DSSaveTitleHolder::restore(InputDataHolder& i)
 {
-    // const TitleInfo& info = ts->at(titleIdx).mInfo;
-    return std::make_tuple(io::ActionResult::Failure, -1, "DS restore not implemented.");
+    TitleInfo info = ts->at(titleIdx).mInfo;
+    const SPI::CardType cardType = info.mCardType;
+    u32 saveSize = SPI::GetCapacity(cardType);
+    u32 pageSize = SPI::GetPageSize(cardType);
+
+    fs::path backupPath;
+    if (i.backupName.first < 0) {
+        backupPath = Title::saveBackupsDir(info);
+    }
+    else {
+        backupPath = Configuration::get().additionalSaveFolders(info.mId)[i.backupName.first];
+    }
+    backupPath /= i.backupName.second;
+    backupPath /= StringUtils::format("%s.sav", info.mShortDesc);
+
+    FilePtr fh = openFile(backupPath.c_str(), "rb");
+    if(fh) {
+        auto buffer = std::make_unique<char[]>(pageSize * 33);
+        auto buf    = buffer.get();
+        setvbuf(fh.get(), buf + pageSize, _IOFBF, pageSize * 32);
+
+        Result res = 0;
+        for (u32 i = 0; i < saveSize / pageSize; ++i) {
+            fread(buf, 1, pageSize, fh.get());
+            res = SPI::WriteSaveData(cardType, pageSize * i, buf, pageSize);
+            if (R_FAILED(res)) {
+                break;
+            }
+        }
+
+        if(R_FAILED(res)) {
+            return std::make_tuple(io::ActionResult::Failure, res, "Failed to restore DS save.");
+        }
+        else {
+            return std::make_tuple(io::ActionResult::Success, 0, "DS save restored succesfully.");
+        }
+    }
+    else {
+        return std::make_tuple(io::ActionResult::Failure, -1, "Failed to open backup file.");
+    }
 }
 Backupable::ActionResult DSSaveTitleHolder::deleteBackup(size_t idx)
 {
@@ -157,13 +239,67 @@ const std::vector<std::pair<int, std::string>>& DSSaveTitleHolder::getBackupsLis
 
 Backupable::ActionResult GBASaveTitleHolder::backup(InputDataHolder& i)
 {
-    // const TitleInfo& info = ts->at(titleIdx).mInfo;
-    return std::make_tuple(io::ActionResult::Failure, -1, "GBA backup not implemented.");
+    TitleInfo info = ts->at(titleIdx).mInfo;
+
+    IODataHolder data;
+    if (i.backupName.first < 0) {
+        data.srcPath = Title::saveBackupsDir(info);
+    }
+    else {
+        data.srcPath = Configuration::get().additionalSaveFolders(info.mId)[i.backupName.first];
+    }
+    data.srcPath /= i.backupName.second;
+    if (io::directoryExists(data)) {
+        io::deleteFolderRecursively(data);
+    }
+    io::createDirectory(data);
+    data.srcPath /= "00000001.sav";
+
+    FilePtr fh = openFile(data.srcPath.c_str(), "wb");
+    if(fh) {
+        auto data = FSPXI::getMostRecentSlot(info.lowId(), info.highId(), info.mMedia);
+        if(data.empty()) {
+            return std::make_tuple(io::ActionResult::Failure, -1, "GBA VC game was not saved at least once.");
+        }
+        else {
+            fwrite(data.data(), 1, data.size(), fh.get());
+            return std::make_tuple(io::ActionResult::Success, 0, "GBA VC save backed up succesfully.");
+        }
+    }
+    else {
+        return std::make_tuple(io::ActionResult::Failure, -1, "Failed to open backup file.");
+    }
 }
 Backupable::ActionResult GBASaveTitleHolder::restore(InputDataHolder& i)
 {
-    // const TitleInfo& info = ts->at(titleIdx).mInfo;
-    return std::make_tuple(io::ActionResult::Failure, -1, "GBA restore not implemented.");
+    TitleInfo info = ts->at(titleIdx).mInfo;
+    fs::path backupPath;
+    if (i.backupName.first < 0) {
+        backupPath = Title::saveBackupsDir(info);
+    }
+    else {
+        backupPath = Configuration::get().additionalSaveFolders(info.mId)[i.backupName.first];
+    }
+    backupPath /= i.backupName.second;
+    backupPath /= "00000001.sav";
+
+    FilePtr fh = openFile(backupPath.c_str(), "rb");
+    if(fh) {
+        size_t sz = fs::file_size(backupPath); // shouldn't be able to fail since file exists, so no need to use the error_code overload
+        std::vector<u8> data(sz, 0);
+        fread(data.data(), 1, sz, fh.get());
+
+        bool res = FSPXI::writeBackup(info.lowId(), info.highId(), info.mMedia, data);
+        if(res) {
+            return std::make_tuple(io::ActionResult::Success, 0, "GBA VC save restored succesfully.");
+        }
+        else {
+            return std::make_tuple(io::ActionResult::Failure, -1, "GBA VC game was not saved at least once.");
+        }
+    }
+    else {
+        return std::make_tuple(io::ActionResult::Failure, -1, "Failed to open backup file.");
+    }
 }
 Backupable::ActionResult GBASaveTitleHolder::deleteBackup(size_t idx)
 {
@@ -214,8 +350,8 @@ Backupable::ActionResult SaveTitleHolder::backup(InputDataHolder& i)
     if (R_SUCCEEDED(res)) {
         if (io::directoryExists(data)) {
             io::deleteFolderRecursively(data);
-            io::createDirectory(data);
         }
+        io::createDirectory(data);
         std::swap(data.srcPath, data.dstPath);
 
         io::copyDirectory(data);
@@ -252,7 +388,6 @@ Backupable::ActionResult SaveTitleHolder::restore(InputDataHolder& i)
     }
     data.srcPath /= i.backupName.second;
 
-    std::swap(data.srcPath, data.dstPath);
     Result res = 0;
     if (info.mMedia == MEDIATYPE_NAND) {
         const u32 path[2] = {info.mMedia, (0x00020000 | (info.lowId() >> 8))};
@@ -262,6 +397,7 @@ Backupable::ActionResult SaveTitleHolder::restore(InputDataHolder& i)
         const u32 path[3] = {info.mMedia, info.lowId(), info.highId()};
         res = Archive::mount(ARCHIVE_USER_SAVEDATA, {PATH_BINARY, 12, path});
     }
+
     if (R_SUCCEEDED(res)) {
         io::copyDirectory(data);
         Archive::unmount();
@@ -313,8 +449,8 @@ Backupable::ActionResult ExtdataTitleHolder::backup(InputDataHolder& i)
     if (R_SUCCEEDED(res)) {
         if (io::directoryExists(data)) {
             io::deleteFolderRecursively(data);
-            io::createDirectory(data);
         }
+        io::createDirectory(data);
         std::swap(data.srcPath, data.dstPath);
 
         io::copyDirectory(data);

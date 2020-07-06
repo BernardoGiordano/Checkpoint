@@ -36,7 +36,7 @@ namespace FSPXI {
 
     bool checkHasSave(u32 lowId, u32 highId, FS_MediaType media);
     std::vector<u8> getMostRecentSlot(u32 lowId, u32 highId, FS_MediaType media);
-    void writeBackup(u32 lowId, u32 highId, FS_MediaType media, const std::vector<u8>& data);
+    bool writeBackup(u32 lowId, u32 highId, FS_MediaType media, const std::vector<u8>& data);
 }
 
 #endif

@@ -140,7 +140,7 @@ std::vector<u8> FSPXI::getMostRecentSlot(u32 lowId, u32 highId, FS_MediaType med
     }
     return data;
 }
-void FSPXI::writeBackup(u32 lowId, u32 highId, FS_MediaType media, const std::vector<u8>& data)
+bool FSPXI::writeBackup(u32 lowId, u32 highId, FS_MediaType media, const std::vector<u8>& data)
 {
     FSPXI_Archive archive;
     Result res = openSaveArchive(&archive, lowId, highId, media);
@@ -150,7 +150,9 @@ void FSPXI::writeBackup(u32 lowId, u32 highId, FS_MediaType media, const std::ve
         if (R_SUCCEEDED(res)) {
             // TODO: copy from PKSM
             FSPXI_CloseFile(fspxiHandle, file);
+            return true;
         }
         FSPXI_CloseArchive(fspxiHandle, archive);
     }
+    return false;
 }
