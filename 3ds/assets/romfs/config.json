@@ -5,6 +5,9 @@
   "favorites": [
 
   ],
+  "additional_wifi_folders": [
+
+  ],
   "additional_save_folders": {
 
   },
@@ -13,5 +16,5 @@
   },
   "nand_saves": false,
   "scan_cart": false,
-  "version": 3
+  "version": 4
 }

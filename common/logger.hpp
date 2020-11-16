@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,57 +27,30 @@
 #ifndef LOGGER_HPP
 #define LOGGER_HPP
 
-#include "common.hpp"
-#include <stdio.h>
+#include <cstdio>
 #include <string>
 
-class Logger {
-public:
-    static Logger& getInstance(void)
-    {
-        static Logger mLogger;
-        return mLogger;
-    }
+#include "datetime.hpp"
+#include "stringutils.hpp"
+#include "platform.hpp"
 
+struct Logger {
     inline static const std::string INFO  = "[ INFO]";
     inline static const std::string DEBUG = "[DEBUG]";
     inline static const std::string ERROR = "[ERROR]";
     inline static const std::string WARN  = "[ WARN]";
 
-    template <typename... Args>
-    void log(const std::string& level, const std::string& format = {}, Args... args)
-    {
-        buffer += StringUtils::format(("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);
-    }
+    static void flush();
 
-    void flush(void)
+    template <typename... Args>
+    static void log(const std::string& level, const std::string& format = {}, Args... args)
     {
-        mFile = fopen(mPath.c_str(), "a");
-        if (mFile != NULL) {
-            fprintf(mFile, buffer.c_str());
-            fprintf(stderr, buffer.c_str());
-            fclose(mFile);
-        }
+        const auto d = StringUtils::format(("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);
+        appendToBuffer(d);
     }
 
 private:
-    Logger(void) { buffer = ""; }
-    ~Logger(void) {}
-
-    Logger(Logger const&) = delete;
-    void operator=(Logger const&) = delete;
-
-#if defined(_3DS)
-    const std::string mPath = "sdmc:/3ds/Checkpoint/checkpoint.log";
-#elif defined(__SWITCH__)
-    const std::string mPath = "/switch/Checkpoint/checkpoint.log";
-#else
-    const std::string mPath = "checkpoint.log";
-#endif
-
-    FILE* mFile;
-
-    std::string buffer;
+    static void appendToBuffer(const std::string& data);
 };
 
 #endif

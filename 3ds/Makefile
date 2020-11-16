@@ -35,37 +35,60 @@ APP_TITLE		:= 	Checkpoint
 APP_DESCRIPTION	:=	Fast and simple save manager
 APP_AUTHOR		:=	Bernardo Giordano, FlagBrew
 
-TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
-OUTDIR			:=	out
-BUILD			:=	build
-FORMATSOURCES	:=	source ../common
+TARGET		:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
+OUTDIR		:=	out
+BUILD		:=	build
+
+FORMATSOURCES	:=	source source/dataholders source/overlays ../common
 SOURCES			:=	$(FORMATSOURCES) ../3rd-party/sha256
-DATA			:=	data
-FORMATINCLUDES	:=	include ../common
+
+FORMATINCLUDES	:=	include include/dataholders include/overlays ../common
 INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/sha256
-GRAPHICS		:=	assets/gfx
-ROMFS			:=	assets/romfs
-GFXBUILD		:=	$(ROMFS)/gfx
+
+DATA		:=	data
+GRAPHICS	:=	assets/gfx
+ROMFS		:=	assets/romfs
+GFXBUILD	:=	$(ROMFS)/gfx
 SHARKIVE 		:=	../sharkive
 CHEATS 			:=	cheats
 
-# If left blank, will try to use "icon.png", "$(TARGET).png", or the default ctrulib icon, in that order
+# If left blank, will try to use "icon.png", "$(TARGET).png", or the default libctru icon, in that order
 ICON			:=	assets/icon.png
 
-BANNER_AUDIO	:=	assets/audio.wav
-BANNER_IMAGE	:=	assets/banner.png
-RSF_PATH		:=	assets/app.rsf
+MAKEROM_	?=	$(shell command -v makerom 2> /dev/null)
+BANNERTOOL_	?=	$(shell command -v bannertool 2> /dev/null)
 
+# feel free to comment this out on linux, but on windows I compile the cia with makerom and bannertool in the project folder
+CIA_TOOLS_IN_CURDIR := 1
+
+ifneq ($(strip $(CIA_TOOLS_IN_CURDIR)),)
+
+ifeq ($(strip $(MAKEROM)),)
+export MAKEROM	:=	$(abspath ./makerom)
+endif
+ifeq ($(strip $(BANNERTOOL)),)
+export BANNERTOOL	:=	$(abspath ./bannertool)
+endif
+
+else
+export MAKEROM	:= MAKEROM_
+export BANNERTOOL	:= BANNERTOOL_
+endif
+
+BANNER_AUDIO	=	$(TOPDIR)/assets/audio.wav
+BANNER_IMAGE	=	$(TOPDIR)/assets/banner.png
+
+RSF_PATH		=	$(TOPDIR)/assets/app.rsf
 
 # If left blank, makerom will use the default Homebrew logo
-LOGO			:=	assets/splash.bin
+LOGO			=	$(TOPDIR)/assets/splash.bin
 
 # If left blank, makerom will use default values (0xff3ff and CTR-P-CTAP, respectively)
 UNIQUE_ID		:=	0xBCFFF
 PRODUCT_CODE	:=	CTR-HB-CKPT
 
 # Don't really need to change this
-ICON_FLAGS          :=	nosavebackups,visible
+ICON_FLAGS		:=	nosavebackups,visible
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -81,23 +104,21 @@ CFLAGS	:=	-g -Wall -Wextra -Wno-psabi -O3 -mword-relocations -flto \
 			-DGIT_REV=\"${GIT_REV}\" \
 			-DCHEAT_SIZE_DECOMPRESSED=${CHEAT_SIZE_DECOMPRESSED}
 
-CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -D_GNU_SOURCE=1
+CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -D_GNU_SOURCE=1 -Wno-type-limits
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lbz2 -lcitro2d -lcitro3d -lctru -lm
-
-CXX		:= `which ccache` $(CXX)
-CC		:= `which ccache` $(CC)
+LIBS	:= -lbz2 -lcitro2d -lcitro3d -lctru -lm -lstdc++fs
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
 LIBDIRS	:= $(CTRULIB) $(PORTLIBS)
+
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
@@ -121,6 +142,7 @@ SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 PICAFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.v.pica)))
 SHLISTFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.shlist)))
 GFXFILES	:=	$(foreach dir,$(GRAPHICS),$(notdir $(wildcard $(dir)/*.t3s)))
+FONTFILES	:=	$(foreach dir,$(GRAPHICS),$(notdir $(wildcard $(dir)/*.ttf)))
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 
 #---------------------------------------------------------------------------------
@@ -137,13 +159,25 @@ else
 endif
 #---------------------------------------------------------------------------------
 
-export T3XFILES		:=	$(GFXFILES:.t3s=.t3x)
+#---------------------------------------------------------------------------------
+ifeq ($(GFXBUILD),$(BUILD))
+#---------------------------------------------------------------------------------
+export T3XFILES :=  $(GFXFILES:.t3s=.t3x)
+#---------------------------------------------------------------------------------
+else
+#---------------------------------------------------------------------------------
+export ROMFS_T3XFILES	:=	$(patsubst %.t3s, $(GFXBUILD)/%.t3x, $(GFXFILES))
+export ROMFS_FONTFILES	:=	$(patsubst %.ttf, $(GFXBUILD)/%.bcfnt, $(FONTFILES))
+export T3XHFILES		:=	$(patsubst %.t3s, $(BUILD)/%.h, $(GFXFILES))
+#---------------------------------------------------------------------------------
+endif
+#---------------------------------------------------------------------------------
 
 export OFILES_SOURCES 	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
 
 export OFILES_BIN	:=	$(addsuffix .o,$(BINFILES)) \
 			$(PICAFILES:.v.pica=.shbin.o) $(SHLISTFILES:.shlist=.shbin.o) \
-			$(if $(filter $(BUILD),$(GFXBUILD)),$(addsuffix .o,$(T3XFILES)))
+			$(addsuffix .o,$(T3XFILES))
 
 export OFILES := $(OFILES_BIN) $(OFILES_SOURCES)
 
@@ -173,7 +207,7 @@ else
 endif
 
 ifeq ($(strip $(NO_SMDH)),)
-	export _3DSXFLAGS += --smdh=$(CURDIR)/$(OUTDIR)/$(TARGET).smdh
+	export _3DSXFLAGS += --smdh=$(OUTPUT).smdh
 endif
 
 ifneq ($(ROMFS),)
@@ -183,16 +217,30 @@ endif
 .PHONY: all clean format cheats
 
 #---------------------------------------------------------------------------------
-all: cheats
-	@mkdir -p $(BUILD) $(GFXBUILD) $(OUTDIR)
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $(OUTPUT).3dsx
-	@bannertool makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o $(BUILD)/banner.bnr
-	@bannertool makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i "$(APP_ICON)" -f "$(ICON_FLAGS)" -o $(BUILD)/icon.icn
-	@makerom -f cia -o $(OUTPUT).cia -target t -exefslogo -elf "$(OUTPUT).elf" -rsf "$(RSF_PATH)" -ver "$$(($(VERSION_MAJOR)*1024+$(VERSION_MINOR)*16+$(VERSION_MICRO)))" -banner "$(BUILD)/banner.bnr" -icon "$(BUILD)/icon.icn" -DAPP_TITLE="$(APP_TITLE)" -DAPP_PRODUCT_CODE="$(PRODUCT_CODE)" -DAPP_UNIQUE_ID="$(UNIQUE_ID)" -logo "$(LOGO)"
+all: $(OUTDIR) $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(ROMFS_FONTFILES) $(T3XHFILES) cheats
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+
+$(OUTDIR):
+	@mkdir -p $@
+
+$(BUILD):
+	@mkdir -p $@
+
+ifneq ($(GFXBUILD),$(BUILD))
+$(GFXBUILD):
+	@mkdir -p $@
+endif
+
+ifneq ($(DEPSDIR),$(BUILD))
+$(DEPSDIR):
+	@mkdir -p $@
+endif
+
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTDIR)
+	@rm -fr $(BUILD) $(OUTDIR) $(GFXBUILD)
+
 #---------------------------------------------------------------------------------
 cheats:
 	@mkdir -p $(BUILD) $(ROMFS)/$(CHEATS)
@@ -202,20 +250,80 @@ else
 	@cd $(SHARKIVE) && python3 joiner.py 3ds
 endif
 	@cd $(SHARKIVE)/$(BUILD) && mv 3ds.json.bz2 ../../3ds/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
+
+
 #---------------------------------------------------------------------------------
 format:
 	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))
+
+#---------------------------------------------------------------------------------
+$(GFXBUILD)/%.t3x	$(BUILD)/%.h	:	%.t3s
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@tex3ds -i $< -H $(BUILD)/$*.h -d $(DEPSDIR)/$*.d -o $(GFXBUILD)/$*.t3x
+
+#---------------------------------------------------------------------------------
+$(GFXBUILD)/%.bcfnt :		%.ttf
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@mkbcfnt -o $(GFXBUILD)/$*.bcfnt $<
+
+#---------------------------------------------------------------------------------
+export MAKEROM_ARGS		:=	-DAPP_TITLE="$(APP_TITLE)" -DAPP_PRODUCT_CODE="$(PRODUCT_CODE)" -DAPP_UNIQUE_ID="$(UNIQUE_ID)" -ver "$$(($(VERSION_MAJOR)*1024+$(VERSION_MINOR)*16+$(VERSION_MICRO)))"
+
+ifneq ($(strip $(LOGO)),)
+	export MAKEROM_ARGS	+=	 -logo "$(LOGO)"
+endif
+ifneq ($(strip $(ROMFS)),)
+	export MAKEROM_ARGS	+=	 -DAPP_ROMFS="$(CURDIR)/$(ROMFS)"
+endif
+
+ifeq ($(suffix $(BANNER_IMAGE)),.cgfx)
+	export BANNER_IMAGE_ARG := -ci
+else
+	export BANNER_IMAGE_ARG := -i
+endif
+
+ifeq ($(suffix $(BANNER_AUDIO)),.cwav)
+	export BANNER_AUDIO_ARG := -ca
+else
+	export BANNER_AUDIO_ARG := -a
+endif
+
 #---------------------------------------------------------------------------------
 else
+
+.PHONY: all
+
+all: $(OUTPUT).3dsx $(OUTPUT).cia
 
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
 $(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
 
+$(OUTPUT).cia	:	$(OUTPUT).elf $(DEPSDIR)/banner.bnr $(DEPSDIR)/icon.icn
+	@$(MAKEROM) -f cia -o $@ -target t \
+	-elf "$(OUTPUT).elf" \
+	-rsf "$(RSF_PATH)" \
+	-banner "$(DEPSDIR)/banner.bnr" \
+	-icon "$(DEPSDIR)/icon.icn" \
+	-exefslogo $(MAKEROM_ARGS)
+
+	@echo "built ... $(notdir $@)"
+
 $(OFILES_SOURCES) : $(HFILES)
 
 $(OUTPUT).elf	:	$(OFILES)
+
+$(DEPSDIR)/banner.bnr:
+	@$(BANNERTOOL) makebanner $(BANNER_IMAGE_ARG) "$(BANNER_IMAGE)" $(BANNER_AUDIO_ARG) "$(BANNER_AUDIO)" -o "$@"
+	@echo "built ... $(notdir $@)"
+
+$(DEPSDIR)/icon.icn:
+	@$(BANNERTOOL) makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i "$(APP_ICON)" -f "$(ICON_FLAGS)" -o "$@"
+	@echo "built ... $(notdir $@)"
+
 
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data
@@ -226,8 +334,11 @@ $(OUTPUT).elf	:	$(OFILES)
 	@$(bin2o)
 
 #---------------------------------------------------------------------------------
+.PRECIOUS	:	%.t3x
+#---------------------------------------------------------------------------------
 %.t3x.o	%_t3x.h :	%.t3x
 #---------------------------------------------------------------------------------
+	@echo $(notdir $<)
 	@$(bin2o)
 
 #---------------------------------------------------------------------------------
@@ -260,7 +371,13 @@ endef
 %.t3x	%.h	:	%.t3s
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
-	@tex3ds -i $< -H $*.h -d $*.d -o $(TOPDIR)/$(GFXBUILD)/$*.t3x
+	@tex3ds -i $< -H $*.h -d $*.d -o $*.t3x
+
+#---------------------------------------------------------------------------------
+%.bcfnt :		%.ttf
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@mkbcfnt -o $*.bcfnt $<
 
 -include $(DEPSDIR)/*.d
 

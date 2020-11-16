@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,9 +28,7 @@
 #define CLICKABLE_HPP
 
 #include "colors.hpp"
-#include "gui.hpp"
 #include "iclickable.hpp"
-#include "main.hpp"
 #include <citro2d.h>
 #include <string>
 
@@ -39,22 +37,24 @@ public:
     Clickable(int x, int y, u16 w, u16 h, u32 colorBg, u32 colorText, std::string message, bool centered)
         : IClickable(x, y, w, h, colorBg, colorText, message, centered)
     {
+        mWasHeld = false;
         mTextBuf = C2D_TextBufNew(64);
         C2D_TextParse(&mC2dText, mTextBuf, message.c_str());
         C2D_TextOptimize(&mC2dText);
     }
 
-    virtual ~Clickable(void) { C2D_TextBufDelete(mTextBuf); }
+    virtual ~Clickable() { C2D_TextBufDelete(mTextBuf); }
 
-    void draw(float size, u32 overlay) override;
-    void drawOutline(u32 color) override;
-    bool held(void) override;
-    bool released(void) override;
+    void draw(const DrawDataHolder& d, float size, u32 overlay) const override;
+    void drawOutline(const DrawDataHolder& d, u32 color) const override;
+    bool held(const InputDataHolder& input) override;
+    bool released(const InputDataHolder& input) override;
     void c2dText(const std::string& text);
 
 protected:
     C2D_Text mC2dText;
     C2D_TextBuf mTextBuf;
+    bool mWasHeld;
 };
 
 #endif

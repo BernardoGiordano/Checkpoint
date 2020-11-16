@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,117 +25,10 @@
  */
 
 #include "util.hpp"
-
-static Result consoleDisplayError(const std::string& message, Result res)
-{
-    gfxInitDefault();
-    ATEXIT(gfxExit);
-
-    consoleInit(GFX_TOP, nullptr);
-    printf("\x1b[2;13HCheckpoint v%d.%d.%d-%s", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO, GIT_REV);
-    printf("\x1b[5;1HError during startup: \x1b[31m0x%08lX\x1b[0m", res);
-    printf("\x1b[8;1HDescription: \x1b[33m%s\x1b[0m", message.c_str());
-    printf("\x1b[29;16HPress START to exit.");
-    gfxFlushBuffers();
-    gfxSwapBuffers();
-    gspWaitForVBlank();
-    while (aptMainLoop() && !(hidKeysDown() & KEY_START)) {
-        hidScanInput();
-    }
-    return res;
-}
-
-Result servicesInit(void)
-{
-    Result res = 0;
-
-    if (R_FAILED(res = Archive::init())) {
-        return consoleDisplayError("Archive::init failed.", res);
-    }
-    ATEXIT(Archive::exit);
-
-    mkdir("sdmc:/3ds", 777);
-    mkdir("sdmc:/3ds/Checkpoint", 777);
-    mkdir("sdmc:/3ds/Checkpoint/saves", 777);
-    mkdir("sdmc:/3ds/Checkpoint/extdata", 777);
-    mkdir("sdmc:/cheats", 777);
-
-    Logger::getInstance().log(Logger::INFO, "Checkpoint loading started...");
-
-    Handle hbldrHandle;
-    if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
-        Logger::getInstance().log(Logger::ERROR, "Error during startup with result 0x%08lX. Rosalina not found on this system.", res);
-        return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
-    }
-
-    romfsInit();
-    ATEXIT(romfsExit);
-
-    srvInit();
-    ATEXIT(srvExit);
-
-    amInit();
-    ATEXIT(amExit);
-
-    pxiDevInit();
-    ATEXIT(pxiDevExit);
-
-    Gui::init();
-    ATEXIT(Gui::exit);
-
-    // consoleDebugInit(debugDevice_SVC);
-    // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }
-
-    Logger::getInstance().log(Logger::INFO, "Checkpoint loading finished!");
-
-    return 0;
-}
-
-void calculateTitleDBHash(u8* hash)
-{
-    u32 titleCount, nandCount, titlesRead, nandTitlesRead;
-    AM_GetTitleCount(MEDIATYPE_SD, &titleCount);
-    if (Configuration::getInstance().nandSaves()) {
-        AM_GetTitleCount(MEDIATYPE_NAND, &nandCount);
-        std::vector<u64> ordered;
-        ordered.reserve(titleCount + nandCount);
-        AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
-        AM_GetTitleList(&nandTitlesRead, MEDIATYPE_NAND, nandCount, ordered.data() + titlesRead * sizeof(u64));
-        sort(ordered.begin(), ordered.end());
-        sha256(hash, (u8*)ordered.data(), (titleCount + nandCount) * sizeof(u64));
-    }
-    else {
-        std::vector<u64> ordered;
-        ordered.reserve(titleCount);
-        AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
-        sort(ordered.begin(), ordered.end());
-        sha256(hash, (u8*)ordered.data(), titleCount * sizeof(u64));
-    }
-}
-
-std::u16string StringUtils::UTF8toUTF16(const char* src)
-{
-    char16_t tmp[256] = {0};
-    utf8_to_utf16((uint16_t*)tmp, (uint8_t*)src, 256);
-    return std::u16string(tmp);
-}
-
-std::u16string StringUtils::removeForbiddenCharacters(std::u16string src)
-{
-    static const std::u16string illegalChars = StringUtils::UTF8toUTF16(".,!\\/:?*\"<>|");
-    for (size_t i = 0; i < src.length(); i++) {
-        if (illegalChars.find(src[i]) != std::string::npos) {
-            src[i] = ' ';
-        }
-    }
-
-    size_t i;
-    for (i = src.length() - 1; i > 0 && src[i] == L' '; i--)
-        ;
-    src.erase(i + 1, src.length() - i);
-
-    return src;
-}
+#include <3ds.h>
+#include <queue>
+#include <map>
+#include <algorithm>
 
 static std::map<u16, charWidthInfo_s*> widthCache;
 static std::queue<u16> widthCacheOrder;

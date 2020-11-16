@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,26 +27,23 @@
 #ifndef SCROLLABLE_HPP
 #define SCROLLABLE_HPP
 
-#include "clickable.hpp"
 #include "colors.hpp"
-#include "hid.hpp"
+#include "ihid.hpp"
 #include "iscrollable.hpp"
-#include "main.hpp"
-#include <citro2d.h>
-#include <vector>
+#include "clickable.hpp"
 
 class Scrollable : public IScrollable<u32> {
 public:
     Scrollable(int x, int y, u32 w, u32 h, size_t visibleEntries) : IScrollable(x, y, w, h, visibleEntries), mHid(visibleEntries, 1) {}
 
-    virtual ~Scrollable(void) {}
+    virtual ~Scrollable() {}
 
     void c2dText(size_t i, const std::string& v);
-    void draw(bool condition = false) override;
+    void draw(const DrawDataHolder& d, bool condition = false) const override;
     void setIndex(size_t i);
     void push_back(u32 color, u32 colorMessage, const std::string& message, bool selected) override;
-    void resetIndex(void) override;
-    void updateSelection(void) override;
+    void resetIndex() override;
+    void updateSelection(const InputDataHolder& input) override;
 
 protected:
     Hid<HidDirection::VERTICAL, HidDirection::HORIZONTAL> mHid;

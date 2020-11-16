@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2020 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,26 +27,14 @@
 #ifndef ARCHIVE_HPP
 #define ARCHIVE_HPP
 
-#include "KeyboardManager.hpp"
-#include "fsstream.hpp"
-#include "util.hpp"
 #include <3ds.h>
-
-typedef enum { MODE_SAVE, MODE_EXTDATA } Mode_t;
+#define MOUNT_ARCHIVE_NAME "mntd"
 
 namespace Archive {
-    Result init(void);
-    void exit(void);
-
-    Mode_t mode(void);
-    void mode(Mode_t v);
-    FS_Archive sdmc(void);
-
-    Result save(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);
-    Result extdata(FS_Archive* archive, u32 extdata);
-    bool accessible(FS_MediaType mediatype, u32 lowid, u32 highid); // save
-    bool accessible(u32 extdata);                                   // extdata
-    bool setPlayCoins(void);
+    Result mount(FS_ArchiveID archiveID, FS_Path archivePath);
+    Result commitSave();
+    Result unmount();
+    bool setPlayCoins();
 }
 
 #endif
