@@ -26,14 +26,16 @@
 
 #include <3ds.h>
 
-#include "app.hpp"
 #include "fspxi.hpp"
+#include "config.hpp"
 #include "logger.hpp"
 #include "stringutils.hpp"
 #include "io.hpp"
 #include "wifi.hpp"
 #include "Screen.hpp"
 #include "MainScreen.hpp"
+
+int __stacksize__ = 128 * 1024;
 
 namespace {
     bool g_successfulInit = false;
@@ -57,10 +59,12 @@ namespace {
     }
 }
 
-int __stacksize__ = 128 * 1024;
-
-extern "C" void userAppInit()
+namespace App {
+void appInit()
 {
+    // consoleDebugInit(debugDevice_SVC);
+    consoleDebugInit(debugDevice_NULL);
+
     IODataHolder data;
     data.srcPath = "sdmc:/3ds";
     io::createDirectory(data);
@@ -74,6 +78,8 @@ extern "C" void userAppInit()
     io::createDirectory(data);
     data.srcPath = "sdmc:/cheats";
     io::createDirectory(data);
+
+    Logger::log(Logger::INFO, "Checkpoint loading started...");
 
     Result res = 0;
     Handle hbldrHandle;
@@ -92,13 +98,14 @@ extern "C" void userAppInit()
     amInit();
     pxiDevInit();
 
-    hidSetRepeatParameters(15, 9);
-
     g_successfulInit = true;
+    Logger::log(Logger::INFO, "Checkpoint loading completed!");
 }
-
-extern "C" void userAppExit()
+void appExit()
 {
+    Configuration::save();
+    Logger::flush();
+
     pxiDevExit();
     amExit();
     cfguExit();
@@ -112,16 +119,28 @@ extern "C" void userAppExit()
 
         APT_HardwareResetAsync();
         while(true) {
+            fprintf(stderr, "Waiting for exit...\n");
             svcSleepThread(1000);
         }
     }
 }
 
+class Checkpoint {
+    DataHolder data;
+
+public:
+    Checkpoint();
+    ~Checkpoint();
+
+    bool mainLoop();
+    void update();
+    void prepareDraw();
+    void draw();
+    void endDraw();
+};
+
 Checkpoint::Checkpoint()
 {
-    consoleDebugInit(debugDevice_SVC);
-    Logger::log(Logger::INFO, "Checkpoint loading completed!");
-
     s32 prio = 0x30;
     svcGetThreadPriority(&prio, CUR_THREAD_HANDLE);
 
@@ -140,6 +159,8 @@ Checkpoint::Checkpoint()
 
     data.titleLoadingThreadKeepGoing.test_and_set();
     LightEvent_Signal(&data.titleLoadingThreadBeginEvent);
+
+    hidSetRepeatParameters(15, 9);
 }
 Checkpoint::~Checkpoint()
 {
@@ -157,8 +178,6 @@ Checkpoint::~Checkpoint()
     if (Wifi::anyWriteToWifiSlots) {
         Wifi::finalizeWrite();
     }
-
-    Logger::flush();
 }
 
 bool Checkpoint::mainLoop()
@@ -189,4 +208,22 @@ void Checkpoint::draw()
 void Checkpoint::endDraw()
 {
     data.draw.citro.endFrame();
+}
+}
+
+int main(int argc, char** argv)
+{
+    App::appInit();
+    {
+        App::Checkpoint app;
+
+        while(app.mainLoop())
+        {
+            app.update();
+            app.prepareDraw();
+            app.draw();
+            app.endDraw();
+        }
+    }
+    App::appExit();
 }

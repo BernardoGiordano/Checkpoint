@@ -90,7 +90,7 @@ struct BackupInfo {
     virtual const std::vector<std::pair<int, std::string>>& getBackupsList() = 0;
     virtual bool favorite() = 0;
     virtual SpecialInfoResult getSpecialInfo(SpecialInfo) = 0;
-    virtual std::string getCheatKey();
+    virtual std::string getCheatKey() = 0;
 
     bool mMultiSelected = false;
 };

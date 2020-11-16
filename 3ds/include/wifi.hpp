@@ -34,7 +34,7 @@
 #include "inputdata.hpp"
 
 namespace Wifi {
-    constexpr u32 SlotSize   = 0xC00;
+    constexpr u32 SlotSize          = 0xC00;
     inline bool anyWriteToWifiSlots = false;
 
     struct WifiSlotHolder : public BackupInfo {

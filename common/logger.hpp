@@ -34,21 +34,23 @@
 #include "stringutils.hpp"
 #include "platform.hpp"
 
-namespace Logger {
+struct Logger {
     inline static const std::string INFO  = "[ INFO]";
     inline static const std::string DEBUG = "[DEBUG]";
     inline static const std::string ERROR = "[ERROR]";
     inline static const std::string WARN  = "[ WARN]";
 
-    void appendToBuffer(const std::string& data);
-    void flush();
+    static void flush();
 
     template <typename... Args>
-    void log(const std::string& level, const std::string& format = {}, Args... args)
+    static void log(const std::string& level, const std::string& format = {}, Args... args)
     {
-        const auto& d = StringUtils::format(("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);
+        const auto d = StringUtils::format(("[" + DateTime::logDateTime() + "] " + level + " " + format + "\n").c_str(), args...);
         appendToBuffer(d);
     }
-}
+
+private:
+    static void appendToBuffer(const std::string& data);
+};
 
 #endif

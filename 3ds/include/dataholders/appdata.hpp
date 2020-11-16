@@ -38,8 +38,12 @@
 #include "backupable.hpp"
 #include "action.hpp"
 
+namespace App {
+    class Checkpoint;
+}
+
 struct DataHolder {
-    friend struct Checkpoint;
+    friend App::Checkpoint;
     friend void Action::performActionThreadFunc(void* arg);
 
     DataHolder() : draw(*this), input(*this) { }
@@ -53,6 +57,16 @@ struct DataHolder {
     void setAllMultiSelection();
     void clearMultiSelection();
 
+private: // sub-holders, they have a public reference to the parent holder, but not accessible from the parent to prevent loops
+    DrawDataHolder draw;
+    InputDataHolder input;
+
+    std::unique_ptr<CheatManager> cheats;
+
+    Action::Type actionType = Action::Type::Invalid;
+    Backupable* actOn = nullptr;
+
+public:
     Backupable::ActionResult resultInfo;
 
     Thread actionThread;
@@ -70,15 +84,6 @@ struct DataHolder {
     std::atomic_flag titleLoadingThreadKeepGoing = ATOMIC_FLAG_INIT;
     std::atomic_bool titleLoadingComplete = false;
     LightLock backupableVectorLock;
-
-private: // sub-holders, they have a public reference to the parent holder, but not accessible from the parent to prevent loops
-    std::unique_ptr<CheatManager> cheats;
-
-    Action::Type actionType = Action::Type::Invalid;
-    Backupable* actOn = nullptr;
-
-    DrawDataHolder draw;
-    InputDataHolder input;
 };
 
 #endif

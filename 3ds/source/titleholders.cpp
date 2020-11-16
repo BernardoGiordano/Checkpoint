@@ -400,9 +400,26 @@ Backupable::ActionResult SaveTitleHolder::restore(InputDataHolder& i)
 
     if (R_SUCCEEDED(res)) {
         io::copyDirectory(data);
+        u64 secureValue = 0;
+        res = Archive::commitSave();
+        if(R_SUCCEEDED(res)) {
+            u8 out;
+            secureValue = ((u64)SECUREVALUE_SLOT_SD << 32) | (info.uniqueId() << 8);
+            res         = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &secureValue, 8, &out, 1);
+        }
         Archive::unmount();
 
-        return std::make_tuple(io::ActionResult::Success, 0, "Save restore succesful.");
+        if(R_SUCCEEDED(res)) {
+            return std::make_tuple(io::ActionResult::Success, 0, "Save restore succesful.");
+        }
+        else {
+            if(secureValue == 0) {
+                return std::make_tuple(io::ActionResult::Failure, res, "Failed to commit save data.");
+            }
+            else {
+                return std::make_tuple(io::ActionResult::Failure, res, "Failed to erase secure value.");
+            }
+        }
     }
 
     return std::make_tuple(io::ActionResult::Failure, res, "Failed to mount save.");
