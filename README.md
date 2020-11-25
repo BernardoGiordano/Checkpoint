@@ -86,7 +86,9 @@ Additionally, you can receive real-time support by joining FlagBrew's Discord se
 
 ## Building
 
-devkitARM and devkitA64 are required to compile Checkpoint for 3DS and Switch, respectively. Learn more at [devkitpro.org](https://devkitpro.org/wiki/Getting_Started). Install or update dependencies as follows.
+devkitARM and devkitA64 are required to compile Checkpoint for 3DS and Switch, respectively. Learn more at [devkitpro.org](https://devkitpro.org/wiki/Getting_Started). Install or update the following dependencies.
+
+The 3DS `.cia` build also requires [bannertool](https://github.com/Steveice10/bannertool/releases) and [makerom](https://github.com/3DSGuy/Project_CTR/releases).
 
 ### 3DS version
 
