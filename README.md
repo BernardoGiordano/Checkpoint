@@ -90,7 +90,7 @@ devkitARM and devkitA64 are required to compile Checkpoint for 3DS and Switch, r
 
 ### 3DS version
 
-`dkp-pacman -S libctru citro3d citro2d tex3ds`
+`dkp-pacman -S libctru citro3d citro2d tex3ds 3ds-bzip2`
 
 ### Switch version
 
