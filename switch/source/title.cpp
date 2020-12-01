@@ -55,12 +55,14 @@ void Title::init(u8 saveDataType, u64 id, AccountUid userID, const std::string& 
     mUserName     = Account::username(userID);
     mAuthor       = author;
     mName         = name;
-    mSafeName     = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
-    mPath         = "sdmc:/switch/Checkpoint/saves/" + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
 
     std::string aname = StringUtils::removeAccents(mName);
+    mSafeName     = StringUtils::containsInvalidChar(aname) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(aname);
+    mPath         = "sdmc:/switch/Checkpoint/saves/" + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
+
+    
     size_t pos        = aname.rfind(":");
-    mDisplayName      = std::make_pair(name, "");
+    mDisplayName      = std::make_pair(aname, "");
     if (pos != std::string::npos) {
         std::string name1 = aname.substr(0, pos);
         std::string name2 = aname.substr(pos + 1);
