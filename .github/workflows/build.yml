@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: 
+      image: fmcore/flagbrew_compiler
+      credentials:
+        username: ${{ secrets.DHU }}
+        password: ${{ secrets.DHA }}
+
+    steps:
+      - name: "Clone"
+        run: git clone --recurse-submodules -j8 https://github.com/FlagBrew/Checkpoint.git
+      - name: "Build"
+        working-directory: "./Checkpoint"
+        run: |
+          make 3ds
+          zip -r Checkpoint.zip 3ds/out/Checkpoint.cia 3ds/out/Checkpoint.3dsx 3ds/out/Checkpoint.elf
+      - name: "Push"
+        working-directory: "./Checkpoint"
+        run: "curl -F 'cia=@3ds/out/Checkpoint.cia' -F 'zip=@Checkpoint.zip' -F '3dsx=@3ds/out/Checkpoint.3dsx' --header 'secret: ${{ secrets.GHU }}' --header 'extensions: cia,zip,3dsx' --header 'app: Checkpoint' --header 'hash: ${{ github.sha }}' ${{ secrets.NEW_PUSH_URL }}"
