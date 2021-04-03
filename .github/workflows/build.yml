@@ -25,4 +25,4 @@ jobs:
           zip -r Checkpoint.zip 3ds/out/Checkpoint.cia 3ds/out/Checkpoint.3dsx 3ds/out/Checkpoint.elf
       - name: "Push"
         working-directory: "./Checkpoint"
-        run: "curl -F 'cia=@3ds/out/Checkpoint.cia' -F 'zip=@Checkpoint.zip' -F '3dsx=@3ds/out/Checkpoint.3dsx' --header 'secret: ${{ secrets.GHU }}' --header 'extensions: cia,zip,3dsx' --header 'app: Checkpoint' --header 'hash: ${{ github.sha }}' ${{ secrets.NEW_PUSH_URL }}"
+        run: "curl -F 'cia=@3ds/out/Checkpoint.cia' -F 'zip=@Checkpoint.zip' -F '3dsx=@3ds/out/Checkpoint.3dsx' --header 'secret: ${{ secrets.GHU }}' --header 'extensions: cia,zip,3dsx' --header 'app: Checkpoint' --header 'hash: ${{ github.sha }}' ${{ secrets.PURL }}"
