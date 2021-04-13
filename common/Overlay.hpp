@@ -40,7 +40,7 @@ class Overlay {
 public:
     Overlay(Screen& screen) : screen(screen), me(screen.currentOverlay) {}
     virtual ~Overlay() {}
-    virtual void update(touchPosition* touch) = 0;
+    virtual void update(PadState*) = 0;
 #if defined(_3DS)
     virtual void drawTop() const    = 0;
     virtual void drawBottom() const = 0;

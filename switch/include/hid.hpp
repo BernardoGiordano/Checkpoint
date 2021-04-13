@@ -37,20 +37,27 @@ class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS>
 {
 public:
     Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns) {}
+    Hid(size_t entries, size_t columns, PadState* _pad) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns)
+    {
+        pad = _pad;
+    }
 
 private:
-    bool downDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_DOWN; }
-    bool upDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_UP; }
-    bool leftDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_LEFT; }
-    bool rightDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RIGHT; }
-    bool leftTriggerDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_L; }
-    bool rightTriggerDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_R; }
-    bool downHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_DOWN; }
-    bool upHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_UP; }
-    bool leftHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_LEFT; }
-    bool rightHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_RIGHT; }
-    bool leftTriggerHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_L; }
-    bool rightTriggerHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_R; }
+    PadState* pad;
+    
+    bool downDown() const override { return padGetButtonsDown(pad) & HidNpadButton_Down; }
+    bool upDown() const override { return padGetButtonsDown(pad) & HidNpadButton_Up; }
+    bool leftDown() const override { return padGetButtonsDown(pad) & HidNpadButton_Left; }
+    bool rightDown() const override { return padGetButtonsDown(pad) & HidNpadButton_Right; }
+    // TODO: fix me
+    bool leftTriggerDown() const override { return false; }
+    bool rightTriggerDown() const override { return false; }
+    bool downHeld() const override { return false; }
+    bool upHeld() const override { return false; }
+    bool leftHeld() const override { return false; }
+    bool rightHeld() const override { return false; }
+    bool leftTriggerHeld() const override { return false; }
+    bool rightTriggerHeld() const override { return false; }
     u64 tick() const override { return armGetSystemTick(); }
 };
 

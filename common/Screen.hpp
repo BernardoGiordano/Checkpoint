@@ -42,18 +42,21 @@ class Screen {
 public:
     Screen(void) {}
     virtual ~Screen(void) {}
-    // Call currentOverlay->update if it exists, and update if it doesn't
-    virtual void doUpdate(touchPosition* touch) final;
-    virtual void update(touchPosition* touch) = 0;
     // Call draw, then currentOverlay->draw if it exists
 #if defined(_3DS)
     virtual void doDrawTop(void) const final;
     virtual void doDrawBottom(void) const final;
     virtual void drawTop(void) const    = 0;
     virtual void drawBottom(void) const = 0;
+    // Call currentOverlay->update if it exists, and update if it doesn't
+    virtual void doUpdate(touchPosition*) final;
+    virtual void update(touchPosition*) = 0;
 #elif defined(__SWITCH__)
     virtual void doDraw() const final;
     virtual void draw() const = 0;
+    // Call currentOverlay->update if it exists, and update if it doesn't
+    virtual void doUpdate(PadState*) final;
+    virtual void update(PadState*) = 0;
 #endif
     void removeOverlay() { currentOverlay = nullptr; }
     void setOverlay(std::shared_ptr<Overlay>& overlay) { currentOverlay = overlay; }

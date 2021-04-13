@@ -45,9 +45,10 @@ void ErrorOverlay::draw(void) const
     drawPulsingOutline(322, 462, 636, 56, 4, COLOR_RED);
 }
 
-void ErrorOverlay::update(touchPosition* touch)
+void ErrorOverlay::update(PadState* pad)
 {
-    if (button->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B)) {
+    u64 kDown = padGetButtonsDown(pad);
+    if (button->released() || (kDown & HidNpadButton_A) || (kDown & HidNpadButton_B)) {
         screen.removeOverlay();
     }
 }

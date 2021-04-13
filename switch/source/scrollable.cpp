@@ -54,18 +54,21 @@ void Scrollable::push_back(SDL_Color color, SDL_Color colorMessage, const std::s
 
 void Scrollable::updateSelection(void)
 {
-    touchPosition touch;
-    hidTouchRead(&touch, 0);
+    // TODO: fix me
+    
+    // touchPosition touch;
+    // hidTouchRead(&touch, 0);
 
-    const int hu = (mHid.maxEntries(size()) + 1) * mh / mVisibleEntries;
-    if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && touch.py > (float)my && touch.py < (float)(my + hu) && touch.px > (float)mx &&
-        touch.px < (float)(mx + mw)) {
-        mHid.index(ceilf((touch.py - my) * mVisibleEntries / mh));
-    }
+    // const int hu = (mHid.maxEntries(size()) + 1) * mh / mVisibleEntries;
+    
+    // if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && touch.py > (float)my && touch.py < (float)(my + hu) && touch.px > (float)mx &&
+    //     touch.px < (float)(mx + mw)) {
+    //     mHid.index(ceilf((touch.py - my) * mVisibleEntries / mh));
+    // }
 
-    mHid.update(size());
-    mIndex = mHid.index();
-    mPage  = mHid.page();
+    // mHid.update(size());
+    // mIndex = mHid.index();
+    // mPage  = mHid.page();
 }
 
 void Scrollable::draw(bool condition)

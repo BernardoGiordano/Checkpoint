@@ -28,28 +28,31 @@
 
 bool Clickable::held()
 {
-    touchPosition touch;
-    hidTouchRead(&touch, 0);
-    return ((hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH) && (int)touch.px > mx && (int)touch.px < mx + mw && (int)touch.py > my &&
-            (int)touch.py < my + mh);
+    // TODO: fix me
+    // touchPosition touch;
+    // hidTouchRead(&touch, 0);
+    // return ((hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH) && (int)touch.px > mx && (int)touch.px < mx + mw && (int)touch.py > my &&
+    //         (int)touch.py < my + mh);
+    return false;
 }
 
 bool Clickable::released(void)
 {
-    touchPosition touch;
-    hidTouchRead(&touch, 0);
-    const bool on = (int)touch.px > mx && (int)touch.px < mx + mw && (int)touch.py > my && (int)touch.py < my + mh;
+    // TODO: fix me
+    // touchPosition touch;
+    // hidTouchRead(&touch, 0);
+    // const bool on = (int)touch.px > mx && (int)touch.px < mx + mw && (int)touch.py > my && (int)touch.py < my + mh;
 
-    if (on) {
-        mOldPressed = true;
-    }
-    else {
-        if (mOldPressed && !(touch.px > 0 || touch.py > 0)) {
-            mOldPressed = false;
-            return true;
-        }
-        mOldPressed = false;
-    }
+    // if (on) {
+    //     mOldPressed = true;
+    // }
+    // else {
+    //     if (mOldPressed && !(touch.px > 0 || touch.py > 0)) {
+    //         mOldPressed = false;
+    //         return true;
+    //     }
+    //     mOldPressed = false;
+    // }
 
     return false;
 }

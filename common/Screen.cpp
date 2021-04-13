@@ -45,6 +45,16 @@ void Screen::doDrawBottom() const
     }
 }
 
+void Screen::doUpdate(touchPosition* touch)
+{
+    if (currentOverlay) {
+        currentOverlay->update(touch);
+    }
+    else {
+        update(touch);
+    }
+}
+
 #elif defined(__SWITCH__)
 
 void Screen::doDraw() const
@@ -55,14 +65,14 @@ void Screen::doDraw() const
     }
 }
 
-#endif
-
-void Screen::doUpdate(touchPosition* touch)
+void Screen::doUpdate(PadState* pad)
 {
     if (currentOverlay) {
-        currentOverlay->update(touch);
+        currentOverlay->update(pad);
     }
     else {
-        update(touch);
+        update(pad);
     }
 }
+
+#endif

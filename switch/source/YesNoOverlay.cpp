@@ -56,7 +56,7 @@ void YesNoOverlay::draw(void) const
     }
 }
 
-void YesNoOverlay::update(touchPosition* touch)
+void YesNoOverlay::update(PadState* pad)
 {
     hid.update(2);
 
@@ -64,10 +64,12 @@ void YesNoOverlay::update(touchPosition* touch)
     buttonYes->selected(hid.index() == 0);
     buttonNo->selected(hid.index() == 1);
 
-    if (buttonYes->released() || ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) && hid.index() == 0)) {
+    u64 kDown = padGetButtonsDown(pad);
+
+    if (buttonYes->released() || ((kDown & HidNpadButton_A) && hid.index() == 0)) {
         yesFunc();
     }
-    else if (buttonNo->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B) || ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) && hid.index() == 1)) {
+    else if (buttonNo->released() || (kDown & HidNpadButton_B) || ((kDown & HidNpadButton_A) && hid.index() == 1)) {
         noFunc();
     }
 }
