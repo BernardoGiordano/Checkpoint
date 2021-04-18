@@ -83,7 +83,7 @@ void CheatManagerOverlay::draw(void) const
         20, 94, ceilf(664 + (32 - height) / 2), COLOR_WHITE, multiSelected ? "\ue003 to deselect all cheats" : "\ue003 to select all cheats");
 }
 
-void CheatManagerOverlay::update(PadState* pad)
+void CheatManagerOverlay::update(TouchScreen* pad)
 {
     u64 kDown = padGetButtonsDown(pad);
     if (kDown & HidNpadButton_A) {

@@ -28,31 +28,36 @@
 
 bool Clickable::held()
 {
-    // TODO: fix me
-    // touchPosition touch;
-    // hidTouchRead(&touch, 0);
-    // return ((hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH) && (int)touch.px > mx && (int)touch.px < mx + mw && (int)touch.py > my &&
-    //         (int)touch.py < my + mh);
+    HidTouchScreenState state={0};
+    if (hidGetTouchScreenStates(&state, 1)) {
+        return state.count > 0 && state.touches[0].y > (unsigned)my && state.touches[0].y < (unsigned)(my + mh) &&
+               state.touches[0].x > (unsigned)mx && state.touches[0].x < (unsigned)(mx + mw);
+    }
     return false;
 }
 
-bool Clickable::released(void)
+bool Clickable::released()
 {
-    // TODO: fix me
-    // touchPosition touch;
-    // hidTouchRead(&touch, 0);
-    // const bool on = (int)touch.px > mx && (int)touch.px < mx + mw && (int)touch.py > my && (int)touch.py < my + mh;
+    const auto [on, currentlyTouching] = [this]() {
+        HidTouchScreenState state={0};
+        if (hidGetTouchScreenStates(&state, 1)) {
+            return std::make_pair(state.count > 0 && state.touches[0].y > (unsigned)my &&
+                                  state.touches[0].y < (unsigned)(my + mh) && state.touches[0].x > (unsigned)mx &&
+                                  state.touches[0].x < (unsigned)(mx + mw), true);
+        }
+        return std::make_pair(false, false);
+    }();
 
-    // if (on) {
-    //     mOldPressed = true;
-    // }
-    // else {
-    //     if (mOldPressed && !(touch.px > 0 || touch.py > 0)) {
-    //         mOldPressed = false;
-    //         return true;
-    //     }
-    //     mOldPressed = false;
-    // }
+    if (on) {
+        mOldPressed = true;
+    }
+    else {
+        if (mOldPressed && !currentlyTouching) {
+            mOldPressed = false;
+            return true;
+        }
+        mOldPressed = false;
+    }
 
     return false;
 }

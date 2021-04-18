@@ -45,7 +45,7 @@ public:
     ~CheatManagerOverlay(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
-    void update(touchPosition* touch) override;
+    void update(TouchScreen* touch) override;
 
 protected:
     void save(const std::string& key, Scrollable* s);

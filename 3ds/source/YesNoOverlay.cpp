@@ -72,7 +72,7 @@ void YesNoOverlay::drawBottom(void) const
     }
 }
 
-void YesNoOverlay::update(touchPosition* touch)
+void YesNoOverlay::update(TouchScreen* touch)
 {
     hid.update(2);
 

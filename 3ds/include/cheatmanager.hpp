@@ -52,7 +52,7 @@ public:
 
 private:
     CheatManager(void);
-    ~CheatManager(void){};
+    ~CheatManager() = default;
 
     CheatManager(CheatManager const&) = delete;
     void operator=(CheatManager const&) = delete;

@@ -49,15 +49,15 @@ private:
     bool upDown() const override { return padGetButtonsDown(pad) & HidNpadButton_Up; }
     bool leftDown() const override { return padGetButtonsDown(pad) & HidNpadButton_Left; }
     bool rightDown() const override { return padGetButtonsDown(pad) & HidNpadButton_Right; }
-    // TODO: fix me
-    bool leftTriggerDown() const override { return false; }
-    bool rightTriggerDown() const override { return false; }
-    bool downHeld() const override { return false; }
-    bool upHeld() const override { return false; }
-    bool leftHeld() const override { return false; }
-    bool rightHeld() const override { return false; }
-    bool leftTriggerHeld() const override { return false; }
-    bool rightTriggerHeld() const override { return false; }
+    bool leftTriggerDown() const override { return padGetButtonsDown(pad) & HidNpadButton_L; }
+    bool rightTriggerDown() const override { return padGetButtonsDown(pad) & HidNpadButton_R; }
+
+    bool downHeld() const override { return padGetButtons(pad) & HidNpadButton_Down; }
+    bool upHeld() const override { return padGetButtons(pad) & HidNpadButton_Up; }
+    bool leftHeld() const override { return padGetButtons(pad) & HidNpadButton_Left; }
+    bool rightHeld() const override { return padGetButtons(pad) & HidNpadButton_Right; }
+    bool leftTriggerHeld() const override { return padGetButtons(pad) & HidNpadButton_L; }
+    bool rightTriggerHeld() const override { return padGetButtons(pad) & HidNpadButton_R; }
     u64 tick() const override { return armGetSystemTick(); }
 };
 

@@ -44,7 +44,7 @@ public:
     ~YesNoOverlay(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
-    void update(touchPosition* touch) override;
+    void update(TouchScreen* touch) override;
 
 private:
     u32 posx, posy;

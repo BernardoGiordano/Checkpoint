@@ -29,18 +29,12 @@
 
 #include "Screen.hpp"
 #include <memory>
-#include <string>
-#if defined(_3DS)
-#include <3ds.h>
-#elif defined(__SWITCH__)
-#include <switch.h>
-#endif
 
 class Overlay {
 public:
     Overlay(Screen& screen) : screen(screen), me(screen.currentOverlay) {}
-    virtual ~Overlay() {}
-    virtual void update(PadState*) = 0;
+    virtual ~Overlay() = default;
+    virtual void update(TouchScreen*) = 0;
 #if defined(_3DS)
     virtual void drawTop() const    = 0;
     virtual void drawBottom() const = 0;

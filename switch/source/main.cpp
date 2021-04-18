@@ -48,7 +48,7 @@ int main(void)
         exit(res);
     }
 
-    PadState pad;
+    TouchScreen pad;
     padInitializeDefault(&pad);
 
     g_screen = std::make_unique<MainScreen>(&pad);
@@ -72,7 +72,7 @@ int main(void)
         if (kDown & HidNpadButton_Plus)
             break;
 
-        // hidTouchRead(&touch, 0);
+        hidGetTouchScreenStates(&pad, 1);
 
         g_screen->doDraw();
         g_screen->doUpdate(&pad);

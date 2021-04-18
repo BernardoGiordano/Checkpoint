@@ -90,7 +90,7 @@ void CheatManagerOverlay::drawBottom(void) const
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
 }
 
-void CheatManagerOverlay::update(touchPosition* touch)
+void CheatManagerOverlay::update(TouchScreen* touch)
 {
     if (hidKeysDown() & KEY_A) {
         std::string cellName = scrollable->cellName(scrollable->index());

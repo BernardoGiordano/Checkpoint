@@ -41,7 +41,7 @@ public:
     InfoOverlay(Screen& screen, const std::string& mtext);
     ~InfoOverlay(void) {}
     void draw(void) const override;
-    void update(PadState* touch) override;
+    void update(TouchScreen* touch) override;
 
 private:
     u32 textw, texth;

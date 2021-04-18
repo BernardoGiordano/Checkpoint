@@ -41,7 +41,7 @@ struct DirectoryEntry {
 class Directory {
 public:
     Directory(const std::string& root);
-    ~Directory(void){};
+    ~Directory() = default;
 
     Result error(void);
     std::string entry(size_t index);

@@ -43,7 +43,7 @@
 class Title {
 public:
     void init(u8 saveDataType, u64 titleid, AccountUid userID, const std::string& name, const std::string& author);
-    ~Title(void){};
+    ~Title() = default;
 
     std::string author(void);
     std::pair<std::string, std::string> displayName(void);

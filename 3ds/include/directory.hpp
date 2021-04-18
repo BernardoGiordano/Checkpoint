@@ -35,7 +35,7 @@
 class Directory {
 public:
     Directory(FS_Archive archive, const std::u16string& root);
-    ~Directory(void){};
+    ~Directory() = default;
 
     Result error(void);
     std::u16string entry(size_t index);

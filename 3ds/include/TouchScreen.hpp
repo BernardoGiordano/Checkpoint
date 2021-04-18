@@ -24,33 +24,11 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef ERROROVERLAY_HPP
-#define ERROROVERLAY_HPP
+#ifndef TOUCHSCREEN_HPP
+#define TOUCHSCREEN_HPP
 
-#include "Overlay.hpp"
-#include "clickable.hpp"
-#include "colors.hpp"
-#include "gui.hpp"
-#include "util.hpp"
-#include <memory>
-#include <string>
+#include <3ds.h>
 
-class Clickable;
-
-class ErrorOverlay : public Overlay {
-public:
-    ErrorOverlay(Screen& screen, Result res, const std::string& mtext);
-    ~ErrorOverlay(void);
-    void drawTop(void) const override;
-    void drawBottom(void) const override;
-    void update(TouchScreen* touch) override;
-
-private:
-    u32 posx, posy;
-    const float size = 0.6f;
-    C2D_Text text, error;
-    C2D_TextBuf textBuf;
-    std::unique_ptr<Clickable> button;
-};
+using TouchScreen = touchPosition;
 
 #endif

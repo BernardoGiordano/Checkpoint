@@ -50,7 +50,7 @@ public:
 
 private:
     KeyboardManager(void);
-    virtual ~KeyboardManager(void){};
+    virtual ~KeyboardManager()  = default;
 
     Result res;
     bool systemKeyboardAvailable;

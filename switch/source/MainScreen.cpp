@@ -28,10 +28,11 @@
 
 static constexpr size_t rowlen = 5, collen = 4, rows = 10, SIDEBAR_w = 96;
 
-MainScreen::MainScreen(PadState* pad) : hid(rowlen * collen, collen, pad)
+MainScreen::MainScreen(TouchScreen* pad) : hid(rowlen * collen, collen, pad)
 {
-    pksmBridge     = false;
-    selectionTimer = 0;
+    pksmBridge       = false;
+    wantInstructions = false;
+    selectionTimer   = 0;
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
     backupList    = std::make_unique<Scrollable>(538, 276, 414, 380, rows);
     buttonBackup  = std::make_unique<Clickable>(956, 276, 220, 80, theme().c2, theme().c6, "Backup \ue004", true);
@@ -183,32 +184,31 @@ void MainScreen::draw() const
     SDLH_GetTextDimensions(26, "checkpoint", &checkpoint_w, &checkpoint_h);
     SDLH_GetTextDimensions(24, "\ue046 Instructions", &inst_w, &inst_h);
 
-    // TODO: fix me
-    // if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_MINUS && currentOverlay == nullptr) {
-    //     SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
-    //     SDLH_DrawText(27, 1205, 646, theme().c6, "\ue085\ue086");
-    //     SDLH_DrawText(24, 58, 69, theme().c6, "\ue058 Tap to select title");
-    //     SDLH_DrawText(24, 58, 109, theme().c6, ("\ue026 Sort: " + sortMode()).c_str());
-    //     SDLH_DrawText(24, 100, 270, theme().c6, "\ue006 \ue080 to scroll between titles");
-    //     SDLH_DrawText(24, 100, 300, theme().c6, "\ue004 \ue005 to scroll between pages");
-    //     SDLH_DrawText(24, 100, 330, theme().c6, "\ue000 to enter the selected title");
-    //     SDLH_DrawText(24, 100, 360, theme().c6, "\ue001 to exit the selected title");
-    //     SDLH_DrawText(24, 100, 390, theme().c6, "\ue002 to change sort mode");
-    //     SDLH_DrawText(24, 100, 420, theme().c6, "\ue003 to multiselect title");
-    //     SDLH_DrawText(24, 100, 450, theme().c6, "Hold \ue003 to select all titles");
-    //     SDLH_DrawText(24, 616, 480, theme().c6, "\ue002 to delete a backup");
-    //     if (Configuration::getInstance().isPKSMBridgeEnabled()) {
-    //         SDLH_DrawText(24, 100, 480, theme().c6, "\ue004 + \ue005 to enable PKSM bridge");
-    //     }
-    //     if (gethostid() != INADDR_LOOPBACK) {
-    //         if (g_ftpAvailable && Configuration::getInstance().isFTPEnabled()) {
-    //             SDLH_DrawText(24, 16 * 6 + checkpoint_w + 8 + ver_w + inst_w, 642 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
-    //                 StringUtils::format("FTP server running on %s:50000", getConsoleIP()).c_str());
-    //         }
-    //         SDLH_DrawText(24, 16 * 6 + checkpoint_w + 8 + ver_w + inst_w, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
-    //             StringUtils::format("Configuration server running on %s:8000", getConsoleIP()).c_str());
-    //     }
-    // }
+    if (wantInstructions && currentOverlay == nullptr) {
+        SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
+        SDLH_DrawText(27, 1205, 646, theme().c6, "\ue085\ue086");
+        SDLH_DrawText(24, 58, 69, theme().c6, "\ue058 Tap to select title");
+        SDLH_DrawText(24, 58, 109, theme().c6, ("\ue026 Sort: " + sortMode()).c_str());
+        SDLH_DrawText(24, 100, 270, theme().c6, "\ue006 \ue080 to scroll between titles");
+        SDLH_DrawText(24, 100, 300, theme().c6, "\ue004 \ue005 to scroll between pages");
+        SDLH_DrawText(24, 100, 330, theme().c6, "\ue000 to enter the selected title");
+        SDLH_DrawText(24, 100, 360, theme().c6, "\ue001 to exit the selected title");
+        SDLH_DrawText(24, 100, 390, theme().c6, "\ue002 to change sort mode");
+        SDLH_DrawText(24, 100, 420, theme().c6, "\ue003 to multiselect title");
+        SDLH_DrawText(24, 100, 450, theme().c6, "Hold \ue003 to select all titles");
+        SDLH_DrawText(24, 616, 480, theme().c6, "\ue002 to delete a backup");
+        if (Configuration::getInstance().isPKSMBridgeEnabled()) {
+            SDLH_DrawText(24, 100, 480, theme().c6, "\ue004 + \ue005 to enable PKSM bridge");
+        }
+        if (gethostid() != INADDR_LOOPBACK) {
+            if (g_ftpAvailable && Configuration::getInstance().isFTPEnabled()) {
+                SDLH_DrawText(24, 16 * 6 + checkpoint_w + 8 + ver_w + inst_w, 642 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
+                    StringUtils::format("FTP server running on %s:50000", getConsoleIP()).c_str());
+            }
+            SDLH_DrawText(24, 16 * 6 + checkpoint_w + 8 + ver_w + inst_w, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
+                StringUtils::format("Configuration server running on %s:8000", getConsoleIP()).c_str());
+        }
+    }
 
     SDLH_DrawRect(0, 672, checkpoint_w + ver_w + 2 * 16 + 8, 40, lightBlack);
     SDLH_DrawText(26, 16, 672 + (40 - checkpoint_h) / 2 + 2, theme().c6, "checkpoint");
@@ -224,13 +224,13 @@ void MainScreen::draw() const
     }
 }
 
-void MainScreen::update(PadState* pad)
+void MainScreen::update(TouchScreen* pad)
 {
     updateSelector(pad);
     handleEvents(pad);
 }
 
-void MainScreen::updateSelector(PadState* pad)
+void MainScreen::updateSelector(TouchScreen* pad)
 {
     if (!g_backupScrollEnabled) {
         size_t count    = getTitleCount(g_currentUId);
@@ -246,10 +246,9 @@ void MainScreen::updateSelector(PadState* pad)
 
                 u32 x = selectorX(index);
                 u32 y = selectorY(index);
-                // TODO: FIX ME
-                // if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && touch->px >= x && touch->px <= x + 128 && touch->py >= y && touch->py <= y + 128) {
-                //     hid.index(index);
-                // }
+                if (pad->count > 0 && pad->touches[0].x >= x && pad->touches[0].x <= x + 128 && pad->touches[0].y >= y && pad->touches[0].y <= y + 128) {
+                    hid.index(index);
+                }
             }
         }
 
@@ -263,12 +262,13 @@ void MainScreen::updateSelector(PadState* pad)
     }
 }
 
-void MainScreen::handleEvents(PadState* pad)
+void MainScreen::handleEvents(TouchScreen* pad)
 {
-    // TODO: fix me
-    // u32 kheld = padGetButtonsHeld(&pad);
+    const u64 kheld = padGetButtons(pad);
+    const u64 kdown = padGetButtonsDown(pad);
 
-    u32 kdown = padGetButtonsDown(pad);
+    wantInstructions = (kheld & HidNpadButton_Minus);
+
     if (kdown & HidNpadButton_ZL || kdown & HidNpadButton_ZR) {
         while ((g_currentUId = Account::selectAccount()) == 0)
             ;
@@ -281,34 +281,33 @@ void MainScreen::handleEvents(PadState* pad)
         Title title;
         getTitle(title, g_currentUId, this->index(TITLES));
         if (!getPKSMBridgeFlag()) {
-            // TODO: fix me
-            // if ((kheld & HidNpadButton_L) && (kheld & HidNpadButton_R) && isPKSMBridgeTitle(title.id())) {
-            //     setPKSMBridgeFlag(true);
-            //     updateButtons();
-            // }
+            if ((kheld & HidNpadButton_L) && (kheld & HidNpadButton_R) && isPKSMBridgeTitle(title.id())) {
+                setPKSMBridgeFlag(true);
+                updateButtons();
+            }
         }
     }
 
-    // // handle touchscreen
-    // if (!g_backupScrollEnabled && hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && touch->px >= 1200 && touch->px <= 1200 + USER_ICON_SIZE &&
-    //     touch->py >= 626 && touch->py <= 626 + USER_ICON_SIZE) {
-    //     while ((g_currentUId = Account::selectAccount()) == 0)
-    //         ;
-    //     this->index(TITLES, 0);
-    //     this->index(CELLS, 0);
-    //     setPKSMBridgeFlag(false);
-    // }
+    // handle touchscreen
+    if (!g_backupScrollEnabled && pad->count > 0 && pad->touches[0].x >= 1200 && pad->touches[0].x <= 1200 + USER_ICON_SIZE &&
+        pad->touches[0].y >= 626 && pad->touches[0].y <= 626 + USER_ICON_SIZE) {
+        while ((g_currentUId = Account::selectAccount()) == 0)
+            ;
+        this->index(TITLES, 0);
+        this->index(CELLS, 0);
+        setPKSMBridgeFlag(false);
+    }
 
-    // // Handle touching the backup list
-    // if ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH && (int)touch->px > 538 && (int)touch->px < 952 && (int)touch->py > 276 &&
-    //         (int)touch->py < 656)) {
-    //     // Activate backup list only if multiple selections are enabled
-    //     if (!MS::multipleSelectionEnabled()) {
-    //         g_backupScrollEnabled = true;
-    //         updateButtons();
-    //         entryType(CELLS);
-    //     }
-    // }
+    // Handle touching the backup list
+    if (pad->count > 0 && pad->touches[0].x > 538 && pad->touches[0].x < 952 && pad->touches[0].y > 276 &&
+            pad->touches[0].y < 656) {
+        // Activate backup list only if multiple selections are enabled
+        if (!MS::multipleSelectionEnabled()) {
+            g_backupScrollEnabled = true;
+            updateButtons();
+            entryType(CELLS);
+        }
+    }
 
     // Handle pressing A
     // Backup list active:   Backup/Restore
@@ -366,10 +365,8 @@ void MainScreen::handleEvents(PadState* pad)
     }
 
     // Handle pressing B
-    if (kdown & HidNpadButton_B 
-        // || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH && (int)touch->px >= 0 && (int)touch->px <= 532 && (int)touch->py >= 0 &&
-        //                      (int)touch->py <= 664)
-    ){
+    if ((kdown & HidNpadButton_B) || (pad->count > 0 && pad->touches[0].x <= 532 && pad->touches[0].y <= 664))
+    {
         this->index(CELLS, 0);
         g_backupScrollEnabled = false;
         entryType(TITLES);
@@ -417,13 +414,13 @@ void MainScreen::handleEvents(PadState* pad)
         updateButtons(); // Do this last
     }
 
-    // // Handle holding Y
-    // if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_Y && !(g_backupScrollEnabled)) {
-    //     selectionTimer++;
-    // }
-    // else {
-    //     selectionTimer = 0;
-    // }
+    // Handle holding Y
+    if (kheld & KEY_Y && !(g_backupScrollEnabled)) {
+        selectionTimer++;
+    }
+    else {
+        selectionTimer = 0;
+    }
 
     if (selectionTimer > 45) {
         MS::clearSelectedEntries();
