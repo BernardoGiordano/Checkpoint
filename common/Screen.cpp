@@ -56,7 +56,7 @@ void Screen::doDraw() const
 
 #endif
 
-void Screen::doUpdate(TouchScreen* touch)
+void Screen::doUpdate(InputState* touch)
 {
     if (currentOverlay) {
         currentOverlay->update(touch);

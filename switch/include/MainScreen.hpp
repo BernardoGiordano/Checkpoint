@@ -48,15 +48,15 @@ class Scrollable;
 
 class MainScreen : public Screen {
 public:
-    MainScreen(TouchScreen*);
+    MainScreen(InputState*);
     void draw(void) const override;
-    void update(TouchScreen* pad) override;
+    void update(InputState* pad) override;
 
 protected:
     int selectorX(size_t i) const;
     int selectorY(size_t i) const;
-    void updateSelector(TouchScreen* pad);
-    void handleEvents(TouchScreen* pad);
+    void updateSelector(InputState* pad);
+    void handleEvents(InputState* pad);
     std::string nameFromCell(size_t index) const;
     void entryType(entryType_t type);
     size_t index(entryType_t type) const;

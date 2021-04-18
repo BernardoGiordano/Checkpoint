@@ -264,7 +264,7 @@ void MainScreen::drawBottom(void) const
     }
 }
 
-void MainScreen::update(TouchScreen* touch)
+void MainScreen::update(InputState* touch)
 {
     updateSelector();
     handleEvents(touch);

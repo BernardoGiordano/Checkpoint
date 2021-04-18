@@ -29,6 +29,6 @@
 
 #include <switch.h>
 
-struct TouchScreen : public HidTouchScreenState, public PadState { };
+struct InputState : public HidTouchScreenState, public PadState { };
 
 #endif

@@ -28,7 +28,7 @@
 
 static constexpr size_t rowlen = 5, collen = 4, rows = 10, SIDEBAR_w = 96;
 
-MainScreen::MainScreen(TouchScreen* pad) : hid(rowlen * collen, collen, pad)
+MainScreen::MainScreen(InputState* pad) : hid(rowlen * collen, collen, pad)
 {
     pksmBridge       = false;
     wantInstructions = false;
@@ -224,13 +224,13 @@ void MainScreen::draw() const
     }
 }
 
-void MainScreen::update(TouchScreen* pad)
+void MainScreen::update(InputState* pad)
 {
     updateSelector(pad);
     handleEvents(pad);
 }
 
-void MainScreen::updateSelector(TouchScreen* pad)
+void MainScreen::updateSelector(InputState* pad)
 {
     if (!g_backupScrollEnabled) {
         size_t count    = getTitleCount(g_currentUId);
@@ -262,7 +262,7 @@ void MainScreen::updateSelector(TouchScreen* pad)
     }
 }
 
-void MainScreen::handleEvents(TouchScreen* pad)
+void MainScreen::handleEvents(InputState* pad)
 {
     const u64 kheld = padGetButtons(pad);
     const u64 kdown = padGetButtonsDown(pad);

@@ -41,7 +41,7 @@ public:
     ErrorOverlay(Screen& screen, Result res, const std::string& mtext);
     ~ErrorOverlay(void) {}
     void draw(void) const override;
-    void update(TouchScreen*) override;
+    void update(InputState*) override;
 
 private:
     u32 textw, texth;

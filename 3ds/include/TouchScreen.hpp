@@ -29,6 +29,6 @@
 
 #include <3ds.h>
 
-using TouchScreen = touchPosition;
+using InputState = touchPosition;
 
 #endif

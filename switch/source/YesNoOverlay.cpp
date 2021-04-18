@@ -56,7 +56,7 @@ void YesNoOverlay::draw(void) const
     }
 }
 
-void YesNoOverlay::update(TouchScreen* pad)
+void YesNoOverlay::update(InputState* pad)
 {
     hid.update(2);
 

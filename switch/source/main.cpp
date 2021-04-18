@@ -48,7 +48,7 @@ int main(void)
         exit(res);
     }
 
-    TouchScreen pad;
+    InputState pad;
     padInitializeDefault(&pad);
 
     g_screen = std::make_unique<MainScreen>(&pad);
