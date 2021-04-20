@@ -27,7 +27,7 @@
 #ifndef SCREEN_HPP
 #define SCREEN_HPP
 
-#include "InputState.hpp"
+#include "TouchScreen.hpp"
 #include <memory>
 
 class Overlay;
