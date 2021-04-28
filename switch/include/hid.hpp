@@ -33,18 +33,14 @@
 #define DELAY_TICKS 2500000
 
 template <HidDirection ListDirection, HidDirection PageDirection>
-class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS>
-{
+class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS> {
 public:
     Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns) {}
-    Hid(size_t entries, size_t columns, PadState* _pad) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns)
-    {
-        pad = _pad;
-    }
+    Hid(size_t entries, size_t columns, PadState* _pad) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns) { pad = _pad; }
 
 private:
     PadState* pad;
-    
+
     bool downDown() const override { return padGetButtonsDown(pad) & HidNpadButton_Down; }
     bool upDown() const override { return padGetButtonsDown(pad) & HidNpadButton_Up; }
     bool leftDown() const override { return padGetButtonsDown(pad) & HidNpadButton_Left; }

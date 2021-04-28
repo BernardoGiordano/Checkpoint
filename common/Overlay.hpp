@@ -33,7 +33,7 @@
 class Overlay {
 public:
     Overlay(Screen& screen) : screen(screen), me(screen.currentOverlay) {}
-    virtual ~Overlay() = default;
+    virtual ~Overlay()               = default;
     virtual void update(InputState*) = 0;
 #if defined(_3DS)
     virtual void drawTop() const    = 0;

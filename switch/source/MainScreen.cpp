@@ -246,7 +246,8 @@ void MainScreen::updateSelector(InputState* pad)
 
                 u32 x = selectorX(index);
                 u32 y = selectorY(index);
-                if (pad->count > 0 && pad->touches[0].x >= x && pad->touches[0].x <= x + 128 && pad->touches[0].y >= y && pad->touches[0].y <= y + 128) {
+                if (pad->count > 0 && pad->touches[0].x >= x && pad->touches[0].x <= x + 128 && pad->touches[0].y >= y &&
+                    pad->touches[0].y <= y + 128) {
                     hid.index(index);
                 }
             }
@@ -299,8 +300,7 @@ void MainScreen::handleEvents(InputState* pad)
     }
 
     // Handle touching the backup list
-    if (pad->count > 0 && pad->touches[0].x > 538 && pad->touches[0].x < 952 && pad->touches[0].y > 276 &&
-            pad->touches[0].y < 656) {
+    if (pad->count > 0 && pad->touches[0].x > 538 && pad->touches[0].x < 952 && pad->touches[0].y > 276 && pad->touches[0].y < 656) {
         // Activate backup list only if multiple selections are enabled
         if (!MS::multipleSelectionEnabled()) {
             g_backupScrollEnabled = true;
@@ -365,8 +365,7 @@ void MainScreen::handleEvents(InputState* pad)
     }
 
     // Handle pressing B
-    if ((kdown & HidNpadButton_B) || (pad->count > 0 && pad->touches[0].x <= 532 && pad->touches[0].y <= 664))
-    {
+    if ((kdown & HidNpadButton_B) || (pad->count > 0 && pad->touches[0].x <= 532 && pad->touches[0].y <= 664)) {
         this->index(CELLS, 0);
         g_backupScrollEnabled = false;
         entryType(TITLES);

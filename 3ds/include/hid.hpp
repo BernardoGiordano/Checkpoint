@@ -33,8 +33,7 @@
 #define DELAY_TICKS 50000000
 
 template <HidDirection ListDirection, HidDirection PageDirection>
-class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS>
-{
+class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS> {
 public:
     Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns) {}
 

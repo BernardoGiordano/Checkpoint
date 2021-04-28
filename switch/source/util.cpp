@@ -182,7 +182,7 @@ void blinkLed(u8 times)
         PadState pad;
         padInitializeDefault(&pad);
         s32 n;
-        HidsysUniquePadId uniquePadIds[2]={0};
+        HidsysUniquePadId uniquePadIds[2]    = {0};
         HidsysNotificationLedPattern pattern = blinkLedPattern(times);
         memset(uniquePadIds, 0, sizeof(uniquePadIds));
         Result res = hidsysGetUniquePadsFromNpad(padIsHandheld(&pad) ? HidNpadIdType_Handheld : HidNpadIdType_No1, uniquePadIds, 2, &n);
