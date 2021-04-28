@@ -63,6 +63,7 @@ void ErrorOverlay::drawBottom(void) const
 
 void ErrorOverlay::update(InputState* touch)
 {
+    (void)touch;
     if (button->released() || (hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_B)) {
         screen.removeOverlay();
     }

@@ -92,6 +92,7 @@ void CheatManagerOverlay::drawBottom(void) const
 
 void CheatManagerOverlay::update(InputState* touch)
 {
+    (void)touch;
     if (hidKeysDown() & KEY_A) {
         std::string cellName = scrollable->cellName(scrollable->index());
         if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) == 0) {
