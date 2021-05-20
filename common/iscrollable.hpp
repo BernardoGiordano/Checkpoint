@@ -28,7 +28,7 @@
 #define ISCROLLABLE_HPP
 
 #include "iclickable.hpp"
-#include "inputstate.hpp"
+#include "InputState.hpp"
 #include <vector>
 
 template <typename T>

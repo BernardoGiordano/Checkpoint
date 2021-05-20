@@ -28,7 +28,7 @@
 #define ICLICKABLE_HPP
 
 #include <string>
-#include "inputstate.hpp"
+#include "InputState.hpp"
 
 typedef uint8_t u8;
 typedef uint16_t u16;

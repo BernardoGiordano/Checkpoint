@@ -28,7 +28,7 @@
 #define HID_HPP
 
 #include "ihid.hpp"
-#include "inputstate.hpp"
+#include "InputState.hpp"
 #include <switch.h>
 
 #define DELAY_TICKS 2500000
