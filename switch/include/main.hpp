@@ -31,6 +31,7 @@
 #include "account.hpp"
 #include "title.hpp"
 #include "util.hpp"
+#include "InputState.hpp"
 #include <memory>
 #include <switch.h>
 
@@ -47,7 +48,7 @@ inline std::string g_selectedCheatKey;
 inline std::vector<std::string> g_selectedCheatCodes;
 inline u32 g_username_dotsize;
 inline sort_t g_sortMode = SORT_ALPHA;
-
+inline const InputState* g_input = nullptr;
 inline std::string g_currentFile = "";
 inline bool g_isTransferringFile = false;
 

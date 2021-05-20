@@ -45,9 +45,9 @@ void ErrorOverlay::draw(void) const
     drawPulsingOutline(322, 462, 636, 56, 4, COLOR_RED);
 }
 
-void ErrorOverlay::update(InputState* pad)
+void ErrorOverlay::update(const InputState& input)
 {
-    u64 kDown = padGetButtonsDown(pad);
+    const u64 kDown = input.kDown;
     if (button->released() || (kDown & HidNpadButton_A) || (kDown & HidNpadButton_B)) {
         screen.removeOverlay();
     }

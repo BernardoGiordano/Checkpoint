@@ -41,9 +41,9 @@ class Clickable;
 class YesNoOverlay : public Overlay {
 public:
     YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
-    ~YesNoOverlay(void) {}
+    ~YesNoOverlay() = default;
     void draw(void) const override;
-    void update(InputState*) override;
+    void update(const InputState&) override;
 
 private:
     u32 textw, texth;

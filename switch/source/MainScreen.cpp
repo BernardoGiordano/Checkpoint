@@ -28,7 +28,7 @@
 
 static constexpr size_t rowlen = 5, collen = 4, rows = 10, SIDEBAR_w = 96;
 
-MainScreen::MainScreen(InputState* pad) : hid(rowlen * collen, collen, pad)
+MainScreen::MainScreen(const InputState& input) : hid(rowlen * collen, collen, input)
 {
     pksmBridge       = false;
     wantInstructions = false;
@@ -224,13 +224,13 @@ void MainScreen::draw() const
     }
 }
 
-void MainScreen::update(InputState* pad)
+void MainScreen::update(const InputState& input)
 {
-    updateSelector(pad);
-    handleEvents(pad);
+    updateSelector(input);
+    handleEvents(input);
 }
 
-void MainScreen::updateSelector(InputState* pad)
+void MainScreen::updateSelector(const InputState& input)
 {
     if (!g_backupScrollEnabled) {
         size_t count    = getTitleCount(g_currentUId);
@@ -246,8 +246,8 @@ void MainScreen::updateSelector(InputState* pad)
 
                 u32 x = selectorX(index);
                 u32 y = selectorY(index);
-                if (pad->count > 0 && pad->touches[0].x >= x && pad->touches[0].x <= x + 128 && pad->touches[0].y >= y &&
-                    pad->touches[0].y <= y + 128) {
+                if (input.touch.count > 0 && input.touch.touches[0].x >= x && input.touch.touches[0].x <= x + 128 && input.touch.touches[0].y >= y &&
+                    input.touch.touches[0].y <= y + 128) {
                     hid.index(index);
                 }
             }
@@ -263,10 +263,10 @@ void MainScreen::updateSelector(InputState* pad)
     }
 }
 
-void MainScreen::handleEvents(InputState* pad)
+void MainScreen::handleEvents(const InputState& input)
 {
-    const u64 kheld = padGetButtons(pad);
-    const u64 kdown = padGetButtonsDown(pad);
+    const u64 kheld = input.kHeld;
+    const u64 kdown = input.kDown;
 
     wantInstructions = (kheld & HidNpadButton_Minus);
 
@@ -290,8 +290,8 @@ void MainScreen::handleEvents(InputState* pad)
     }
 
     // handle touchscreen
-    if (!g_backupScrollEnabled && pad->count > 0 && pad->touches[0].x >= 1200 && pad->touches[0].x <= 1200 + USER_ICON_SIZE &&
-        pad->touches[0].y >= 626 && pad->touches[0].y <= 626 + USER_ICON_SIZE) {
+    if (!g_backupScrollEnabled && input.touch.count > 0 && input.touch.touches[0].x >= 1200 && input.touch.touches[0].x <= 1200 + USER_ICON_SIZE &&
+        input.touch.touches[0].y >= 626 && input.touch.touches[0].y <= 626 + USER_ICON_SIZE) {
         while ((g_currentUId = Account::selectAccount()) == 0)
             ;
         this->index(TITLES, 0);
@@ -300,7 +300,7 @@ void MainScreen::handleEvents(InputState* pad)
     }
 
     // Handle touching the backup list
-    if (pad->count > 0 && pad->touches[0].x > 538 && pad->touches[0].x < 952 && pad->touches[0].y > 276 && pad->touches[0].y < 656) {
+    if (input.touch.count > 0 && input.touch.touches[0].x > 538 && input.touch.touches[0].x < 952 && input.touch.touches[0].y > 276 && input.touch.touches[0].y < 656) {
         // Activate backup list only if multiple selections are enabled
         if (!MS::multipleSelectionEnabled()) {
             g_backupScrollEnabled = true;
@@ -365,7 +365,7 @@ void MainScreen::handleEvents(InputState* pad)
     }
 
     // Handle pressing B
-    if ((kdown & HidNpadButton_B) || (pad->count > 0 && pad->touches[0].x <= 532 && pad->touches[0].y <= 664)) {
+    if ((kdown & HidNpadButton_B) || (input.touch.count > 0 && input.touch.touches[0].x <= 532 && input.touch.touches[0].y <= 664)) {
         this->index(CELLS, 0);
         g_backupScrollEnabled = false;
         entryType(TITLES);

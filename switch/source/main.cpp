@@ -48,10 +48,12 @@ int main(void)
         exit(res);
     }
 
-    InputState pad;
+    InputState input;
+    g_input = &input;
+    PadState pad;
     padInitializeDefault(&pad);
 
-    g_screen = std::make_unique<MainScreen>(&pad);
+    g_screen = std::make_unique<MainScreen>(input);
 
     loadTitles();
     // get the user IDs
@@ -68,14 +70,16 @@ int main(void)
     while (appletMainLoop()) {
         padUpdate(&pad);
 
-        u64 kDown = padGetButtonsDown(&pad);
-        if (kDown & HidNpadButton_Plus)
+        input.kDown = padGetButtonsDown(&pad);
+        if (input.kDown & HidNpadButton_Plus)
             break;
 
-        hidGetTouchScreenStates(&pad, 1);
+        input.kHeld = padGetButtons(&pad);
+        input.kUp = padGetButtonsUp(&pad);
+        hidGetTouchScreenStates(&input.touch, 1);
 
         g_screen->doDraw();
-        g_screen->doUpdate(&pad);
+        g_screen->doUpdate(input);
         SDLH_Render();
     }
 

@@ -57,9 +57,9 @@ void InfoOverlay::drawBottom(void) const
     Gui::drawPulsingOutline(42, 162, 236, 36, 2, COLOR_BLUE);
 }
 
-void InfoOverlay::update(InputState* touch)
+void InfoOverlay::update(const InputState& input)
 {
-    (void)touch;
+    (void)input;
     if (button->released() || (hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_B)) {
         screen.removeOverlay();
     }

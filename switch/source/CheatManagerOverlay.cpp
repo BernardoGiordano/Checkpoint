@@ -83,9 +83,9 @@ void CheatManagerOverlay::draw(void) const
         20, 94, ceilf(664 + (32 - height) / 2), COLOR_WHITE, multiSelected ? "\ue003 to deselect all cheats" : "\ue003 to select all cheats");
 }
 
-void CheatManagerOverlay::update(InputState* pad)
+void CheatManagerOverlay::update(const InputState& input)
 {
-    u64 kDown = padGetButtonsDown(pad);
+    u64 kDown = input.kDown;
     if (kDown & HidNpadButton_A) {
         std::string cellName = scrollable->cellName(scrollable->index());
         if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) == 0) {

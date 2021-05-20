@@ -24,12 +24,11 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef TOUCHSCREEN_HPP
-#define TOUCHSCREEN_HPP
+#ifndef INPUTSTATE_HPP
+#define INPUTSTATE_HPP
 
-#include <switch.h>
+#include <3ds.h>
 
-struct InputState : public HidTouchScreenState, public PadState {
-};
+using InputState = touchPosition;
 
 #endif

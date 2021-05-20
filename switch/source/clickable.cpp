@@ -28,24 +28,16 @@
 
 bool Clickable::held()
 {
-    HidTouchScreenState state = {0};
-    if (hidGetTouchScreenStates(&state, 1)) {
-        return state.count > 0 && state.touches[0].y > (unsigned)my && state.touches[0].y < (unsigned)(my + mh) &&
-               state.touches[0].x > (unsigned)mx && state.touches[0].x < (unsigned)(mx + mw);
-    }
-    return false;
+    return g_input->touch.count > 0 && g_input->touch.touches[0].y > (unsigned)my && g_input->touch.touches[0].y < (unsigned)(my + mh) &&
+           g_input->touch.touches[0].x > (unsigned)mx && g_input->touch.touches[0].x < (unsigned)(mx + mw);
 }
 
 bool Clickable::released()
 {
     const auto [on, currentlyTouching] = [this]() {
-        HidTouchScreenState state = {0};
-        if (hidGetTouchScreenStates(&state, 1)) {
-            return std::make_pair(state.count > 0 && state.touches[0].y > (unsigned)my && state.touches[0].y < (unsigned)(my + mh) &&
-                                      state.touches[0].x > (unsigned)mx && state.touches[0].x < (unsigned)(mx + mw),
-                true);
-        }
-        return std::make_pair(false, false);
+        return std::make_pair(g_input->touch.count > 0 && g_input->touch.touches[0].y > (unsigned)my && g_input->touch.touches[0].y < (unsigned)(my + mh) &&
+                                g_input->touch.touches[0].x > (unsigned)mx && g_input->touch.touches[0].x < (unsigned)(mx + mw),
+            g_input->touch.count > 0);
     }();
 
     if (on) {

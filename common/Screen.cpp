@@ -56,12 +56,12 @@ void Screen::doDraw() const
 
 #endif
 
-void Screen::doUpdate(InputState* touch)
+void Screen::doUpdate(const InputState& input)
 {
     if (currentOverlay) {
-        currentOverlay->update(touch);
+        currentOverlay->update(input);
     }
     else {
-        update(touch);
+        update(input);
     }
 }

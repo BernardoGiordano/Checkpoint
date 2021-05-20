@@ -43,7 +43,7 @@ public:
     ~ErrorOverlay(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
-    void update(InputState* touch) override;
+    void update(const InputState& input) override;
 
 private:
     u32 posx, posy;

@@ -42,8 +42,8 @@ public:
     virtual ~Clickable() = default;
 
     void draw(float font, SDL_Color overlay) override;
-    bool held() override;
-    bool released() override;
+    bool held(void) override;
+    bool released(void) override;
     void drawOutline(SDL_Color color) override;
 };
 

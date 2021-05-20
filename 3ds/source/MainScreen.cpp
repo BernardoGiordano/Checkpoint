@@ -264,10 +264,10 @@ void MainScreen::drawBottom(void) const
     }
 }
 
-void MainScreen::update(InputState* touch)
+void MainScreen::update(const InputState& input)
 {
     updateSelector();
-    handleEvents(touch);
+    handleEvents(input);
 }
 
 void MainScreen::updateSelector(void)
@@ -284,7 +284,7 @@ void MainScreen::updateSelector(void)
     }
 }
 
-void MainScreen::handleEvents(touchPosition* touch)
+void MainScreen::handleEvents(const InputState& input)
 {
     u32 kDown = hidKeysDown();
     u32 kHeld = hidKeysHeld();
@@ -466,7 +466,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     if (getTitleCount() > 0) {
         Title title;
         getTitle(title, hid.fullIndex());
-        if ((title.isActivityLog() && buttonPlayCoins->released()) || ((hidKeysDown() & KEY_TOUCH) && touch->py < 20 && touch->px > 294)) {
+        if ((title.isActivityLog() && buttonPlayCoins->released()) || ((hidKeysDown() & KEY_TOUCH) && input.py < 20 && input.px > 294)) {
             if (!Archive::setPlayCoins()) {
                 currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");
             }

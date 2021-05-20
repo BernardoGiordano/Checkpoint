@@ -56,7 +56,7 @@ void YesNoOverlay::draw(void) const
     }
 }
 
-void YesNoOverlay::update(InputState* pad)
+void YesNoOverlay::update(const InputState& input)
 {
     hid.update(2);
 
@@ -64,7 +64,7 @@ void YesNoOverlay::update(InputState* pad)
     buttonYes->selected(hid.index() == 0);
     buttonNo->selected(hid.index() == 1);
 
-    u64 kDown = padGetButtonsDown(pad);
+    const u64 kDown = input.kDown;
 
     if (buttonYes->released() || ((kDown & HidNpadButton_A) && hid.index() == 0)) {
         yesFunc();

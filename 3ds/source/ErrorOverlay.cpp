@@ -61,9 +61,9 @@ void ErrorOverlay::drawBottom(void) const
     Gui::drawPulsingOutline(42, 162, 236, 36, 2, COLOR_RED);
 }
 
-void ErrorOverlay::update(InputState* touch)
+void ErrorOverlay::update(const InputState& input)
 {
-    (void)touch;
+    (void)input;
     if (button->released() || (hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_B)) {
         screen.removeOverlay();
     }

@@ -27,7 +27,7 @@
 #ifndef SCREEN_HPP
 #define SCREEN_HPP
 
-#include "TouchScreen.hpp"
+#include "InputState.hpp"
 #include <memory>
 
 class Overlay;
@@ -48,8 +48,8 @@ public:
     virtual void draw() const = 0;
 #endif
     // Call currentOverlay->update if it exists, and update if it doesn't
-    void doUpdate(InputState*);
-    virtual void update(InputState*) = 0;
+    void doUpdate(const InputState&);
+    virtual void update(const InputState&) = 0;
     void removeOverlay() { currentOverlay.reset(); }
     void setOverlay(std::shared_ptr<Overlay>& overlay) { currentOverlay = overlay; }
 

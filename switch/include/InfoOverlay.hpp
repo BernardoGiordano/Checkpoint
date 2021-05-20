@@ -39,9 +39,9 @@ class Clickable;
 class InfoOverlay : public Overlay {
 public:
     InfoOverlay(Screen& screen, const std::string& mtext);
-    ~InfoOverlay(void) {}
+    ~InfoOverlay() = default;
     void draw(void) const override;
-    void update(InputState* touch) override;
+    void update(const InputState&) override;
 
 private:
     u32 textw, texth;

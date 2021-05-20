@@ -61,7 +61,7 @@ int main()
         C2D_SceneBegin(g_bottom);
         g_screen->doDrawBottom();
         Gui::frameEnd();
-        g_screen->doUpdate(&touch);
+        g_screen->doUpdate(InputState{touch});
     }
 
     Logger::getInstance().flush();

@@ -56,12 +56,9 @@ void Scrollable::updateSelection(void)
 {
     const int hu = (mHid.maxEntries(size()) + 1) * mh / mVisibleEntries;
 
-    HidTouchScreenState state = {0};
-    if (hidGetTouchScreenStates(&state, 1)) {
-        if (state.count > 0 && state.touches[0].y > (float)my && state.touches[0].y < (float)(my + hu) && state.touches[0].x > (float)mx &&
-            state.touches[0].x < (float)(mx + mw)) {
-            mHid.index(ceilf((state.touches[0].y - my) * mVisibleEntries / mh));
-        }
+    if (g_input->touch.count > 0 && g_input->touch.touches[0].y > (float)my && g_input->touch.touches[0].y < (float)(my + hu) && g_input->touch.touches[0].x > (float)mx &&
+        g_input->touch.touches[0].x < (float)(mx + mw)) {
+        mHid.index(ceilf((g_input->touch.touches[0].y - my) * mVisibleEntries / mh));
     }
 
     mHid.update(size());
