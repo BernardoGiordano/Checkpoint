@@ -52,9 +52,9 @@ int main()
             }
         }
 
-        // if (Configuration::getInstance().shouldScanCard()) {
-        //     updateCard();
-        // }
+        if (Configuration::getInstance().shouldScanCard()) {
+            updateCard();
+        }
 
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         g_screen->doDrawTop();

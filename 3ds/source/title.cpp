@@ -956,12 +956,12 @@ static bool scanCard(void)
                     if (title.load(id, MEDIATYPE_GAME_CARD, cardType)) {
                         ret = true;
                         if (title.accessibleSave()) {
-                            if (titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
+                            if (titleSaves.empty() || titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
                                 titleSaves.insert(titleSaves.begin(), title);
                             }
                         }
                         if (title.accessibleExtdata()) {
-                            if (titleExtdatas.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
+                            if (titleExtdatas.empty() || titleExtdatas.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
                                 titleExtdatas.insert(titleExtdatas.begin(), title);
                             }
                         }
@@ -973,7 +973,7 @@ static bool scanCard(void)
             Title title;
             if (title.load(0, MEDIATYPE_GAME_CARD, cardType)) {
                 ret = true;
-                if (titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
+                if (titleSaves.empty() || titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
                     titleSaves.insert(titleSaves.begin(), title);
                 }
             }
@@ -1005,10 +1005,10 @@ void updateCard(void)
             oldCardIn = scanCard();
         }
         else {
-            if (titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+            if (!titleSaves.empty() && titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
                 titleSaves.erase(titleSaves.begin());
             }
-            if (titleExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+            if (!titleExtdatas.empty() && titleExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
                 titleExtdatas.erase(titleExtdatas.begin());
             }
             oldCardIn = false;
