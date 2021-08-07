@@ -52,6 +52,7 @@ public:
     ~Title(void);
 
     bool accessibleSave(void);
+    bool isGBAVC(void);
     bool accessibleExtdata(void);
     FS_CardType cardType(void);
     std::vector<std::u16string> extdata(void);
@@ -64,8 +65,8 @@ public:
     bool isActivityLog(void);
     void load(void);
     bool load(u64 id, FS_MediaType mediaType, FS_CardType cardType);
-    void load(u64 id, u8* productCode, bool accessibleSave, bool accessibleExtdata, std::u16string shortDescription, std::u16string longDescription,
-        std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card);
+    void load(u64 id, u8* productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::u16string shortDescription,
+        std::u16string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card);
     std::string longDescription(void);
     std::u16string getLongDescription(void);
     u32 lowId(void);
@@ -96,6 +97,7 @@ private:
     std::vector<std::u16string> mExtdata;
     std::vector<std::u16string> mFullExtdataPaths;
     u64 mId;
+    bool mGBA;
     FS_MediaType mMedia;
     FS_CardType mCard;
     CardType mCardType;

@@ -29,12 +29,17 @@
 
 #include <3ds.h>
 #include <string>
+#include <variant>
+
+using MultiHandle = std::variant<FSPXI_File, Handle>;
 
 class FSStream {
 public:
     FSStream(FS_Archive archive, const std::u16string& path, u32 flags);
     FSStream(FS_Archive archive, const std::u16string& path, u32 flags, u32 size);
-    ~FSStream(void){};
+    FSStream(FSPXI_Archive archive, u32 flags);
+    FSStream(FSPXI_Archive archive, u32 flags, u32 size);
+    ~FSStream(){};
 
     Result close(void);
     bool eof(void);
@@ -47,7 +52,7 @@ public:
     u32 write(const void* buf, u32 size);
 
 private:
-    Handle mHandle;
+    MultiHandle mHandle;
     u32 mSize;
     u32 mOffset;
     Result mResult;

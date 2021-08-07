@@ -25,6 +25,8 @@
  */
 
 #include "archive.hpp"
+#include "fsstream.hpp"
+#include "csvc.hpp"
 
 static FS_Archive mSdmc;
 static Mode_t mMode = MODE_SAVE;
@@ -41,7 +43,9 @@ void Archive::mode(Mode_t v)
 
 Result Archive::init(void)
 {
-    return FSUSER_OpenArchive(&mSdmc, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
+    Result res = FSUSER_OpenArchive(&mSdmc, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
+    if(R_FAILED(res)) return res;
+    return svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, &FsPxiHandle, "PxiFS0");
 }
 
 void Archive::exit(void)
@@ -67,6 +71,12 @@ Result Archive::save(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32
     return 0;
 }
 
+Result Archive::rawSave(FSPXI_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid)
+{
+    const u32 path[4] = {lowid, highid, mediatype, 1};
+    return FSPXI_OpenArchive(FsPxiHandle, archive, ARCHIVE_SAVEDATA_AND_CONTENT, {PATH_BINARY, 16, path});
+}
+
 Result Archive::extdata(FS_Archive* archive, u32 ext)
 {
     const u32 path[3] = {MEDIATYPE_SD, ext, 0};
@@ -80,6 +90,22 @@ bool Archive::accessible(FS_MediaType mediatype, u32 lowid, u32 highid)
     if (R_SUCCEEDED(res)) {
         FSUSER_CloseArchive(archive);
         return true;
+    }
+    return false;
+}
+
+bool Archive::accessibleRaw(FS_MediaType mediatype, u32 lowid, u32 highid)
+{
+    FSPXI_Archive archive;
+    Result res = rawSave(&archive, mediatype, lowid, highid);
+    if (R_SUCCEEDED(res)) {
+        FSStream file(archive, FS_OPEN_READ);
+        if(file.good())
+        {
+            file.close();
+            FSPXI_CloseArchive(FsPxiHandle, archive);
+            return true;
+        }
     }
     return false;
 }

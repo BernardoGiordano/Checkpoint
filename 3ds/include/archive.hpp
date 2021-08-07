@@ -43,8 +43,10 @@ namespace Archive {
     FS_Archive sdmc(void);
 
     Result save(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);
+    Result rawSave(FSPXI_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);
     Result extdata(FS_Archive* archive, u32 extdata);
     bool accessible(FS_MediaType mediatype, u32 lowid, u32 highid); // save
+    bool accessibleRaw(FS_MediaType mediatype, u32 lowid, u32 highid); // raw save
     bool accessible(u32 extdata);                                   // extdata
     bool setPlayCoins(void);
 }
