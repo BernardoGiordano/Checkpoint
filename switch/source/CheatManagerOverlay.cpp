@@ -83,9 +83,9 @@ void CheatManagerOverlay::draw(void) const
         20, 94, ceilf(664 + (32 - height) / 2), COLOR_WHITE, multiSelected ? "\ue003 to deselect all cheats" : "\ue003 to select all cheats");
 }
 
-void CheatManagerOverlay::update(touchPosition* touch)
+void CheatManagerOverlay::update(touchState* touch)
 {
-    if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) {
+    if (padGetButtonsDown(&g_pad) & HidNpadButton_A) {
         std::string cellName = scrollable->cellName(scrollable->index());
         if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) == 0) {
             // cheat was already selected
@@ -97,7 +97,7 @@ void CheatManagerOverlay::update(touchPosition* touch)
         scrollable->text(scrollable->index(), cellName);
     }
 
-    if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_Y) {
+    if (padGetButtonsDown(&g_pad) & HidNpadButton_Y) {
         if (multiSelected) {
             for (size_t j = 0; j < scrollable->size(); j++) {
                 std::string cellName = scrollable->cellName(j);
@@ -125,7 +125,7 @@ void CheatManagerOverlay::update(touchPosition* touch)
     scrollable->selectRow(scrollable->index(), true);
     currentIndex = scrollable->index();
 
-    if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B) {
+    if (padGetButtonsDown(&g_pad) & HidNpadButton_B) {
         g_selectedCheatKey = key;
         g_selectedCheatCodes.clear();
         for (size_t i = 0; i < scrollable->size(); i++) {

@@ -50,13 +50,13 @@ class MainScreen : public Screen {
 public:
     MainScreen(void);
     void draw(void) const override;
-    void update(touchPosition* touch) override;
+    void update(touchState* touch) override;
 
 protected:
     int selectorX(size_t i) const;
     int selectorY(size_t i) const;
-    void updateSelector(touchPosition* touch);
-    void handleEvents(touchPosition* touch);
+    void updateSelector(touchState* touch);
+    void handleEvents(touchState* touch);
     std::string nameFromCell(size_t index) const;
     void entryType(entryType_t type);
     size_t index(entryType_t type) const;

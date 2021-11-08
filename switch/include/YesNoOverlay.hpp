@@ -43,7 +43,7 @@ public:
     YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
     ~YesNoOverlay(void) {}
     void draw(void) const override;
-    void update(touchPosition* touch) override;
+    void update(touchState* touch) override;
 
 private:
     u32 textw, texth;

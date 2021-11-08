@@ -25,26 +25,31 @@
  */
 
 #include "clickable.hpp"
+#include "main.hpp"
 
 bool Clickable::held()
 {
-    touchPosition touch;
-    hidTouchRead(&touch, 0);
-    return ((hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH) && (int)touch.px > mx && (int)touch.px < mx + mw && (int)touch.py > my &&
-            (int)touch.py < my + mh);
+    if (!g_touchState.count) {
+        return false;
+    }
+    touchState touch = g_touchState.touches[0];
+    return ((int)touch.x > mx && (int)touch.x < mx + mw && (int)touch.y > my &&
+            (int)touch.y < my + mh);
 }
 
 bool Clickable::released(void)
 {
-    touchPosition touch;
-    hidTouchRead(&touch, 0);
-    const bool on = (int)touch.px > mx && (int)touch.px < mx + mw && (int)touch.py > my && (int)touch.py < my + mh;
+    if (!g_touchState.count) {
+        return false;
+    }
+    touchState touch = g_touchState.touches[0];
+    const bool on = (int)touch.x > mx && (int)touch.x < mx + mw && (int)touch.y > my && (int)touch.y < my + mh;
 
     if (on) {
         mOldPressed = true;
     }
     else {
-        if (mOldPressed && !(touch.px > 0 || touch.py > 0)) {
+        if (mOldPressed && !(touch.x > 0 || touch.y > 0)) {
             mOldPressed = false;
             return true;
         }

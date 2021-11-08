@@ -28,6 +28,7 @@
 #define HID_HPP
 
 #include "ihid.hpp"
+#include "main.hpp"
 #include <switch.h>
 
 #define DELAY_TICKS 2500000
@@ -39,18 +40,18 @@ public:
     Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns) {}
 
 private:
-    bool downDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_DOWN; }
-    bool upDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_UP; }
-    bool leftDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_LEFT; }
-    bool rightDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RIGHT; }
-    bool leftTriggerDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_L; }
-    bool rightTriggerDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_R; }
-    bool downHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_DOWN; }
-    bool upHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_UP; }
-    bool leftHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_LEFT; }
-    bool rightHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_RIGHT; }
-    bool leftTriggerHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_L; }
-    bool rightTriggerHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_R; }
+    bool downDown() const override { return padGetButtonsDown(&g_pad) & HidNpadButton_Down; }
+    bool upDown() const override { return padGetButtonsDown(&g_pad) & HidNpadButton_Up; }
+    bool leftDown() const override { return padGetButtonsDown(&g_pad) & HidNpadButton_Left; }
+    bool rightDown() const override { return padGetButtonsDown(&g_pad) & HidNpadButton_Right; }
+    bool leftTriggerDown() const override { return padGetButtonsDown(&g_pad) & HidNpadButton_L; }
+    bool rightTriggerDown() const override { return padGetButtonsDown(&g_pad) & HidNpadButton_R; }
+    bool downHeld() const override { return (padGetButtons(&g_pad) & HidNpadButton_Down) && !(padGetButtonsDown(&g_pad) & HidNpadButton_Down); }
+    bool upHeld() const override { return (padGetButtons(&g_pad) & HidNpadButton_Up) && !(padGetButtonsDown(&g_pad) & HidNpadButton_Up); }
+    bool leftHeld() const override { return (padGetButtons(&g_pad) & HidNpadButton_Left) && !(padGetButtonsDown(&g_pad) & HidNpadButton_Left); }
+    bool rightHeld() const override {return (padGetButtons(&g_pad) & HidNpadButton_Right) && !(padGetButtonsDown(&g_pad) & HidNpadButton_Right); }
+    bool leftTriggerHeld() const override { return (padGetButtons(&g_pad) & HidNpadButton_L) && !(padGetButtonsDown(&g_pad) & HidNpadButton_L); }
+    bool rightTriggerHeld() const override { return (padGetButtons(&g_pad) & HidNpadButton_R) && !(padGetButtonsDown(&g_pad) & HidNpadButton_R); }
     u64 tick() const override { return armGetSystemTick(); }
 };
 

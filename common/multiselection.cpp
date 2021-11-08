@@ -26,9 +26,9 @@
 
 #include "multiselection.hpp"
 
-static std::vector<size_t> selEnt;
+static std::vector<std::size_t> selEnt;
 
-std::vector<size_t> MS::selectedEntries(void)
+std::vector<std::size_t> MS::selectedEntries(void)
 {
     return selEnt;
 }
@@ -43,10 +43,10 @@ void MS::clearSelectedEntries(void)
     selEnt.clear();
 }
 
-void MS::addSelectedEntry(size_t idx)
+void MS::addSelectedEntry(std::size_t idx)
 {
     int existing = -1;
-    for (size_t i = 0, sz = selEnt.size(); i < sz && existing == -1; i++) {
+    for (std::size_t i = 0, sz = selEnt.size(); i < sz && existing == -1; i++) {
         if (selEnt.at(i) == idx) {
             existing = (int)i;
         }

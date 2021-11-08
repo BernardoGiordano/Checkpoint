@@ -34,6 +34,12 @@
 #endif
 #include <memory>
 
+#if defined(_3DS)
+typedef touchPosition touchState;
+#elif defined(__SWITCH__)
+typedef HidTouchState touchState;
+#endif
+
 class Overlay;
 
 class Screen {
@@ -43,8 +49,8 @@ public:
     Screen(void) {}
     virtual ~Screen(void) {}
     // Call currentOverlay->update if it exists, and update if it doesn't
-    virtual void doUpdate(touchPosition* touch) final;
-    virtual void update(touchPosition* touch) = 0;
+    virtual void doUpdate(touchState* touch) final;
+    virtual void update(touchState* touch) = 0;
     // Call draw, then currentOverlay->draw if it exists
 #if defined(_3DS)
     virtual void doDrawTop(void) const final;

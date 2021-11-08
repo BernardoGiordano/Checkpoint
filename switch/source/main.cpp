@@ -30,6 +30,9 @@ extern "C" {
 #include "ftp.h"
 }
 
+PadState g_pad;
+HidTouchScreenState g_touchState;
+
 static void networkLoop(void)
 {
     while (appletMainLoop() && !g_shouldExitNetworkLoop) {
@@ -61,13 +64,26 @@ int main(void)
     threadCreate(&networkThread, (ThreadFunc)networkLoop, nullptr, nullptr, 16 * 1000, 0x2C, -2);
     threadStart(&networkThread);
 
-    while (appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_PLUS)) {
-        touchPosition touch;
-        hidScanInput();
-        hidTouchRead(&touch, 0);
+    hidInitializeTouchScreen();
+    // Configure our supported input layout: a single player with standard controller styles
+    padConfigureInput(/*max_players=*/1, HidNpadStyleSet_NpadStandard);
+    // Initialize the default gamepad (which reads handheld mode inputs as well as the first connected controller)
+    padInitializeDefault(&g_pad);
+
+    while (appletMainLoop()) {
+        // Scan the gamepad. This should be done once for each frame
+        padUpdate(&g_pad);
+
+        if (padGetButtonsDown(&g_pad) & HidNpadButton_Plus) {
+          break; // break in order to return to hbmenu
+        }
+
+        // Grab the latest touch screen state.
+        int count = hidGetTouchScreenStates(&g_touchState, 1);
+        touchState *touch = count ? g_touchState.touches : nullptr;
 
         g_screen->doDraw();
-        g_screen->doUpdate(&touch);
+        g_screen->doUpdate(touch);
         SDLH_Render();
     }
 

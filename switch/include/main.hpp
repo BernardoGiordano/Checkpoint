@@ -36,6 +36,9 @@
 
 typedef enum { SORT_ALPHA, SORT_LAST_PLAYED, SORT_PLAY_TIME, SORT_MODES_COUNT } sort_t;
 
+extern PadState g_pad;
+extern HidTouchScreenState g_touchState;
+
 inline float g_currentTime = 0;
 inline AccountUid g_currentUId;
 inline bool g_backupScrollEnabled       = 0;

@@ -27,8 +27,8 @@
 #include <vector>
 
 namespace MS {
-    std::vector<size_t> selectedEntries(void);
+    std::vector<std::size_t> selectedEntries(void);
     bool multipleSelectionEnabled(void);
     void clearSelectedEntries(void);
-    void addSelectedEntry(size_t idx);
+    void addSelectedEntry(std::size_t idx);
 }
