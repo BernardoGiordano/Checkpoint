@@ -500,33 +500,33 @@ void loadTitles(bool forceRefresh)
 
     bool optimizedLoad = false;
 
-    u8 hash[SHA256_BLOCK_SIZE];
+    u8 hash[SHA256_HASH_SIZE];
     calculateTitleDBHash(hash);
 
     std::u16string titlesHashPath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/titles.sha");
     if (!io::fileExists(Archive::sdmc(), titlesHashPath) || !io::fileExists(Archive::sdmc(), savecachePath) ||
         !io::fileExists(Archive::sdmc(), extdatacachePath)) {
         // create title list sha256 hash file if it doesn't exist in the working directory
-        FSStream output(Archive::sdmc(), titlesHashPath, FS_OPEN_WRITE, SHA256_BLOCK_SIZE);
-        output.write(hash, SHA256_BLOCK_SIZE);
+        FSStream output(Archive::sdmc(), titlesHashPath, FS_OPEN_WRITE, SHA256_HASH_SIZE);
+        output.write(hash, SHA256_HASH_SIZE);
         output.close();
     }
     else {
         // compare current hash with the previous hash
         FSStream input(Archive::sdmc(), titlesHashPath, FS_OPEN_READ);
-        if (input.good() && input.size() == SHA256_BLOCK_SIZE) {
+        if (input.good() && input.size() == SHA256_HASH_SIZE) {
             u8* buf = new u8[input.size()];
             input.read(buf, input.size());
             input.close();
 
-            if (memcmp(hash, buf, SHA256_BLOCK_SIZE) == 0) {
+            if (memcmp(hash, buf, SHA256_HASH_SIZE) == 0) {
                 // hash matches
                 optimizedLoad = true;
             }
             else {
                 FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, titlesHashPath.data()));
-                FSStream output(Archive::sdmc(), titlesHashPath, FS_OPEN_WRITE, SHA256_BLOCK_SIZE);
-                output.write(hash, SHA256_BLOCK_SIZE);
+                FSStream output(Archive::sdmc(), titlesHashPath, FS_OPEN_WRITE, SHA256_HASH_SIZE);
+                output.write(hash, SHA256_HASH_SIZE);
                 output.close();
             }
 
