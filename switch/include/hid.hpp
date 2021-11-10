@@ -36,25 +36,25 @@
 template <HidDirection ListDirection, HidDirection PageDirection>
 class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS> {
 public:
-    Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns), input(nullptr) {}
+    Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns), input(g_input) {}
     Hid(size_t entries, size_t columns, const InputState& _input) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns), input(&_input) {}
 
 private:
     const InputState* input;
 
-    bool downDown() const override { return input->kDown & HidNpadButton_Down; }
-    bool upDown() const override { return input->kDown & HidNpadButton_Up; }
-    bool leftDown() const override { return input->kDown & HidNpadButton_Left; }
-    bool rightDown() const override { return input->kDown & HidNpadButton_Right; }
-    bool leftTriggerDown() const override { return input->kDown & HidNpadButton_L; }
-    bool rightTriggerDown() const override { return input->kDown & HidNpadButton_R; }
+    bool downDown() const override { return input && input->kDown & HidNpadButton_Down; }
+    bool upDown() const override { return input && input->kDown & HidNpadButton_Up; }
+    bool leftDown() const override { return input && input->kDown & HidNpadButton_Left; }
+    bool rightDown() const override { return input && input->kDown & HidNpadButton_Right; }
+    bool leftTriggerDown() const override { return input && input->kDown & HidNpadButton_L; }
+    bool rightTriggerDown() const override { return input && input->kDown & HidNpadButton_R; }
 
-    bool downHeld() const override { return input->kHeld & HidNpadButton_Down; }
-    bool upHeld() const override { return input->kHeld & HidNpadButton_Up; }
-    bool leftHeld() const override { return input->kHeld & HidNpadButton_Left; }
-    bool rightHeld() const override { return input->kHeld & HidNpadButton_Right; }
-    bool leftTriggerHeld() const override { return input->kHeld & HidNpadButton_L; }
-    bool rightTriggerHeld() const override { return input->kHeld & HidNpadButton_R; }
+    bool downHeld() const override { return input && input->kHeld & HidNpadButton_Down; }
+    bool upHeld() const override { return input && input->kHeld & HidNpadButton_Up; }
+    bool leftHeld() const override { return input && input->kHeld & HidNpadButton_Left; }
+    bool rightHeld() const override { return input && input->kHeld & HidNpadButton_Right; }
+    bool leftTriggerHeld() const override { return input && input->kHeld & HidNpadButton_L; }
+    bool rightTriggerHeld() const override { return input && input->kHeld & HidNpadButton_R; }
     u64 tick() const override { return armGetSystemTick(); }
 };
 
