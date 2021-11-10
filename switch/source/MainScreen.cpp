@@ -414,7 +414,7 @@ void MainScreen::handleEvents(const InputState& input)
     }
 
     // Handle holding Y
-    if (kheld & KEY_Y && !(g_backupScrollEnabled)) {
+    if (kheld & HidNpadButton_Y && !(g_backupScrollEnabled)) {
         selectionTimer++;
     }
     else {
