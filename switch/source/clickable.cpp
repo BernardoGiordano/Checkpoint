@@ -28,23 +28,23 @@
 
 bool Clickable::held()
 {
-    touchPosition touch;
-    hidTouchRead(&touch, 0);
-    return ((hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH) && (int)touch.px > mx && (int)touch.px < mx + mw && (int)touch.py > my &&
-            (int)touch.py < my + mh);
+    return g_input->touch.count > 0 && g_input->touch.touches[0].y > (unsigned)my && g_input->touch.touches[0].y < (unsigned)(my + mh) &&
+           g_input->touch.touches[0].x > (unsigned)mx && g_input->touch.touches[0].x < (unsigned)(mx + mw);
 }
 
-bool Clickable::released(void)
+bool Clickable::released()
 {
-    touchPosition touch;
-    hidTouchRead(&touch, 0);
-    const bool on = (int)touch.px > mx && (int)touch.px < mx + mw && (int)touch.py > my && (int)touch.py < my + mh;
+    const auto [on, currentlyTouching] = [this]() {
+        return std::make_pair(g_input->touch.count > 0 && g_input->touch.touches[0].y > (unsigned)my && g_input->touch.touches[0].y < (unsigned)(my + mh) &&
+                                g_input->touch.touches[0].x > (unsigned)mx && g_input->touch.touches[0].x < (unsigned)(mx + mw),
+            g_input->touch.count > 0);
+    }();
 
     if (on) {
         mOldPressed = true;
     }
     else {
-        if (mOldPressed && !(touch.px > 0 || touch.py > 0)) {
+        if (mOldPressed && !currentlyTouching) {
             mOldPressed = false;
             return true;
         }

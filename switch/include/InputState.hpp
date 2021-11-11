@@ -24,29 +24,16 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef DIRECTORY_HPP
-#define DIRECTORY_HPP
+#ifndef INPUTSTATE_HPP
+#define INPUTSTATE_HPP
 
-#include "util.hpp"
-#include <3ds.h>
-#include <string>
-#include <vector>
+#include <switch.h>
 
-class Directory {
-public:
-    Directory(FS_Archive archive, const std::u16string& root);
-    ~Directory() = default;
-
-    Result error(void);
-    std::u16string entry(size_t index);
-    bool folder(size_t index);
-    bool good(void);
-    size_t size(void);
-
-private:
-    std::vector<FS_DirectoryEntry> mList;
-    Result mError;
-    bool mGood;
+struct InputState {
+    HidTouchScreenState touch;
+    u64 kDown;
+    u64 kHeld;
+    u64 kUp;
 };
 
 #endif

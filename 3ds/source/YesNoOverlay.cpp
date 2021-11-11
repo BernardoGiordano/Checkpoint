@@ -72,8 +72,9 @@ void YesNoOverlay::drawBottom(void) const
     }
 }
 
-void YesNoOverlay::update(touchPosition* touch)
+void YesNoOverlay::update(const InputState& input)
 {
+    (void)input;
     hid.update(2);
 
     hid.index(buttonYes->held() ? 0 : buttonNo->held() ? 1 : hid.index());

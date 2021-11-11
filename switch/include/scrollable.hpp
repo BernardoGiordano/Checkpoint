@@ -39,7 +39,7 @@ class Scrollable : public IScrollable<SDL_Color> {
 public:
     Scrollable(u32 x, u32 y, u32 w, u32 h, size_t visibleEntries) : IScrollable(x, y, w, h, visibleEntries), mHid(visibleEntries, 1) {}
 
-    virtual ~Scrollable(void) {}
+    virtual ~Scrollable() = default;
 
     void draw(bool condition = false) override;
     void setIndex(size_t i);

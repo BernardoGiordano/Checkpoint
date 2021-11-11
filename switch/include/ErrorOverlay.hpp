@@ -39,9 +39,9 @@ class Clickable;
 class ErrorOverlay : public Overlay {
 public:
     ErrorOverlay(Screen& screen, Result res, const std::string& mtext);
-    ~ErrorOverlay(void) {}
+    ~ErrorOverlay() = default;
     void draw(void) const override;
-    void update(touchPosition* touch) override;
+    void update(const InputState&) override;
 
 private:
     u32 textw, texth;

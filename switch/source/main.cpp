@@ -48,7 +48,12 @@ int main(void)
         exit(res);
     }
 
-    g_screen = std::make_unique<MainScreen>();
+    InputState input;
+    g_input = &input;
+    PadState pad;
+    padInitializeDefault(&pad);
+
+    g_screen = std::make_unique<MainScreen>(input);
 
     loadTitles();
     // get the user IDs
@@ -57,23 +62,31 @@ int main(void)
     if (g_currentUId == 0)
         g_currentUId = userIds.at(0);
 
-    Thread networkThread;
-    threadCreate(&networkThread, (ThreadFunc)networkLoop, nullptr, nullptr, 16 * 1000, 0x2C, -2);
-    threadStart(&networkThread);
+    // TODO: UNCOMMENT ME
+    // Thread networkThread;
+    // threadCreate(&networkThread, (ThreadFunc)networkLoop, nullptr, nullptr, 16 * 1000, 0x2C, -2);
+    // threadStart(&networkThread);
 
-    while (appletMainLoop() && !(hidKeysDown(CONTROLLER_P1_AUTO) & KEY_PLUS)) {
-        touchPosition touch;
-        hidScanInput();
-        hidTouchRead(&touch, 0);
+    while (appletMainLoop()) {
+        padUpdate(&pad);
+
+        input.kDown = padGetButtonsDown(&pad);
+        if (input.kDown & HidNpadButton_Plus)
+            break;
+
+        input.kHeld = padGetButtons(&pad);
+        input.kUp = padGetButtonsUp(&pad);
+        hidGetTouchScreenStates(&input.touch, 1);
 
         g_screen->doDraw();
-        g_screen->doUpdate(&touch);
+        g_screen->doUpdate(input);
         SDLH_Render();
     }
 
-    g_shouldExitNetworkLoop = true;
-    threadWaitForExit(&networkThread);
-    threadClose(&networkThread);
+    // TODO: uncomment me
+    // g_shouldExitNetworkLoop = true;
+    // threadWaitForExit(&networkThread);
+    // threadClose(&networkThread);
 
     servicesExit();
     exit(0);

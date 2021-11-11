@@ -44,9 +44,9 @@ class Scrollable;
 class CheatManagerOverlay : public Overlay {
 public:
     CheatManagerOverlay(Screen& screen, const std::string& mtext);
-    ~CheatManagerOverlay(void) {}
+    ~CheatManagerOverlay() = default;
     void draw(void) const override;
-    void update(touchPosition* touch) override;
+    void update(const InputState&) override;
 
 protected:
     void save(const std::string& key, Scrollable* s);

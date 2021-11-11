@@ -43,9 +43,10 @@ void InfoOverlay::draw(void) const
     drawPulsingOutline(322, 462, 636, 56, 4, COLOR_BLUE);
 }
 
-void InfoOverlay::update(touchPosition* touch)
+void InfoOverlay::update(const InputState& input)
 {
-    if (button->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B)) {
+    const u64 kDown = input.kDown;
+    if (button->released() || (kDown & HidNpadButton_A) || (kDown & HidNpadButton_B)) {
         screen.removeOverlay();
     }
 }

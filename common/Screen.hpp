@@ -27,11 +27,7 @@
 #ifndef SCREEN_HPP
 #define SCREEN_HPP
 
-#if defined(_3DS)
-#include <3ds.h>
-#elif defined(__SWITCH__)
-#include <switch.h>
-#endif
+#include "InputState.hpp"
 #include <memory>
 
 class Overlay;
@@ -40,28 +36,27 @@ class Screen {
     friend class Overlay;
 
 public:
-    Screen(void) {}
-    virtual ~Screen(void) {}
-    // Call currentOverlay->update if it exists, and update if it doesn't
-    virtual void doUpdate(touchPosition* touch) final;
-    virtual void update(touchPosition* touch) = 0;
+    virtual ~Screen() = default;
     // Call draw, then currentOverlay->draw if it exists
 #if defined(_3DS)
-    virtual void doDrawTop(void) const final;
-    virtual void doDrawBottom(void) const final;
+    void doDrawTop(void) const;
+    void doDrawBottom(void) const;
     virtual void drawTop(void) const    = 0;
     virtual void drawBottom(void) const = 0;
 #elif defined(__SWITCH__)
-    virtual void doDraw() const final;
+    void doDraw() const;
     virtual void draw() const = 0;
 #endif
-    void removeOverlay() { currentOverlay = nullptr; }
+    // Call currentOverlay->update if it exists, and update if it doesn't
+    void doUpdate(const InputState&);
+    virtual void update(const InputState&) = 0;
+    void removeOverlay() { currentOverlay.reset(); }
     void setOverlay(std::shared_ptr<Overlay>& overlay) { currentOverlay = overlay; }
 
 protected:
     // No point in restricting this to only being editable during update, especially since it's drawn afterwards. Allows setting it before the first
     // draw loop is done
-    mutable std::shared_ptr<Overlay> currentOverlay = nullptr;
+    mutable std::shared_ptr<Overlay> currentOverlay;
 };
 
 #endif

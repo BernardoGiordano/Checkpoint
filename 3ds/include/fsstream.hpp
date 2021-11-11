@@ -34,7 +34,7 @@ class FSStream {
 public:
     FSStream(FS_Archive archive, const std::u16string& path, u32 flags);
     FSStream(FS_Archive archive, const std::u16string& path, u32 flags, u32 size);
-    ~FSStream(void){};
+    ~FSStream() = default;
 
     Result close(void);
     bool eof(void);

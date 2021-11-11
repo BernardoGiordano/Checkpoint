@@ -44,7 +44,6 @@ void Screen::doDrawBottom() const
         currentOverlay->drawBottom();
     }
 }
-
 #elif defined(__SWITCH__)
 
 void Screen::doDraw() const
@@ -57,12 +56,12 @@ void Screen::doDraw() const
 
 #endif
 
-void Screen::doUpdate(touchPosition* touch)
+void Screen::doUpdate(const InputState& input)
 {
     if (currentOverlay) {
-        currentOverlay->update(touch);
+        currentOverlay->update(input);
     }
     else {
-        update(touch);
+        update(input);
     }
 }

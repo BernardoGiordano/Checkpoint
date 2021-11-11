@@ -48,15 +48,15 @@ class Scrollable;
 
 class MainScreen : public Screen {
 public:
-    MainScreen(void);
+    MainScreen(const InputState&);
     void draw(void) const override;
-    void update(touchPosition* touch) override;
+    void update(const InputState& input) override;
 
 protected:
     int selectorX(size_t i) const;
     int selectorY(size_t i) const;
-    void updateSelector(touchPosition* touch);
-    void handleEvents(touchPosition* touch);
+    void updateSelector(const InputState& input);
+    void handleEvents(const InputState& input);
     std::string nameFromCell(size_t index) const;
     void entryType(entryType_t type);
     size_t index(entryType_t type) const;
@@ -71,6 +71,7 @@ private:
     entryType_t type;
     int selectionTimer;
     bool pksmBridge;
+    bool wantInstructions;
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::unique_ptr<Scrollable> backupList;
     std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;

@@ -28,10 +28,11 @@
 
 static constexpr size_t rowlen = 5, collen = 4, rows = 10, SIDEBAR_w = 96;
 
-MainScreen::MainScreen() : hid(rowlen * collen, collen)
+MainScreen::MainScreen(const InputState& input) : hid(rowlen * collen, collen, input)
 {
-    pksmBridge     = false;
-    selectionTimer = 0;
+    pksmBridge       = false;
+    wantInstructions = false;
+    selectionTimer   = 0;
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
     backupList    = std::make_unique<Scrollable>(538, 276, 414, 380, rows);
     buttonBackup  = std::make_unique<Clickable>(956, 276, 220, 80, theme().c2, theme().c6, "Backup \ue004", true);
@@ -183,7 +184,7 @@ void MainScreen::draw() const
     SDLH_GetTextDimensions(26, "checkpoint", &checkpoint_w, &checkpoint_h);
     SDLH_GetTextDimensions(24, "\ue046 Instructions", &inst_w, &inst_h);
 
-    if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_MINUS && currentOverlay == nullptr) {
+    if (wantInstructions && currentOverlay == nullptr) {
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
         SDLH_DrawText(27, 1205, 646, theme().c6, "\ue085\ue086");
         SDLH_DrawText(24, 58, 69, theme().c6, "\ue058 Tap to select title");
@@ -223,13 +224,13 @@ void MainScreen::draw() const
     }
 }
 
-void MainScreen::update(touchPosition* touch)
+void MainScreen::update(const InputState& input)
 {
-    updateSelector(touch);
-    handleEvents(touch);
+    updateSelector(input);
+    handleEvents(input);
 }
 
-void MainScreen::updateSelector(touchPosition* touch)
+void MainScreen::updateSelector(const InputState& input)
 {
     if (!g_backupScrollEnabled) {
         size_t count    = getTitleCount(g_currentUId);
@@ -245,7 +246,8 @@ void MainScreen::updateSelector(touchPosition* touch)
 
                 u32 x = selectorX(index);
                 u32 y = selectorY(index);
-                if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && touch->px >= x && touch->px <= x + 128 && touch->py >= y && touch->py <= y + 128) {
+                if (input.touch.count > 0 && input.touch.touches[0].x >= x && input.touch.touches[0].x <= x + 128 && input.touch.touches[0].y >= y &&
+                    input.touch.touches[0].y <= y + 128) {
                     hid.index(index);
                 }
             }
@@ -261,11 +263,14 @@ void MainScreen::updateSelector(touchPosition* touch)
     }
 }
 
-void MainScreen::handleEvents(touchPosition* touch)
+void MainScreen::handleEvents(const InputState& input)
 {
-    u32 kdown = hidKeysDown(CONTROLLER_P1_AUTO);
-    u32 kheld = hidKeysHeld(CONTROLLER_P1_AUTO);
-    if (kdown & KEY_ZL || kdown & KEY_ZR) {
+    const u64 kheld = input.kHeld;
+    const u64 kdown = input.kDown;
+
+    wantInstructions = (kheld & HidNpadButton_Minus);
+
+    if (kdown & HidNpadButton_ZL || kdown & HidNpadButton_ZR) {
         while ((g_currentUId = Account::selectAccount()) == 0)
             ;
         this->index(TITLES, 0);
@@ -277,7 +282,7 @@ void MainScreen::handleEvents(touchPosition* touch)
         Title title;
         getTitle(title, g_currentUId, this->index(TITLES));
         if (!getPKSMBridgeFlag()) {
-            if ((kheld & KEY_L) && (kheld & KEY_R) && isPKSMBridgeTitle(title.id())) {
+            if ((kheld & HidNpadButton_L) && (kheld & HidNpadButton_R) && isPKSMBridgeTitle(title.id())) {
                 setPKSMBridgeFlag(true);
                 updateButtons();
             }
@@ -285,8 +290,8 @@ void MainScreen::handleEvents(touchPosition* touch)
     }
 
     // handle touchscreen
-    if (!g_backupScrollEnabled && hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && touch->px >= 1200 && touch->px <= 1200 + USER_ICON_SIZE &&
-        touch->py >= 626 && touch->py <= 626 + USER_ICON_SIZE) {
+    if (!g_backupScrollEnabled && input.touch.count > 0 && input.touch.touches[0].x >= 1200 && input.touch.touches[0].x <= 1200 + USER_ICON_SIZE &&
+        input.touch.touches[0].y >= 626 && input.touch.touches[0].y <= 626 + USER_ICON_SIZE) {
         while ((g_currentUId = Account::selectAccount()) == 0)
             ;
         this->index(TITLES, 0);
@@ -295,8 +300,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     }
 
     // Handle touching the backup list
-    if ((hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH && (int)touch->px > 538 && (int)touch->px < 952 && (int)touch->py > 276 &&
-            (int)touch->py < 656)) {
+    if (input.touch.count > 0 && input.touch.touches[0].x > 538 && input.touch.touches[0].x < 952 && input.touch.touches[0].y > 276 && input.touch.touches[0].y < 656) {
         // Activate backup list only if multiple selections are enabled
         if (!MS::multipleSelectionEnabled()) {
             g_backupScrollEnabled = true;
@@ -309,7 +313,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     // Backup list active:   Backup/Restore
     // Backup list inactive: Activate backup list only if multiple
     //                       selections are enabled
-    if (kdown & KEY_A) {
+    if (kdown & HidNpadButton_A) {
         // If backup list is active...
         if (g_backupScrollEnabled) {
             // If the "New..." entry is selected...
@@ -361,8 +365,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     }
 
     // Handle pressing B
-    if (kdown & KEY_B || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_TOUCH && (int)touch->px >= 0 && (int)touch->px <= 532 && (int)touch->py >= 0 &&
-                             (int)touch->py <= 664)) {
+    if ((kdown & HidNpadButton_B) || (input.touch.count > 0 && input.touch.touches[0].x <= 532 && input.touch.touches[0].y <= 664)) {
         this->index(CELLS, 0);
         g_backupScrollEnabled = false;
         entryType(TITLES);
@@ -372,7 +375,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     }
 
     // Handle pressing X
-    if (kdown & KEY_X) {
+    if (kdown & HidNpadButton_X) {
         if (g_backupScrollEnabled) {
             size_t index = this->index(CELLS);
             if (index > 0) {
@@ -399,7 +402,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     // Backup list active:   Deactivate backup list, select title, and
     //                       enable backup button
     // Backup list inactive: Select title and enable backup button
-    if (kdown & KEY_Y) {
+    if (kdown & HidNpadButton_Y) {
         if (g_backupScrollEnabled) {
             this->index(CELLS, 0);
             g_backupScrollEnabled = false;
@@ -411,7 +414,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     }
 
     // Handle holding Y
-    if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_Y && !(g_backupScrollEnabled)) {
+    if (kheld & HidNpadButton_Y && !(g_backupScrollEnabled)) {
         selectionTimer++;
     }
     else {
@@ -427,7 +430,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     }
 
     // Handle pressing/touching L
-    if (buttonBackup->released() || (kdown & KEY_L)) {
+    if (buttonBackup->released() || (kdown & HidNpadButton_L)) {
         if (MS::multipleSelectionEnabled()) {
             resetIndex(CELLS);
             std::vector<size_t> list = MS::selectedEntries();
@@ -481,7 +484,7 @@ void MainScreen::handleEvents(touchPosition* touch)
     }
 
     // Handle pressing/touching R
-    if (buttonRestore->released() || (kdown & KEY_R)) {
+    if (buttonRestore->released() || (kdown & HidNpadButton_R)) {
         if (g_backupScrollEnabled) {
             if (getPKSMBridgeFlag() && this->index(CELLS) != 0) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
@@ -516,7 +519,7 @@ void MainScreen::handleEvents(touchPosition* touch)
         }
     }
 
-    if ((buttonCheats->released() || (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RSTICK)) && CheatManager::getInstance().cheats() != nullptr) {
+    if ((buttonCheats->released() || (kdown & HidNpadButton_StickR)) && CheatManager::getInstance().cheats() != nullptr) {
         if (MS::multipleSelectionEnabled()) {
             MS::clearSelectedEntries();
             updateButtons();

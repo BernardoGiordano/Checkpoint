@@ -44,13 +44,13 @@ public:
 
     std::pair<bool, std::string> keyboard(const std::string& suggestion);
 
-    std::pair<bool, Result> isSystemKeyboardAvailable(void) { return std::make_pair(systemKeyboardAvailable, res); }
+    std::pair<bool, Result> isSystemKeyboardAvailable() { return std::make_pair(systemKeyboardAvailable, res); }
 
     static const size_t CUSTOM_PATH_LEN = 49;
 
 private:
     KeyboardManager(void);
-    virtual ~KeyboardManager(void){};
+    virtual ~KeyboardManager() = default;
 
     Result res;
     bool systemKeyboardAvailable;

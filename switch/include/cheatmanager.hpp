@@ -50,11 +50,11 @@ public:
     bool areCheatsAvailable(const std::string& key);
     void save(const std::string& key, const std::vector<std::string>& s);
 
-    std::shared_ptr<nlohmann::json> cheats(void) { return mCheats; }
+    std::shared_ptr<nlohmann::json> cheats() { return mCheats; }
 
 private:
-    CheatManager(void);
-    ~CheatManager(void){};
+    CheatManager();
+    ~CheatManager() = default;
 
     CheatManager(CheatManager const&) = delete;
     void operator=(CheatManager const&) = delete;

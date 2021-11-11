@@ -39,7 +39,7 @@ public:
         : IClickable(x, y, w, h, colorBg, colorText, message, centered)
     {
     }
-    virtual ~Clickable(void){};
+    virtual ~Clickable() = default;
 
     void draw(float font, SDL_Color overlay) override;
     bool held(void) override;

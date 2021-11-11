@@ -28,6 +28,7 @@
 #define ISCROLLABLE_HPP
 
 #include "iclickable.hpp"
+#include "InputState.hpp"
 #include <vector>
 
 template <typename T>
@@ -39,7 +40,7 @@ public:
         mPage  = 0;
     }
 
-    virtual ~IScrollable(void) { flush(); }
+    virtual ~IScrollable() { flush(); }
 
     virtual void draw(bool condition = false)                                                  = 0;
     virtual void push_back(T color, T colorMessage, const std::string& message, bool selected) = 0;

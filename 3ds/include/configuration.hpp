@@ -53,7 +53,7 @@ public:
 
 private:
     Configuration(void);
-    ~Configuration(void){};
+    ~Configuration() = default;
 
     void store(void);
     nlohmann::json loadJson(const std::string& path);

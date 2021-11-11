@@ -33,6 +33,7 @@ static const char* s_http_port = "8000";
 
 static void handle_populate(struct mg_connection* nc, struct http_message* hm)
 {
+    (void)hm;
     // populate gets called at startup, assume a new connection has been started
     blinkLed(2);
 

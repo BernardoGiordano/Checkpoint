@@ -28,6 +28,7 @@
 #define ICLICKABLE_HPP
 
 #include <string>
+#include "InputState.hpp"
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -44,8 +45,7 @@ public:
         mCanChangeColorWhenSelected = false;
     }
 
-    virtual ~IClickable(void) {}
-
+    virtual ~IClickable() = default;
     virtual void draw(float size, T overlay) = 0;
     virtual void drawOutline(T color)        = 0;
     virtual bool held(void)                  = 0;

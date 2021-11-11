@@ -46,13 +46,13 @@ public:
     ~MainScreen(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
-    void update(touchPosition* touch) override;
+    void update(const InputState& input) override;
 
 protected:
     int selectorX(size_t i) const;
     int selectorY(size_t i) const;
     void drawSelector(void) const;
-    void handleEvents(touchPosition* touch);
+    void handleEvents(const InputState& input);
     void updateSelector(void);
     void updateButtons(void);
     std::string nameFromCell(size_t index) const;
