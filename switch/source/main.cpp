@@ -62,10 +62,9 @@ int main(void)
     if (g_currentUId == 0)
         g_currentUId = userIds.at(0);
 
-    // TODO: UNCOMMENT ME
-    // Thread networkThread;
-    // threadCreate(&networkThread, (ThreadFunc)networkLoop, nullptr, nullptr, 16 * 1000, 0x2C, -2);
-    // threadStart(&networkThread);
+    Thread networkThread;
+    threadCreate(&networkThread, (ThreadFunc)networkLoop, nullptr, nullptr, 16 * 1000, 0x2C, -2);
+    threadStart(&networkThread);
 
     while (appletMainLoop()) {
         padUpdate(&pad);
@@ -83,10 +82,9 @@ int main(void)
         SDLH_Render();
     }
 
-    // TODO: uncomment me
-    // g_shouldExitNetworkLoop = true;
-    // threadWaitForExit(&networkThread);
-    // threadClose(&networkThread);
+    g_shouldExitNetworkLoop = true;
+    threadWaitForExit(&networkThread);
+    threadClose(&networkThread);
 
     servicesExit();
     exit(0);
