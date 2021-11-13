@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -49,7 +49,7 @@ CheatManager::CheatManager(void)
             u32 size             = ftell(f);
             unsigned int destLen = CHEAT_SIZE_DECOMPRESSED;
             char* s              = new char[size];
-            char* d              = new char[destLen]();
+            char* d              = new char[destLen + 1]();
             rewind(f);
             fread(s, 1, size, f);
 

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     selectionTimer = 0;
     refreshTimer   = 0;
 
-    staticBuf  = C2D_TextBufNew(256);
+    staticBuf  = C2D_TextBufNew(261);
     dynamicBuf = C2D_TextBufNew(256);
 
     buttonBackup    = std::make_unique<Clickable>(204, 102, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Backup \uE004", true);
@@ -62,6 +62,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     C2D_TextParse(&top_y, staticBuf, "\uE003 to multiselect a title");
     C2D_TextParse(&top_my, staticBuf, "\uE003 hold to multiselect all titles");
     C2D_TextParse(&top_b, staticBuf, "\uE001 to exit target or deselect all titles");
+    C2D_TextParse(&top_hb, staticBuf, "\uE001 hold to refresh titles");
     C2D_TextParse(&bot_ts, staticBuf, "\uE01D \uE006 to move\nbetween backups");
     C2D_TextParse(&bot_x, staticBuf, "\uE002 to delete backups");
     C2D_TextParse(&coins, staticBuf, "\uE075");
@@ -80,6 +81,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     C2D_TextOptimize(&top_y);
     C2D_TextOptimize(&top_my);
     C2D_TextOptimize(&top_b);
+    C2D_TextOptimize(&top_hb);
     C2D_TextOptimize(&bot_ts);
     C2D_TextOptimize(&bot_x);
     C2D_TextOptimize(&coins);
@@ -147,7 +149,7 @@ void MainScreen::drawTop(void) const
 
     if (hidKeysHeld() & KEY_SELECT) {
         const u32 inst_lh = scaleInst * fontGetInfo(NULL)->lineFeed;
-        const u32 inst_h  = ceilf((240 - scaleInst * inst_lh * 6) / 2);
+        const u32 inst_h  = ceilf((240 - scaleInst * inst_lh * 6) / 2.0);
         C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
         C2D_DrawText(&top_move, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_move, scaleInst)) / 2), inst_h, 0.9f, scaleInst, scaleInst,
             COLOR_WHITE);
@@ -158,6 +160,8 @@ void MainScreen::drawTop(void) const
         C2D_DrawText(&top_y, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_y, scaleInst)) / 2), inst_h + inst_lh * 3, 0.9f, scaleInst,
             scaleInst, COLOR_WHITE);
         C2D_DrawText(&top_my, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_my, scaleInst)) / 2), inst_h + inst_lh * 4, 0.9f, scaleInst,
+            scaleInst, COLOR_WHITE);
+        C2D_DrawText(&top_hb, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_hb, scaleInst)) / 2), inst_h + inst_lh * 5, 0.9f, scaleInst,
             scaleInst, COLOR_WHITE);
     }
 

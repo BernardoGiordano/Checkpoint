@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -300,7 +300,8 @@ void MainScreen::handleEvents(const InputState& input)
     }
 
     // Handle touching the backup list
-    if (input.touch.count > 0 && input.touch.touches[0].x > 538 && input.touch.touches[0].x < 952 && input.touch.touches[0].y > 276 && input.touch.touches[0].y < 656) {
+    if (input.touch.count > 0 && input.touch.touches[0].x > 538 && input.touch.touches[0].x < 952 && input.touch.touches[0].y > 276 &&
+        input.touch.touches[0].y < 656) {
         // Activate backup list only if multiple selections are enabled
         if (!MS::multipleSelectionEnabled()) {
             g_backupScrollEnabled = true;

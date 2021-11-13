@@ -90,7 +90,7 @@ devkitARM and devkitA64 are required to compile Checkpoint for 3DS and Switch, r
 
 ### 3DS version
 
-`dkp-pacman -S libctru citro3d citro2d 3ds-bzip2`
+`dkp-pacman -S libctru citro3d citro2d tex3ds 3ds-bzip2`
 
 ### Switch version
 
@@ -102,17 +102,16 @@ This project is licensed under the GNU GPLv3. Additional Terms 7.b and 7.c of GP
 
 ## Credits
 
-Even though this is the result of independent research and work, Checkpoint for 3DS couldn't be possible without J-D-K's original [JKSM](https://github.com/J-D-K/JKSM) version.
+* [Bernardo](https://github.com/BernardoGiordano/) for creating Checkpoint.
+* [J-D-K](https://github.com/J-D-K) for the original [JKSM](https://github.com/J-D-K/JKSM) version.
+* [TuxSH](https://github.com/tuxsh) for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which SPI code has been taken.
+* WinterMute, fincs and [devkitPro](https://devkitpro.org/) contributors for devkitARM, devkitA64 and [dkp-pacman](https://github.com/devkitPro/pacman/releases).
+* Yellows8 and all the mantainers for [switch-examples](https://github.com/switchbrew/switch-examples).
+* [rakujira](https://twitter.com/rakujira) for the awesome Checkpoint logo.
+* Fellow testers and troubleshooters for their help.
+* The huge amount of supporters that this project has gained over the years.
 
-TuxSH for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which SPI code has been taken.
-
-WinterMute, fincs and [devkitPro](https://devkitpro.org/) contributors for devkitARM, devkitA64 and [dkp-pacman](https://github.com/devkitPro/pacman/releases).
-
-Yellows8 and all the mantainers for [switch-examples](https://github.com/switchbrew/switch-examples).
-
-[rakujira](https://twitter.com/rakujira) for the awesome Checkpoint logo.
-
-Fellow testers and troubleshooters for their help.
+Without you, this project wouldn't have existed. Thank you.
 
 ---
 

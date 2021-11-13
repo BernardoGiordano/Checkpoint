@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -66,7 +66,7 @@ private:
     C2D_Text ins1, ins2, ins3, ins4, c2dId, c2dMediatype;
     C2D_Text checkpoint, version;
     // instructions text
-    C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_x, coins;
+    C2D_Text top_move, top_a, top_y, top_my, top_b, top_hb, bot_ts, bot_x, coins;
     C2D_TextBuf dynamicBuf, staticBuf;
 
     const float scaleInst = 0.7f;

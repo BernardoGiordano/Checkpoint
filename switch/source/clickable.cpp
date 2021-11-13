@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -35,9 +35,9 @@ bool Clickable::held()
 bool Clickable::released()
 {
     const auto [on, currentlyTouching] = [this]() {
-        return std::make_pair(g_input->touch.count > 0 && g_input->touch.touches[0].y > (unsigned)my && g_input->touch.touches[0].y < (unsigned)(my + mh) &&
-                                g_input->touch.touches[0].x > (unsigned)mx && g_input->touch.touches[0].x < (unsigned)(mx + mw),
-            g_input->touch.count > 0);
+        return std::make_pair(g_input->touch.count > 0 && g_input->touch.touches[0].y > (unsigned)my &&
+                              g_input->touch.touches[0].y < (unsigned)(my + mh) && g_input->touch.touches[0].x > (unsigned)mx &&
+                              g_input->touch.touches[0].x<(unsigned)(mx + mw), g_input->touch.count> 0);
     }();
 
     if (on) {

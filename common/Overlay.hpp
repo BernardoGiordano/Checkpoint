@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 class Overlay {
 public:
     Overlay(Screen& screen) : screen(screen), me(screen.currentOverlay) {}
-    virtual ~Overlay()               = default;
+    virtual ~Overlay()                     = default;
     virtual void update(const InputState&) = 0;
 #if defined(_3DS)
     virtual void drawTop() const    = 0;

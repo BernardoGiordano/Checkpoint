@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -112,7 +112,6 @@ SDL_Texture* Account::icon(AccountUid id)
 
 AccountUid Account::selectAccount(void)
 {
-    AccountUid out_id;
     LibAppletArgs args;
     libappletArgsCreate(&args, 0x10000);
     u8 st_in[0xA0]  = {0};
@@ -124,8 +123,8 @@ AccountUid Account::selectAccount(void)
         u64 lres       = *(u64*)st_out;
         AccountUid uid = *(AccountUid*)&st_out[8];
         if (lres == 0)
-            out_id = uid;
+            return uid;
     }
 
-    return out_id;
+    return g_currentUId;
 }

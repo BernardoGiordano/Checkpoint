@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,8 +27,8 @@
 #ifndef ISCROLLABLE_HPP
 #define ISCROLLABLE_HPP
 
-#include "iclickable.hpp"
 #include "InputState.hpp"
+#include "iclickable.hpp"
 #include <vector>
 
 template <typename T>

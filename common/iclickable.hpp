@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,8 +27,8 @@
 #ifndef ICLICKABLE_HPP
 #define ICLICKABLE_HPP
 
-#include <string>
 #include "InputState.hpp"
+#include <string>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -45,7 +45,7 @@ public:
         mCanChangeColorWhenSelected = false;
     }
 
-    virtual ~IClickable() = default;
+    virtual ~IClickable()                    = default;
     virtual void draw(float size, T overlay) = 0;
     virtual void drawOutline(T color)        = 0;
     virtual bool held(void)                  = 0;

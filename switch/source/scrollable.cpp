@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -56,8 +56,8 @@ void Scrollable::updateSelection(void)
 {
     const int hu = (mHid.maxEntries(size()) + 1) * mh / mVisibleEntries;
 
-    if (g_input->touch.count > 0 && g_input->touch.touches[0].y > (float)my && g_input->touch.touches[0].y < (float)(my + hu) && g_input->touch.touches[0].x > (float)mx &&
-        g_input->touch.touches[0].x < (float)(mx + mw)) {
+    if (g_input->touch.count > 0 && g_input->touch.touches[0].y > (float)my && g_input->touch.touches[0].y < (float)(my + hu) &&
+        g_input->touch.touches[0].x > (float)mx && g_input->touch.touches[0].x < (float)(mx + mw)) {
         mHid.index(ceilf((g_input->touch.touches[0].y - my) * mVisibleEntries / mh));
     }
 

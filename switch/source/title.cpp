@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ void Title::init(u8 saveDataType, u64 id, AccountUid userID, const std::string& 
 
     std::string aname = StringUtils::removeAccents(mName);
     size_t pos        = aname.rfind(":");
-    mDisplayName      = std::make_pair(name, "");
+    mDisplayName      = std::make_pair(aname, "");
     if (pos != std::string::npos) {
         std::string name1 = aname.substr(0, pos);
         std::string name2 = aname.substr(pos + 1);
