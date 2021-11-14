@@ -549,8 +549,8 @@ void loadTitles(bool forceRefresh)
 
         if (Configuration::getInstance().nandSaves()) {
             AM_GetTitleCount(MEDIATYPE_NAND, &count);
-            u64 ids_nand[count];
-            AM_GetTitleList(NULL, MEDIATYPE_NAND, count, ids_nand);
+            std::unique_ptr<u64[]> ids_nand = std::unique_ptr<u64[]>(new u64[count]);
+            AM_GetTitleList(NULL, MEDIATYPE_NAND, count, ids_nand.get());
 
             for (u32 i = 0; i < count; i++) {
                 if (validId(ids_nand[i])) {
@@ -567,8 +567,8 @@ void loadTitles(bool forceRefresh)
 
         count = 0;
         AM_GetTitleCount(MEDIATYPE_SD, &count);
-        u64 ids[count];
-        AM_GetTitleList(NULL, MEDIATYPE_SD, count, ids);
+        std::unique_ptr<u64[]> ids = std::unique_ptr<u64[]>(new u64[count]);
+        AM_GetTitleList(NULL, MEDIATYPE_SD, count, ids.get());
 
         for (u32 i = 0; i < count; i++) {
             if (validId(ids[i])) {
@@ -632,8 +632,8 @@ void loadTitles(bool forceRefresh)
             u32 count = 0;
             AM_GetTitleCount(MEDIATYPE_GAME_CARD, &count);
             if (count > 0) {
-                u64 ids[count];
-                AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, ids);
+                std::unique_ptr<u64[]> ids = std::unique_ptr<u64[]>(new u64[count]);
+                AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, ids.get());
                 if (validId(ids[0])) {
                     Title title;
                     if (title.load(ids[0], MEDIATYPE_GAME_CARD, cardType)) {
@@ -752,7 +752,7 @@ static const size_t ENTRYSIZE = 5341;
 
 static void exportTitleListCache(std::vector<Title>& list, const std::u16string& path)
 {
-    u8* cache = new u8[list.size() * ENTRYSIZE]();
+    std::unique_ptr<u8[]> cache = std::unique_ptr<u8[]>(new u8[list.size() * ENTRYSIZE]());
     for (size_t i = 0; i < list.size(); i++) {
         u64 id                       = list.at(i).id();
         bool accessibleSave          = list.at(i).accessibleSave();
@@ -768,29 +768,28 @@ static void exportTitleListCache(std::vector<Title>& list, const std::u16string&
         if (cardType == CARD_CTR) {
             smdh_s* smdh = loadSMDH(list.at(i).lowId(), list.at(i).highId(), media);
             if (smdh != NULL) {
-                memcpy(cache + i * ENTRYSIZE + 733, smdh->bigIconData, 0x900 * 2);
+                memcpy(cache.get() + i * ENTRYSIZE + 733, smdh->bigIconData, 0x900 * 2);
             }
             delete smdh;
         }
 
-        memcpy(cache + i * ENTRYSIZE + 0, &id, sizeof(u64));
-        memcpy(cache + i * ENTRYSIZE + 8, list.at(i).productCode, 16);
-        memcpy(cache + i * ENTRYSIZE + 24, &accessibleSave, sizeof(u8));
-        memcpy(cache + i * ENTRYSIZE + 25, &accessibleExtdata, sizeof(u8));
-        memcpy(cache + i * ENTRYSIZE + 26, shortDescription.c_str(), shortDescription.length());
-        memcpy(cache + i * ENTRYSIZE + 90, longDescription.c_str(), longDescription.length());
-        memcpy(cache + i * ENTRYSIZE + 218, savePath.c_str(), savePath.length());
-        memcpy(cache + i * ENTRYSIZE + 474, extdataPath.c_str(), extdataPath.length());
-        memcpy(cache + i * ENTRYSIZE + 730, &media, sizeof(u8));
-        memcpy(cache + i * ENTRYSIZE + 731, &cardType, sizeof(u8));
-        memcpy(cache + i * ENTRYSIZE + 732, &card, sizeof(u8));
+        memcpy(cache.get() + i * ENTRYSIZE + 0, &id, sizeof(u64));
+        memcpy(cache.get() + i * ENTRYSIZE + 8, list.at(i).productCode, 16);
+        memcpy(cache.get() + i * ENTRYSIZE + 24, &accessibleSave, sizeof(u8));
+        memcpy(cache.get() + i * ENTRYSIZE + 25, &accessibleExtdata, sizeof(u8));
+        memcpy(cache.get() + i * ENTRYSIZE + 26, shortDescription.c_str(), shortDescription.length());
+        memcpy(cache.get() + i * ENTRYSIZE + 90, longDescription.c_str(), longDescription.length());
+        memcpy(cache.get() + i * ENTRYSIZE + 218, savePath.c_str(), savePath.length());
+        memcpy(cache.get() + i * ENTRYSIZE + 474, extdataPath.c_str(), extdataPath.length());
+        memcpy(cache.get() + i * ENTRYSIZE + 730, &media, sizeof(u8));
+        memcpy(cache.get() + i * ENTRYSIZE + 731, &cardType, sizeof(u8));
+        memcpy(cache.get() + i * ENTRYSIZE + 732, &card, sizeof(u8));
     }
 
     FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, path.data()));
     FSStream output(Archive::sdmc(), path, FS_OPEN_WRITE, list.size() * ENTRYSIZE);
-    output.write(cache, list.size() * ENTRYSIZE);
+    output.write(cache.get(), list.size() * ENTRYSIZE);
     output.close();
-    delete[] cache;
 }
 
 static void importTitleListCache(void)
