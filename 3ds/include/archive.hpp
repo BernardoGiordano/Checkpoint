@@ -36,11 +36,13 @@ typedef enum { MODE_SAVE, MODE_EXTDATA } Mode_t;
 
 namespace Archive {
     Result init(void);
+    Result initTWLN(void);
     void exit(void);
 
     Mode_t mode(void);
     void mode(Mode_t v);
     FS_Archive sdmc(void);
+    FS_Archive twln(void);
 
     Result save(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);
     Result extdata(FS_Archive* archive, u32 extdata);

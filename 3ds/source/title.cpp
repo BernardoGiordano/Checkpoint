@@ -36,16 +36,14 @@ static void exportTitleListCache(std::vector<Title>& list, const std::u16string&
 static void importTitleListCache(void);
 
 static constexpr Tex3DS_SubTexture dsIconSubt3x = {32, 32, 0.0f, 1.0f, 1.0f, 0.0f};
-static C2D_Image dsIcon                         = {nullptr, &dsIconSubt3x};
 
-static void loadDSIcon(u8* banner)
+static C2D_Image loadDSIcon(u8* banner)
 {
     static constexpr int WIDTH_POW2  = 32;
     static constexpr int HEIGHT_POW2 = 32;
-    if (!dsIcon.tex) {
-        dsIcon.tex = new C3D_Tex;
-        C3D_TexInit(dsIcon.tex, WIDTH_POW2, HEIGHT_POW2, GPU_RGB565);
-    }
+
+    C2D_Image iconds = {new C3D_Tex, &dsIconSubt3x};
+    C3D_TexInit(iconds.tex, WIDTH_POW2, HEIGHT_POW2, GPU_RGB565);
 
     struct bannerData {
         u16 version;
@@ -56,7 +54,7 @@ static void loadDSIcon(u8* banner)
     };
     bannerData* iconData = (bannerData*)banner;
 
-    u16* output = (u16*)dsIcon.tex->data;
+    u16* output = (u16*)iconds.tex->data;
     for (size_t x = 0; x < 32; x++) {
         for (size_t y = 0; y < 32; y++) {
             u32 srcOff   = (((y >> 3) * 4 + (x >> 3)) * 8 + (y & 7)) * 4 + ((x & 7) >> 1);
@@ -76,6 +74,8 @@ static void loadDSIcon(u8* banner)
             output[dst] = color;
         }
     }
+
+    return iconds;
 }
 
 void Title::load(void)
@@ -173,10 +173,10 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
     }
     else {
         u8* headerData = new u8[0x3B4];
-        Result res     = FSUSER_GetLegacyRomHeader(mMedia, 0LL, headerData);
+        Result res     = FSUSER_GetLegacyRomHeader(mMedia, mMedia == MEDIATYPE_GAME_CARD ? 0LL : mId, headerData);
         if (R_FAILED(res)) {
             delete[] headerData;
-            Logger::getInstance().log(Logger::ERROR, "Failed get legacy rom header with result 0x%08lX.", res);
+            Logger::getInstance().log(Logger::ERROR, "Failed get legacy rom header for title 0x%016llX with result 0x%08lX.", mMedia == MEDIATYPE_GAME_CARD ? 0LL : mId, res);
             return false;
         }
 
@@ -190,15 +190,16 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 
         delete[] headerData;
         headerData = new u8[0x23C0];
-        FSUSER_GetLegacyBannerData(mMedia, 0LL, headerData);
-        loadDSIcon(headerData);
-        mIcon = dsIcon;
+        FSUSER_GetLegacyBannerData(mMedia, mMedia == MEDIATYPE_GAME_CARD ? 0LL : mId, headerData);
+        mIcon = loadDSIcon(headerData);
         delete[] headerData;
 
-        res = SPIGetCardType(&mCardType, (_gameCode[0] == 'I') ? 1 : 0);
-        if (R_FAILED(res)) {
-            Logger::getInstance().log(Logger::ERROR, "Failed get SPI Card Type with result 0x%08lX.", res);
-            return false;
+        if (mMedia == MEDIATYPE_GAME_CARD) {
+            res = SPIGetCardType(&mCardType, (_gameCode[0] == 'I') ? 1 : 0);
+            if (R_FAILED(res)) {
+                Logger::getInstance().log(Logger::ERROR, "Failed get SPI Card Type with result 0x%08lX.", res);
+                return false;
+            }
         }
 
         mShortDescription = StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(_cardTitle));
@@ -208,15 +209,23 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         mExtdataPath = mSavePath;
         memset(productCode, 0, 16);
 
-        mAccessibleSave    = true;
+        if (mMedia == MEDIATYPE_GAME_CARD) mAccessibleSave = true;
+        else {
+            char* saveDir = new char[30];
+            sprintf(saveDir, "/title/%08lx/%08lx/data", (highId() & 0x00000FFF) | 0x00030000, lowId());
+            mAccessibleSave = Directory(Archive::twln(), StringUtils::UTF8toUTF16(saveDir)).good();
+            delete[] saveDir;
+        }
         mAccessibleExtdata = false;
 
-        loadTitle = true;
-        if (!io::directoryExists(Archive::sdmc(), mSavePath)) {
-            res = io::createDirectory(Archive::sdmc(), mSavePath);
-            if (R_FAILED(res)) {
-                loadTitle = false;
-                Logger::getInstance().log(Logger::ERROR, "Failed to create backup directory with result 0x%08lX.", res);
+        if (mAccessibleSave) {
+            loadTitle = true;
+            if (!io::directoryExists(Archive::sdmc(), mSavePath)) {
+                res = io::createDirectory(Archive::sdmc(), mSavePath);
+                if (R_FAILED(res)) {
+                    loadTitle = false;
+                    Logger::getInstance().log(Logger::ERROR, "Failed to create backup directory with result 0x%08lX.", res);
+                }
             }
         }
     }
@@ -486,6 +495,11 @@ static bool validId(u64 id)
         return false;
     }
 
+    // check for DSi non-executable data files
+    if (high == 0x0004800F) {
+        return false;
+    }
+
     return !Configuration::getInstance().filter(id);
 }
 
@@ -547,7 +561,7 @@ void loadTitles(bool forceRefresh)
     else {
         u32 count = 0;
 
-        if (Configuration::getInstance().nandSaves()) {
+        if (Configuration::getInstance().nandSaves() || Configuration::getInstance().dsiwareSaves()) {
             AM_GetTitleCount(MEDIATYPE_NAND, &count);
             std::unique_ptr<u64[]> ids_nand = std::unique_ptr<u64[]>(new u64[count]);
             AM_GetTitleList(NULL, MEDIATYPE_NAND, count, ids_nand.get());
@@ -555,11 +569,23 @@ void loadTitles(bool forceRefresh)
             for (u32 i = 0; i < count; i++) {
                 if (validId(ids_nand[i])) {
                     Title title;
-                    if (title.load(ids_nand[i], MEDIATYPE_NAND, CARD_CTR)) {
-                        if (title.accessibleSave()) {
-                            titleSaves.push_back(title);
+                    if (Configuration::getInstance().dsiwareSaves()) {
+                        if (((ids_nand[i] >> 44) & 0x0000F) == 8) {
+                            if (title.load(ids_nand[i], MEDIATYPE_NAND, CARD_TWL)) {
+                                if (title.accessibleSave()) {
+                                    titleSaves.push_back(title);
+                                }
+                            }
+                            continue;
                         }
-                        // TODO: extdata?
+                    }
+                    if (Configuration::getInstance().nandSaves()) {
+                        if (title.load(ids_nand[i], MEDIATYPE_NAND, CARD_CTR)) {
+                            if (title.accessibleSave()) {
+                                titleSaves.push_back(title);
+                            }
+                            // TODO: extdata?
+                        }
                     }
                 }
             }
@@ -689,6 +715,19 @@ bool favorite(int i)
     return Configuration::getInstance().favorite(id);
 }
 
+static C2D_Image loadDSIconFromBytes(u16* iconData)
+{
+    static constexpr int WIDTH_POW2  = 32;
+    static constexpr int HEIGHT_POW2 = 32;
+
+    C2D_Image iconds = {new C3D_Tex, &dsIconSubt3x};
+    C3D_TexInit(iconds.tex, WIDTH_POW2, HEIGHT_POW2, GPU_RGB565);
+
+    memcpy(iconds.tex->data, iconData, 0x400 * 2);
+
+    return iconds;
+}
+
 static C2D_Image loadTextureFromBytes(u16* bigIconData)
 {
     C3D_Tex* tex                          = (C3D_Tex*)malloc(sizeof(C3D_Tex));
@@ -771,6 +810,10 @@ static void exportTitleListCache(std::vector<Title>& list, const std::u16string&
                 memcpy(cache.get() + i * ENTRYSIZE + 733, smdh->bigIconData, 0x900 * 2);
             }
             delete smdh;
+        }
+        else if (media == MEDIATYPE_NAND) {
+            // wasting 2.5 KB of space because we're that rich
+            memcpy(cache.get() + i * ENTRYSIZE + 733, list.at(i).icon().tex->data, 0x400 * 2);
         }
 
         memcpy(cache.get() + i * ENTRYSIZE + 0, &id, sizeof(u64));
@@ -858,8 +901,10 @@ static void importTitleListCache(void)
             title.setIcon(smallIcon);
         }
         else {
-            // this cannot happen
-            title.setIcon(Gui::noIcon());
+            u16 iconData[0x400];
+            memcpy(iconData, cachesaves + i * ENTRYSIZE + 733, 0x400 * 2);
+            C2D_Image iconds = loadDSIconFromBytes(iconData);
+            title.setIcon(iconds);
         }
 
         titleSaves.at(i) = title;

@@ -34,7 +34,7 @@
 #include <unordered_set>
 #include <vector>
 
-#define CONFIG_VERSION 3
+#define CONFIG_VERSION 4
 
 class Configuration {
 public:
@@ -46,14 +46,18 @@ public:
 
     bool filter(u64 id);
     bool favorite(u64 id);
+    bool dsiwareSaves(void);
     bool nandSaves(void);
     bool shouldScanCard(void);
+    void disableDSiWareSaves();
     std::vector<std::u16string> additionalSaveFolders(u64 id);
     std::vector<std::u16string> additionalExtdataFolders(u64 id);
 
 private:
     Configuration(void);
     ~Configuration() = default;
+
+    void editJsonElement(const char* element, nlohmann::json value);
 
     void store(void);
     nlohmann::json loadJson(const std::string& path);
@@ -65,7 +69,7 @@ private:
     nlohmann::json mJson;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::u16string>> mAdditionalSaveFolders, mAdditionalExtdataFolders;
-    bool mNandSaves, mScanCard;
+    bool mDSiWareSaves, mNandSaves, mScanCard;
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
 };
 
