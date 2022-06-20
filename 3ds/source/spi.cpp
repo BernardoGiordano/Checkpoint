@@ -43,6 +43,7 @@
  */
 
 #include "spi.hpp"
+#include <vector>
 
 static std::vector<u32> knownJEDECs = {0x204012, 0x621600, 0x204013, 0x621100, 0x204014, 0x202017, 0x204017, 0x208013};
 
