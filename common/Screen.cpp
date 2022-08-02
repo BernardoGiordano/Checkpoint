@@ -27,7 +27,7 @@
 #include "Screen.hpp"
 #include "Overlay.hpp"
 
-#if defined(_3DS)
+#if defined(__3DS__)
 
 void Screen::doDrawTop() const
 {

@@ -35,7 +35,7 @@ public:
     Overlay(Screen& screen) : screen(screen), me(screen.currentOverlay) {}
     virtual ~Overlay()                     = default;
     virtual void update(const InputState&) = 0;
-#if defined(_3DS)
+#if defined(__3DS__)
     virtual void drawTop() const    = 0;
     virtual void drawBottom() const = 0;
 #elif defined(__SWITCH__)

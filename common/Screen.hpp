@@ -38,7 +38,7 @@ class Screen {
 public:
     virtual ~Screen() = default;
     // Call draw, then currentOverlay->draw if it exists
-#if defined(_3DS)
+#if defined(__3DS__)
     void doDrawTop(void) const;
     void doDrawBottom(void) const;
     virtual void drawTop(void) const    = 0;

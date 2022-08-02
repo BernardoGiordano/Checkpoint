@@ -81,7 +81,7 @@ CFLAGS	:=	-g -gdwarf-4 -Wall -Wextra -Wno-psabi -O2 -mword-relocations -flto \
 			-DGIT_REV=\"${GIT_REV}\" \
 			-DCHEAT_SIZE_DECOMPRESSED=${CHEAT_SIZE_DECOMPRESSED}
 
-CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -D_GNU_SOURCE=1
+CFLAGS	+=	$(INCLUDE) -DARM11 -D__3DS__ -D_GNU_SOURCE=1
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 

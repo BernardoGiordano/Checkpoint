@@ -44,7 +44,7 @@
 
 #include "spi.hpp"
 
-static std::vector<u32> knownJEDECs = {0x204012, 0x621600, 0x204013, 0x621100, 0x204014, 0x202017, 0x204017, 0x208013};
+static const u32 knownJEDECS[] = {0x204012, 0x621600, 0x204013, 0x621100, 0x204014, 0x202017, 0x204017, 0x208013};
 
 u8* fill_buf = NULL;
 
@@ -409,7 +409,7 @@ Result SPIGetCardType(CardType* type, int infrared)
         if (R_SUCCEEDED(res)) {
             Logger::getInstance().log(Logger::INFO, "Found JEDEC: 0x%016lX", jedec);
             Logger::getInstance().log(Logger::INFO, "CardType (While inside maxTries loop): %016lX", t);
-            if (std::find(knownJEDECs.begin(), knownJEDECs.end(), jedec) != knownJEDECs.end()) {
+            if (std::find(std::begin(knownJEDECS), std::end(knownJEDECS), jedec) != std::end(knownJEDECS)) {
                 Logger::getInstance().log(Logger::INFO, "Found a jedec equal to one in the ordered list. Type: %016lX", *type);
             }
             else {

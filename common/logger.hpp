@@ -67,7 +67,7 @@ private:
     Logger(Logger const&) = delete;
     void operator=(Logger const&) = delete;
 
-#if defined(_3DS)
+#if defined(__3DS__)
     const std::string mPath = "sdmc:/3ds/Checkpoint/checkpoint.log";
 #elif defined(__SWITCH__)
     const std::string mPath = "/switch/Checkpoint/checkpoint.log";
