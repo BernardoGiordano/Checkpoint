@@ -35,13 +35,7 @@ void IHid<ListDirection, PageDirection, Delay>::update(size_t count)
 
     mMaxPages = (count % mMaxVisibleEntries == 0) ? count / mMaxVisibleEntries : count / mMaxVisibleEntries + 1;
 
-    if (leftTriggerDown()) {
-        pageBack();
-    }
-    else if (rightTriggerDown()) {
-        pageForward();
-    }
-    else if (leftTriggerHeld()) {
+    if (leftTriggerHeld()) {
         if (currentTime <= mLastTime + Delay) {
             return;
         }
