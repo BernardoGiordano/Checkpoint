@@ -156,19 +156,20 @@ SDL_Texture* Title::icon(void)
     return it != icons.end() ? it->second : NULL;
 }
 
-u32 Title::playTimeMinutes(void)
+u64 Title::playTimeNanoseconds(void)
 {
-    return mPlayTimeMinutes;
+    return mPlayTimeNanoseconds;
 }
 
 std::string Title::playTime(void)
 {
-    return StringUtils::format("%d", mPlayTimeMinutes / 60) + ":" + StringUtils::format("%02d", mPlayTimeMinutes % 60) + " hours";
+    const u64 playTimeMinutes = mPlayTimeNanoseconds / 60000000000;
+    return StringUtils::format("%d", playTimeMinutes / 60) + ":" + StringUtils::format("%02d", playTimeMinutes % 60) + " hours";
 }
 
-void Title::playTimeMinutes(u32 playTimeMinutes)
+void Title::playTimeNanoseconds(u64 playTimeNanoseconds)
 {
-    mPlayTimeMinutes = playTimeMinutes;
+    mPlayTimeNanoseconds = playTimeNanoseconds;
 }
 
 u32 Title::lastPlayedTimestamp(void)
@@ -265,8 +266,8 @@ void loadTitles(void)
                         PdmPlayStatistics stats;
                         res = pdmqryQueryPlayStatisticsByApplicationIdAndUserAccountId(tid, uid, false, &stats);
                         if (R_SUCCEEDED(res)) {
-                            title.playTimeMinutes(stats.playtimeMinutes);
-                            title.lastPlayedTimestamp(stats.last_timestampUser);
+                            title.playTimeNanoseconds(stats.playtime);
+                            title.lastPlayedTimestamp(stats.last_timestamp_user);
                         }
 
                         loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
@@ -307,7 +308,7 @@ void sortTitles(void)
                 case SORT_LAST_PLAYED:
                     return l.lastPlayedTimestamp() > r.lastPlayedTimestamp();
                 case SORT_PLAY_TIME:
-                    return l.playTimeMinutes() > r.playTimeMinutes();
+                    return l.playTimeNanoseconds() > r.playTimeNanoseconds();
                 case SORT_ALPHA:
                 default:
                     return l.name() < r.name();

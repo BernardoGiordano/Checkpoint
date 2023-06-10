@@ -51,9 +51,9 @@ public:
     u64 id(void);
     std::string name(void);
     std::string path(void);
-    u32 playTimeMinutes(void);
+    u64 playTimeNanoseconds(void);
     std::string playTime(void);
-    void playTimeMinutes(u32 playTimeMinutes);
+    void playTimeNanoseconds(u64 playTimeNanoseconds);
     u32 lastPlayedTimestamp(void);
     void lastPlayedTimestamp(u32 lastPlayedTimestamp);
     std::string fullPath(size_t index);
@@ -78,7 +78,7 @@ private:
     std::vector<std::string> mFullSavePaths;
     u8 mSaveDataType;
     std::pair<std::string, std::string> mDisplayName;
-    u32 mPlayTimeMinutes;
+    u64 mPlayTimeNanoseconds;
     u32 mLastPlayedTimestamp;
 };
 
