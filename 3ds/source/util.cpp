@@ -71,6 +71,15 @@ Result servicesInit(void)
     romfsInit();
     ATEXIT(romfsExit);
 
+    // this conditionally depends on ROMFS
+    if (Configuration::getInstance().dsiwareSaves()) {
+        if (R_FAILED(res = Archive::initTWLN())) {
+            Logger::getInstance().log(Logger::ERROR, "Failed to init TWLN with result 0x%08lX", res);
+            Configuration::getInstance().disableDSiWareSaves();
+            return consoleDisplayError("Archive::initTWLN failed. DSiWare loading disabled.", res);
+        }
+    }
+
     srvInit();
     ATEXIT(srvExit);
 
@@ -95,14 +104,15 @@ void calculateTitleDBHash(u8* hash)
 {
     u32 titleCount, nandCount, titlesRead, nandTitlesRead;
     AM_GetTitleCount(MEDIATYPE_SD, &titleCount);
-    if (Configuration::getInstance().nandSaves()) {
+    if (Configuration::getInstance().nandSaves() || Configuration::getInstance().dsiwareSaves()) {
         AM_GetTitleCount(MEDIATYPE_NAND, &nandCount);
         std::vector<u64> ordered;
-        ordered.reserve(titleCount + nandCount);
+        ordered.reserve(titleCount + nandCount + Configuration::getInstance().dsiwareSaves());
         AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
         AM_GetTitleList(&nandTitlesRead, MEDIATYPE_NAND, nandCount, ordered.data() + titlesRead * sizeof(u64));
+        if (Configuration::getInstance().dsiwareSaves()) ordered.push_back(0x0123456789ABCDEF); // hack to make hash different
         sort(ordered.begin(), ordered.end());
-        sha256(hash, (u8*)ordered.data(), (titleCount + nandCount) * sizeof(u64));
+        sha256(hash, (u8*)ordered.data(), (titleCount + nandCount + Configuration::getInstance().dsiwareSaves()) * sizeof(u64));
     }
     else {
         std::vector<u64> ordered;
