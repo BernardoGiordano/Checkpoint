@@ -183,7 +183,7 @@ endif
 .PHONY: all clean format cheats
 
 #---------------------------------------------------------------------------------
-all: cheats
+all: cheats sprites
 	@mkdir -p $(BUILD) $(GFXBUILD) $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $(OUTPUT).3dsx
 	@bannertool makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o $(BUILD)/banner.bnr
@@ -192,7 +192,7 @@ all: cheats
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTDIR)
+	@rm -fr $(BUILD) $(GFXBUILD) $(OUTDIR) $(ROMFS)/$(CHEATS)
 #---------------------------------------------------------------------------------
 cheats:
 	@mkdir -p $(BUILD) $(ROMFS)/$(CHEATS)
@@ -202,6 +202,11 @@ else
 	@cd $(SHARKIVE) && python3 joiner.py 3ds
 endif
 	@cd $(SHARKIVE)/$(BUILD) && mv 3ds.json.bz2 ../../3ds/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
+#---------------------------------------------------------------------------------
+sprites:
+	@mkdir -p $(BUILD) $(GFXBUILD)
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile sprites.t3x
+	@cp $(BUILD)/sprites.t3x $(GFXBUILD)/sprites.t3x
 #---------------------------------------------------------------------------------
 format:
 	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp) $(wildcard $(dir)/*.tcc)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))
@@ -255,12 +260,6 @@ endef
 %.shbin.o %_shbin.h : %.shlist
 	@echo $(notdir $<)
 	@$(call shader-as,$(foreach file,$(shell cat $<),$(dir $<)$(file)))
-
-#---------------------------------------------------------------------------------
-%.t3x	%.h	:	%.t3s
-#---------------------------------------------------------------------------------
-	@echo $(notdir $<)
-	@tex3ds -i $< -H $*.h -d $*.d -o $(TOPDIR)/$(GFXBUILD)/$*.t3x
 
 -include $(DEPSDIR)/*.d
 
