@@ -11,7 +11,8 @@
   "additional_extdata_folders": {
 
   },
+  "dsiware_saves": true,
   "nand_saves": false,
   "scan_cart": false,
-  "version": 3
+  "version": 4
 }

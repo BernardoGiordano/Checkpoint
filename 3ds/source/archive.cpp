@@ -27,6 +27,7 @@
 #include "archive.hpp"
 
 static FS_Archive mSdmc;
+static FS_Archive mTwln;
 static Mode_t mMode = MODE_SAVE;
 
 Mode_t Archive::mode(void)
@@ -44,14 +45,25 @@ Result Archive::init(void)
     return FSUSER_OpenArchive(&mSdmc, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
 }
 
+Result Archive::initTWLN(void)
+{
+    return FSUSER_OpenArchive(&mTwln, ARCHIVE_NAND_TWL_FS, fsMakePath(PATH_EMPTY, ""));
+}
+
 void Archive::exit(void)
 {
     FSUSER_CloseArchive(mSdmc);
+    FSUSER_CloseArchive(mTwln);
 }
 
 FS_Archive Archive::sdmc(void)
 {
     return mSdmc;
+}
+
+FS_Archive Archive::twln(void)
+{
+    return mTwln;
 }
 
 Result Archive::save(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid)
