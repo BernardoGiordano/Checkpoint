@@ -113,8 +113,4 @@ This project is licensed under the GNU GPLv3. Additional Terms 7.b and 7.c of GP
 
 Without you, this project wouldn't have existed. Thank you.
 
----
-
-If you like the work FlagBrew puts into this project and more others, **support FlagBrew on [Patreon](https://www.patreon.com/FlagBrew)**!
-
 [![Discord](https://discordapp.com/api/guilds/278222834633801728/widget.png?style=banner3&time-)](https://discord.gg/bGKEyfY)
