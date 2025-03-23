@@ -52,8 +52,9 @@ CHEATS			:=	cheats
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
-CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections -flto \
+CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections \
 			-Wno-write-strings -Wno-unused-value -fomit-frame-pointer \
+			-Wno-unused-parameter \
 			$(ARCH) $(DEFINES) \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
 			-DVERSION_MINOR=${VERSION_MINOR} \
@@ -67,7 +68,7 @@ CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections -flto \
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D_GNU_SOURCE=1
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++20
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-no-as-needed,-Map,$(notdir $*.map)

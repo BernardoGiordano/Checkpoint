@@ -72,8 +72,9 @@ ICON_FLAGS          :=	nosavebackups,visible
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 
-CFLAGS	:=	-g -gdwarf-4 -Wall -Wextra -Wno-psabi -O2 -mword-relocations -flto \
+CFLAGS	:=	-g -gdwarf-4 -Wall -Wextra -Wno-psabi -O2 -mword-relocations \
 			-fomit-frame-pointer -ffunction-sections \
+			-Wno-unused-parameter \
 			$(ARCH) \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
 			-DVERSION_MINOR=${VERSION_MINOR} \
@@ -83,7 +84,7 @@ CFLAGS	:=	-g -gdwarf-4 -Wall -Wextra -Wno-psabi -O2 -mword-relocations -flto \
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D__3DS__ -D_GNU_SOURCE=1
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++20
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
