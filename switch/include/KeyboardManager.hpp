@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ public:
     }
 
     KeyboardManager(KeyboardManager const&) = delete;
-    void operator=(KeyboardManager const&) = delete;
+    void operator=(KeyboardManager const&)  = delete;
 
     std::pair<bool, std::string> keyboard(const std::string& suggestion);
 

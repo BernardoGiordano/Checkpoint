@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -64,7 +64,7 @@ private:
     Logger(void) { buffer = ""; }
     ~Logger(void) {}
 
-    Logger(Logger const&) = delete;
+    Logger(Logger const&)         = delete;
     void operator=(Logger const&) = delete;
 
 #if defined(__3DS__)
