@@ -27,7 +27,7 @@
 #ifndef CHEATMANAGER_HPP
 #define CHEATMANAGER_HPP
 
-#include "json.hpp"
+#include "nlohmann/json.hpp"
 #include "main.hpp"
 #include <bzlib.h>
 #include <errno.h>

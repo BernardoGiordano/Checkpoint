@@ -42,7 +42,7 @@ FORMATSOURCES	:=	source ../common
 SOURCES			:=	$(FORMATSOURCES) ../3rd-party/sha256
 DATA			:=	data
 FORMATINCLUDES	:=	include ../common
-INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/sha256
+INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party ../3rd-party/sha256
 GRAPHICS		:=	assets/gfx
 ROMFS			:=	assets/romfs
 GFXBUILD		:=	$(ROMFS)/gfx
@@ -80,6 +80,8 @@ CFLAGS	:=	-g -gdwarf-4 -Wall -Wextra -Wno-psabi -O2 -mword-relocations \
 			-DVERSION_MINOR=${VERSION_MINOR} \
 			-DVERSION_MICRO=${VERSION_MICRO} \
 			-DGIT_REV=\"${GIT_REV}\" \
+			-DJSON_HAS_FILESYSTEM=0 \
+			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
 			-DCHEAT_SIZE_DECOMPRESSED=${CHEAT_SIZE_DECOMPRESSED}
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D__3DS__ -D_GNU_SOURCE=1

@@ -28,7 +28,7 @@
 #define CONFIGHANDLER_HPP
 
 #include "io.hpp"
-#include "json.hpp"
+#include "nlohmann/json.hpp"
 #include "util.hpp"
 #include <unordered_map>
 #include <unordered_set>

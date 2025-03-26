@@ -28,7 +28,7 @@
 #define CHEATMANAGER_HPP
 
 #include "io.hpp"
-#include "json.hpp"
+#include "nlohmann/json.hpp"
 #include "main.hpp"
 #include <3ds.h>
 #include <bzlib.h>
