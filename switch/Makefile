@@ -64,6 +64,8 @@ CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections \
 			`freetype-config --cflags` \
 			`sdl2-config --cflags` \
 			-DMG_ENABLE_FILESYSTEM \
+			-DJSON_HAS_FILESYSTEM=0 \
+			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
 			-DCHEAT_SIZE_DECOMPRESSED=${CHEAT_SIZE_DECOMPRESSED}
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D_GNU_SOURCE=1
