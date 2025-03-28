@@ -50,6 +50,10 @@ Configuration::Configuration(void)
             mJson["version"] = CONFIG_VERSION;
             updateJson       = true;
         }
+        if (!(mJson.contains("dsiware_saves") && mJson["dsiware_saves"].is_boolean())) {
+            mJson["dsiware_saves"] = true;
+            updateJson             = true;
+        }
         if (!(mJson.contains("nand_saves") && mJson["nand_saves"].is_boolean())) {
             mJson["nand_saves"] = false;
             updateJson          = true;
@@ -122,8 +126,9 @@ Configuration::Configuration(void)
         mFavoriteIds.emplace(strtoull(id.c_str(), NULL, 16));
     }
 
-    mNandSaves = mJson["nand_saves"];
-    mScanCard  = mJson["scan_cart"];
+    mDSiWareSaves = mJson["dsiware_saves"];
+    mNandSaves    = mJson["nand_saves"];
+    mScanCard     = mJson["scan_cart"];
 
     // parse additional save folders
     auto js = mJson["additional_save_folders"];
@@ -146,6 +151,11 @@ Configuration::Configuration(void)
         }
         mAdditionalExtdataFolders.emplace(strtoull(it.key().c_str(), NULL, 16), u16folders);
     }
+}
+
+void Configuration::editJsonElement(const char* element, nlohmann::json value)
+{
+    mJson[element] = value;
 }
 
 nlohmann::json Configuration::loadJson(const std::string& path)
@@ -188,6 +198,11 @@ bool Configuration::favorite(u64 id)
     return mFavoriteIds.find(id) != mFavoriteIds.end();
 }
 
+bool Configuration::dsiwareSaves(void)
+{
+    return mDSiWareSaves;
+}
+
 bool Configuration::nandSaves(void)
 {
     return mNandSaves;
@@ -210,4 +225,11 @@ std::vector<std::u16string> Configuration::additionalExtdataFolders(u64 id)
 bool Configuration::shouldScanCard(void)
 {
     return mScanCard;
+}
+
+void Configuration::disableDSiWareSaves(void)
+{
+    mDSiWareSaves = false;
+    editJsonElement("dsiware_saves", false);
+    storeJson(mJson, BASEPATH);
 }
