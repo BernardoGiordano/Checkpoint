@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -40,8 +40,8 @@ YesNoOverlay::YesNoOverlay(
     posx = ceilf(320 - text.width * 0.6) / 2;
     posy = 40 + ceilf(120 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2;
 
-    buttonYes = std::make_unique<Clickable>(42, 162, 116, 36, COLOR_GREY_DARK, COLOR_WHITE, "\uE000 Yes", true);
-    buttonNo  = std::make_unique<Clickable>(162, 162, 116, 36, COLOR_GREY_DARK, COLOR_WHITE, "\uE001 No", true);
+    buttonYes = std::make_unique<Clickable>(42, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "\uE000 Yes", true);
+    buttonNo  = std::make_unique<Clickable>(162, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "\uE001 No", true);
 }
 
 YesNoOverlay::~YesNoOverlay(void)
@@ -57,18 +57,18 @@ void YesNoOverlay::drawTop(void) const
 void YesNoOverlay::drawBottom(void) const
 {
     C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
+    C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_BLACK_DARKER);
     C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, 0.6f, 0.6f, COLOR_WHITE);
-    C2D_DrawRectSolid(40, 160, 0.5f, 240, 40, COLOR_GREY_LIGHT);
+    C2D_DrawRectSolid(40, 160, 0.5f, 240, 40, COLOR_BLACK_MEDIUM);
 
     buttonYes->draw(0.7, 0);
     buttonNo->draw(0.7, 0);
 
     if (hid.index() == 0) {
-        Gui::drawPulsingOutline(42, 162, 116, 36, 2, COLOR_BLUE);
+        Gui::drawPulsingOutline(42, 162, 116, 36, 2, COLOR_PURPLE_DARK);
     }
     else {
-        Gui::drawPulsingOutline(162, 162, 116, 36, 2, COLOR_BLUE);
+        Gui::drawPulsingOutline(162, 162, 116, 36, 2, COLOR_PURPLE_DARK);
     }
 }
 

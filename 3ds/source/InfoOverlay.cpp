@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 InfoOverlay::InfoOverlay(Screen& screen, const std::string& mtext) : Overlay(screen)
 {
     textBuf = C2D_TextBufNew(64);
-    button  = std::make_unique<Clickable>(42, 162, 236, 36, COLOR_GREY_DARK, COLOR_WHITE, "OK", true);
+    button  = std::make_unique<Clickable>(42, 162, 236, 36, COLOR_BLACK_DARK, COLOR_WHITE, "OK", true);
     button->selected(true);
     std::string t = StringUtils::wrap(mtext, size, 220);
     C2D_TextParse(&text, textBuf, t.c_str());
@@ -51,10 +51,10 @@ void InfoOverlay::drawTop(void) const
 void InfoOverlay::drawBottom(void) const
 {
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
+    C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_BLACK_DARKERR);
     C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, size, size, COLOR_WHITE);
-    button->draw(0.7f, COLOR_BLUE);
-    Gui::drawPulsingOutline(42, 162, 236, 36, 2, COLOR_BLUE);
+    button->draw(0.7f, COLOR_PURPLE_DARK);
+    Gui::drawPulsingOutline(42, 162, 236, 36, 2, COLOR_PURPLE_DARK);
 }
 
 void InfoOverlay::update(const InputState& input)

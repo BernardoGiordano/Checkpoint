@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ CheatManagerOverlay::CheatManagerOverlay(Screen& screen, const std::string& mkey
         if (existingCheat.find(value) != std::string::npos) {
             value = SELECTED_MAGIC + value;
         }
-        scrollable->push_back(COLOR_GREY_DARKER, COLOR_WHITE, value, i == 0);
+        scrollable->push_back(COLOR_BLACK_DARK, COLOR_WHITE, value, i == 0);
         i++;
     }
 
@@ -79,7 +79,7 @@ void CheatManagerOverlay::drawTop(void) const
     C2D_Text page;
     C2D_TextParse(&page, dynamicBuf, StringUtils::format("%d/%d", scrollable->index() + 1, scrollable->size()).c_str());
     C2D_TextOptimize(&page);
-    C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_GREY_DARK);
+    C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_BLACK_DARKERR);
     scrollable->draw(true);
     C2D_DrawText(&page, C2D_WithColor, ceilf(396 - page.width * scale), 224, 0.5f, scale, scale, COLOR_WHITE);
     C2D_DrawText(multiSelected ? &multiDeselectText : &multiSelectText, C2D_WithColor, 4, 224, 0.5f, scale, scale, COLOR_WHITE);

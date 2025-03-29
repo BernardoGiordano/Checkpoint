@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -61,11 +61,19 @@ bool Clickable::released(void)
     return false;
 }
 
-void Clickable::draw(float size, u32 overlay)
+void Clickable::draw(float size, u32 overlayWhenFocused)
 {
-    const u8 r                = overlay & 0xFF;
-    const u8 g                = (overlay >> 8) & 0xFF;
-    const u8 b                = (overlay >> 16) & 0xFF;
+    u8 r, g, b;
+    if (mSelected) {
+        r = (overlayWhenFocused >> 0) & 0xFF;
+        g = (overlayWhenFocused >> 8) & 0xFF;
+        b = (overlayWhenFocused >> 16) & 0xFF;
+    }
+    else {
+        r = 0;
+        g = 0;
+        b = 0;
+    }
     const float messageHeight = ceilf(size * fontGetInfo(NULL)->lineFeed);
     const float messageWidth  = mCentered ? mC2dText.width * size : mw - 8;
 

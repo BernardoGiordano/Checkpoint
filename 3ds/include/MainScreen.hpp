@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -37,6 +37,7 @@
 #include "multiselection.hpp"
 #include "scrollable.hpp"
 #include "thread.hpp"
+#include <algorithm>
 #include <memory>
 #include <tuple>
 
@@ -71,6 +72,7 @@ private:
 
     const float scaleInst = 0.7f;
     C2D_ImageTint checkboxTint;
+    C2D_ImageTint flagTint;
     int selectionTimer;
     int refreshTimer;
 };

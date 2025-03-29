@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -36,10 +36,10 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     staticBuf  = C2D_TextBufNew(261);
     dynamicBuf = C2D_TextBufNew(256);
 
-    buttonBackup    = std::make_unique<Clickable>(204, 102, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Backup \uE004", true);
-    buttonRestore   = std::make_unique<Clickable>(204, 139, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Restore \uE005", true);
-    buttonCheats    = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "Cheats", true);
-    buttonPlayCoins = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "\uE075 Coins", true);
+    buttonBackup    = std::make_unique<Clickable>(204, 102, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Backup \uE004", true);
+    buttonRestore   = std::make_unique<Clickable>(204, 139, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Restore \uE005", true);
+    buttonCheats    = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Cheats", true);
+    buttonPlayCoins = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "\uE075 Coins", true);
     directoryList   = std::make_unique<Scrollable>(6, 102, 196, 110, 5);
     buttonBackup->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
@@ -59,7 +59,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
 
     C2D_TextParse(&top_move, staticBuf, "\uE006 to move between titles");
     C2D_TextParse(&top_a, staticBuf, "\uE000 to enter target");
-    C2D_TextParse(&top_y, staticBuf, "\uE003 to multiselect a title");
+    C2D_TextParse(&top_y, staticBuf, "\uE003 to multiselect titles");
     C2D_TextParse(&top_my, staticBuf, "\uE003 hold to multiselect all titles");
     C2D_TextParse(&top_b, staticBuf, "\uE001 to exit target or deselect all titles");
     C2D_TextParse(&top_hb, staticBuf, "\uE001 hold to refresh titles");
@@ -86,7 +86,8 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     C2D_TextOptimize(&bot_x);
     C2D_TextOptimize(&coins);
 
-    C2D_PlainImageTint(&checkboxTint, COLOR_GREY_DARKER, 1.0f);
+    C2D_PlainImageTint(&checkboxTint, COLOR_BLACK_DARKERR, 1.0f);
+    C2D_PlainImageTint(&flagTint, COLOR_PURPLE_LIGHT, 1.0f);
 }
 
 MainScreen::~MainScreen(void)
@@ -101,12 +102,12 @@ void MainScreen::drawTop(void) const
     const size_t entries = hid.maxVisibleEntries();
     const size_t max     = hid.maxEntries(getTitleCount()) + 1;
 
-    C2D_TargetClear(g_top, COLOR_BG);
-    C2D_TargetClear(g_bottom, COLOR_BG);
+    C2D_TargetClear(g_top, COLOR_BLACK_DARKERR);
+    C2D_TargetClear(g_bottom, COLOR_BLACK_DARKERR);
 
     C2D_SceneBegin(g_top);
-    C2D_DrawRectSolid(0, 0, 0.5f, 400, 19, COLOR_GREY_DARK);
-    C2D_DrawRectSolid(0, 221, 0.5f, 400, 19, COLOR_GREY_DARK);
+    C2D_DrawRectSolid(0, 0, 0.5f, 400, 19, COLOR_BLACK_DARKER);
+    C2D_DrawRectSolid(0, 221, 0.5f, 400, 19, COLOR_BLACK_DARKER);
 
     C2D_Text timeText;
     C2D_TextParse(&timeText, dynamicBuf, DateTime::timeStr().c_str());
@@ -148,8 +149,10 @@ void MainScreen::drawTop(void) const
     C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
 
     if (hidKeysHeld() & KEY_SELECT) {
-        const u32 inst_lh = scaleInst * fontGetInfo(NULL)->lineFeed;
-        const u32 inst_h  = ceilf((240 - scaleInst * inst_lh * 6) / 2.0);
+        const u32 inst_lh      = scaleInst * fontGetInfo(NULL)->lineFeed;
+        const u32 total_height = inst_lh * 6;
+        const u32 inst_h       = (240 - total_height) / 2;
+
         C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
         C2D_DrawText(&top_move, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_move, scaleInst)) / 2), inst_h, 0.9f, scaleInst, scaleInst,
             COLOR_WHITE);
@@ -166,8 +169,9 @@ void MainScreen::drawTop(void) const
     }
 
     C2D_DrawText(&version, C2D_WithColor, 400 - 4 - ceilf(0.45f * version.width), 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
-    C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, NULL, 1.0f, 1.0f);
-    C2D_DrawText(&checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
+    C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, &flagTint, 1.0f, 1.0f);
+    C2D_DrawText(
+        &checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_LIGHT_BLUE);
 
     if (g_isTransferringFile) {
         C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
@@ -187,8 +191,8 @@ void MainScreen::drawBottom(void) const
 
     const Mode_t mode = Archive::mode();
 
-    C2D_DrawRectSolid(0, 0, 0.5f, 320, 19, COLOR_GREY_DARK);
-    C2D_DrawRectSolid(0, 221, 0.5f, 320, 19, COLOR_GREY_DARK);
+    C2D_DrawRectSolid(0, 0, 0.5f, 320, 19, COLOR_BLACK_DARKER);
+    C2D_DrawRectSolid(0, 221, 0.5f, 320, 19, COLOR_BLACK_DARKER);
     if (getTitleCount() > 0) {
         Title title;
         getTitle(title, hid.fullIndex());
@@ -198,42 +202,26 @@ void MainScreen::drawBottom(void) const
         static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
 
         for (size_t i = 0; i < dirs.size(); i++) {
-            directoryList->push_back(COLOR_GREY_DARKER, COLOR_WHITE, convert.to_bytes(dirs.at(i)), i == directoryList->index());
+            directoryList->push_back(COLOR_BLACK_DARKERR, COLOR_WHITE, convert.to_bytes(dirs.at(i)), i == directoryList->index());
         }
 
-        C2D_Text shortDesc, longDesc, id, prodCode, media;
+        C2D_Text longDesc, c2dTitleInfo;
+        std::string desc = title.longDescription();
+        std::replace(desc.begin(), desc.end(), '\n', ' ');
 
-        char lowid[18];
-        snprintf(lowid, 9, "%08X", (int)title.lowId());
+        std::string titleInfo =
+            StringUtils::format("ID: %08X (%s)\nMedia type: %s", (int)title.lowId(), title.productCode, title.mediaTypeString().c_str());
 
-        C2D_TextParse(&shortDesc, dynamicBuf, title.shortDescription().c_str());
-        C2D_TextParse(&longDesc, dynamicBuf, title.longDescription().c_str());
-        C2D_TextParse(&id, dynamicBuf, lowid);
-        C2D_TextParse(&media, dynamicBuf, title.mediaTypeString().c_str());
+        C2D_TextParse(&longDesc, dynamicBuf, desc.c_str());
+        C2D_TextParse(&c2dTitleInfo, dynamicBuf, titleInfo.c_str());
 
-        C2D_TextOptimize(&shortDesc);
         C2D_TextOptimize(&longDesc);
-        C2D_TextOptimize(&id);
-        C2D_TextOptimize(&media);
+        C2D_TextOptimize(&c2dTitleInfo);
 
-        float longDescHeight, lowidWidth;
-        C2D_TextGetDimensions(&longDesc, 0.55f, 0.55f, NULL, &longDescHeight);
-        C2D_TextGetDimensions(&id, 0.5f, 0.5f, &lowidWidth, NULL);
+        C2D_DrawText(&longDesc, C2D_WithColor, 4, 1, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
+        C2D_DrawText(&c2dTitleInfo, C2D_WithColor, 4, 29, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
 
-        C2D_DrawText(&shortDesc, C2D_WithColor, 4, 1, 0.5f, 0.6f, 0.6f, COLOR_WHITE);
-        C2D_DrawText(&longDesc, C2D_WithColor, 4, 27, 0.5f, 0.55f, 0.55f, COLOR_GREY_LIGHT);
-
-        C2D_DrawText(&c2dId, C2D_WithColor, 4, 31 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
-        C2D_DrawText(&id, C2D_WithColor, 25, 31 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
-
-        snprintf(lowid, 18, "(%s)", title.productCode);
-        C2D_TextParse(&prodCode, dynamicBuf, lowid);
-        C2D_TextOptimize(&prodCode);
-        C2D_DrawText(&prodCode, C2D_WithColor, 30 + lowidWidth, 32 + longDescHeight, 0.5f, 0.42f, 0.42f, COLOR_GREY_LIGHT);
-        C2D_DrawText(&c2dMediatype, C2D_WithColor, 4, 47 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
-        C2D_DrawText(&media, C2D_WithColor, 75, 47 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
-
-        C2D_DrawRectSolid(260, 27, 0.5f, 52, 52, COLOR_BLACK);
+        C2D_DrawRectSolid(260, 27, 0.5f, 52, 52, COLOR_PURPLE_DARK);
         if (title.icon().subtex->width == 48) {
             C2D_DrawImageAt(title.icon(), 262, 29, 0.5f, NULL, 1.0f, 1.0f);
         }
@@ -241,7 +229,8 @@ void MainScreen::drawBottom(void) const
             C2D_DrawImageAt(title.icon(), 262 + 8, 29 + 8, 0.5f, NULL, 1.0f, 1.0f);
         }
 
-        C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_GREY_DARK);
+        C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_BLACK_DARK);
+
         directoryList->draw(g_bottomScrollEnabled);
         buttonBackup->draw(0.7, 0);
         buttonRestore->draw(0.7, 0);
@@ -257,8 +246,8 @@ void MainScreen::drawBottom(void) const
 
     if (hidKeysHeld() & KEY_SELECT) {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-        C2D_DrawText(&bot_ts, C2D_WithColor, 16, 124, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
-        C2D_DrawText(&bot_x, C2D_WithColor, 16, 168, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+        C2D_DrawText(&bot_ts, C2D_WithColor, 16, 130, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+        C2D_DrawText(&bot_x, C2D_WithColor, 16, 172, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
         // play coins
         C2D_DrawText(&coins, C2D_WithColor, ceilf(318 - StringUtils::textWidth(coins, scaleInst)), -1, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
     }
@@ -511,9 +500,9 @@ void MainScreen::drawSelector(void) const
     const int x                = selectorX(hid.index());
     const int y                = selectorY(hid.index());
     float highlight_multiplier = fmax(0.0, fabs(fmod(g_timer, 1.0) - 0.5) / 0.5);
-    u8 r                       = COLOR_SELECTOR & 0xFF;
-    u8 g                       = (COLOR_SELECTOR >> 8) & 0xFF;
-    u8 b                       = (COLOR_SELECTOR >> 16) & 0xFF;
+    u8 r                       = COLOR_PURPLE_LIGHT & 0xFF;
+    u8 g                       = (COLOR_PURPLE_LIGHT >> 8) & 0xFF;
+    u8 b                       = (COLOR_PURPLE_LIGHT >> 16) & 0xFF;
     u32 color = C2D_Color32(r + (255 - r) * highlight_multiplier, g + (255 - g) * highlight_multiplier, b + (255 - b) * highlight_multiplier, 255);
 
     C2D_DrawRectSolid(x, y, 0.5f, 50, 50, COLOR_WHITEMASK);
@@ -530,26 +519,26 @@ void MainScreen::updateButtons(void)
         buttonRestore->canChangeColorWhenSelected(false);
         buttonCheats->canChangeColorWhenSelected(false);
         buttonPlayCoins->canChangeColorWhenSelected(false);
-        buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
-        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
-        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
+        buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
+        buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonCheats->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
     }
     else if (g_bottomScrollEnabled) {
         buttonBackup->canChangeColorWhenSelected(true);
         buttonRestore->canChangeColorWhenSelected(true);
         buttonCheats->canChangeColorWhenSelected(true);
         buttonPlayCoins->canChangeColorWhenSelected(true);
-        buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
+        buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
+        buttonCheats->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
+        buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
     }
     else {
-        buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonCheats->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
     }
 }
 

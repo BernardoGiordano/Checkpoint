@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 ErrorOverlay::ErrorOverlay(Screen& screen, Result res, const std::string& mtext) : Overlay(screen)
 {
     textBuf = C2D_TextBufNew(128);
-    button  = std::make_unique<Clickable>(42, 162, 236, 36, COLOR_GREY_DARKER, COLOR_WHITE, "OK", true);
+    button  = std::make_unique<Clickable>(42, 162, 236, 36, COLOR_BLACK_DARK, COLOR_WHITE, "OK", true);
     button->selected(true);
     std::string t = StringUtils::wrap(mtext, size, 220);
     std::string e = StringUtils::format("Error: 0x%08lX", res);
@@ -54,7 +54,7 @@ void ErrorOverlay::drawTop(void) const
 void ErrorOverlay::drawBottom(void) const
 {
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_GREY_DARK);
+    C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_BLACK_DARKERR);
     C2D_DrawText(&error, C2D_WithColor, 44, 44, 0.5f, 0.5f, 0.5f, COLOR_RED);
     C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, size, size, COLOR_WHITE);
     button->draw(0.7f, COLOR_RED);

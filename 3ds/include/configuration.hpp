@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ private:
     nlohmann::json loadJson(const std::string& path);
     void storeJson(nlohmann::json& json, const std::string& path);
 
-    Configuration(Configuration const&) = delete;
+    Configuration(Configuration const&)  = delete;
     void operator=(Configuration const&) = delete;
 
     nlohmann::json mJson;

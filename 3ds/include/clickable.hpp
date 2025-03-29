@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ public:
 
     virtual ~Clickable(void) { C2D_TextBufDelete(mTextBuf); }
 
-    void draw(float size, u32 overlay) override;
+    void draw(float size, u32 overlayWhenSelected) override;
     void drawOutline(u32 color) override;
     bool held(void) override;
     bool released(void) override;
