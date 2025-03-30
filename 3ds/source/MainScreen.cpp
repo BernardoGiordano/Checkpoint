@@ -59,8 +59,8 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
 
     C2D_TextParse(&top_move, staticBuf, "\uE006 to move between titles");
     C2D_TextParse(&top_a, staticBuf, "\uE000 to enter target");
-    C2D_TextParse(&top_y, staticBuf, "\uE003 to multiselect titles");
-    C2D_TextParse(&top_my, staticBuf, "\uE003 hold to multiselect all titles");
+    C2D_TextParse(&top_y, staticBuf, "\uE003 to select multiple titles");
+    C2D_TextParse(&top_my, staticBuf, "\uE003 hold to select all titles");
     C2D_TextParse(&top_b, staticBuf, "\uE001 to exit target or deselect all titles");
     C2D_TextParse(&top_hb, staticBuf, "\uE001 hold to refresh titles");
     C2D_TextParse(&bot_ts, staticBuf, "\uE01D \uE006 to move\nbetween backups");
