@@ -121,50 +121,21 @@ void MainScreen::draw() const
             SDLH_DrawImage(title.icon(), 1020, 44);
         }
 
-        // draw infos
-        u32 title_w, title_h, h, titleid_w, producer_w, user_w, subtitle_w, playtime_w;
-        auto displayName = title.displayName();
-        SDLH_GetTextDimensions(28, displayName.first.c_str(), &title_w, &title_h);
-        SDLH_GetTextDimensions(23, "Title: ", &subtitle_w, NULL);
-        SDLH_GetTextDimensions(23, "Title ID: ", &titleid_w, &h);
-        SDLH_GetTextDimensions(23, "Author: ", &producer_w, NULL);
-        SDLH_GetTextDimensions(23, "User: ", &user_w, NULL);
+        u32 h = 29, offset = 56, i = 0, title_w, title_h;
+        auto gameName = title.displayName();
+        SDLH_GetTextDimensions(28, gameName.c_str(), &title_w, &title_h);
 
-        if (title_w >= 534) {
-            displayName.first = displayName.first.substr(0, 24) + "...";
-            SDLH_GetTextDimensions(28, displayName.first.c_str(), &title_w, &title_h);
+        if (title_w >= 720) {
+            gameName = gameName.substr(0, 40) + "...";
+            SDLH_GetTextDimensions(28, gameName.c_str(), &title_w, &title_h);
         }
 
-        u8 boxRows = (displayName.second.length() > 0 ? 4 : 3);
-
-        h += 6;
+        SDLH_DrawText(28, 1280 - 8 - title_w, (40 - title_h) / 2, COLOR_WHITE, gameName.c_str());
+        SDLH_DrawText(23, 538, offset + h * (i++), COLOR_GREY_LIGHT, StringUtils::format("Title ID: %016llX", title.id()).c_str());
+        SDLH_DrawText(23, 538, offset + h * (i++), COLOR_GREY_LIGHT, ("Author: " + title.author()).c_str());
+        SDLH_DrawText(23, 538, offset + h * (i++), COLOR_GREY_LIGHT, ("User: " + title.userName()).c_str());
         if (!title.playTime().empty()) {
-            boxRows++;
-            SDLH_GetTextDimensions(23, "Play Time: ", &playtime_w, NULL);
-        }
-
-        u32 offset = 56;
-        int i      = 0;
-
-        SDLH_DrawText(28, 1280 - 8 - title_w, (40 - title_h) / 2, COLOR_WHITE, displayName.first.c_str());
-        if (displayName.second.length() > 0) {
-            SDLH_DrawText(23, 538, offset + h * i, COLOR_GREY_LIGHT, "Title:");
-            SDLH_DrawTextBox(23, 538 + subtitle_w, offset + h * (i++), COLOR_WHITE, 478 - 4 * 2 - subtitle_w, displayName.second.c_str());
-        }
-
-        SDLH_DrawText(23, 538, offset + h * i, COLOR_GREY_LIGHT, "Title ID:");
-        SDLH_DrawTextBox(
-            23, 538 + titleid_w, offset + h * (i++), COLOR_WHITE, 478 - 4 * 2 - titleid_w, StringUtils::format("%016llX", title.id()).c_str());
-
-        SDLH_DrawText(23, 538, offset + h * i, COLOR_GREY_LIGHT, "Author:");
-        SDLH_DrawTextBox(23, 538 + producer_w, offset + h * (i++), COLOR_WHITE, 478 - 4 * 2 - producer_w, title.author().c_str());
-
-        SDLH_DrawText(23, 538, offset + h * i, COLOR_GREY_LIGHT, "User:");
-        SDLH_DrawTextBox(23, 538 + user_w, offset + h * (i++), COLOR_WHITE, 478 - 4 * 2 - user_w, title.userName().c_str());
-
-        if (!title.playTime().empty()) {
-            SDLH_DrawText(23, 538, offset + h * i, COLOR_GREY_LIGHT, "Play Time:");
-            SDLH_DrawTextBox(23, 538 + playtime_w, offset + h * (i++), COLOR_WHITE, 478 - 4 * 2 - playtime_w, title.playTime().c_str());
+            SDLH_DrawText(23, 538, offset + h * i, COLOR_GREY_LIGHT, ("Play Time: " + title.playTime()).c_str());
         }
 
         drawOutline(536, 276 + 28, 416, 380, 4, COLOR_BLACK_DARK);

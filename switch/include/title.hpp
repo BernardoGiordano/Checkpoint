@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -37,7 +37,6 @@
 #include <string>
 #include <switch.h>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 class Title {
@@ -46,7 +45,7 @@ public:
     ~Title() = default;
 
     std::string author(void);
-    std::pair<std::string, std::string> displayName(void);
+    std::string displayName(void);
     SDL_Texture* icon(void);
     u64 id(void);
     std::string name(void);
@@ -77,7 +76,7 @@ private:
     std::vector<std::string> mSaves;
     std::vector<std::string> mFullSavePaths;
     u8 mSaveDataType;
-    std::pair<std::string, std::string> mDisplayName;
+    std::string mDisplayName;
     u64 mPlayTimeNanoseconds;
     u32 mLastPlayedTimestamp;
 };
