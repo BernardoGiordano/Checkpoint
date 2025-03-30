@@ -179,7 +179,6 @@ void MainScreen::draw() const
         buttonCheats->draw(30, COLOR_NULL);
     }
 
-    SDL_Color lightBlack = FC_MakeColor(COLOR_BLACK.r + 20, COLOR_BLACK.g + 20, COLOR_BLACK.b + 20, 255);
     u32 ver_w, ver_h, checkpoint_h, checkpoint_w, inst_w, inst_h;
     SDLH_GetTextDimensions(20, ver, &ver_w, &ver_h);
     SDLH_GetTextDimensions(26, "checkpoint", &checkpoint_w, &checkpoint_h);
@@ -211,7 +210,6 @@ void MainScreen::draw() const
         }
     }
 
-    SDLH_DrawRect(0, 672, checkpoint_w + ver_w + 2 * 16 + 8, 40, lightBlack);
     SDLH_DrawText(26, 16, 672 + (40 - checkpoint_h) / 2 + 2, COLOR_WHITE, "checkpoint");
     SDLH_DrawText(20, 16 + checkpoint_w + 8, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - ver_h, COLOR_WHITE, ver);
     SDLH_DrawText(24, 16 * 3 + checkpoint_w + 8 + ver_w, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_WHITE, "\ue046 Instructions");
