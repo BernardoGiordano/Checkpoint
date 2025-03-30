@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -63,7 +63,7 @@ CheatManagerOverlay::CheatManagerOverlay(Screen& screen, const std::string& mkey
             if (existingCheat.find(value) != std::string::npos) {
                 value = SELECTED_MAGIC + value;
             }
-            scrollable->push_back(COLOR_GREY_DARKER, COLOR_WHITE, value, i == 0);
+            scrollable->push_back(COLOR_BLACK_DARKER, COLOR_WHITE, value, i == 0);
             i++;
         }
     }
@@ -76,7 +76,7 @@ void CheatManagerOverlay::draw(void) const
     u32 width, height;
     SDLH_GetTextDimensions(20, page.c_str(), &width, &height);
 
-    SDLH_DrawRect(86, 16, 1108, 680, COLOR_GREY_DARK);
+    SDLH_DrawRect(86, 16, 1108, 680, COLOR_BLACK_DARK);
     scrollable->draw(true);
     SDLH_DrawText(20, ceilf(1190 - width), ceilf(664 + (32 - height) / 2), COLOR_WHITE, page.c_str());
     SDLH_DrawText(

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -71,17 +71,17 @@ void Scrollable::draw(bool condition)
     const size_t baseIndex = mVisibleEntries * mPage;
     const size_t sz        = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
-        mCells.at(i)->draw(20, g_backupScrollEnabled ? COLOR_BLUE : theme().c0);
+        mCells.at(i)->draw(20, g_backupScrollEnabled && mCells.at(i)->selected() ? COLOR_PURPLE_LIGHT : COLOR_BLACK);
     }
 
     size_t blankRows = mVisibleEntries - sz;
     size_t rowHeight = mh / mVisibleEntries;
-    SDLH_DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, theme().c2);
+    SDLH_DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, COLOR_BLACK_DARKER);
 
     // draw selector
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
         if (mCells.at(i)->selected()) {
-            mCells.at(i)->drawOutline(condition ? COLOR_BLUE : theme().c5);
+            mCells.at(i)->drawOutline(condition ? COLOR_PURPLE_DARK : COLOR_GREY_LIGHT);
             break;
         }
     }

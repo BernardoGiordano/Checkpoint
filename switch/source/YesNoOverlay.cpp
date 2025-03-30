@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -34,25 +34,25 @@ YesNoOverlay::YesNoOverlay(
     yesFunc = callbackYes;
     noFunc  = callbackNo;
     SDLH_GetTextDimensions(28, text.c_str(), &textw, &texth);
-    buttonYes = std::make_unique<Clickable>(322, 462, 316, 56, theme().c3, theme().c6, "Yes", true);
-    buttonNo  = std::make_unique<Clickable>(642, 462, 316, 56, theme().c3, theme().c6, "No", true);
+    buttonYes = std::make_unique<Clickable>(322, 462, 316, 56, COLOR_BLACK_DARK, COLOR_WHITE, "Yes", true);
+    buttonNo  = std::make_unique<Clickable>(642, 462, 316, 56, COLOR_BLACK_DARK, COLOR_WHITE, "No", true);
 }
 
 void YesNoOverlay::draw(void) const
 {
     SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
-    SDLH_DrawRect(320, 200, 640, 260, theme().c3);
-    SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), theme().c6, text.c_str());
-    drawOutline(322, 462, 316, 56, 2, theme().c5);
-    drawOutline(642, 462, 316, 56, 2, theme().c5);
-    buttonYes->draw(28, COLOR_BLUE);
-    buttonNo->draw(28, COLOR_BLUE);
+    SDLH_DrawRect(320, 200, 640, 260, COLOR_BLACK_DARK);
+    SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), COLOR_WHITE, text.c_str());
+    drawOutline(322, 462, 316, 56, 2, COLOR_GREY_LIGHT);
+    drawOutline(642, 462, 316, 56, 2, COLOR_GREY_LIGHT);
+    buttonYes->draw(28, COLOR_PURPLE_DARK);
+    buttonNo->draw(28, COLOR_PURPLE_DARK);
 
     if (hid.index() == 0) {
-        drawPulsingOutline(324, 464, 312, 52, 4, COLOR_BLUE);
+        drawPulsingOutline(324, 464, 312, 52, 4, COLOR_PURPLE_DARK);
     }
     else {
-        drawPulsingOutline(644, 464, 312, 52, 4, COLOR_BLUE);
+        drawPulsingOutline(644, 464, 312, 52, 4, COLOR_PURPLE_DARK);
     }
 }
 
