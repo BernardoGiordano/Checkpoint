@@ -34,10 +34,10 @@ MainScreen::MainScreen(const InputState& input) : hid(rowlen * collen, collen, i
     wantInstructions = false;
     selectionTimer   = 0;
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
-    backupList    = std::make_unique<Scrollable>(538, 276, 414, 380, rows);
-    buttonBackup  = std::make_unique<Clickable>(956, 276, 220, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Backup \ue004", true);
-    buttonRestore = std::make_unique<Clickable>(956, 360, 220, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Restore \ue005", true);
-    buttonCheats  = std::make_unique<Clickable>(956, 444, 220, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Cheats \ue0c5", true);
+    backupList    = std::make_unique<Scrollable>(536, 276 + 28, 416, 380, rows);
+    buttonBackup  = std::make_unique<Clickable>(956, 276 + 28, 228, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Backup \ue004", true);
+    buttonRestore = std::make_unique<Clickable>(956, 360 + 28, 228, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Restore \ue005", true);
+    buttonCheats  = std::make_unique<Clickable>(956, 444 + 28, 228, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Cheats \ue0c5", true);
     buttonBackup->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
     buttonCheats->canChangeColorWhenSelected(true);
@@ -50,7 +50,8 @@ int MainScreen::selectorX(size_t i) const
 
 int MainScreen::selectorY(size_t i) const
 {
-    return 128 * ((i % (rowlen * collen)) / collen) + 4 * (((i % (rowlen * collen)) / collen) + 1);
+    const int row = (i % (rowlen * collen)) / collen;
+    return 128 * row + 4 * (row + 1) + 40;
 }
 
 void MainScreen::draw() const
@@ -60,10 +61,10 @@ void MainScreen::draw() const
     const size_t max     = hid.maxEntries(getTitleCount(g_currentUId)) + 1;
 
     SDLH_ClearScreen(COLOR_BLACK_DARKERR);
-    SDL_Color colorBar = getPKSMBridgeFlag() ? COLOR_PURPLE_LIGHT
-                                             : FC_MakeColor(COLOR_BLACK_DARKERR.r - 15, COLOR_BLACK_DARKERR.g - 15, COLOR_BLACK_DARKERR.b - 15, 255);
-    SDLH_DrawRect(0, 0, 532, 662, FC_MakeColor(COLOR_BLACK_DARKERR.r + 5, COLOR_BLACK_DARKERR.g + 5, COLOR_BLACK_DARKERR.b + 5, 255));
+    SDL_Color colorBar = getPKSMBridgeFlag() ? COLOR_PURPLE_LIGHT : COLOR_BLACK_DARK;
+    SDLH_DrawRect(0, 0, 532, 720, COLOR_BLACK_DARKER);
     SDLH_DrawRect(1280 - SIDEBAR_w, 0, SIDEBAR_w, 720, colorBar);
+    SDLH_DrawRect(0, 0, 1280, 40, COLOR_BLACK);
 
     drawPulsingOutline(
         1280 - SIDEBAR_w + (SIDEBAR_w - USER_ICON_SIZE) / 2, 720 - USER_ICON_SIZE - 30, USER_ICON_SIZE, USER_ICON_SIZE, 2, COLOR_GREEN);
@@ -116,8 +117,8 @@ void MainScreen::draw() const
         }
 
         if (title.icon() != NULL) {
-            drawOutline(1018, 6, 256, 256, 4, COLOR_BLACK_DARK);
-            SDLH_DrawImage(title.icon(), 1018, 6);
+            drawOutline(1020, 44, 256, 256, 4, COLOR_BLACK_DARK);
+            SDLH_DrawImage(title.icon(), 1020, 44);
         }
 
         // draw infos
@@ -142,13 +143,10 @@ void MainScreen::draw() const
             SDLH_GetTextDimensions(23, "Play Time: ", &playtime_w, NULL);
         }
 
-        u32 offset = 10 + title_h + h / 2;
+        u32 offset = 56;
         int i      = 0;
 
-        SDLH_DrawRect(534, 2, 482, 16 + title_h, COLOR_BLACK_DARK);
-        SDLH_DrawRect(534, offset - h / 2 - 2, 480, h * boxRows + h / 2, COLOR_BLACK_DARKER);
-
-        SDLH_DrawText(28, 538 - 8 + 482 - title_w, 8, COLOR_GREY_LIGHT, displayName.first.c_str());
+        SDLH_DrawText(28, 1280 - 8 - title_w, (40 - title_h) / 2, COLOR_WHITE, displayName.first.c_str());
         if (displayName.second.length() > 0) {
             SDLH_DrawText(23, 538, offset + h * i, COLOR_GREY_LIGHT, "Title:");
             SDLH_DrawTextBox(23, 538 + subtitle_w, offset + h * (i++), COLOR_WHITE, 478 - 4 * 2 - subtitle_w, displayName.second.c_str());
@@ -169,20 +167,19 @@ void MainScreen::draw() const
             SDLH_DrawTextBox(23, 538 + playtime_w, offset + h * (i++), COLOR_WHITE, 478 - 4 * 2 - playtime_w, title.playTime().c_str());
         }
 
-        drawOutline(538, 276, 414, 380, 4, COLOR_BLACK_DARK);
-        drawOutline(956, 276, 220, 80, 4, COLOR_BLACK_DARK);
-        drawOutline(956, 360, 220, 80, 4, COLOR_BLACK_DARK);
-        drawOutline(956, 444, 220, 80, 4, COLOR_BLACK_DARK);
+        drawOutline(536, 276 + 28, 416, 380, 4, COLOR_BLACK_DARK);
+        drawOutline(956, 276 + 28, 228, 80, 4, COLOR_BLACK_DARK);
+        drawOutline(956, 360 + 28, 228, 80, 4, COLOR_BLACK_DARK);
+        drawOutline(956, 444 + 28, 228, 80, 4, COLOR_BLACK_DARK);
         backupList->draw(g_backupScrollEnabled);
         buttonBackup->draw(30, COLOR_NULL);
         buttonRestore->draw(30, COLOR_NULL);
         buttonCheats->draw(30, COLOR_NULL);
     }
 
-    u32 ver_w, ver_h, checkpoint_h, checkpoint_w, inst_w, inst_h;
+    u32 ver_w, ver_h, checkpoint_h, checkpoint_w;
     SDLH_GetTextDimensions(20, ver, &ver_w, &ver_h);
     SDLH_GetTextDimensions(26, "checkpoint", &checkpoint_w, &checkpoint_h);
-    SDLH_GetTextDimensions(24, "\ue046 Instructions", &inst_w, &inst_h);
 
     if (wantInstructions && currentOverlay == nullptr) {
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
@@ -194,7 +191,7 @@ void MainScreen::draw() const
         SDLH_DrawText(24, 100, 330, COLOR_WHITE, "\ue000 to enter the selected title");
         SDLH_DrawText(24, 100, 360, COLOR_WHITE, "\ue001 to exit the selected title");
         SDLH_DrawText(24, 100, 390, COLOR_WHITE, "\ue002 to change sort mode");
-        SDLH_DrawText(24, 100, 420, COLOR_WHITE, "\ue003 to multiselect title");
+        SDLH_DrawText(24, 100, 420, COLOR_WHITE, "\ue003 to select multiple titles");
         SDLH_DrawText(24, 100, 450, COLOR_WHITE, "Hold \ue003 to select all titles");
         SDLH_DrawText(24, 616, 480, COLOR_WHITE, "\ue002 to delete a backup");
         if (Configuration::getInstance().isPKSMBridgeEnabled()) {
@@ -202,17 +199,15 @@ void MainScreen::draw() const
         }
         if (gethostid() != INADDR_LOOPBACK) {
             if (g_ftpAvailable && Configuration::getInstance().isFTPEnabled()) {
-                SDLH_DrawText(24, 16 * 6 + checkpoint_w + 8 + ver_w + inst_w, 642 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
-                    StringUtils::format("FTP server running on %s:50000", getConsoleIP()).c_str());
+                SDLH_DrawText(24, 500, 642, COLOR_GOLD, StringUtils::format("FTP server running on %s:50000", getConsoleIP()).c_str());
             }
-            SDLH_DrawText(24, 16 * 6 + checkpoint_w + 8 + ver_w + inst_w, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_GOLD,
-                StringUtils::format("Configuration server running on %s:8000", getConsoleIP()).c_str());
+            SDLH_DrawText(24, 500, 672, COLOR_GOLD, StringUtils::format("Configuration server running on %s:8000", getConsoleIP()).c_str());
         }
     }
 
-    SDLH_DrawText(26, 16, 672 + (40 - checkpoint_h) / 2 + 2, COLOR_WHITE, "checkpoint");
-    SDLH_DrawText(20, 16 + checkpoint_w + 8, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - ver_h, COLOR_WHITE, ver);
-    SDLH_DrawText(24, 16 * 3 + checkpoint_w + 8 + ver_w, 672 + (40 - checkpoint_h) / 2 + checkpoint_h - inst_h, COLOR_WHITE, "\ue046 Instructions");
+    SDLH_DrawText(26, 16, (40 - checkpoint_h) / 2 + 2, COLOR_WHITE, "checkpoint");
+    SDLH_DrawText(20, 16 + checkpoint_w + 8, (40 - checkpoint_h) / 2 + checkpoint_h - ver_h, COLOR_GREY_LIGHT, ver);
+    SDLH_DrawText(20, 16 * 3 + checkpoint_w + 8 + ver_w, (40 - checkpoint_h) / 2 + checkpoint_h - ver_h, COLOR_GREY_LIGHT, "\ue046 Instructions");
 
     if (g_isTransferringFile) {
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
@@ -299,8 +294,8 @@ void MainScreen::handleEvents(const InputState& input)
     }
 
     // Handle touching the backup list
-    if (input.touch.count > 0 && input.touch.touches[0].x > 538 && input.touch.touches[0].x < 952 && input.touch.touches[0].y > 276 &&
-        input.touch.touches[0].y < 656) {
+    if (input.touch.count > 0 && input.touch.touches[0].x > 538 && input.touch.touches[0].x < 952 && input.touch.touches[0].y > 320 &&
+        input.touch.touches[0].y < 670) {
         // Activate backup list only if multiple selections are enabled
         if (!MS::multipleSelectionEnabled()) {
             g_backupScrollEnabled = true;
