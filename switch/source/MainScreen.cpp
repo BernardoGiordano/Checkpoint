@@ -26,7 +26,7 @@
 
 #include "MainScreen.hpp"
 
-static constexpr size_t rowlen = 5, collen = 4, rows = 10, SIDEBAR_w = 96;
+static constexpr size_t rowlen = 5, collen = 4, rows = 10, SIDEBAR_w = 96, TOPBAR_h = 48;
 
 MainScreen::MainScreen(const InputState& input) : hid(rowlen * collen, collen, input)
 {
@@ -34,10 +34,10 @@ MainScreen::MainScreen(const InputState& input) : hid(rowlen * collen, collen, i
     wantInstructions = false;
     selectionTimer   = 0;
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
-    backupList    = std::make_unique<Scrollable>(536, 276 + 28, 416, 380, rows);
-    buttonBackup  = std::make_unique<Clickable>(956, 276 + 28, 228, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Backup \ue004", true);
-    buttonRestore = std::make_unique<Clickable>(956, 360 + 28, 228, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Restore \ue005", true);
-    buttonCheats  = std::make_unique<Clickable>(956, 444 + 28, 228, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Cheats \ue0c5", true);
+    backupList    = std::make_unique<Scrollable>(536, 316, 416, 408, rows);
+    buttonBackup  = std::make_unique<Clickable>(956, 316, 224, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Backup \ue004", true);
+    buttonRestore = std::make_unique<Clickable>(956, 400, 224, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Restore \ue005", true);
+    buttonCheats  = std::make_unique<Clickable>(956, 484, 224, 80, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Cheats \ue0c5", true);
     buttonBackup->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
     buttonCheats->canChangeColorWhenSelected(true);
@@ -51,7 +51,7 @@ int MainScreen::selectorX(size_t i) const
 int MainScreen::selectorY(size_t i) const
 {
     const int row = (i % (rowlen * collen)) / collen;
-    return 128 * row + 4 * (row + 1) + 40;
+    return 4 + 128 * row + 4 * (row + 1) + TOPBAR_h;
 }
 
 void MainScreen::draw() const
@@ -60,11 +60,12 @@ void MainScreen::draw() const
     const size_t entries = hid.maxVisibleEntries();
     const size_t max     = hid.maxEntries(getTitleCount(g_currentUId)) + 1;
 
+    const bool isPKSMBridgeEnabled = getPKSMBridgeFlag();
     SDLH_ClearScreen(COLOR_BLACK_DARKERR);
-    SDL_Color colorBar = getPKSMBridgeFlag() ? COLOR_PURPLE_LIGHT : COLOR_BLACK_DARK;
+    SDL_Color colorBar = isPKSMBridgeEnabled ? COLOR_PURPLE_LIGHT : COLOR_BLACK_DARK;
     SDLH_DrawRect(0, 0, 532, 720, COLOR_BLACK_DARKER);
     SDLH_DrawRect(1280 - SIDEBAR_w, 0, SIDEBAR_w, 720, colorBar);
-    SDLH_DrawRect(0, 0, 1280, 40, COLOR_BLACK);
+    SDLH_DrawRect(0, 0, 1280, TOPBAR_h, COLOR_BLACK);
 
     drawPulsingOutline(
         1280 - SIDEBAR_w + (SIDEBAR_w - USER_ICON_SIZE) / 2, 720 - USER_ICON_SIZE - 30, USER_ICON_SIZE, USER_ICON_SIZE, 2, COLOR_GREEN);
@@ -105,6 +106,15 @@ void MainScreen::draw() const
         SDLH_DrawRect(x, y, 124, 124, COLOR_WHITEMASK);
     }
 
+    u32 ver_w, ver_h, checkpoint_h, checkpoint_w;
+    SDLH_GetTextDimensions(20, ver, &ver_w, &ver_h);
+    SDLH_GetTextDimensions(26, "checkpoint", &checkpoint_w, &checkpoint_h);
+
+    SDLH_DrawText(26, 16, (TOPBAR_h - checkpoint_h) / 2 + 4, COLOR_WHITE, "checkpoint");
+    SDLH_DrawText(20, 16 + checkpoint_w + 8, (TOPBAR_h - checkpoint_h) / 2 + checkpoint_h - ver_h + 2, COLOR_GREY_LIGHT, ver);
+    SDLH_DrawText(
+        20, 16 * 3 + checkpoint_w + 8 + ver_w, (TOPBAR_h - checkpoint_h) / 2 + checkpoint_h - ver_h + 2, COLOR_GREY_LIGHT, "\ue046 Instructions");
+
     if (getTitleCount(g_currentUId) > 0) {
         Title title;
         getTitle(title, g_currentUId, hid.fullIndex());
@@ -117,20 +127,20 @@ void MainScreen::draw() const
         }
 
         if (title.icon() != NULL) {
-            drawOutline(1020, 44, 256, 256, 4, COLOR_BLACK_DARK);
-            SDLH_DrawImage(title.icon(), 1020, 44);
+            drawOutline(1020, 52, 256, 256, 4, COLOR_BLACK_DARK);
+            SDLH_DrawImage(title.icon(), 1020, 52);
         }
 
-        u32 h = 29, offset = 56, i = 0, title_w, title_h;
+        u32 h = 29, offset = 56, i = 0, title_w;
         auto gameName = title.displayName();
-        SDLH_GetTextDimensions(28, gameName.c_str(), &title_w, &title_h);
+        SDLH_GetTextDimensions(26, gameName.c_str(), &title_w, NULL);
 
         if (title_w >= 720) {
             gameName = gameName.substr(0, 40) + "...";
-            SDLH_GetTextDimensions(28, gameName.c_str(), &title_w, &title_h);
+            SDLH_GetTextDimensions(26, gameName.c_str(), &title_w, NULL);
         }
 
-        SDLH_DrawText(28, 1280 - 8 - title_w, (40 - title_h) / 2, COLOR_WHITE, gameName.c_str());
+        SDLH_DrawText(26, 1280 - 8 - title_w, (TOPBAR_h - checkpoint_h) / 2 + 4, COLOR_WHITE, gameName.c_str());
         SDLH_DrawText(23, 538, offset + h * (i++), COLOR_GREY_LIGHT, StringUtils::format("Title ID: %016llX", title.id()).c_str());
         SDLH_DrawText(23, 538, offset + h * (i++), COLOR_GREY_LIGHT, ("Author: " + title.author()).c_str());
         SDLH_DrawText(23, 538, offset + h * (i++), COLOR_GREY_LIGHT, ("User: " + title.userName()).c_str());
@@ -138,19 +148,11 @@ void MainScreen::draw() const
             SDLH_DrawText(23, 538, offset + h * i, COLOR_GREY_LIGHT, ("Play Time: " + title.playTime()).c_str());
         }
 
-        drawOutline(536, 276 + 28, 416, 380, 4, COLOR_BLACK_DARK);
-        drawOutline(956, 276 + 28, 228, 80, 4, COLOR_BLACK_DARK);
-        drawOutline(956, 360 + 28, 228, 80, 4, COLOR_BLACK_DARK);
-        drawOutline(956, 444 + 28, 228, 80, 4, COLOR_BLACK_DARK);
         backupList->draw(g_backupScrollEnabled);
-        buttonBackup->draw(30, COLOR_NULL);
-        buttonRestore->draw(30, COLOR_NULL);
-        buttonCheats->draw(30, COLOR_NULL);
+        buttonBackup->draw(30, COLOR_PURPLE_LIGHT);
+        buttonRestore->draw(30, COLOR_PURPLE_LIGHT);
+        buttonCheats->draw(30, COLOR_PURPLE_LIGHT);
     }
-
-    u32 ver_w, ver_h, checkpoint_h, checkpoint_w;
-    SDLH_GetTextDimensions(20, ver, &ver_w, &ver_h);
-    SDLH_GetTextDimensions(26, "checkpoint", &checkpoint_w, &checkpoint_h);
 
     if (wantInstructions && currentOverlay == nullptr) {
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
@@ -175,10 +177,6 @@ void MainScreen::draw() const
             SDLH_DrawText(24, 500, 672, COLOR_GOLD, StringUtils::format("Configuration server running on %s:8000", getConsoleIP()).c_str());
         }
     }
-
-    SDLH_DrawText(26, 16, (40 - checkpoint_h) / 2 + 2, COLOR_WHITE, "checkpoint");
-    SDLH_DrawText(20, 16 + checkpoint_w + 8, (40 - checkpoint_h) / 2 + checkpoint_h - ver_h, COLOR_GREY_LIGHT, ver);
-    SDLH_DrawText(20, 16 * 3 + checkpoint_w + 8 + ver_w, (40 - checkpoint_h) / 2 + checkpoint_h - ver_h, COLOR_GREY_LIGHT, "\ue046 Instructions");
 
     if (g_isTransferringFile) {
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
@@ -265,9 +263,9 @@ void MainScreen::handleEvents(const InputState& input)
     }
 
     // Handle touching the backup list
-    if (input.touch.count > 0 && input.touch.touches[0].x > 538 && input.touch.touches[0].x < 952 && input.touch.touches[0].y > 320 &&
-        input.touch.touches[0].y < 670) {
-        // Activate backup list only if multiple selections are enabled
+    if (input.touch.count > 0 && input.touch.touches[0].x > 538 && input.touch.touches[0].x < 952 && input.touch.touches[0].y > 316 &&
+        input.touch.touches[0].y < 720) {
+        // Activate backup list only if multiple selections are not enabled
         if (!MS::multipleSelectionEnabled()) {
             g_backupScrollEnabled = true;
             updateButtons();
