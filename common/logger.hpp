@@ -28,6 +28,7 @@
 #define LOGGER_HPP
 
 #include "common.hpp"
+#include <chrono>
 #include <stdio.h>
 #include <string>
 
@@ -61,22 +62,32 @@ public:
     }
 
 private:
-    Logger(void) { buffer = ""; }
+    Logger(void)
+    {
+        buffer = "";
+
+        // Get current date for log filename
+        auto now        = std::chrono::system_clock::now();
+        auto now_time_t = std::chrono::system_clock::to_time_t(now);
+        std::tm* now_tm = std::localtime(&now_time_t);
+        char dateBuf[9];
+        std::strftime(dateBuf, sizeof(dateBuf), "%Y%m%d", now_tm);
+
+#if defined(__3DS__)
+        mPath = std::string("sdmc:/3ds/Checkpoint/logs/checkpoint_") + dateBuf + ".log";
+#elif defined(__SWITCH__)
+        mPath = std::string("/switch/Checkpoint/logs/checkpoint_") + dateBuf + ".log";
+#else
+        mPath = std::string("checkpoint_") + dateBuf + ".log";
+#endif
+    }
     ~Logger(void) {}
 
     Logger(Logger const&)         = delete;
     void operator=(Logger const&) = delete;
 
-#if defined(__3DS__)
-    const std::string mPath = "sdmc:/3ds/Checkpoint/checkpoint.log";
-#elif defined(__SWITCH__)
-    const std::string mPath = "/switch/Checkpoint/checkpoint.log";
-#else
-    const std::string mPath = "checkpoint.log";
-#endif
-
+    std::string mPath;
     FILE* mFile;
-
     std::string buffer;
 };
 
