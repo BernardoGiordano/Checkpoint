@@ -37,10 +37,10 @@ inline const u32 COLOR_RED        = C2D_Color32(255, 0, 0, 255);
 inline const u32 COLOR_GOLD       = C2D_Color32(215, 183, 64, 255);
 inline const u32 COLOR_GREY_LIGHT = C2D_Color32(138, 138, 138, 255);
 
-inline const u32 COLOR_BLACK_DARKERR = C2D_Color32(18, 18, 20, 255);
-inline const u32 COLOR_BLACK_DARKER  = C2D_Color32(26, 26, 30, 255);
-inline const u32 COLOR_BLACK_DARK    = C2D_Color32(32, 32, 36, 255);
-inline const u32 COLOR_BLACK_MEDIUM  = C2D_Color32(50, 50, 53, 255);
+inline const u32 COLOR_BLACK_DARKERR = C2D_Color32(15, 15, 17, 255);
+inline const u32 COLOR_BLACK_DARKER  = C2D_Color32(22, 22, 26, 255);
+inline const u32 COLOR_BLACK_DARK    = C2D_Color32(27, 27, 31, 255);
+inline const u32 COLOR_BLACK_MEDIUM  = C2D_Color32(43, 43, 46, 255);
 inline const u32 COLOR_PURPLE_DARK   = C2D_Color32(9, 25, 69, 255);
 inline const u32 COLOR_PURPLE_LIGHT  = C2D_Color32(122, 66, 196, 255);
 inline const u32 COLOR_LIGHT_BLUE    = C2D_Color32(195, 240, 239, 255);

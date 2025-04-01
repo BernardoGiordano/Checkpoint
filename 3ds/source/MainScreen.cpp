@@ -248,7 +248,7 @@ void MainScreen::drawBottom(void) const
         C2D_DrawText(&bot_ts, C2D_WithColor, 16, 130, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
         C2D_DrawText(&bot_x, C2D_WithColor, 16, 172, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
         // play coins
-        C2D_DrawText(&coins, C2D_WithColor, ceilf(318 - StringUtils::textWidth(coins, scaleInst)), -1, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+        C2D_DrawText(&coins, C2D_WithColor, ceilf(318 - StringUtils::textWidth(coins, scaleInst)), -1, 0.5f, scaleInst, scaleInst, COLOR_GOLD);
     }
 
     if (g_isTransferringFile) {

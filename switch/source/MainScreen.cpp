@@ -63,7 +63,7 @@ void MainScreen::draw() const
     const bool isPKSMBridgeEnabled = getPKSMBridgeFlag();
     SDLH_ClearScreen(COLOR_BLACK_DARKERR);
     SDL_Color colorBar = isPKSMBridgeEnabled ? COLOR_PURPLE_LIGHT : COLOR_BLACK_DARK;
-    SDLH_DrawRect(0, 0, 532, 720, COLOR_BLACK_DARKER);
+    SDLH_DrawRect(0, TOPBAR_h + 4, 532, 664, COLOR_BLACK_DARKER);
     SDLH_DrawRect(1280 - SIDEBAR_w, 0, SIDEBAR_w, 720, colorBar);
     SDLH_DrawRect(0, 0, 1280, TOPBAR_h, COLOR_BLACK);
 

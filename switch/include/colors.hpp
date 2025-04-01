@@ -37,10 +37,10 @@ inline const SDL_Color COLOR_RED        = FC_MakeColor(255, 81, 48, 255);
 inline const SDL_Color COLOR_GOLD       = FC_MakeColor(215, 183, 64, 255);
 inline const SDL_Color COLOR_GREY_LIGHT = FC_MakeColor(138, 138, 138, 255);
 
-inline const SDL_Color COLOR_BLACK_DARKERR = FC_MakeColor(18, 18, 20, 255);
-inline const SDL_Color COLOR_BLACK_DARKER  = FC_MakeColor(26, 26, 30, 255);
-inline const SDL_Color COLOR_BLACK_DARK    = FC_MakeColor(32, 32, 36, 255);
-inline const SDL_Color COLOR_BLACK_MEDIUM  = FC_MakeColor(50, 50, 53, 255);
+inline const SDL_Color COLOR_BLACK_DARKERR = FC_MakeColor(28, 28, 30, 255);
+inline const SDL_Color COLOR_BLACK_DARKER  = FC_MakeColor(36, 36, 40, 255);
+inline const SDL_Color COLOR_BLACK_DARK    = FC_MakeColor(42, 42, 46, 255);
+inline const SDL_Color COLOR_BLACK_MEDIUM  = FC_MakeColor(60, 60, 63, 255);
 inline const SDL_Color COLOR_PURPLE_DARK   = FC_MakeColor(9, 25, 69, 255);
 inline const SDL_Color COLOR_PURPLE_LIGHT  = FC_MakeColor(122, 66, 196, 255);
 
