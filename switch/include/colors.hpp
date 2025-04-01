@@ -44,7 +44,6 @@ inline const SDL_Color COLOR_BLACK_MEDIUM  = FC_MakeColor(50, 50, 53, 255);
 inline const SDL_Color COLOR_PURPLE_DARK   = FC_MakeColor(9, 25, 69, 255);
 inline const SDL_Color COLOR_PURPLE_LIGHT  = FC_MakeColor(122, 66, 196, 255);
 
-inline const SDL_Color COLOR_NULL  = FC_MakeColor(0, 0, 0, 0);
 inline const SDL_Color COLOR_GREEN = FC_MakeColor(0, 254, 197, 255);
 
 #endif

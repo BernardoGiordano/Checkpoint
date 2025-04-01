@@ -64,7 +64,7 @@ bool Clickable::released(void)
 void Clickable::draw(float size, u32 overlayWhenFocused)
 {
     u8 r, g, b;
-    if (mSelected) {
+    if (mSelected || held()) {
         r = (overlayWhenFocused >> 0) & 0xFF;
         g = (overlayWhenFocused >> 8) & 0xFF;
         b = (overlayWhenFocused >> 16) & 0xFF;

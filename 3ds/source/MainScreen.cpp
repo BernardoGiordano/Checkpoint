@@ -171,7 +171,7 @@ void MainScreen::drawTop(void) const
     C2D_DrawText(&version, C2D_WithColor, 400 - 4 - ceilf(0.45f * version.width), 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
     C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, &flagTint, 1.0f, 1.0f);
     C2D_DrawText(
-        &checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_LIGHT_BLUE);
+        &checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
 
     if (g_isTransferringFile) {
         C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
@@ -232,13 +232,13 @@ void MainScreen::drawBottom(void) const
         C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_BLACK_DARK);
 
         directoryList->draw(g_bottomScrollEnabled);
-        buttonBackup->draw(0.7, 0);
-        buttonRestore->draw(0.7, 0);
+        buttonBackup->draw(0.7, COLOR_PURPLE_LIGHT);
+        buttonRestore->draw(0.7, COLOR_PURPLE_LIGHT);
         if (title.isActivityLog()) {
-            buttonPlayCoins->draw(0.7, 0);
+            buttonPlayCoins->draw(0.7, COLOR_PURPLE_LIGHT);
         }
         else {
-            buttonCheats->draw(0.7, 0);
+            buttonCheats->draw(0.7, COLOR_PURPLE_LIGHT);
         }
     }
 
