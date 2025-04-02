@@ -141,7 +141,7 @@ bool io::directoryExists(FS_Archive archive, const std::u16string& path)
     return true;
 }
 
-Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
+Result io::deleteFolderContentsRecursively(FS_Archive arch, const std::u16string& path)
 {
     Directory dir(arch, path);
     if (!dir.good()) {
@@ -161,6 +161,16 @@ Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
         }
     }
 
+    return 0;
+}
+
+Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
+{
+    Result res = deleteFolderContentsRecursively(arch, path);
+    if (R_FAILED(res))
+    {
+        return res;
+    }
     FSUSER_DeleteDirectory(arch, fsMakePath(PATH_UTF16, path.data()));
     return 0;
 }
@@ -241,6 +251,58 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
         }
 
         FSUSER_CloseArchive(archive);
+    }
+    else if (title.mediaType() == MEDIATYPE_NAND) {
+        // DSiWare
+        std::string suggestion = DateTime::dateTimeStr();
+
+        std::u16string customPath;
+        if (MS::multipleSelectionEnabled()) {
+            customPath = isNewFolder ? StringUtils::UTF8toUTF16(suggestion.c_str()) : StringUtils::UTF8toUTF16("");
+        }
+        else {
+            customPath = isNewFolder ? KeyboardManager::get().keyboard(suggestion) : StringUtils::UTF8toUTF16("");
+        }
+
+        std::u16string dstPath;
+        if (!isNewFolder) {
+            // we're overriding an existing folder
+            dstPath = title.fullSavePath(cellIndex);
+        }
+        else {
+            dstPath = title.savePath();
+            dstPath += StringUtils::UTF8toUTF16("/") + customPath;
+        }
+
+        if (!isNewFolder || io::directoryExists(Archive::sdmc(), dstPath)) {
+            res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
+            if (R_FAILED(res)) {
+                Logger::getInstance().log(Logger::ERROR, "Failed to delete the existing backup directory recursively with result 0x%08lX.", res);
+                return std::make_tuple(false, res, "Failed to delete the existing backup\ndirectory recursively.");
+            }
+        }
+
+        res = io::createDirectory(Archive::sdmc(), dstPath);
+        if (R_FAILED(res)) {
+            Logger::getInstance().log(Logger::ERROR, "Failed to create destination directory.");
+            return std::make_tuple(false, res, "Failed to create destination directory.");
+        }
+
+        std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/");
+
+        char* saveDir = new char[31];
+        sprintf(saveDir, "/title/%08lx/%08lx/data/", (title.highId() & 0x00000FFF) | 0x00030000, title.lowId());
+        res = io::copyDirectory(Archive::twln(), Archive::sdmc(), StringUtils::UTF8toUTF16(saveDir), copyPath);
+        delete[] saveDir;
+
+        if (R_FAILED(res)) {
+            std::string message = "Failed to backup save.";
+            FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
+            Logger::getInstance().log(Logger::ERROR, message + " Result 0x%08lX.", res);
+            return std::make_tuple(false, res, message);
+        }
+
+        refreshDirectories(title.id());
     }
     else {
         CardType cardType = title.SPICardType();
@@ -385,6 +447,24 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
         }
 
         FSUSER_CloseArchive(archive);
+    }
+    else if (title.mediaType() == MEDIATYPE_NAND) {
+        std::u16string srcPath = title.fullSavePath(cellIndex);
+        srcPath += StringUtils::UTF8toUTF16("/");
+
+        char* saveDir = new char[31];
+        sprintf(saveDir, "/title/%08lx/%08lx/data/", (title.highId() & 0x00000FFF) | 0x00030000, title.lowId());
+        std::u16string dstPath = StringUtils::UTF8toUTF16(saveDir);
+        delete[] saveDir;
+
+        deleteFolderContentsRecursively(Archive::twln(), dstPath);
+
+        res = io::copyDirectory(Archive::sdmc(), Archive::twln(), srcPath, dstPath);
+        if (R_FAILED(res)) {
+            std::string message = "Failed to restore save.";
+            Logger::getInstance().log(Logger::ERROR, message + ". Result 0x%08lX.", res);
+            return std::make_tuple(false, res, message);
+        }
     }
     else {
         CardType cardType = title.SPICardType();
