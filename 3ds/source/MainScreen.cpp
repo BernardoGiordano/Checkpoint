@@ -114,73 +114,83 @@ void MainScreen::drawTop(void) const
     C2D_TextOptimize(&timeText);
     C2D_DrawText(&timeText, C2D_WithColor, 4.0f, 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
 
-    for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-        C2D_Image titleIcon = icon(k);
-        if (titleIcon.subtex->width == 48) {
-            C2D_DrawImageAt(titleIcon, selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
-        }
-        else {
-            C2D_DrawImageAt(titleIcon, selectorX(k) + 9, selectorY(k) + 9, 0.5f, NULL, 1.0f, 1.0f);
-        }
+    if (g_isLoadingTitles) {
+        // Show a loading message
+        C2D_Text loadingText;
+        C2D_TextParse(&loadingText, dynamicBuf, "Loading titles...");
+        C2D_TextOptimize(&loadingText);
+        C2D_DrawText(&loadingText, C2D_WithColor, ceilf((400 - StringUtils::textWidth(loadingText, 0.6f)) / 2),
+            ceilf((240 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, 0.6f, 0.6f, COLOR_WHITE);
     }
-
-    if (getTitleCount() > 0) {
-        drawSelector();
-    }
-
-    for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-        if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end()) {
-            C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 31, 0.5f, 16, 16, COLOR_WHITE);
-            C2D_SpriteSetPos(&checkbox, selectorX(k) + 27, selectorY(k) + 27);
-            C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
+    else {
+        for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
+            C2D_Image titleIcon = icon(k);
+            if (titleIcon.subtex->width == 48) {
+                C2D_DrawImageAt(titleIcon, selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
+            }
+            else {
+                C2D_DrawImageAt(titleIcon, selectorX(k) + 9, selectorY(k) + 9, 0.5f, NULL, 1.0f, 1.0f);
+            }
         }
 
-        if (favorite(k)) {
-            C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 3, 0.5f, 16, 16, COLOR_GOLD);
-            C2D_SpriteSetPos(&star, selectorX(k) + 27, selectorY(k) - 1);
-            C2D_DrawSpriteTinted(&star, &checkboxTint);
+        if (getTitleCount() > 0) {
+            drawSelector();
         }
-    }
 
-    static const float border = ceilf((400 - (ins1.width + ins2.width + ins3.width) * 0.47f) / 2);
-    C2D_DrawText(&ins1, C2D_WithColor, border, 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
-    C2D_DrawText(
-        &ins2, C2D_WithColor, border + ceilf(ins1.width * 0.47f), 223, 0.5f, 0.47f, 0.47f, Archive::mode() == MODE_SAVE ? COLOR_WHITE : COLOR_RED);
-    C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
+        for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
+            if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end()) {
+                C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 31, 0.5f, 16, 16, COLOR_WHITE);
+                C2D_SpriteSetPos(&checkbox, selectorX(k) + 27, selectorY(k) + 27);
+                C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
+            }
 
-    if (hidKeysHeld() & KEY_SELECT) {
-        const u32 inst_lh      = scaleInst * fontGetInfo(NULL)->lineFeed;
-        const u32 total_height = inst_lh * 6;
-        const u32 inst_h       = (240 - total_height) / 2;
+            if (favorite(k)) {
+                C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 3, 0.5f, 16, 16, COLOR_GOLD);
+                C2D_SpriteSetPos(&star, selectorX(k) + 27, selectorY(k) - 1);
+                C2D_DrawSpriteTinted(&star, &checkboxTint);
+            }
+        }
 
-        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
-        C2D_DrawText(&top_move, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_move, scaleInst)) / 2), inst_h, 0.9f, scaleInst, scaleInst,
-            COLOR_WHITE);
-        C2D_DrawText(&top_a, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_a, scaleInst)) / 2), inst_h + inst_lh * 1, 0.9f, scaleInst,
-            scaleInst, COLOR_WHITE);
-        C2D_DrawText(&top_b, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_b, scaleInst)) / 2), inst_h + inst_lh * 2, 0.9f, scaleInst,
-            scaleInst, COLOR_WHITE);
-        C2D_DrawText(&top_y, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_y, scaleInst)) / 2), inst_h + inst_lh * 3, 0.9f, scaleInst,
-            scaleInst, COLOR_WHITE);
-        C2D_DrawText(&top_my, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_my, scaleInst)) / 2), inst_h + inst_lh * 4, 0.9f, scaleInst,
-            scaleInst, COLOR_WHITE);
-        C2D_DrawText(&top_hb, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_hb, scaleInst)) / 2), inst_h + inst_lh * 5, 0.9f, scaleInst,
-            scaleInst, COLOR_WHITE);
-    }
+        static const float border = ceilf((400 - (ins1.width + ins2.width + ins3.width) * 0.47f) / 2);
+        C2D_DrawText(&ins1, C2D_WithColor, border, 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
+        C2D_DrawText(&ins2, C2D_WithColor, border + ceilf(ins1.width * 0.47f), 223, 0.5f, 0.47f, 0.47f,
+            Archive::mode() == MODE_SAVE ? COLOR_WHITE : COLOR_RED);
+        C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
 
-    C2D_DrawText(&version, C2D_WithColor, 400 - 4 - ceilf(0.45f * version.width), 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
-    C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, &flagTint, 1.0f, 1.0f);
-    C2D_DrawText(&checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
+        if (hidKeysHeld() & KEY_SELECT) {
+            const u32 inst_lh      = scaleInst * fontGetInfo(NULL)->lineFeed;
+            const u32 total_height = inst_lh * 6;
+            const u32 inst_h       = (240 - total_height) / 2;
 
-    if (g_isTransferringFile) {
-        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
+            C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
+            C2D_DrawText(&top_move, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_move, scaleInst)) / 2), inst_h, 0.9f, scaleInst, scaleInst,
+                COLOR_WHITE);
+            C2D_DrawText(&top_a, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_a, scaleInst)) / 2), inst_h + inst_lh * 1, 0.9f, scaleInst,
+                scaleInst, COLOR_WHITE);
+            C2D_DrawText(&top_b, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_b, scaleInst)) / 2), inst_h + inst_lh * 2, 0.9f, scaleInst,
+                scaleInst, COLOR_WHITE);
+            C2D_DrawText(&top_y, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_y, scaleInst)) / 2), inst_h + inst_lh * 3, 0.9f, scaleInst,
+                scaleInst, COLOR_WHITE);
+            C2D_DrawText(&top_my, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_my, scaleInst)) / 2), inst_h + inst_lh * 4, 0.9f, scaleInst,
+                scaleInst, COLOR_WHITE);
+            C2D_DrawText(&top_hb, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_hb, scaleInst)) / 2), inst_h + inst_lh * 5, 0.9f, scaleInst,
+                scaleInst, COLOR_WHITE);
+        }
 
-        float size = 0.7f;
-        C2D_Text text;
-        C2D_TextParse(&text, dynamicBuf, StringUtils::UTF16toUTF8(g_currentFile).c_str());
-        C2D_TextOptimize(&text);
-        C2D_DrawText(&text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(text, size)) / 2),
-            ceilf((240 - size * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, size, size, COLOR_WHITE);
+        C2D_DrawText(&version, C2D_WithColor, 400 - 4 - ceilf(0.45f * version.width), 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+        C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, &flagTint, 1.0f, 1.0f);
+        C2D_DrawText(&checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
+
+        if (g_isTransferringFile) {
+            C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
+
+            float size = 0.7f;
+            C2D_Text text;
+            C2D_TextParse(&text, dynamicBuf, StringUtils::UTF16toUTF8(g_currentFile).c_str());
+            C2D_TextOptimize(&text);
+            C2D_DrawText(&text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(text, size)) / 2),
+                ceilf((240 - size * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, size, size, COLOR_WHITE);
+        }
     }
 }
 
@@ -192,7 +202,17 @@ void MainScreen::drawBottom(void) const
 
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 19, COLOR_BLACK_DARKER);
     C2D_DrawRectSolid(0, 221, 0.5f, 320, 19, COLOR_BLACK_DARKER);
-    if (getTitleCount() > 0) {
+
+    if (g_isLoadingTitles) {
+        // Show a loading message
+        C2D_Text loadingText;
+        C2D_TextParse(&loadingText, dynamicBuf, "Loading titles...");
+        C2D_TextOptimize(&loadingText);
+        C2D_DrawText(&loadingText, C2D_WithColor, ceilf((320 - StringUtils::textWidth(loadingText, 0.6f)) / 2),
+            ceilf((240 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, 0.6f, 0.6f, COLOR_WHITE);
+    }
+
+    else if (getTitleCount() > 0) {
         Title title;
         getTitle(title, hid.fullIndex());
 
@@ -264,6 +284,11 @@ void MainScreen::update(const InputState& input)
 
 void MainScreen::updateSelector(void)
 {
+    if (g_isLoadingTitles) {
+        // Don't update selection while loading
+        return;
+    }
+
     if (!g_bottomScrollEnabled) {
         if (getTitleCount() > 0) {
             size_t count = getTitleCount();
