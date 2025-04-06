@@ -48,6 +48,8 @@ static Result consoleDisplayError(const std::string& message, Result res)
 Result servicesInit(void)
 {
     Result res = 0;
+    hidInit();
+    ATEXIT(hidExit);
 
     if (R_FAILED(res = Archive::init())) {
         return consoleDisplayError("Archive::init failed.", res);
