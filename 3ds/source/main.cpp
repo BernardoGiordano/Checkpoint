@@ -38,6 +38,10 @@ int main()
     catch (const std::exception& e) {
         res = consoleDisplayError(e.what(), -1);
     }
+    catch (...) {
+        res = consoleDisplayError("Unknown error during startup", -1);
+    }
+
     if (R_FAILED(res)) {
         Logger::getInstance().flush();
         exit(res);
@@ -74,6 +78,9 @@ int main()
     }
     catch (const std::exception& e) {
         consoleDisplayError(e.what(), -1);
+    }
+    catch (...) {
+        res = consoleDisplayError("Unknown error during main", -1);
     }
 
     Logger::getInstance().flush();
