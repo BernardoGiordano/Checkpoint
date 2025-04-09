@@ -42,6 +42,7 @@ extern "C" {
 #include "sha256.h"
 }
 
+Result consoleDisplayError(const std::string& message, Result res);
 void calculateTitleDBHash(u8* hash);
 Result servicesInit(void);
 
