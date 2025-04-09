@@ -659,7 +659,8 @@ void loadTitles(bool forceRefresh)
     }
     catch (const std::exception& e) {
     }
-    catch(...) {}
+    catch (...) {
+    }
 }
 
 void getTitle(Title& dst, int i)

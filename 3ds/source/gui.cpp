@@ -33,7 +33,6 @@ C2D_Image Gui::noIcon(void)
 
 void Gui::init(void)
 {
-    gfxInitDefault();
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
@@ -51,10 +50,11 @@ void Gui::init(void)
 
 void Gui::exit(void)
 {
-    C2D_SpriteSheetFree(spritesheet);
+    if (spritesheet) {
+        C2D_SpriteSheetFree(spritesheet);
+    }
     C2D_Fini();
     C3D_Fini();
-    gfxExit();
 }
 
 void Gui::frameEnd(void)

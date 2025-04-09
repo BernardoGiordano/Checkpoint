@@ -28,9 +28,6 @@
 
 static Result consoleDisplayError(const std::string& message, Result res)
 {
-    gfxInitDefault();
-    ATEXIT(gfxExit);
-
     consoleInit(GFX_TOP, nullptr);
     printf("\x1b[2;13HCheckpoint v%d.%d.%d-%s", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO, GIT_REV);
     printf("\x1b[5;1HError during startup: \x1b[31m0x%08lX\x1b[0m", res);
@@ -51,6 +48,15 @@ Result servicesInit(void)
     hidInit();
     ATEXIT(hidExit);
 
+    gfxInitDefault();
+    ATEXIT(gfxExit);
+
+    Handle hbldrHandle;
+    if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
+        return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
+    }
+    svcCloseHandle(hbldrHandle);
+
     if (R_FAILED(res = Archive::init())) {
         return consoleDisplayError("Archive::init failed.", res);
     }
@@ -63,12 +69,6 @@ Result servicesInit(void)
     mkdir("sdmc:/cheats", 777);
 
     Logger::getInstance().log(Logger::INFO, "Checkpoint loading started...");
-
-    Handle hbldrHandle;
-    if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
-        Logger::getInstance().log(Logger::ERROR, "Error during startup with result 0x%08lX. Rosalina not found on this system.", res);
-        return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
-    }
 
     romfsInit();
     ATEXIT(romfsExit);
