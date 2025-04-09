@@ -26,7 +26,7 @@
 
 #include "util.hpp"
 
-static Result consoleDisplayError(const std::string& message, Result res)
+Result consoleDisplayError(const std::string& message, Result res)
 {
     consoleInit(GFX_TOP, nullptr);
     printf("\x1b[2;13HCheckpoint v%d.%d.%d-%s", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO, GIT_REV);

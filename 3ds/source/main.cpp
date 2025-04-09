@@ -31,37 +31,49 @@
 
 int main()
 {
-    if (R_FAILED(servicesInit())) {
+    Result res;
+    try {
+        res = servicesInit();
+    }
+    catch (const std::exception& e) {
+        res = consoleDisplayError(e.what(), -1);
+    }
+    if (R_FAILED(res)) {
         Logger::getInstance().flush();
-        exit(-1);
+        exit(res);
     }
 
-    g_screen = std::make_unique<MainScreen>();
+    try {
+        g_screen = std::make_unique<MainScreen>();
 
-    Threads::create((ThreadFunc)Threads::titles);
-    ATEXIT(Threads::destroy);
+        Threads::create((ThreadFunc)Threads::titles);
+        ATEXIT(Threads::destroy);
 
-    while (aptMainLoop()) {
-        touchPosition touch;
-        hidScanInput();
-        hidTouchRead(&touch);
+        while (aptMainLoop()) {
+            touchPosition touch;
+            hidScanInput();
+            hidTouchRead(&touch);
 
-        if (hidKeysDown() & KEY_START) {
-            if (!g_isLoadingTitles) {
-                break;
+            if (hidKeysDown() & KEY_START) {
+                if (!g_isLoadingTitles) {
+                    break;
+                }
             }
-        }
 
-        if (Configuration::getInstance().shouldScanCard()) {
-            updateCard();
-        }
+            if (Configuration::getInstance().shouldScanCard()) {
+                updateCard();
+            }
 
-        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        g_screen->doDrawTop();
-        C2D_SceneBegin(g_bottom);
-        g_screen->doDrawBottom();
-        Gui::frameEnd();
-        g_screen->doUpdate(InputState{touch});
+            C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+            g_screen->doDrawTop();
+            C2D_SceneBegin(g_bottom);
+            g_screen->doDrawBottom();
+            Gui::frameEnd();
+            g_screen->doUpdate(InputState{touch});
+        }
+    }
+    catch (const std::exception& e) {
+        consoleDisplayError(e.what(), -1);
     }
 
     Logger::getInstance().flush();
