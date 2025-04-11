@@ -36,14 +36,23 @@ int main()
         res = servicesInit();
     }
     catch (const std::exception& e) {
-        res = consoleDisplayError(e.what(), -1);
+        res = consoleDisplayError(std::string("Error during services init. ") + e.what(), -1111);
     }
     catch (...) {
-        res = consoleDisplayError("Unknown error during startup", -1);
+        res = consoleDisplayError("Unknown error during startup", -2222);
     }
 
     if (R_FAILED(res)) {
-        Logger::getInstance().flush();
+        try {
+            Logger::getInstance().flush();
+            res = consoleDisplayError("Unknown error during startup in the try block of the FAILED branch", res);
+        }
+        catch (const std::exception& e) {
+            res = consoleDisplayError(std::string("Error during startup in the catch block of the FAILED branch. ") + e.what(), -4444);
+        }
+        catch (...) {
+            res = consoleDisplayError("Unknown error during startup in the catch ... block of the FAILED branch", -5555);
+        }
         exit(res);
     }
 
@@ -64,9 +73,10 @@ int main()
                 }
             }
 
-            if (Configuration::getInstance().shouldScanCard()) {
-                updateCard();
-            }
+            // TEMPORARILY DISABLED
+            // if (Configuration::getInstance().shouldScanCard()) {
+            //     updateCard();
+            // }
 
             C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
             g_screen->doDrawTop();
@@ -77,10 +87,10 @@ int main()
         }
     }
     catch (const std::exception& e) {
-        consoleDisplayError(e.what(), -1);
+        consoleDisplayError(std::string("Error during main. ") + e.what(), -3333);
     }
     catch (...) {
-        res = consoleDisplayError("Unknown error during main", -1);
+        res = consoleDisplayError("Unknown error during main", -6666);
     }
 
     Logger::getInstance().flush();
