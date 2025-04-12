@@ -130,7 +130,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
             smdh = loadSMDH(lowId(), highId(), mMedia);
         }
         if (smdh == NULL) {
-            Logger::getInstance().log(Logger::ERROR, "Failed to load title 0x%lX due to smdh == NULL", mId);
+            Logging::error("Failed to load title 0x%lX due to smdh == NULL", mId);
             return false;
         }
 
@@ -152,7 +152,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
                 Result res = io::createDirectory(Archive::sdmc(), mSavePath);
                 if (R_FAILED(res)) {
                     loadTitle = false;
-                    Logger::getInstance().log(Logger::ERROR, "Failed to create backup directory with result 0x%08lX.", res);
+                    Logging::error("Failed to create backup directory with result 0x%08lX.", res);
                 }
             }
         }
@@ -163,7 +163,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
                 Result res = io::createDirectory(Archive::sdmc(), mExtdataPath);
                 if (R_FAILED(res)) {
                     loadTitle = false;
-                    Logger::getInstance().log(Logger::ERROR, "Failed to create backup directory with result 0x%08lX.", res);
+                    Logging::error("Failed to create backup directory with result 0x%08lX.", res);
                 }
             }
         }
@@ -179,7 +179,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         Result res     = FSUSER_GetLegacyRomHeader(mMedia, 0LL, headerData);
         if (R_FAILED(res)) {
             delete[] headerData;
-            Logger::getInstance().log(Logger::ERROR, "Failed get legacy rom header with result 0x%08lX.", res);
+            Logging::error("Failed get legacy rom header with result 0x%08lX.", res);
             return false;
         }
 
@@ -200,7 +200,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 
         res = SPIGetCardType(&mCardType, (_gameCode[0] == 'I') ? 1 : 0);
         if (R_FAILED(res)) {
-            Logger::getInstance().log(Logger::ERROR, "Failed get SPI Card Type with result 0x%08lX.", res);
+            Logging::error("Failed get SPI Card Type with result 0x%08lX.", res);
             return false;
         }
 
@@ -219,7 +219,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
             res = io::createDirectory(Archive::sdmc(), mSavePath);
             if (R_FAILED(res)) {
                 loadTitle = false;
-                Logger::getInstance().log(Logger::ERROR, "Failed to create backup directory with result 0x%08lX.", res);
+                Logging::error("Failed to create backup directory with result 0x%08lX.", res);
             }
         }
     }
@@ -330,24 +330,33 @@ void Title::refreshDirectories(void)
             mFullSavePaths.insert(mFullSavePaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
         else {
-            Logger::getInstance().log(Logger::ERROR, "Couldn't retrieve the save directory list for the title " + shortDescription());
+            Logging::error("Couldn't retrieve the save directory list for the title " + shortDescription());
         }
 
         // save backups from configuration
-        // TEMPORARILY DISABLED
-        // std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
-        // for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-        //     // we have other folders to parse
-        //     Directory list(Archive::sdmc(), *it);
-        //     if (list.good()) {
-        //         for (size_t i = 0, sz = list.size(); i < sz; i++) {
-        //             if (list.folder(i)) {
-        //                 mSaves.push_back(list.entry(i));
-        //                 mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
-        //             }
-        //         }
-        //     }
-        // }
+        try {
+            std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
+            for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
+                if (io::directoryExists(Archive::sdmc(), *it)) {
+                    // we have other folders to parse
+                    Directory list(Archive::sdmc(), *it);
+                    if (list.good()) {
+                        for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                            if (list.folder(i)) {
+                                mSaves.push_back(list.entry(i));
+                                mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                            }
+                        }
+                    }
+                }
+                else {
+                    Logging::error("Additional save folder does not exist: " + StringUtils::UTF16toUTF8(*it));
+                }
+            }
+        }
+        catch (const std::exception& e) {
+            Logging::error("Exception when processing additional save folders: " + std::string(e.what()));
+        }
     }
 
     if (accessibleExtdata()) {
@@ -367,24 +376,33 @@ void Title::refreshDirectories(void)
             mFullExtdataPaths.insert(mFullExtdataPaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
         else {
-            Logger::getInstance().log(Logger::ERROR, "Couldn't retrieve the extdata directory list for the title " + shortDescription());
+            Logging::error("Couldn't retrieve the extdata directory list for the title " + shortDescription());
         }
 
         // extdata backups from configuration
-        // TEMPORARILY DISABLED
-        // std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
-        // for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-        //     // we have other folders to parse
-        //     Directory list(Archive::sdmc(), *it);
-        //     if (list.good()) {
-        //         for (size_t i = 0, sz = list.size(); i < sz; i++) {
-        //             if (list.folder(i)) {
-        //                 mExtdata.push_back(list.entry(i));
-        //                 mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
-        //             }
-        //         }
-        //     }
-        // }
+        try {
+            std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
+            for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
+                if (io::directoryExists(Archive::sdmc(), *it)) {
+                    // we have other folders to parse
+                    Directory list(Archive::sdmc(), *it);
+                    if (list.good()) {
+                        for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                            if (list.folder(i)) {
+                                mExtdata.push_back(list.entry(i));
+                                mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                            }
+                        }
+                    }
+                }
+                else {
+                    Logging::error("Additional extdata folder does not exist: " + StringUtils::UTF16toUTF8(*it));
+                }
+            }
+        }
+        catch (const std::exception& e) {
+            Logging::error("Exception when processing additional extdata folders: " + std::string(e.what()));
+        }
     }
 }
 
@@ -663,8 +681,10 @@ static void loadTitles(bool forceRefresh)
         }
     }
     catch (const std::exception& e) {
+        Logging::error("Exception in loadTitles: " + std::string(e.what()));
     }
     catch (...) {
+        Logging::error("Unknown exception in loadTitles");
     }
 }
 
