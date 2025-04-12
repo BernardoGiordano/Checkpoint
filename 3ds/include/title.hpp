@@ -109,7 +109,9 @@ bool favorite(int i);
 
 void loadFilter(void);
 void refreshDirectories(u64 id);
-void updateCard(void);
 void loadTitlesThread(void);
+void cartScan(void);
+void cartScanFlagTestAndSet(void);
+void clearCartScanFlag(void);
 
 #endif

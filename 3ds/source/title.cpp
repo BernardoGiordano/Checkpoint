@@ -38,7 +38,8 @@ static void importTitleListCache(void);
 static constexpr Tex3DS_SubTexture dsIconSubt3x = {32, 32, 0.0f, 1.0f, 1.0f, 0.0f};
 static C2D_Image dsIcon                         = {nullptr, &dsIconSubt3x};
 
-static bool forceRefresh = false;
+static bool forceRefresh           = false;
+static std::atomic_flag doCartScan = ATOMIC_FLAG_INIT;
 
 static void loadDSIcon(u8* banner)
 {
@@ -999,35 +1000,42 @@ static bool scanCard(void)
     return ret;
 }
 
-void updateCard(void)
+void cartScan(void)
 {
-    static bool first     = true;
-    static bool oldCardIn = false;
-    if (first) {
-        FSUSER_CardSlotIsInserted(&oldCardIn);
-        first = false;
-        return;
-    }
-    bool cardIn = false;
+    bool oldCardIn;
+    FSUSER_CardSlotIsInserted(&oldCardIn);
 
-    FSUSER_CardSlotIsInserted(&cardIn);
-    if (cardIn != oldCardIn) {
-        if (cardIn) {
+    while (doCartScan.test_and_set()) {
+        bool cardIn = false;
+
+        FSUSER_CardSlotIsInserted(&cardIn);
+        if (cardIn != oldCardIn) {
             bool power;
-            FSUSER_CardSlotPowerOn(&power);
-            while (!power) {
-                FSUSER_CardSlotGetCardIFPowerStatus(&power);
+            FSUSER_CardSlotGetCardIFPowerStatus(&power);
+            if (cardIn) {
+                if (!power) {
+                    FSUSER_CardSlotPowerOn(&power);
+                }
+                while (!power && doCartScan.test_and_set()) {
+                    FSUSER_CardSlotGetCardIFPowerStatus(&power);
+                }
+                svcSleepThread(500'000'000);
+                for (size_t i = 0; i < 10; i++) {
+                    if ((oldCardIn = scanCard())) {
+                        break;
+                    }
+                }
             }
-            oldCardIn = scanCard();
-        }
-        else {
-            if (!titleSaves.empty() && titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
-                titleSaves.erase(titleSaves.begin());
+            else {
+                FSUSER_CardSlotPowerOff(&power);
+                if (!titleSaves.empty() && titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+                    titleSaves.erase(titleSaves.begin());
+                }
+                if (!titleExtdatas.empty() && titleExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+                    titleExtdatas.erase(titleExtdatas.begin());
+                }
+                oldCardIn = false;
             }
-            if (!titleExtdatas.empty() && titleExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
-                titleExtdatas.erase(titleExtdatas.begin());
-            }
-            oldCardIn = false;
         }
     }
 }
@@ -1058,4 +1066,14 @@ void loadTitlesThread(void)
     loadTitles(forceRefresh);
     forceRefresh      = true;
     g_isLoadingTitles = false;
+}
+
+void cartScanFlagTestAndSet(void)
+{
+    doCartScan.test_and_set();
+}
+
+void clearCartScanFlag(void)
+{
+    doCartScan.clear();
 }
