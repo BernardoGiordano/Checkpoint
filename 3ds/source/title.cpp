@@ -334,20 +334,19 @@ void Title::refreshDirectories(void)
         }
 
         // save backups from configuration
-        // TEMPORARILY DISABLED
-        // std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
-        // for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-        //     // we have other folders to parse
-        //     Directory list(Archive::sdmc(), *it);
-        //     if (list.good()) {
-        //         for (size_t i = 0, sz = list.size(); i < sz; i++) {
-        //             if (list.folder(i)) {
-        //                 mSaves.push_back(list.entry(i));
-        //                 mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
-        //             }
-        //         }
-        //     }
-        // }
+        std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
+        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
+            // we have other folders to parse
+            Directory list(Archive::sdmc(), *it);
+            if (list.good()) {
+                for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                    if (list.folder(i)) {
+                        mSaves.push_back(list.entry(i));
+                        mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                    }
+                }
+            }
+        }
     }
 
     if (accessibleExtdata()) {
@@ -371,20 +370,19 @@ void Title::refreshDirectories(void)
         }
 
         // extdata backups from configuration
-        // TEMPORARILY DISABLED
-        // std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
-        // for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-        //     // we have other folders to parse
-        //     Directory list(Archive::sdmc(), *it);
-        //     if (list.good()) {
-        //         for (size_t i = 0, sz = list.size(); i < sz; i++) {
-        //             if (list.folder(i)) {
-        //                 mExtdata.push_back(list.entry(i));
-        //                 mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
-        //             }
-        //         }
-        //     }
-        // }
+        std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
+        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
+            // we have other folders to parse
+            Directory list(Archive::sdmc(), *it);
+            if (list.good()) {
+                for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                    if (list.folder(i)) {
+                        mExtdata.push_back(list.entry(i));
+                        mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -491,9 +489,7 @@ static bool validId(u64 id)
         return false;
     }
 
-    // TEMPORARILY DISABLED
-    // return !Configuration::getInstance().filter(id);
-    return true;
+    return !Configuration::getInstance().filter(id);
 }
 
 static void loadTitles(bool forceRefresh)
@@ -555,24 +551,23 @@ static void loadTitles(bool forceRefresh)
         else {
             u32 count = 0;
 
-            // TEMPORARILY DISABLED
-            // if (Configuration::getInstance().nandSaves()) {
-            //     AM_GetTitleCount(MEDIATYPE_NAND, &count);
-            //     std::unique_ptr<u64[]> ids_nand = std::unique_ptr<u64[]>(new u64[count]);
-            //     AM_GetTitleList(NULL, MEDIATYPE_NAND, count, ids_nand.get());
+            if (Configuration::getInstance().nandSaves()) {
+                AM_GetTitleCount(MEDIATYPE_NAND, &count);
+                std::unique_ptr<u64[]> ids_nand = std::unique_ptr<u64[]>(new u64[count]);
+                AM_GetTitleList(NULL, MEDIATYPE_NAND, count, ids_nand.get());
 
-            //     for (u32 i = 0; i < count; i++) {
-            //         if (validId(ids_nand[i])) {
-            //             Title title;
-            //             if (title.load(ids_nand[i], MEDIATYPE_NAND, CARD_CTR)) {
-            //                 if (title.accessibleSave()) {
-            //                     titleSaves.push_back(title);
-            //                 }
-            //                 // TODO: extdata?
-            //             }
-            //         }
-            //     }
-            // }
+                for (u32 i = 0; i < count; i++) {
+                    if (validId(ids_nand[i])) {
+                        Title title;
+                        if (title.load(ids_nand[i], MEDIATYPE_NAND, CARD_CTR)) {
+                            if (title.accessibleSave()) {
+                                titleSaves.push_back(title);
+                            }
+                            // TODO: extdata?
+                        }
+                    }
+                }
+            }
 
             count = 0;
             AM_GetTitleCount(MEDIATYPE_SD, &count);
@@ -613,23 +608,21 @@ static void loadTitles(bool forceRefresh)
         }
 
         std::sort(titleSaves.begin(), titleSaves.end(), [](Title& l, Title& r) {
-            // TEMPORARILY DISABLED
-            // if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
-            //     return Configuration::getInstance().favorite(l.id());
-            // }
-            // else {
-            return l.shortDescription() < r.shortDescription();
-            // }
+            if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
+                return Configuration::getInstance().favorite(l.id());
+            }
+            else {
+                return l.shortDescription() < r.shortDescription();
+            }
         });
 
         std::sort(titleExtdatas.begin(), titleExtdatas.end(), [](Title& l, Title& r) {
-            // TEMPORARILY DISABLED
-            // if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
-            //     return Configuration::getInstance().favorite(l.id());
-            // }
-            // else {
-            return l.shortDescription() < r.shortDescription();
-            // }
+            if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
+                return Configuration::getInstance().favorite(l.id());
+            }
+            else {
+                return l.shortDescription() < r.shortDescription();
+            }
         });
 
         // serialize data
@@ -702,9 +695,7 @@ bool favorite(int i)
 {
     const Mode_t mode = Archive::mode();
     u64 id            = mode == MODE_SAVE ? titleSaves.at(i).id() : titleExtdatas.at(i).id();
-    // TEMPORARILY DISABLED
-    // return Configuration::getInstance().favorite(id);
-    return false;
+    return Configuration::getInstance().favorite(id);
 }
 
 static C2D_Image loadTextureFromBytes(u16* bigIconData)
