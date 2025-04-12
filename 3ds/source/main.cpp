@@ -59,9 +59,6 @@ int main()
     try {
         g_screen = std::make_unique<MainScreen>();
 
-        Threads::create((ThreadFunc)Threads::titles);
-        ATEXIT(Threads::destroy);
-
         while (aptMainLoop()) {
             touchPosition touch;
             hidScanInput();
