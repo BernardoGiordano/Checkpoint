@@ -25,6 +25,8 @@
  */
 
 #include "util.hpp"
+#include "thread.hpp"
+#include "title.hpp"
 
 Result consoleDisplayError(const std::string& message, Result res)
 {
@@ -47,6 +49,9 @@ Result servicesInit(void)
     Result res = 0;
     hidInit();
     ATEXIT(hidExit);
+
+    Threads::init(0, 2);
+    ATEXIT(Threads::exit);
 
     gfxInitDefault();
     ATEXIT(gfxExit);
@@ -84,6 +89,8 @@ Result servicesInit(void)
 
     Gui::init();
     ATEXIT(Gui::exit);
+
+    Threads::executeTask(loadTitlesThread);
 
     // consoleDebugInit(debugDevice_SVC);
     // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }

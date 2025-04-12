@@ -422,7 +422,7 @@ void MainScreen::handleEvents(const InputState& input)
         hid.reset();
         MS::clearSelectedEntries();
         directoryList->resetIndex();
-        Threads::create((ThreadFunc)Threads::titles);
+        Threads::executeTask(loadTitlesThread);
         refreshTimer = 0;
     }
 

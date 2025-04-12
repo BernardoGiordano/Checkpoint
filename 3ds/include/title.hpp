@@ -108,8 +108,8 @@ C2D_Image icon(int i);
 bool favorite(int i);
 
 void loadFilter(void);
-void loadTitles(bool forceRefresh);
 void refreshDirectories(u64 id);
 void updateCard(void);
+void loadTitlesThread(void);
 
 #endif

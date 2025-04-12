@@ -38,6 +38,8 @@ static void importTitleListCache(void);
 static constexpr Tex3DS_SubTexture dsIconSubt3x = {32, 32, 0.0f, 1.0f, 1.0f, 0.0f};
 static C2D_Image dsIcon                         = {nullptr, &dsIconSubt3x};
 
+static bool forceRefresh = false;
+
 static void loadDSIcon(u8* banner)
 {
     static constexpr int WIDTH_POW2  = 32;
@@ -493,7 +495,7 @@ static bool validId(u64 id)
     return true;
 }
 
-void loadTitles(bool forceRefresh)
+static void loadTitles(bool forceRefresh)
 {
     try {
         static const std::u16string savecachePath    = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache");
@@ -1043,4 +1045,17 @@ bool Title::isActivityLog(void)
             activityId = true;
     }
     return mMedia == MEDIATYPE_NAND && activityId;
+}
+
+void loadTitlesThread(void)
+{
+    // don't load titles while they're loading
+    if (g_isLoadingTitles) {
+        return;
+    }
+
+    g_isLoadingTitles = true;
+    loadTitles(forceRefresh);
+    forceRefresh      = true;
+    g_isLoadingTitles = false;
 }
