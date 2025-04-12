@@ -2,7 +2,7 @@ SUBDIRS = 3ds switch
 
 VERSION_MAJOR	:=	3
 VERSION_MINOR	:=	8
-VERSION_MICRO	:=	6
+VERSION_MICRO	:=	7
 GIT_REV="$(shell git rev-parse --short HEAD)"
 
 all: $(SUBDIRS)
