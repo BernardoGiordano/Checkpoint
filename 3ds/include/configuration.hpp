@@ -24,20 +24,21 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef CONFIGHANDLER_HPP
-#define CONFIGHANDLER_HPP
+#ifndef CONFIGURATION_HPP
+#define CONFIGURATION_HPP
 
-#include "io.hpp"
 #include "json.hpp"
-#include "util.hpp"
+#include <3ds/types.h>
+#include <memory>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
-#define CONFIG_VERSION 3
-
 class Configuration {
 public:
+    static constexpr int CURRENT_VERSION = 3;
+
     static Configuration& getInstance(void)
     {
         static Configuration mConfiguration;
@@ -51,22 +52,23 @@ public:
     std::vector<std::u16string> additionalSaveFolders(u64 id);
     std::vector<std::u16string> additionalExtdataFolders(u64 id);
 
+    void save(void);
+
 private:
     Configuration(void);
-    ~Configuration() = default;
-
-    void store(void);
-    nlohmann::json loadJson(const std::string& path);
-    void storeJson(nlohmann::json& json, const std::string& path);
+    ~Configuration();
 
     Configuration(Configuration const&)  = delete;
     void operator=(Configuration const&) = delete;
 
-    nlohmann::json mJson;
+    void loadFromRomfs(void);
+
+    std::unique_ptr<nlohmann::json> mJson;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::u16string>> mAdditionalSaveFolders, mAdditionalExtdataFolders;
     bool mNandSaves, mScanCard;
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
+    size_t oldSize       = 0;
 };
 
 #endif
