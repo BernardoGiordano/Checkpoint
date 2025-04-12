@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,157 +25,166 @@
  */
 
 #include "configuration.hpp"
+#include "archive.hpp"
+#include "io.hpp"
+#include "util.hpp"
 
 Configuration::Configuration(void)
 {
     // check for existing config.json files on the sd card, BASEPATH
     if (!io::fileExists(Archive::sdmc(), StringUtils::UTF8toUTF16(BASEPATH.c_str()))) {
-        store();
-    }
-
-    mJson = loadJson(BASEPATH);
-
-    // check if json is valid
-    if (!mJson.is_object()) {
-        store();
-    }
-
-    bool updateJson = false;
-    if (mJson.find("version") == mJson.end()) {
-        // if config is present but is < 3.4.2, override it
-        store();
+        loadFromRomfs();
     }
     else {
-        if (mJson["version"] < CONFIG_VERSION) {
-            mJson["version"] = CONFIG_VERSION;
-            updateJson       = true;
-        }
-        if (!(mJson.contains("nand_saves") && mJson["nand_saves"].is_boolean())) {
-            mJson["nand_saves"] = false;
-            updateJson          = true;
-        }
-        if (!(mJson.contains("scan_cart") && mJson["scan_cart"].is_boolean())) {
-            mJson["scan_cart"] = false;
-            updateJson         = true;
-        }
-        if (!(mJson.contains("filter") && mJson["filter"].is_array())) {
-            mJson["filter"] = nlohmann::json::array();
-            updateJson      = true;
-        }
-        if (!(mJson.contains("favorites") && mJson["favorites"].is_array())) {
-            mJson["favorites"] = nlohmann::json::array();
-            updateJson         = true;
-        }
-        if (!(mJson.contains("additional_save_folders") && mJson["additional_save_folders"].is_object())) {
-            mJson["additional_save_folders"] = nlohmann::json::object();
-            updateJson                       = true;
-        }
-        if (!(mJson.contains("additional_extdata_folders") && mJson["additional_extdata_folders"].is_object())) {
-            mJson["additional_extdata_folders"] = nlohmann::json::object();
-            updateJson                          = true;
-        }
-        // check every single entry in the arrays...
-        for (auto& obj : mJson["filter"]) {
-            if (!obj.is_string()) {
-                mJson["filter"] = nlohmann::json::array();
-                updateJson      = true;
-                break;
+        FILE* in = fopen(BASEPATH.c_str(), "rt");
+        if (in != NULL) {
+            mJson = std::make_unique<nlohmann::json>(nlohmann::json::parse(in, nullptr, false));
+            fclose(in);
+
+            // check if json is valid
+            if (!mJson->is_object()) {
+                loadFromRomfs();
+                return;
+            }
+
+            bool updateJson = false;
+            if (mJson->find("version") == mJson->end()) {
+                // if config is present but is < 3.4.2, override it
+                loadFromRomfs();
+                return;
+            }
+            else {
+                if ((*mJson)["version"] < CURRENT_VERSION) {
+                    (*mJson)["version"] = CURRENT_VERSION;
+                    updateJson          = true;
+                }
+                if (!(mJson->contains("nand_saves") && (*mJson)["nand_saves"].is_boolean())) {
+                    (*mJson)["nand_saves"] = false;
+                    updateJson             = true;
+                }
+                if (!(mJson->contains("scan_cart") && (*mJson)["scan_cart"].is_boolean())) {
+                    (*mJson)["scan_cart"] = false;
+                    updateJson            = true;
+                }
+                if (!(mJson->contains("filter") && (*mJson)["filter"].is_array())) {
+                    (*mJson)["filter"] = nlohmann::json::array();
+                    updateJson         = true;
+                }
+                if (!(mJson->contains("favorites") && (*mJson)["favorites"].is_array())) {
+                    (*mJson)["favorites"] = nlohmann::json::array();
+                    updateJson            = true;
+                }
+                if (!(mJson->contains("additional_save_folders") && (*mJson)["additional_save_folders"].is_object())) {
+                    (*mJson)["additional_save_folders"] = nlohmann::json::object();
+                    updateJson                          = true;
+                }
+                if (!(mJson->contains("additional_extdata_folders") && (*mJson)["additional_extdata_folders"].is_object())) {
+                    (*mJson)["additional_extdata_folders"] = nlohmann::json::object();
+                    updateJson                             = true;
+                }
+                // check every single entry in the arrays...
+                for (auto& obj : (*mJson)["filter"]) {
+                    if (!obj.is_string()) {
+                        (*mJson)["filter"] = nlohmann::json::array();
+                        updateJson         = true;
+                        break;
+                    }
+                }
+                for (auto& obj : (*mJson)["favorites"]) {
+                    if (!obj.is_string()) {
+                        (*mJson)["favorites"] = nlohmann::json::array();
+                        updateJson            = true;
+                        break;
+                    }
+                }
+                for (auto& obj : (*mJson)["additional_save_folders"]) {
+                    if (!obj.is_object()) {
+                        (*mJson)["additional_save_folders"] = nlohmann::json::object();
+                        updateJson                          = true;
+                        break;
+                    }
+                }
+                for (auto& obj : (*mJson)["additional_extdata_folders"]) {
+                    if (!obj.is_object()) {
+                        (*mJson)["additional_extdata_folders"] = nlohmann::json::object();
+                        updateJson                             = true;
+                        break;
+                    }
+                }
+            }
+
+            if (updateJson) {
+                (*mJson)["version"] = CURRENT_VERSION;
+                save();
+            }
+
+            // parse filters
+            std::vector<std::string> filter = (*mJson)["filter"];
+            for (auto& id : filter) {
+                mFilterIds.emplace(strtoull(id.c_str(), NULL, 16));
+            }
+
+            // parse favorites
+            std::vector<std::string> favorites = (*mJson)["favorites"];
+            for (auto& id : favorites) {
+                mFavoriteIds.emplace(strtoull(id.c_str(), NULL, 16));
+            }
+
+            mNandSaves = (*mJson)["nand_saves"];
+            mScanCard  = (*mJson)["scan_cart"];
+
+            // parse additional save folders
+            auto js = (*mJson)["additional_save_folders"];
+            for (auto it = js.begin(); it != js.end(); ++it) {
+                std::vector<std::string> folders = it.value()["folders"];
+                std::vector<std::u16string> u16folders;
+                for (auto& folder : folders) {
+                    u16folders.push_back(StringUtils::UTF8toUTF16(folder.c_str()));
+                }
+                mAdditionalSaveFolders.emplace(strtoull(it.key().c_str(), NULL, 16), u16folders);
+            }
+
+            // parse additional extdata folders
+            auto je = (*mJson)["additional_extdata_folders"];
+            for (auto it = je.begin(); it != je.end(); ++it) {
+                std::vector<std::string> folders = it.value()["folders"];
+                std::vector<std::u16string> u16folders;
+                for (auto& folder : folders) {
+                    u16folders.push_back(StringUtils::UTF8toUTF16(folder.c_str()));
+                }
+                mAdditionalExtdataFolders.emplace(strtoull(it.key().c_str(), NULL, 16), u16folders);
             }
         }
-        for (auto& obj : mJson["favorites"]) {
-            if (!obj.is_string()) {
-                mJson["favorites"] = nlohmann::json::array();
-                updateJson         = true;
-                break;
-            }
+        else {
+            loadFromRomfs();
         }
-        for (auto& obj : mJson["additional_save_folders"]) {
-            if (!obj.is_object()) {
-                mJson["additional_save_folders"] = nlohmann::json::object();
-                updateJson                       = true;
-                break;
-            }
-        }
-        for (auto& obj : mJson["additional_extdata_folders"]) {
-            if (!obj.is_object()) {
-                mJson["additional_extdata_folders"] = nlohmann::json::object();
-                updateJson                          = true;
-                break;
-            }
-        }
-    }
-
-    if (updateJson) {
-        mJson["version"] = CONFIG_VERSION;
-        storeJson(mJson, BASEPATH);
-    }
-
-    // parse filters
-    std::vector<std::string> filter = mJson["filter"];
-    for (auto& id : filter) {
-        mFilterIds.emplace(strtoull(id.c_str(), NULL, 16));
-    }
-
-    // parse favorites
-    std::vector<std::string> favorites = mJson["favorites"];
-    for (auto& id : favorites) {
-        mFavoriteIds.emplace(strtoull(id.c_str(), NULL, 16));
-    }
-
-    mNandSaves = mJson["nand_saves"];
-    mScanCard  = mJson["scan_cart"];
-
-    // parse additional save folders
-    auto js = mJson["additional_save_folders"];
-    for (auto it = js.begin(); it != js.end(); ++it) {
-        std::vector<std::string> folders = it.value()["folders"];
-        std::vector<std::u16string> u16folders;
-        for (auto& folder : folders) {
-            u16folders.push_back(StringUtils::UTF8toUTF16(folder.c_str()));
-        }
-        mAdditionalSaveFolders.emplace(strtoull(it.key().c_str(), NULL, 16), u16folders);
-    }
-
-    // parse additional extdata folders
-    auto je = mJson["additional_extdata_folders"];
-    for (auto it = je.begin(); it != je.end(); ++it) {
-        std::vector<std::string> folders = it.value()["folders"];
-        std::vector<std::u16string> u16folders;
-        for (auto& folder : folders) {
-            u16folders.push_back(StringUtils::UTF8toUTF16(folder.c_str()));
-        }
-        mAdditionalExtdataFolders.emplace(strtoull(it.key().c_str(), NULL, 16), u16folders);
     }
 }
 
-nlohmann::json Configuration::loadJson(const std::string& path)
+Configuration::~Configuration() {}
+
+void Configuration::loadFromRomfs(void)
 {
-    nlohmann::json json;
-    FILE* in = fopen(path.c_str(), "rt");
+    FILE* in = fopen("romfs:/config.json", "rt");
     if (in != NULL) {
-        json = nlohmann::json::parse(in, nullptr, false);
+        mJson = std::make_unique<nlohmann::json>(nlohmann::json::parse(in, nullptr, false));
         fclose(in);
+        save();
     }
-    return json;
 }
 
-void Configuration::storeJson(nlohmann::json& json, const std::string& path)
+void Configuration::save(void)
 {
-    std::string writeData = json.dump(2);
+    std::string writeData = mJson->dump(2);
     writeData.shrink_to_fit();
     size_t size = writeData.size();
 
-    FILE* out = fopen(path.c_str(), "wt");
+    FILE* out = fopen(BASEPATH.c_str(), "wt");
     if (out != NULL) {
         fwrite(writeData.c_str(), 1, size, out);
         fclose(out);
+        oldSize = size;
     }
-}
-
-void Configuration::store(void)
-{
-    nlohmann::json src = loadJson("romfs:/config.json");
-    storeJson(src, BASEPATH);
 }
 
 bool Configuration::filter(u64 id)
