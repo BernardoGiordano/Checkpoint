@@ -92,6 +92,12 @@ Result servicesInit(void)
 
     Threads::executeTask(loadTitlesThread);
 
+    if (Configuration::getInstance().shouldScanCard()) {
+        cartScanFlagTestAndSet();
+        Threads::create(cartScan);
+        ATEXIT(clearCartScanFlag);
+    }
+
     // consoleDebugInit(debugDevice_SVC);
     // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }
 

@@ -1497,7 +1497,7 @@ static FC_StringList* FC_GetBufferFitToColumn(FC_Font* font, int width, FC_Scale
             // Skip the first word for the iterator, so there will always be at least one word per line
             line = new_concat(words->value, spaces->value);
             for (word_iter = words->next, spaces_iter = spaces->next; word_iter != NULL && spaces_iter != NULL;
-                 word_iter = word_iter->next, spaces_iter = spaces_iter->next) {
+                word_iter = word_iter->next, spaces_iter = spaces_iter->next) {
                 char* line_plus_word  = new_concat(line, word_iter->value);
                 char* word_plus_space = new_concat(word_iter->value, spaces_iter->value);
                 if (FC_GetWidth(font, "%s", line_plus_word) > width) {
