@@ -25,8 +25,13 @@
  */
 
 #include "util.hpp"
+#include "server.hpp"
 #include "thread.hpp"
 #include "title.hpp"
+#include <malloc.h>
+
+#define SOC_ALIGN 0x1000
+#define SOC_BUFFERSIZE 0x100000
 
 Result consoleDisplayError(const std::string& message, Result res)
 {
@@ -56,6 +61,9 @@ Result servicesInit(void)
     gfxInitDefault();
     ATEXIT(gfxExit);
 
+    Logging::init();
+    ATEXIT(Logging::exit);
+
     Handle hbldrHandle;
     if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
         return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
@@ -71,9 +79,12 @@ Result servicesInit(void)
     mkdir("sdmc:/3ds/Checkpoint", 777);
     mkdir("sdmc:/3ds/Checkpoint/saves", 777);
     mkdir("sdmc:/3ds/Checkpoint/extdata", 777);
+    mkdir("sdmc:/3ds/Checkpoint/logs", 777);
     mkdir("sdmc:/cheats", 777);
 
-    Logger::getInstance().log(Logger::INFO, "Checkpoint loading started...");
+    Logging::initFileLogging();
+
+    Logging::info("Checkpoint loading started...");
 
     romfsInit();
     ATEXIT(romfsExit);
@@ -90,6 +101,19 @@ Result servicesInit(void)
     Gui::init();
     ATEXIT(Gui::exit);
 
+    u32* socketBuffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
+    if (socketBuffer == NULL) {
+        return consoleDisplayError("Failed to create socket buffer.", -1);
+    }
+
+    if (socInit(socketBuffer, SOC_BUFFERSIZE)) {
+        return consoleDisplayError("socInit failed.", -1);
+    }
+    ATEXIT(socExit);
+
+    Server::init();
+    ATEXIT(Server::exit);
+
     Threads::executeTask(loadTitlesThread);
 
     if (Configuration::getInstance().shouldScanCard()) {
@@ -101,7 +125,7 @@ Result servicesInit(void)
     // consoleDebugInit(debugDevice_SVC);
     // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }
 
-    Logger::getInstance().log(Logger::INFO, "Checkpoint loading finished!");
+    Logging::info("Checkpoint loading finished!");
 
     return 0;
 }

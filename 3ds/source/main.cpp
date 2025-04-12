@@ -44,7 +44,6 @@ int main()
 
     if (R_FAILED(res)) {
         try {
-            Logger::getInstance().flush();
             res = consoleDisplayError("Unknown error during startup in the try block of the FAILED branch", res);
         }
         catch (const std::exception& e) {
@@ -84,8 +83,6 @@ int main()
     catch (...) {
         res = consoleDisplayError("Unknown error during main", -6666);
     }
-
-    Logger::getInstance().flush();
 
     exit(0);
 }
