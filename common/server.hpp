@@ -1,6 +1,6 @@
 /*
- *   This file is part of Checkpoint
- *   Copyright (C) 2017-2021 Bernardo Giordano, FlagBrew
+ *   This file is part of PKSM
+ *   Copyright (C) 2016-2025 Bernardo Giordano, Admiral Fish, piepie62
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,36 +24,26 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef UTIL_HPP
-#define UTIL_HPP
+#ifndef SERVER_HPP
+#define SERVER_HPP
 
-#include "archive.hpp"
-#include "common.hpp"
-#include "configuration.hpp"
-#include "gui.hpp"
-#include "logging.hpp"
-#include <3ds.h>
-#include <citro2d.h>
-#include <map>
-#include <queue>
-#include <sys/stat.h>
+#include <functional>
+#include <string>
 
-extern "C" {
-#include "sha256.h"
-}
+namespace Server {
+    struct HttpResponse {
+        int statusCode;
+        std::string contentType;
+        std::string body;
+    };
 
-Result consoleDisplayError(const std::string& message, Result res);
-void calculateTitleDBHash(u8* hash);
-Result servicesInit(void);
+    using HttpHandler = std::function<HttpResponse(const std::string& path, const std::string& requestData)>;
 
-namespace StringUtils {
-    std::u16string removeForbiddenCharacters(std::u16string src);
-    std::u16string UTF8toUTF16(const char* src);
-    std::string splitWord(const std::string& text, float scaleX, float maxWidth);
-    float textWidth(const std::string& text, float scaleX);
-    float textWidth(const C2D_Text& text, float scaleX);
-    std::string wrap(const std::string& text, float scaleX, float maxWidth);
-    float textHeight(const std::string& text, float scaleY);
+    void init(void);
+    void exit(void);
+
+    void registerHandler(const std::string& path, HttpHandler handler);
+    void unregisterHandler(const std::string& path);
 }
 
 #endif

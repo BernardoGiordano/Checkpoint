@@ -37,7 +37,7 @@ CheatManager::CheatManager(void)
             fclose(in);
         }
         else {
-            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d.", errno);
+            Logging::warning("Failed to open {} with errno {}.", path, errno);
         }
     }
     else {
@@ -63,7 +63,7 @@ CheatManager::CheatManager(void)
             fclose(f);
         }
         else {
-            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d.", errno);
+            Logging::warning("Failed to open {} with errno {}.", path, errno);
         }
     }
 }
@@ -98,6 +98,6 @@ void CheatManager::save(const std::string& key, const std::vector<std::string>& 
         fclose(f);
     }
     else {
-        Logger::getInstance().log(Logger::ERROR, "Failed to write " + outPath + " with errno %d.", errno);
+        Logging::error("Failed to write {} with errno {}.", outPath, errno);
     }
 }

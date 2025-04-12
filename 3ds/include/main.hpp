@@ -28,7 +28,7 @@
 #define MAIN_HPP
 
 #include "Screen.hpp"
-#include "logger.hpp"
+#include "logging.hpp"
 #include <citro2d.h>
 #include <memory>
 #include <vector>

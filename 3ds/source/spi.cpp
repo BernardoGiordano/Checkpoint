@@ -408,17 +408,17 @@ Result SPIGetCardType(CardType* type, int infrared)
     while (tries < maxTries) {
         res = SPIReadJEDECIDAndStatusReg(t, &jedec, &sr); // dummy
         if (R_SUCCEEDED(res)) {
-            Logger::getInstance().log(Logger::INFO, "Found JEDEC: 0x%016lX", jedec);
-            Logger::getInstance().log(Logger::INFO, "CardType (While inside maxTries loop): %016lX", t);
+            // Logger::getInstance().log(Logger::INFO, "Found JEDEC: 0x%016lX", jedec);
+            // Logger::getInstance().log(Logger::INFO, "CardType (While inside maxTries loop): %016lX", t);
             if (std::find(std::begin(knownJEDECS), std::end(knownJEDECS), jedec) != std::end(knownJEDECS)) {
-                Logger::getInstance().log(Logger::INFO, "Found a jedec equal to one in the ordered list. Type: %016lX", *type);
+                // Logger::getInstance().log(Logger::INFO, "Found a jedec equal to one in the ordered list. Type: %016lX", *type);
             }
             else {
-                Logger::getInstance().log(Logger::INFO, "JEDEC ID not documented yet!");
+                // Logger::getInstance().log(Logger::INFO, "JEDEC ID not documented yet!");
             }
         }
         else {
-            Logger::getInstance().log(Logger::WARN, "Unable to retrieve JEDEC id with result 0x%08lX.", res);
+            // Logger::getInstance().log(Logger::WARN, "Unable to retrieve JEDEC id with result 0x%08lX.", res);
         }
 
         if (res)
@@ -440,10 +440,10 @@ Result SPIGetCardType(CardType* type, int infrared)
         t = FLASH_INFRARED_DUMMY;
     }
 
-    Logger::getInstance().log(Logger::INFO, "CardType (after the maxTries loop): %016lX", t);
+    // Logger::getInstance().log(Logger::INFO, "CardType (after the maxTries loop): %016lX", t);
 
     if (t == EEPROM_512B) {
-        Logger::getInstance().log(Logger::INFO, "Type is EEPROM_512B: %d", t);
+        // Logger::getInstance().log(Logger::INFO, "Type is EEPROM_512B: %d", t);
         *type = t;
         return 0;
     }
@@ -465,7 +465,7 @@ Result SPIGetCardType(CardType* type, int infrared)
         }
 
         *type = t;
-        Logger::getInstance().log(Logger::INFO, "Type: %d", t);
+        // Logger::getInstance().log(Logger::INFO, "Type: %d", t);
         return 0;
     }
     else if (t == FLASH_INFRARED_DUMMY) {
@@ -480,7 +480,7 @@ Result SPIGetCardType(CardType* type, int infrared)
     else {
         if (infrared == 1) {
             *type = NO_CHIP; // did anything go wrong?
-            Logger::getInstance().log(Logger::INFO, "infrared is 1, *type = NO_CHIP");
+            // Logger::getInstance().log(Logger::INFO, "infrared is 1, *type = NO_CHIP");
         }
         if (jedec == 0x204017) {
             *type = FLASH_8MB;
@@ -498,7 +498,7 @@ Result SPIGetCardType(CardType* type, int infrared)
             }
         }
 
-        Logger::getInstance().log(Logger::INFO, "*type = NO_CHIP");
+        // Logger::getInstance().log(Logger::INFO, "*type = NO_CHIP");
         *type = NO_CHIP;
         return 0;
     }
