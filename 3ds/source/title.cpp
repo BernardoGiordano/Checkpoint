@@ -334,19 +334,20 @@ void Title::refreshDirectories(void)
         }
 
         // save backups from configuration
-        std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
-        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-            // we have other folders to parse
-            Directory list(Archive::sdmc(), *it);
-            if (list.good()) {
-                for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                    if (list.folder(i)) {
-                        mSaves.push_back(list.entry(i));
-                        mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
-                    }
-                }
-            }
-        }
+        // TEMPORARILY DISABLED
+        // std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
+        // for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
+        //     // we have other folders to parse
+        //     Directory list(Archive::sdmc(), *it);
+        //     if (list.good()) {
+        //         for (size_t i = 0, sz = list.size(); i < sz; i++) {
+        //             if (list.folder(i)) {
+        //                 mSaves.push_back(list.entry(i));
+        //                 mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     if (accessibleExtdata()) {
@@ -370,19 +371,20 @@ void Title::refreshDirectories(void)
         }
 
         // extdata backups from configuration
-        std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
-        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-            // we have other folders to parse
-            Directory list(Archive::sdmc(), *it);
-            if (list.good()) {
-                for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                    if (list.folder(i)) {
-                        mExtdata.push_back(list.entry(i));
-                        mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
-                    }
-                }
-            }
-        }
+        // TEMPORARILY DISABLED
+        // std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
+        // for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
+        //     // we have other folders to parse
+        //     Directory list(Archive::sdmc(), *it);
+        //     if (list.good()) {
+        //         for (size_t i = 0, sz = list.size(); i < sz; i++) {
+        //             if (list.folder(i)) {
+        //                 mExtdata.push_back(list.entry(i));
+        //                 mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
 
