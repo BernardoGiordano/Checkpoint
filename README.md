@@ -105,9 +105,11 @@ This project is licensed under the GNU GPLv3. Additional Terms 7.b and 7.c of GP
 * [Bernardo](https://github.com/BernardoGiordano/) for creating Checkpoint.
 * [J-D-K](https://github.com/J-D-K) for the original [JKSM](https://github.com/J-D-K/JKSM) version.
 * [TuxSH](https://github.com/tuxsh) for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which SPI code has been taken.
+* [piepie62](https://github.com/piepie62) and all other [PKSM](https://github.com/FlagBrew/PKSM) contributors for some code that has been ported to Checkpoint.
 * WinterMute, fincs and [devkitPro](https://devkitpro.org/) contributors for devkitARM, devkitA64 and [dkp-pacman](https://github.com/devkitPro/pacman/releases).
 * Yellows8 and all the mantainers for [switch-examples](https://github.com/switchbrew/switch-examples).
 * [rakujira](https://twitter.com/rakujira) for the awesome Checkpoint logo.
+* achinech for helping to debug the infamous 3.8.x crash issue.
 * Fellow testers and troubleshooters for their help.
 * The huge amount of supporters that this project has gained over the years.
 
