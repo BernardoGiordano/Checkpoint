@@ -25,6 +25,7 @@
  */
 
 #include "MainScreen.hpp"
+#include "server.hpp"
 
 static constexpr size_t rowlen = 4, collen = 8;
 
@@ -159,12 +160,6 @@ void MainScreen::drawTop(void) const
             }
         }
 
-        static const float border = ceilf((400 - (ins1.width + ins2.width + ins3.width) * 0.47f) / 2);
-        C2D_DrawText(&ins1, C2D_WithColor, border, 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
-        C2D_DrawText(&ins2, C2D_WithColor, border + ceilf(ins1.width * 0.47f), 223, 0.5f, 0.47f, 0.47f,
-            Archive::mode() == MODE_SAVE ? COLOR_WHITE : COLOR_RED);
-        C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
-
         if (hidKeysHeld() & KEY_SELECT) {
             const u32 inst_lh      = scaleInst * fontGetInfo(NULL)->lineFeed;
             const u32 total_height = inst_lh * 6;
@@ -183,6 +178,20 @@ void MainScreen::drawTop(void) const
                 scaleInst, COLOR_WHITE);
             C2D_DrawText(&top_hb, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_hb, scaleInst)) / 2), inst_h + inst_lh * 5, 0.9f, scaleInst,
                 scaleInst, COLOR_WHITE);
+
+            if (Server::isRunning() && Server::getAddress().length() > 0) {
+                C2D_Text logsText;
+                C2D_TextParse(&logsText, dynamicBuf, ("Logs available at " + Server::getAddress() + "/logs/memory").c_str());
+                C2D_TextOptimize(&logsText);
+                C2D_DrawText(&logsText, C2D_WithColor, ceilf((400 - logsText.width * 0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
+            }
+        }
+        else {
+            static const float border = ceilf((400 - (ins1.width + ins2.width + ins3.width) * 0.47f) / 2);
+            C2D_DrawText(&ins1, C2D_WithColor, border, 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
+            C2D_DrawText(&ins2, C2D_WithColor, border + ceilf(ins1.width * 0.47f), 223, 0.5f, 0.47f, 0.47f,
+                Archive::mode() == MODE_SAVE ? COLOR_WHITE : COLOR_RED);
+            C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
         }
 
         C2D_DrawText(&version, C2D_WithColor, 400 - 4 - ceilf(0.45f * version.width), 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);

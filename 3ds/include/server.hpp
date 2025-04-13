@@ -41,6 +41,8 @@ namespace Server {
 
     void init(void);
     void exit(void);
+    bool isRunning(void);
+    std::string getAddress(void);
 
     void registerHandler(const std::string& path, HttpHandler handler);
     void unregisterHandler(const std::string& path);

@@ -102,17 +102,19 @@ Result servicesInit(void)
     ATEXIT(Gui::exit);
 
     u32* socketBuffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
-    if (socketBuffer == NULL) {
-        return consoleDisplayError("Failed to create socket buffer.", -1);
+    if (socketBuffer != NULL) {
+        if (!socInit(socketBuffer, SOC_BUFFERSIZE)) {
+            ATEXIT(socExit);
+            Server::init();
+            ATEXIT(Server::exit);
+        }
+        else {
+            Logging::warning("socInit failed");
+        }
     }
-
-    if (socInit(socketBuffer, SOC_BUFFERSIZE)) {
-        return consoleDisplayError("socInit failed.", -1);
+    else {
+        Logging::warning("Failed to create socket buffer.");
     }
-    ATEXIT(socExit);
-
-    Server::init();
-    ATEXIT(Server::exit);
 
     Threads::executeTask(loadTitlesThread);
 
