@@ -64,7 +64,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     C2D_TextParse(&top_my, staticBuf, "\uE003 hold to select all titles");
     C2D_TextParse(&top_b, staticBuf, "\uE001 to exit target or deselect all titles");
     C2D_TextParse(&top_hb, staticBuf, "\uE001 hold to refresh titles");
-    C2D_TextParse(&bot_ts, staticBuf, "\uE01D \uE006 to move\nbetween backups");
+    C2D_TextParse(&bot_ts, staticBuf, "\uE01D \uE006 to move between backups");
     C2D_TextParse(&bot_x, staticBuf, "\uE002 to delete backups");
     C2D_TextParse(&coins, staticBuf, "\uE075");
 
@@ -114,6 +114,10 @@ void MainScreen::drawTop(void) const
     C2D_TextParse(&timeText, dynamicBuf, DateTime::timeStr().c_str());
     C2D_TextOptimize(&timeText);
     C2D_DrawText(&timeText, C2D_WithColor, 4.0f, 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+
+    C2D_DrawText(&version, C2D_WithColor, 400 - 4 - ceilf(0.45f * version.width), 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+    C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, &flagTint, 1.0f, 1.0f);
+    C2D_DrawText(&checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
 
     if (g_isLoadingTitles) {
         // Show a loading message
@@ -178,25 +182,21 @@ void MainScreen::drawTop(void) const
                 scaleInst, COLOR_WHITE);
             C2D_DrawText(&top_hb, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_hb, scaleInst)) / 2), inst_h + inst_lh * 5, 0.9f, scaleInst,
                 scaleInst, COLOR_WHITE);
+        }
 
-            if (Server::isRunning() && Server::getAddress().length() > 0) {
-                C2D_Text logsText;
-                C2D_TextParse(&logsText, dynamicBuf, ("Logs available at " + Server::getAddress() + "/logs/memory").c_str());
-                C2D_TextOptimize(&logsText);
-                C2D_DrawText(&logsText, C2D_WithColor, ceilf((400 - logsText.width * 0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
-            }
+        if (hidKeysHeld() & KEY_SELECT && Server::isRunning() && Server::getAddress().length() > 0) {
+            C2D_Text logsText;
+            C2D_TextParse(&logsText, dynamicBuf, ("Logs available at " + Server::getAddress() + "/logs/memory").c_str());
+            C2D_TextOptimize(&logsText);
+            C2D_DrawText(&logsText, C2D_WithColor, ceilf((400 - logsText.width * 0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
         }
         else {
             static const float border = ceilf((400 - (ins1.width + ins2.width + ins3.width) * 0.47f) / 2);
-            C2D_DrawText(&ins1, C2D_WithColor, border, 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
+            C2D_DrawText(&ins1, C2D_WithColor, border, 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
             C2D_DrawText(&ins2, C2D_WithColor, border + ceilf(ins1.width * 0.47f), 223, 0.5f, 0.47f, 0.47f,
                 Archive::mode() == MODE_SAVE ? COLOR_WHITE : COLOR_RED);
-            C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
+            C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
         }
-
-        C2D_DrawText(&version, C2D_WithColor, 400 - 4 - ceilf(0.45f * version.width), 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
-        C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, &flagTint, 1.0f, 1.0f);
-        C2D_DrawText(&checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
 
         if (g_isTransferringFile) {
             C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
@@ -220,14 +220,7 @@ void MainScreen::drawBottom(void) const
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 19, COLOR_BLACK_DARKER);
     C2D_DrawRectSolid(0, 221, 0.5f, 320, 19, COLOR_BLACK_DARKER);
 
-    if (g_isLoadingTitles) {
-        // Show a loading message
-        C2D_Text loadingText;
-        C2D_TextParse(&loadingText, dynamicBuf, "Loading titles...");
-        C2D_TextOptimize(&loadingText);
-        C2D_DrawText(&loadingText, C2D_WithColor, ceilf((320 - StringUtils::textWidth(loadingText, 0.6f)) / 2),
-            ceilf((240 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, 0.6f, 0.6f, COLOR_WHITE);
-    }
+    if (g_isLoadingTitles) {}
 
     else if (getTitleCount() > 0) {
         Title title;
@@ -278,12 +271,12 @@ void MainScreen::drawBottom(void) const
         }
     }
 
-    C2D_DrawText(&ins4, C2D_WithColor, ceilf((320 - ins4.width * 0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
+    C2D_DrawText(&ins4, C2D_WithColor, ceilf((320 - ins4.width * 0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
 
     if (hidKeysHeld() & KEY_SELECT) {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-        C2D_DrawText(&bot_ts, C2D_WithColor, 16, 130, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
-        C2D_DrawText(&bot_x, C2D_WithColor, 16, 172, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+        C2D_DrawText(&bot_ts, C2D_WithColor, (320 - bot_ts.width * scaleInst) / 2, 102, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+        C2D_DrawText(&bot_x, C2D_WithColor, (320 - bot_x.width * scaleInst) / 2, 132, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
         // play coins
         C2D_DrawText(&coins, C2D_WithColor, ceilf(318 - StringUtils::textWidth(coins, scaleInst)), -1, 0.5f, scaleInst, scaleInst, COLOR_GOLD);
     }
