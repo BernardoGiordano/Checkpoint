@@ -293,7 +293,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
         if (R_FAILED(res)) {
             delete[] saveFile;
             FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-            Logging::error("Failed to delete directory recursively after failing to write save to the sd card with result {}.", res);
+            Logging::error("Failed to delete directory recursively after failing to write save to the sd card with result 0x{:08X}.", res);
             return std::make_tuple(false, res, "Failed to backup save.");
         }
 
@@ -305,7 +305,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
             delete[] saveFile;
             stream.close();
             FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-            Logging::error("Failed to delete directory recursively after failing to write save to the sd card with result {}.", res);
+            Logging::error("Failed to delete directory recursively after failing to write save to the sd card with result 0x{:08X}.", res);
             return std::make_tuple(false, res, "Failed to backup save.");
         }
 

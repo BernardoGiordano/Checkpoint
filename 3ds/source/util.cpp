@@ -64,6 +64,8 @@ Result servicesInit(void)
     Logging::init();
     ATEXIT(Logging::exit);
 
+    Logging::info("Checkpoint loading started...");
+
     Handle hbldrHandle;
     if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
         return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
@@ -83,8 +85,6 @@ Result servicesInit(void)
     mkdir("sdmc:/cheats", 777);
 
     Logging::initFileLogging();
-
-    Logging::info("Checkpoint loading started...");
 
     romfsInit();
     ATEXIT(romfsExit);

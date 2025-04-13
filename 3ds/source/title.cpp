@@ -131,7 +131,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
             smdh = loadSMDH(lowId(), highId(), mMedia);
         }
         if (smdh == NULL) {
-            Logging::error("Failed to load title 0x%lX due to smdh == NULL", mId);
+            Logging::error("Failed to load title {:X} due to smdh == NULL", mId);
             return false;
         }
 
@@ -153,7 +153,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
                 Result res = io::createDirectory(Archive::sdmc(), mSavePath);
                 if (R_FAILED(res)) {
                     loadTitle = false;
-                    Logging::error("Failed to create backup directory with result 0x%08lX.", res);
+                    Logging::error("Failed to create backup directory with result 0x{:08X}.", res);
                 }
             }
         }
@@ -164,7 +164,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
                 Result res = io::createDirectory(Archive::sdmc(), mExtdataPath);
                 if (R_FAILED(res)) {
                     loadTitle = false;
-                    Logging::error("Failed to create backup directory with result 0x%08lX.", res);
+                    Logging::error("Failed to create backup directory with result 0x{:08X}.", res);
                 }
             }
         }
@@ -180,7 +180,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         Result res     = FSUSER_GetLegacyRomHeader(mMedia, 0LL, headerData);
         if (R_FAILED(res)) {
             delete[] headerData;
-            Logging::error("Failed get legacy rom header with result 0x%08lX.", res);
+            Logging::error("Failed get legacy rom header with result 0x{:08X}.", res);
             return false;
         }
 
@@ -201,7 +201,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 
         res = SPIGetCardType(&mCardType, (_gameCode[0] == 'I') ? 1 : 0);
         if (R_FAILED(res)) {
-            Logging::error("Failed get SPI Card Type with result 0x%08lX.", res);
+            Logging::error("Failed get SPI Card Type with result 0x{:08X}.", res);
             return false;
         }
 
@@ -220,7 +220,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
             res = io::createDirectory(Archive::sdmc(), mSavePath);
             if (R_FAILED(res)) {
                 loadTitle = false;
-                Logging::error("Failed to create backup directory with result 0x%08lX.", res);
+                Logging::error("Failed to create backup directory with result 0x{:08X}.", res);
             }
         }
     }
@@ -331,13 +331,13 @@ void Title::refreshDirectories(void)
             mFullSavePaths.insert(mFullSavePaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
         else {
-            Logging::error("Couldn't retrieve the save directory list for the title " + shortDescription());
+            Logging::error("Couldn't retrieve the save directory list for the title {}", shortDescription());
         }
 
         // save backups from configuration
         try {
             std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
-            Logging::debug("Found {} additional save folders for title {}", additionalFolders.size(), mId);
+            Logging::debug("Found {} additional save folders for title {:X}", additionalFolders.size(), mId);
             for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
                 Logging::debug("Processing additional save folder: {}", StringUtils::UTF16toUTF8(*it));
                 if (io::directoryExists(Archive::sdmc(), *it)) {
@@ -355,20 +355,20 @@ void Title::refreshDirectories(void)
                         }
                     }
                     else {
-                        Logging::error("Additional save folder is not good: " + StringUtils::UTF16toUTF8(*it));
+                        Logging::error("Additional save folder is not good: {}", StringUtils::UTF16toUTF8(*it));
                     }
                 }
                 else {
-                    Logging::error("Additional save folder does not exist: " + StringUtils::UTF16toUTF8(*it));
+                    Logging::error("Additional save folder does not exist: {}", StringUtils::UTF16toUTF8(*it));
                 }
             }
-            Logging::debug("Finished processing additional save folders for title {}", mId);
+            Logging::debug("Finished processing additional save folders for title {:X}", mId);
         }
         catch (const std::exception& e) {
             Logging::error("Exception when processing additional save folders: {}", e.what());
         }
         catch (...) {
-            Logging::error("Unknown exception when processing additional save folders for title {}", mId);
+            Logging::error("Unknown exception when processing additional save folders for title {:X}", mId);
         }
     }
 
@@ -389,13 +389,13 @@ void Title::refreshDirectories(void)
             mFullExtdataPaths.insert(mFullExtdataPaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
         else {
-            Logging::error("Couldn't retrieve the extdata directory list for the title " + shortDescription());
+            Logging::error("Couldn't retrieve the extdata directory list for the title {}", shortDescription());
         }
 
         // extdata backups from configuration
         try {
             std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
-            Logging::debug("Found {} additional extdata folders for title {}", additionalFolders.size(), mId);
+            Logging::debug("Found {} additional extdata folders for title {:X}", additionalFolders.size(), mId);
             for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
                 Logging::debug("Processing additional extdata folder: {}", StringUtils::UTF16toUTF8(*it));
                 if (io::directoryExists(Archive::sdmc(), *it)) {
@@ -413,20 +413,20 @@ void Title::refreshDirectories(void)
                         }
                     }
                     else {
-                        Logging::error("Additional extdata folder is not good: " + StringUtils::UTF16toUTF8(*it));
+                        Logging::error("Additional extdata folder is not good: {}", StringUtils::UTF16toUTF8(*it));
                     }
                 }
                 else {
-                    Logging::error("Additional extdata folder does not exist: " + StringUtils::UTF16toUTF8(*it));
+                    Logging::error("Additional extdata folder does not exist: {}", StringUtils::UTF16toUTF8(*it));
                 }
             }
-            Logging::debug("Finished processing additional extdata folders for title {}", mId);
+            Logging::debug("Finished processing additional extdata folders for title {:X}", mId);
         }
         catch (const std::exception& e) {
             Logging::error("Exception when processing additional extdata folders: {}", e.what());
         }
         catch (...) {
-            Logging::error("Unknown exception when processing additional extdata folders for title {}", mId);
+            Logging::error("Unknown exception when processing additional extdata folders for title {:X}", mId);
         }
     }
 }
