@@ -25,6 +25,7 @@
  */
 
 #include "title.hpp"
+#include <chrono>
 
 static bool validId(u64 id);
 static C2D_Image loadTextureIcon(smdh_s* smdh);
@@ -538,6 +539,7 @@ static bool validId(u64 id)
 
 static void loadTitles(bool forceRefresh)
 {
+    auto start = std::chrono::high_resolution_clock::now();
     try {
         static const std::u16string savecachePath    = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache");
         static const std::u16string extdatacachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache");
@@ -710,6 +712,10 @@ static void loadTitles(bool forceRefresh)
     catch (...) {
         Logging::error("Unknown exception in loadTitles");
     }
+
+    auto end      = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    Logging::debug("Title list loaded in {} ms", duration.count());
 }
 
 void getTitle(Title& dst, int i)
