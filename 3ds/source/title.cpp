@@ -355,7 +355,10 @@ void Title::refreshDirectories(void)
             }
         }
         catch (const std::exception& e) {
-            Logging::error("Exception when processing additional save folders: " + std::string(e.what()));
+            Logging::error("Exception when processing additional save folders: {}", e.what());
+        }
+        catch (...) {
+            Logging::error("Unknown exception when processing additional save folders for title {}", mId);
         }
     }
 
@@ -401,7 +404,10 @@ void Title::refreshDirectories(void)
             }
         }
         catch (const std::exception& e) {
-            Logging::error("Exception when processing additional extdata folders: " + std::string(e.what()));
+            Logging::error("Exception when processing additional extdata folders: {}", e.what());
+        }
+        catch (...) {
+            Logging::error("Unknown exception when processing additional extdata folders for title {}", mId);
         }
     }
 }
@@ -681,7 +687,7 @@ static void loadTitles(bool forceRefresh)
         }
     }
     catch (const std::exception& e) {
-        Logging::error("Exception in loadTitles: " + std::string(e.what()));
+        Logging::error("Exception in loadTitles: {}", e.what());
     }
     catch (...) {
         Logging::error("Unknown exception in loadTitles");
