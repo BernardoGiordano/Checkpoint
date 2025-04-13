@@ -116,8 +116,16 @@ void MainScreen::drawTop(void) const
 
     if (g_isLoadingTitles) {
         // Show a loading message
+        int percentage = g_loadingTitlesLimit == 0 ? 0 : (g_loadingTitlesCounter * 100) / g_loadingTitlesLimit;
+        if (percentage >= 100) {
+            percentage = 99;
+        }
+    
+        char loadingMessage[32] = {0};
+        snprintf(loadingMessage, sizeof(loadingMessage), "Loading titles... %d%%", percentage);
+
         C2D_Text loadingText;
-        C2D_TextParse(&loadingText, dynamicBuf, "Loading titles...");
+        C2D_TextParse(&loadingText, dynamicBuf, loadingMessage);
         C2D_TextOptimize(&loadingText);
         C2D_DrawText(&loadingText, C2D_WithColor, ceilf((400 - StringUtils::textWidth(loadingText, 0.6f)) / 2),
             ceilf((240 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, 0.6f, 0.6f, COLOR_WHITE);

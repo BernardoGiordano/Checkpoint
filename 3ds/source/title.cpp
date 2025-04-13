@@ -25,6 +25,7 @@
  */
 
 #include "title.hpp"
+#include "main.hpp"
 #include <chrono>
 
 static bool validId(u64 id);
@@ -585,8 +586,13 @@ static void loadTitles(bool forceRefresh)
         }
 
         if (optimizedLoad && !forceRefresh) {
+            g_loadingTitlesCounter = 0;
+
             // deserialize data
             importTitleListCache();
+
+            g_loadingTitlesCounter = titleSaves.size() + titleExtdatas.size();
+
             for (auto& title : titleSaves) {
                 title.refreshDirectories();
             }
@@ -595,7 +601,20 @@ static void loadTitles(bool forceRefresh)
             }
         }
         else {
-            u32 count = 0;
+            u32 count     = 0;
+            u32 nandCount = 0;
+            u32 sdCount   = 0;
+            u32 cartCount = 0;
+
+            if (Configuration::getInstance().nandSaves()) {
+                AM_GetTitleCount(MEDIATYPE_NAND, &nandCount);
+            }
+
+            AM_GetTitleCount(MEDIATYPE_SD, &sdCount);
+            AM_GetTitleCount(MEDIATYPE_GAME_CARD, &cartCount);
+
+            g_loadingTitlesLimit   = nandCount + sdCount + cartCount;
+            g_loadingTitlesCounter = 0;
 
             if (Configuration::getInstance().nandSaves()) {
                 AM_GetTitleCount(MEDIATYPE_NAND, &count);
@@ -612,6 +631,8 @@ static void loadTitles(bool forceRefresh)
                             // TODO: extdata?
                         }
                     }
+
+                    g_loadingTitlesCounter++;
                 }
             }
 
@@ -633,6 +654,8 @@ static void loadTitles(bool forceRefresh)
                         }
                     }
                 }
+
+                g_loadingTitlesCounter++;
             }
 
             // always check for PKSM's extdata archive
@@ -650,6 +673,8 @@ static void loadTitles(bool forceRefresh)
                         titleExtdatas.push_back(title);
                     }
                 }
+
+                g_loadingTitlesCounter++;
             }
         }
 
@@ -696,6 +721,7 @@ static void loadTitles(bool forceRefresh)
                             }
                         }
                     }
+                    g_loadingTitlesCounter++;
                 }
             }
             else {
@@ -703,6 +729,7 @@ static void loadTitles(bool forceRefresh)
                 if (title.load(0, MEDIATYPE_GAME_CARD, cardType)) {
                     titleSaves.insert(titleSaves.begin(), title);
                 }
+                g_loadingTitlesCounter++;
             }
         }
     }
@@ -867,6 +894,8 @@ static void importTitleListCache(void)
     inputextdatas.read(cacheextdatas, inputextdatas.size());
     inputextdatas.close();
 
+    g_loadingTitlesLimit = sizesaves + sizeextdatas;
+
     // fill the lists with blank titles firsts
     for (size_t i = 0, sz = std::max(sizesaves, sizeextdatas); i < sz; i++) {
         Title title;
@@ -925,6 +954,8 @@ static void importTitleListCache(void)
 
         titleSaves.at(i) = title;
         alreadystored.push_back(id);
+
+        g_loadingTitlesCounter++;
     }
 
     for (size_t i = 0; i < sizeextdatas; i++) {
@@ -971,6 +1002,8 @@ static void importTitleListCache(void)
             }
 
             titleExtdatas.at(i) = title;
+
+            g_loadingTitlesCounter++;
         }
         else {
             auto pos = it - alreadystored.begin();
@@ -1105,7 +1138,10 @@ void loadTitlesThread(void)
         return;
     }
 
-    g_isLoadingTitles = true;
+    g_isLoadingTitles      = true;
+    g_loadingTitlesCounter = 0;
+    g_loadingTitlesLimit   = 0;
+
     loadTitles(forceRefresh);
     forceRefresh      = true;
     g_isLoadingTitles = false;

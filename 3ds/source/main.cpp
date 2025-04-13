@@ -36,10 +36,10 @@ int main()
         res = servicesInit();
     }
     catch (const std::exception& e) {
-        res = consoleDisplayError(std::string("Error during services init. ") + e.what(), -1111);
+        res = consoleDisplayError(std::string("Error during services init. ") + e.what(), -1);
     }
     catch (...) {
-        res = consoleDisplayError("Unknown error during startup", -2222);
+        res = consoleDisplayError("Unknown error during startup", -2);
     }
 
     if (R_FAILED(res)) {
@@ -47,10 +47,10 @@ int main()
             res = consoleDisplayError("Unknown error during startup in the try block of the FAILED branch", res);
         }
         catch (const std::exception& e) {
-            res = consoleDisplayError(std::string("Error during startup in the catch block of the FAILED branch. ") + e.what(), -4444);
+            res = consoleDisplayError(std::string("Error during startup in the catch block of the FAILED branch. ") + e.what(), -3);
         }
         catch (...) {
-            res = consoleDisplayError("Unknown error during startup in the catch ... block of the FAILED branch", -5555);
+            res = consoleDisplayError("Unknown error during startup in the catch ... block of the FAILED branch", -4);
         }
         exit(res);
     }
@@ -78,10 +78,10 @@ int main()
         }
     }
     catch (const std::exception& e) {
-        consoleDisplayError(std::string("Error during main. ") + e.what(), -3333);
+        consoleDisplayError(std::string("Error during main. ") + e.what(), -5);
     }
     catch (...) {
-        res = consoleDisplayError("Unknown error during main", -6666);
+        res = consoleDisplayError("Unknown error during main", -6);
     }
 
     exit(0);
