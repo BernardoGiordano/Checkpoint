@@ -172,7 +172,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
     Title title;
     getTitle(title, index);
 
-    Logging::info("Started backup of %s. Title id: 0x%08lX.", title.shortDescription().c_str(), title.lowId());
+    Logging::info("Started backup of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
 
     if (title.cardType() == CARD_CTR) {
         FS_Archive archive;
@@ -208,7 +208,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
                 res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
                 if (R_FAILED(res)) {
                     FSUSER_CloseArchive(archive);
-                    Logging::error("Failed to delete the existing backup directory recursively with result 0x%08lX.", res);
+                    Logging::error("Failed to delete the existing backup directory recursively with result 0x{:08X}.", res);
                     return std::make_tuple(false, res, "Failed to delete the existing backup\ndirectory recursively.");
                 }
             }
@@ -234,7 +234,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
             refreshDirectories(title.id());
         }
         else {
-            Logging::error("Failed to open save archive with result 0x%08lX.", res);
+            Logging::error("Failed to open save archive with result 0x{:08X}.", res);
             return std::make_tuple(false, res, "Failed to open save archive.");
         }
 
@@ -268,14 +268,14 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
         if (!isNewFolder || io::directoryExists(Archive::sdmc(), dstPath)) {
             res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
             if (R_FAILED(res)) {
-                Logging::error("Failed to delete the existing backup directory recursively with result 0x%08lX.", res);
+                Logging::error("Failed to delete the existing backup directory recursively with result 0x{:08X}.", res);
                 return std::make_tuple(false, res, "Failed to delete the existing\nbackup directory recursively.");
             }
         }
 
         res = io::createDirectory(Archive::sdmc(), dstPath);
         if (R_FAILED(res)) {
-            Logging::error("Failed to create destination directory with result 0x%08lX.", res);
+            Logging::error("Failed to create destination directory with result 0x{:08X}.", res);
             return std::make_tuple(false, res, "Failed to create destination directory.");
         }
 
@@ -326,7 +326,7 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
     Title title;
     getTitle(title, index);
 
-    Logging::info("Started restore of %s. Title id: 0x%08lX.", title.shortDescription().c_str(), title.lowId());
+    Logging::info("Started restore of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
 
     if (title.cardType() == CARD_CTR) {
         FS_Archive archive;
@@ -361,7 +361,7 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
                 res = FSUSER_ControlArchive(archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
                 if (R_FAILED(res)) {
                     FSUSER_CloseArchive(archive);
-                    Logging::error("Failed to commit save data with result 0x%08lX.", res);
+                    Logging::error("Failed to commit save data with result 0x{:08X}.", res);
                     return std::make_tuple(false, res, "Failed to commit save data.");
                 }
 
@@ -370,13 +370,13 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
                 res             = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &secureValue, 8, &out, 1);
                 if (R_FAILED(res)) {
                     FSUSER_CloseArchive(archive);
-                    Logging::error("Failed to fix secure value with result 0x%08lX.", res);
+                    Logging::error("Failed to fix secure value with result 0x{:08X}.", res);
                     return std::make_tuple(false, res, "Failed to fix secure value.");
                 }
             }
         }
         else {
-            Logging::error("Failed to open save archive with result 0x%08lX.", res);
+            Logging::error("Failed to open save archive with result 0x{:08X}.", res);
             return std::make_tuple(false, res, "Failed to open save archive.");
         }
 
@@ -401,7 +401,7 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
 
         if (R_FAILED(res)) {
             delete[] saveFile;
-            Logging::error("Failed to read save file backup with result 0x%08lX.", res);
+            Logging::error("Failed to read save file backup with result 0x{:08X}.", res);
             return std::make_tuple(false, res, "Failed to read save file backup.");
         }
 
@@ -414,7 +414,7 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
 
         if (R_FAILED(res)) {
             delete[] saveFile;
-            Logging::error("Failed to restore save with result 0x%08lX.", res);
+            Logging::error("Failed to restore save with result 0x{:08X}.", res);
             return std::make_tuple(false, res, "Failed to restore save.");
         }
 
@@ -429,6 +429,6 @@ void io::deleteBackupFolder(const std::u16string& path)
 {
     Result res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, path.data()));
     if (R_FAILED(res)) {
-        Logging::info("Failed to delete backup folder with result 0x%08lX.", res);
+        Logging::info("Failed to delete backup folder with result 0x{:08X}.", res);
     }
 }
