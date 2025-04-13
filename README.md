@@ -2,8 +2,8 @@
 
 A fast and simple homebrew save manager for 3DS and Switch written in C++.
 
-<p align="center"><img src="https://i.imgur.com/GmXss73.jpg" />
-<img src="https://i.imgur.com/Y4xJiHs.png" /></p>
+<p align="center"><img src="https://i.imgur.com/adEdJWO.jpeg" />
+<img src="https://i.imgur.com/7Z2S0gG.png" /></p>
 
 ## Why use Checkpoint?
 
@@ -33,12 +33,14 @@ Checkpoint relies on the following folders to store the files it generates. Note
 
 * **`sdmc:/3ds/Checkpoint`**: root path
 * **`sdmc:/3ds/Checkpoint/config.json`**: custom configuration file
+* **`sdmc:/3ds/Checkpoint/logs`**: log files
 * **`sdmc:/3ds/Checkpoint/saves/<unique id> <game title>`**: root path for all the save backups for a generic game
 * **`sdmc:/3ds/Checkpoint/extdata/<unique id> <game title>`**: root path for all the extdata backups for a generic game
 
 ### Switch
 
 * **`sdmc:/switch/Checkpoint`**: root path
+* **`sdmc:/switch/Checkpoint/logs`**: log files
 * **`sdmc:/switch/Checkpoint/config.json`**: custom configuration file
 * **`sdmc:/switch/Checkpoint/saves/<title id> <game title>`**: root path for all the save backups for a generic game
 
@@ -74,7 +76,7 @@ You can add and toggle features to Checkpoint for 3DS by editing the **`config.j
 
   },
   "nand_saves": true,
-  "version": 2
+  "version": 3
 }
 ```
 
