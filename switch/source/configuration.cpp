@@ -42,7 +42,7 @@ static void handle_populate(struct mg_connection* nc, struct http_message* hm)
     json["title_list"] = map;
     std::string body   = json.dump();
     mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%.*s", (unsigned long)body.length(), (int)body.length(), body.c_str());
-    Logger::getInstance().log(Logger::INFO, "A new Configuration connection has been handled.");
+    Logging::info("A new Configuration connection has been handled.");
 }
 
 static void handle_save(struct mg_connection* nc, struct http_message* hm)
@@ -51,10 +51,10 @@ static void handle_save(struct mg_connection* nc, struct http_message* hm)
     if (f != NULL) {
         fwrite(hm->body.p, 1, hm->body.len, f);
         fclose(f);
-        Logger::getInstance().log(Logger::INFO, "Configurations have been updated.");
+        Logging::info("Configurations have been updated.");
     }
     else {
-        Logger::getInstance().log(Logger::ERROR, "Failed to write to configuration file with errno %d.", errno);
+        Logging::error("Failed to write to configuration file with errno {}.", errno);
     }
     Configuration::getInstance().load();
     Configuration::getInstance().parse();

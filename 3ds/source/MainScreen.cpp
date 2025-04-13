@@ -120,7 +120,7 @@ void MainScreen::drawTop(void) const
         if (percentage >= 100) {
             percentage = 99;
         }
-    
+
         char loadingMessage[32] = {0};
         snprintf(loadingMessage, sizeof(loadingMessage), "Loading titles... %d%%", percentage);
 

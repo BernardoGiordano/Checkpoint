@@ -1,6 +1,6 @@
 /*
  *   This file is part of PKSM
- *   Copyright (C) 2016-2025 Bernardo Giordano, Admiral Fish, piepie62
+ *   Copyright (C) 2016-2025 Bernardo Giordano FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,10 +27,12 @@
 #include "logging.hpp"
 
 #if defined(__3DS__)
+#include "server.hpp"
 #include <3ds.h>
+#elif defined(__SWITCH__)
+#include <switch.h>
 #endif
 
-#include "server.hpp"
 #include <chrono>
 #include <cstring>
 #include <iomanip>
@@ -85,6 +87,7 @@ void Logging::init()
     std::string versionInfo = std::format("Checkpoint v{:d}.{:d}.{:d}-{:s}", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO, GIT_REV);
     info(versionInfo);
 
+#if defined(SERVER_HPP)
     Server::registerHandler("/logs/memory",
         [](const std::string& path, const std::string& requestData) -> Server::HttpResponse { return {200, "text/plain", applicationLogs}; });
 
@@ -108,6 +111,7 @@ void Logging::init()
 
         return {200, "text/plain", logData};
     });
+#endif
 }
 
 void Logging::info(const std::string& message)

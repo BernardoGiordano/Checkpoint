@@ -178,7 +178,7 @@ void Title::refreshDirectories(void)
         mFullSavePaths.insert(mFullSavePaths.begin(), "New...");
     }
     else {
-        Logger::getInstance().log(Logger::ERROR, "Couldn't retrieve the extdata directory list for the title " + name());
+        Logging::error("Couldn't retrieve the extdata directory list for the title {}", name());
     }
 
     // save backups from configuration

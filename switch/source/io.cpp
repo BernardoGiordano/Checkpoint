@@ -38,12 +38,12 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
 
     FILE* src = fopen(srcPath.c_str(), "rb");
     if (src == NULL) {
-        Logger::getInstance().log(Logger::ERROR, "Failed to open source file " + srcPath + " during copy with errno %d. Skipping...", errno);
+        Logging::error("Failed to open source file {} during copy with errno {}. Skipping...", srcPath, errno);
         return;
     }
     FILE* dst = fopen(dstPath.c_str(), "wb");
     if (dst == NULL) {
-        Logger::getInstance().log(Logger::ERROR, "Failed to open destination file " + dstPath + " during copy with errno %d. Skipping...", errno);
+        Logging::error("Failed to open destination file {} during copy with errno {}. Skipping...", dstPath, errno);
         fclose(src);
         return;
     }
@@ -75,7 +75,7 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
 
     // commit each file to the save
     if (dstPath.rfind("save:/", 0) == 0) {
-        Logger::getInstance().log(Logger::ERROR, "Committing file " + dstPath + " to the save archive.");
+        Logging::error("Committing file {} to the save archive.", dstPath);
         fsdevCommitDevice("save");
     }
 
@@ -159,8 +159,8 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
     Title title;
     getTitle(title, uid, index);
 
-    Logger::getInstance().log(Logger::INFO, "Started backup of %s. Title id: 0x%016lX; User id: 0x%lX%lX.", title.name().c_str(), title.id(),
-        title.userId().uid[1], title.userId().uid[0]);
+    Logging::info("Started backup of {}. Title id: 0x{:016X}; User id: 0x{:X}{:X}.", title.name().c_str(), title.id(), title.userId().uid[1],
+        title.userId().uid[0]);
 
     FsFileSystem fileSystem;
     res = FileSystem::mount(&fileSystem, title.id(), title.userId());
@@ -168,14 +168,13 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
         int rc = FileSystem::mount(fileSystem);
         if (rc == -1) {
             FileSystem::unmount();
-            Logger::getInstance().log(Logger::ERROR, "Failed to mount filesystem during backup. Title id: 0x%016lX; User id: 0x%lX%lX.", title.id(),
-                title.userId().uid[1], title.userId().uid[0]);
+            Logging::error("Failed to mount filesystem during backup. Title id: 0x{:016X}; User id: 0x{:X}{:X}.", title.id(), title.userId().uid[1],
+                title.userId().uid[0]);
             return std::make_tuple(false, -2, "Failed to mount save.");
         }
     }
     else {
-        Logger::getInstance().log(Logger::ERROR,
-            "Failed to mount filesystem during backup with result 0x%08lX. Title id: 0x%016lX; User id: 0x%lX%lX.", res, title.id(),
+        Logging::error("Failed to mount filesystem during backup with result 0x{:08X}. Title id: 0x%016lX; User id: 0x{:X}{:X}.", res, title.id(),
             title.userId().uid[1], title.userId().uid[0]);
         return std::make_tuple(false, res, "Failed to mount save.");
     }
@@ -198,7 +197,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
                 }
                 else {
                     FileSystem::unmount();
-                    Logger::getInstance().log(Logger::INFO, "Copy operation aborted by the user through the system keyboard.");
+                    Logging::info("Copy operation aborted by the user through the system keyboard.");
                     return std::make_tuple(false, 0, "Operation aborted by the user.");
                 }
             }
@@ -224,7 +223,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
         int rc = io::deleteFolderRecursively((dstPath + "/").c_str());
         if (rc != 0) {
             FileSystem::unmount();
-            Logger::getInstance().log(Logger::ERROR, "Failed to recursively delete directory " + dstPath + " with result %d.", rc);
+            Logging::error("Failed to recursively delete directory {} with result {}.", dstPath, rc);
             return std::make_tuple(false, (Result)rc, "Failed to delete the existing backup\ndirectory recursively.");
         }
     }
@@ -234,7 +233,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
     if (R_FAILED(res)) {
         FileSystem::unmount();
         io::deleteFolderRecursively((dstPath + "/").c_str());
-        Logger::getInstance().log(Logger::ERROR, "Failed to copy directory " + dstPath + " with result 0x%08lX. Skipping...", res);
+        Logging::error("Failed to copy directory {} with result 0x{:08X}. Skipping...", dstPath, res);
         return std::make_tuple(false, res, "Failed to backup save.");
     }
 
@@ -253,7 +252,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
     }
 
     ret = std::make_tuple(true, 0, "Progress correctly saved to disk.");
-    Logger::getInstance().log(Logger::INFO, "Backup succeeded.");
+    Logging::info("Backup succeeded.");
     return ret;
 }
 
@@ -264,8 +263,8 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
     Title title;
     getTitle(title, uid, index);
 
-    Logger::getInstance().log(Logger::INFO, "Started restore of %s. Title id: 0x%016lX; User id: 0x%lX%lX.", title.name().c_str(), title.id(),
-        title.userId().uid[1], title.userId().uid[0]);
+    Logging::info("Started restore of {}. Title id: 0x{:016X}; User id: 0x{:X}{:X}.", title.name().c_str(), title.id(), title.userId().uid[1],
+        title.userId().uid[0]);
 
     FsFileSystem fileSystem;
     res = FileSystem::mount(&fileSystem, title.id(), title.userId());
@@ -273,14 +272,13 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
         int rc = FileSystem::mount(fileSystem);
         if (rc == -1) {
             FileSystem::unmount();
-            Logger::getInstance().log(Logger::ERROR, "Failed to mount filesystem during restore. Title id: 0x%016lX; User id: 0x%lX%lX.", title.id(),
-                title.userId().uid[1], title.userId().uid[0]);
+            Logging::error("Failed to mount filesystem during restore. Title id: 0x{:016X}; User id: 0x{:X}{:X}.", title.id(), title.userId().uid[1],
+                title.userId().uid[0]);
             return std::make_tuple(false, -2, "Failed to mount save.");
         }
     }
     else {
-        Logger::getInstance().log(Logger::ERROR,
-            "Failed to mount filesystem during restore with result 0x%08lX. Title id: 0x%016lX; User id: 0x%lX%lX.", res, title.id(),
+        Logging::error("Failed to mount filesystem during restore with result 0x{:08X}. Title id: 0x{:016X}; User id: 0x{:X}{:X}.", res, title.id(),
             title.userId().uid[1], title.userId().uid[0]);
         return std::make_tuple(false, res, "Failed to mount save.");
     }
@@ -291,20 +289,20 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
     res = io::deleteFolderRecursively(dstPath.c_str());
     if (R_FAILED(res)) {
         FileSystem::unmount();
-        Logger::getInstance().log(Logger::ERROR, "Failed to recursively delete directory " + dstPath + " with result 0x%08lX.", res);
+        Logging::error("Failed to recursively delete directory {} with result 0x{:08X}.", dstPath, res);
         return std::make_tuple(false, res, "Failed to delete save.");
     }
 
     res = io::copyDirectory(srcPath, dstPath);
     if (R_FAILED(res)) {
         FileSystem::unmount();
-        Logger::getInstance().log(Logger::ERROR, "Failed to copy directory " + srcPath + " to " + dstPath + " with result 0x%08lX. Skipping...", res);
+        Logging::error("Failed to copy directory {} to {} with result 0x{:08X}. Skipping...", srcPath, dstPath, res);
         return std::make_tuple(false, res, "Failed to restore save.");
     }
 
     res = fsdevCommitDevice("save");
     if (R_FAILED(res)) {
-        Logger::getInstance().log(Logger::ERROR, "Failed to commit save with result 0x%08lX.", res);
+        Logging::error("Failed to commit save with result 0x{:08X}.", res);
         return std::make_tuple(false, res, "Failed to commit to save device.");
     }
     else {
@@ -314,6 +312,6 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
 
     FileSystem::unmount();
 
-    Logger::getInstance().log(Logger::INFO, "Restore succeeded.");
+    Logging::info("Restore succeeded.");
     return ret;
 }
