@@ -26,6 +26,7 @@
 
 #include "title.hpp"
 #include "main.hpp"
+#include "thread.hpp"
 #include <chrono>
 
 static bool validId(u64 id);
@@ -42,6 +43,21 @@ static C2D_Image dsIcon                         = {nullptr, &dsIconSubt3x};
 
 static bool forceRefresh           = false;
 static std::atomic_flag doCartScan = ATOMIC_FLAG_INIT;
+
+struct ExportTitleListCacheParams {
+    std::vector<Title> titleSaves;
+    std::vector<Title> titleExtdatas;
+    std::u16string savecachePath;
+    std::u16string extdatacachePath;
+};
+
+static void exportTitleListCacheThreaded(void* arg)
+{
+    ExportTitleListCacheParams* params = static_cast<ExportTitleListCacheParams*>(arg);
+    exportTitleListCache(params->titleSaves, params->savecachePath);
+    exportTitleListCache(params->titleExtdatas, params->extdatacachePath);
+    delete params;
+}
 
 static void loadDSIcon(u8* banner)
 {
@@ -696,9 +712,14 @@ static void loadTitles(bool forceRefresh)
             }
         });
 
-        // serialize data
-        exportTitleListCache(titleSaves, savecachePath);
-        exportTitleListCache(titleExtdatas, extdatacachePath);
+        if (!optimizedLoad) {
+            ExportTitleListCacheParams* params = new ExportTitleListCacheParams();
+            params->titleSaves                 = titleSaves;
+            params->titleExtdatas              = titleExtdatas;
+            params->savecachePath              = savecachePath;
+            params->extdatacachePath           = extdatacachePath;
+            Threads::executeTask(exportTitleListCacheThreaded, params);
+        }
 
         FS_CardType cardType;
         Result res = FSUSER_GetCardType(&cardType);
