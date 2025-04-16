@@ -47,9 +47,16 @@ namespace {
 
     static void exportTitleListCacheThreaded(void* arg)
     {
+        auto start = std::chrono::high_resolution_clock::now();
+
         ExportTitleListCacheParams* params = static_cast<ExportTitleListCacheParams*>(arg);
         TitleLoader::exportTitleListCache(params->titleSaves, params->savecachePath);
         TitleLoader::exportTitleListCache(params->titleExtdatas, params->extdatacachePath);
+
+        auto end      = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        Logging::debug("Title cache export completed in {} ms", duration.count());
+
         delete params;
     }
 }
@@ -157,6 +164,7 @@ void TitleLoader::exportTitleListCache(std::vector<Title>& list, const std::u16s
 {
     std::unique_ptr<u8[]> cache = std::unique_ptr<u8[]>(new u8[list.size() * ENTRYSIZE]());
     for (size_t i = 0; i < list.size(); i++) {
+        u8* entryStart               = cache.get() + i * ENTRYSIZE;
         u64 id                       = list.at(i).id();
         bool accessibleSave          = list.at(i).accessibleSave();
         bool accessibleExtdata       = list.at(i).accessibleExtdata();
@@ -171,22 +179,22 @@ void TitleLoader::exportTitleListCache(std::vector<Title>& list, const std::u16s
         if (cardType == CARD_CTR) {
             smdh_s* smdh = loadSMDH(list.at(i).lowId(), list.at(i).highId(), media);
             if (smdh != NULL) {
-                memcpy(cache.get() + i * ENTRYSIZE + 733, smdh->bigIconData, 0x900 * 2);
+                memcpy(entryStart + 733, smdh->bigIconData, 0x900 * 2);
             }
             delete smdh;
         }
 
-        memcpy(cache.get() + i * ENTRYSIZE + 0, &id, sizeof(u64));
-        memcpy(cache.get() + i * ENTRYSIZE + 8, list.at(i).productCode, 16);
-        memcpy(cache.get() + i * ENTRYSIZE + 24, &accessibleSave, sizeof(u8));
-        memcpy(cache.get() + i * ENTRYSIZE + 25, &accessibleExtdata, sizeof(u8));
-        memcpy(cache.get() + i * ENTRYSIZE + 26, shortDescription.c_str(), shortDescription.length());
-        memcpy(cache.get() + i * ENTRYSIZE + 90, longDescription.c_str(), longDescription.length());
-        memcpy(cache.get() + i * ENTRYSIZE + 218, savePath.c_str(), savePath.length());
-        memcpy(cache.get() + i * ENTRYSIZE + 474, extdataPath.c_str(), extdataPath.length());
-        memcpy(cache.get() + i * ENTRYSIZE + 730, &media, sizeof(u8));
-        memcpy(cache.get() + i * ENTRYSIZE + 731, &cardType, sizeof(u8));
-        memcpy(cache.get() + i * ENTRYSIZE + 732, &card, sizeof(u8));
+        memcpy(entryStart + 0, &id, sizeof(u64));
+        memcpy(entryStart + 8, list.at(i).productCode, 16);
+        memcpy(entryStart + 24, &accessibleSave, sizeof(u8));
+        memcpy(entryStart + 25, &accessibleExtdata, sizeof(u8));
+        memcpy(entryStart + 26, shortDescription.c_str(), shortDescription.length());
+        memcpy(entryStart + 90, longDescription.c_str(), longDescription.length());
+        memcpy(entryStart + 218, savePath.c_str(), savePath.length());
+        memcpy(entryStart + 474, extdataPath.c_str(), extdataPath.length());
+        memcpy(entryStart + 730, &media, sizeof(u8));
+        memcpy(entryStart + 731, &cardType, sizeof(u8));
+        memcpy(entryStart + 732, &card, sizeof(u8));
     }
 
     FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, path.data()));
@@ -197,21 +205,27 @@ void TitleLoader::exportTitleListCache(std::vector<Title>& list, const std::u16s
 
 void TitleLoader::importTitleListCache(void)
 {
-    FSStream inputsaves(Archive::sdmc(), StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache"), FS_OPEN_READ);
-    u32 sizesaves  = inputsaves.size() / ENTRYSIZE;
-    u8* cachesaves = new u8[inputsaves.size()];
-    inputsaves.read(cachesaves, inputsaves.size());
+    static const std::u16string saveCachePath    = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache");
+    static const std::u16string extdataCachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache");
+
+    FSStream inputsaves(Archive::sdmc(), saveCachePath, FS_OPEN_READ);
+    u32 sizesaves = inputsaves.size() / ENTRYSIZE;
+    std::unique_ptr<u8[]> cachesaves(new u8[inputsaves.size()]);
+    inputsaves.read(cachesaves.get(), inputsaves.size());
     inputsaves.close();
 
-    FSStream inputextdatas(Archive::sdmc(), StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache"), FS_OPEN_READ);
-    u32 sizeextdatas  = inputextdatas.size() / ENTRYSIZE;
-    u8* cacheextdatas = new u8[inputextdatas.size()];
-    inputextdatas.read(cacheextdatas, inputextdatas.size());
+    FSStream inputextdatas(Archive::sdmc(), extdataCachePath, FS_OPEN_READ);
+    u32 sizeextdatas = inputextdatas.size() / ENTRYSIZE;
+    std::unique_ptr<u8[]> cacheextdatas(new u8[inputextdatas.size()]);
+    inputextdatas.read(cacheextdatas.get(), inputextdatas.size());
     inputextdatas.close();
 
     g_loadingTitlesLimit = sizesaves + sizeextdatas;
 
-    // fill the lists with blank titles firsts
+    titleSaves.reserve(sizesaves);
+    titleExtdatas.reserve(sizeextdatas);
+
+    // fill the lists with blank titles first
     for (size_t i = 0, sz = std::max(sizesaves, sizeextdatas); i < sz; i++) {
         Title title;
         title.load();
@@ -227,6 +241,8 @@ void TitleLoader::importTitleListCache(void)
     std::vector<u64> alreadystored;
 
     for (size_t i = 0; i < sizesaves; i++) {
+        const u8* titleData = cachesaves.get() + i * ENTRYSIZE;
+
         u64 id;
         u8 productCode[16];
         bool accessibleSave;
@@ -239,17 +255,17 @@ void TitleLoader::importTitleListCache(void)
         FS_CardType cardType;
         CardType card;
 
-        memcpy(&id, cachesaves + i * ENTRYSIZE, sizeof(u64));
-        memcpy(productCode, cachesaves + i * ENTRYSIZE + 8, 16);
-        memcpy(&accessibleSave, cachesaves + i * ENTRYSIZE + 24, sizeof(u8));
-        memcpy(&accessibleExtdata, cachesaves + i * ENTRYSIZE + 25, sizeof(u8));
-        memcpy(shortDescription, cachesaves + i * ENTRYSIZE + 26, 0x40);
-        memcpy(longDescription, cachesaves + i * ENTRYSIZE + 90, 0x80);
-        memcpy(savePath, cachesaves + i * ENTRYSIZE + 218, 256);
-        memcpy(extdataPath, cachesaves + i * ENTRYSIZE + 474, 256);
-        memcpy(&media, cachesaves + i * ENTRYSIZE + 730, sizeof(u8));
-        memcpy(&cardType, cachesaves + i * ENTRYSIZE + 731, sizeof(u8));
-        memcpy(&card, cachesaves + i * ENTRYSIZE + 732, sizeof(u8));
+        memcpy(&id, titleData, sizeof(u64));
+        memcpy(productCode, titleData + 8, 16);
+        memcpy(&accessibleSave, titleData + 24, sizeof(u8));
+        memcpy(&accessibleExtdata, titleData + 25, sizeof(u8));
+        memcpy(shortDescription, titleData + 26, 0x40);
+        memcpy(longDescription, titleData + 90, 0x80);
+        memcpy(savePath, titleData + 218, 256);
+        memcpy(extdataPath, titleData + 474, 256);
+        memcpy(&media, titleData + 730, sizeof(u8));
+        memcpy(&cardType, titleData + 731, sizeof(u8));
+        memcpy(&card, titleData + 732, sizeof(u8));
 
         Title title;
         title.load(id, productCode, accessibleSave, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
@@ -258,7 +274,7 @@ void TitleLoader::importTitleListCache(void)
 
         if (cardType == CARD_CTR) {
             u16 bigIconData[0x900];
-            memcpy(bigIconData, cachesaves + i * ENTRYSIZE + 733, 0x900 * 2);
+            memcpy(bigIconData, titleData + 733, 0x900 * 2);
             C2D_Image smallIcon = loadTextureFromBytes(bigIconData);
             title.setIcon(smallIcon);
         }
@@ -274,8 +290,10 @@ void TitleLoader::importTitleListCache(void)
     }
 
     for (size_t i = 0; i < sizeextdatas; i++) {
+        const u8* titleData = cacheextdatas.get() + i * ENTRYSIZE;
+
         u64 id;
-        memcpy(&id, cacheextdatas + i * ENTRYSIZE, sizeof(u64));
+        memcpy(&id, titleData, sizeof(u64));
         std::vector<u64>::iterator it = find(alreadystored.begin(), alreadystored.end(), id);
         if (it == alreadystored.end()) {
             u8 productCode[16];
@@ -289,16 +307,16 @@ void TitleLoader::importTitleListCache(void)
             FS_CardType cardType;
             CardType card;
 
-            memcpy(productCode, cacheextdatas + i * ENTRYSIZE + 8, 16);
-            memcpy(&accessibleSave, cacheextdatas + i * ENTRYSIZE + 24, sizeof(u8));
-            memcpy(&accessibleExtdata, cacheextdatas + i * ENTRYSIZE + 25, sizeof(u8));
-            memcpy(shortDescription, cacheextdatas + i * ENTRYSIZE + 26, 0x40);
-            memcpy(longDescription, cacheextdatas + i * ENTRYSIZE + 90, 0x80);
-            memcpy(savePath, cacheextdatas + i * ENTRYSIZE + 218, 256);
-            memcpy(extdataPath, cacheextdatas + i * ENTRYSIZE + 474, 256);
-            memcpy(&media, cacheextdatas + i * ENTRYSIZE + 730, sizeof(u8));
-            memcpy(&cardType, cacheextdatas + i * ENTRYSIZE + 731, sizeof(u8));
-            memcpy(&card, cacheextdatas + i * ENTRYSIZE + 732, sizeof(u8));
+            memcpy(productCode, titleData + 8, 16);
+            memcpy(&accessibleSave, titleData + 24, sizeof(u8));
+            memcpy(&accessibleExtdata, titleData + 25, sizeof(u8));
+            memcpy(shortDescription, titleData + 26, 0x40);
+            memcpy(longDescription, titleData + 90, 0x80);
+            memcpy(savePath, titleData + 218, 256);
+            memcpy(extdataPath, titleData + 474, 256);
+            memcpy(&media, titleData + 730, sizeof(u8));
+            memcpy(&cardType, titleData + 731, sizeof(u8));
+            memcpy(&card, titleData + 732, sizeof(u8));
 
             Title title;
             title.load(id, productCode, accessibleSave, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
@@ -307,7 +325,7 @@ void TitleLoader::importTitleListCache(void)
 
             if (cardType == CARD_CTR) {
                 u16 bigIconData[0x900];
-                memcpy(bigIconData, cacheextdatas + i * ENTRYSIZE + 733, 0x900 * 2);
+                memcpy(bigIconData, titleData + 733, 0x900 * 2);
                 C2D_Image smallIcon = loadTextureFromBytes(bigIconData);
                 title.setIcon(smallIcon);
             }
@@ -333,9 +351,6 @@ void TitleLoader::importTitleListCache(void)
             }
         }
     }
-
-    delete[] cachesaves;
-    delete[] cacheextdatas;
 }
 
 bool TitleLoader::scanCard(void)
@@ -433,14 +448,16 @@ void TitleLoader::cartScan(void)
 
 void TitleLoader::loadTitles(bool forceRefreshParam)
 {
-    auto start = std::chrono::high_resolution_clock::now();
+    auto totalStart   = std::chrono::high_resolution_clock::now();
+    auto sectionStart = totalStart;
     try {
         static const std::u16string savecachePath    = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache");
         static const std::u16string extdatacachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache");
 
-        // on refreshing
         titleSaves.clear();
         titleExtdatas.clear();
+        titleSaves.reserve(128);
+        titleExtdatas.reserve(128);
 
         bool optimizedLoad = false;
 
@@ -481,10 +498,17 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
         if (optimizedLoad && !forceRefreshParam) {
             g_loadingTitlesCounter = 0;
 
+            sectionStart = std::chrono::high_resolution_clock::now();
             // deserialize data
             importTitleListCache();
 
+            auto importEnd      = std::chrono::high_resolution_clock::now();
+            auto importDuration = std::chrono::duration_cast<std::chrono::milliseconds>(importEnd - sectionStart);
+            Logging::debug("Title cache import completed in {} ms", importDuration.count());
+
             g_loadingTitlesCounter = titleSaves.size() + titleExtdatas.size();
+
+            sectionStart = std::chrono::high_resolution_clock::now();
 
             for (auto& title : titleSaves) {
                 title.refreshDirectories();
@@ -492,6 +516,10 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
             for (auto& title : titleExtdatas) {
                 title.refreshDirectories();
             }
+
+            auto refreshEnd      = std::chrono::high_resolution_clock::now();
+            auto refreshDuration = std::chrono::duration_cast<std::chrono::milliseconds>(refreshEnd - sectionStart);
+            Logging::debug("Directory refresh completed in {} ms", refreshDuration.count());
         }
         else {
             u32 count     = 0;
@@ -590,11 +618,8 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
         });
 
         if (!optimizedLoad) {
-            ExportTitleListCacheParams* params = new ExportTitleListCacheParams();
-            params->titleSaves                 = titleSaves;
-            params->titleExtdatas              = titleExtdatas;
-            params->savecachePath              = savecachePath;
-            params->extdatacachePath           = extdatacachePath;
+            ExportTitleListCacheParams* params = new ExportTitleListCacheParams(titleSaves, titleExtdatas, savecachePath, extdatacachePath);
+            Logging::debug("Starting title cache export thread");
             Threads::executeTask(exportTitleListCacheThreaded, params);
         }
 
@@ -638,9 +663,9 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
         Logging::error("Unknown exception in loadTitles");
     }
 
-    auto end      = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    Logging::debug("Title list loaded in {} ms", duration.count());
+    auto totalEnd      = std::chrono::high_resolution_clock::now();
+    auto totalDuration = std::chrono::duration_cast<std::chrono::milliseconds>(totalEnd - totalStart);
+    Logging::debug("Title list loaded in {} ms (total)", totalDuration.count());
 }
 
 void TitleLoader::loadTitlesThread(void)
