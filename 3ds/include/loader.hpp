@@ -37,6 +37,7 @@ namespace TitleLoader {
     C2D_Image icon(int i);
     bool favorite(int i);
 
+    void loadTitles(bool forceRefreshParam);
     void refreshDirectories(u64 id);
     void loadTitlesThread(void);
     void cartScan(void);
