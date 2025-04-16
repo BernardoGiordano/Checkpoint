@@ -28,35 +28,34 @@
 #include "MainScreen.hpp"
 #include "thread.hpp"
 #include "util.hpp"
+#include <chrono>
 
 int main()
 {
+    auto start = std::chrono::high_resolution_clock::now();
+
     Result res;
     try {
         res = servicesInit();
     }
     catch (const std::exception& e) {
         res = consoleDisplayError(std::string("Error during services init. ") + e.what(), -1);
+        exit(res);
     }
     catch (...) {
         res = consoleDisplayError("Unknown error during startup", -2);
+        exit(res);
     }
 
     if (R_FAILED(res)) {
-        try {
-            res = consoleDisplayError("Unknown error during startup in the try block of the FAILED branch", res);
-        }
-        catch (const std::exception& e) {
-            res = consoleDisplayError(std::string("Error during startup in the catch block of the FAILED branch. ") + e.what(), -3);
-        }
-        catch (...) {
-            res = consoleDisplayError("Unknown error during startup in the catch ... block of the FAILED branch", -4);
-        }
+        // at this point we already had an error message displayed
         exit(res);
     }
 
     try {
-        g_screen = std::make_unique<MainScreen>();
+        g_screen       = std::make_unique<MainScreen>();
+        auto uiIsReady = std::chrono::high_resolution_clock::now();
+        Logging::info("Loading took {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(uiIsReady - start).count());
 
         while (aptMainLoop()) {
             touchPosition touch;
