@@ -354,32 +354,34 @@ void Title::refreshDirectories(void)
         // save backups from configuration
         try {
             std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
-            Logging::debug("Found {} additional save folders for title {:X}", additionalFolders.size(), mId);
-            for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-                Logging::debug("Processing additional save folder: {}", StringUtils::UTF16toUTF8(*it));
-                if (io::directoryExists(Archive::sdmc(), *it)) {
-                    Logging::debug("Additional save folder exists: {}", StringUtils::UTF16toUTF8(*it));
-                    // we have other folders to parse
-                    Directory list(Archive::sdmc(), *it);
-                    if (list.good()) {
-                        Logging::debug("Additional save folder is good: {}", StringUtils::UTF16toUTF8(*it));
-                        for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                            if (list.folder(i)) {
-                                Logging::debug("Found save folder: {}", StringUtils::UTF16toUTF8(list.entry(i)));
-                                mSaves.push_back(list.entry(i));
-                                mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+            if (!additionalFolders.empty()) {
+                Logging::debug("Found {} additional save folders for title {:X}", additionalFolders.size(), mId);
+                for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
+                    Logging::debug("Processing additional save folder: {}", StringUtils::UTF16toUTF8(*it));
+                    if (io::directoryExists(Archive::sdmc(), *it)) {
+                        Logging::debug("Additional save folder exists: {}", StringUtils::UTF16toUTF8(*it));
+                        // we have other folders to parse
+                        Directory list(Archive::sdmc(), *it);
+                        if (list.good()) {
+                            Logging::debug("Additional save folder is good: {}", StringUtils::UTF16toUTF8(*it));
+                            for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                                if (list.folder(i)) {
+                                    Logging::debug("Found save folder: {}", StringUtils::UTF16toUTF8(list.entry(i)));
+                                    mSaves.push_back(list.entry(i));
+                                    mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                                }
                             }
+                        }
+                        else {
+                            Logging::error("Additional save folder is not good: {}", StringUtils::UTF16toUTF8(*it));
                         }
                     }
                     else {
-                        Logging::error("Additional save folder is not good: {}", StringUtils::UTF16toUTF8(*it));
+                        Logging::error("Additional save folder does not exist: {}", StringUtils::UTF16toUTF8(*it));
                     }
                 }
-                else {
-                    Logging::error("Additional save folder does not exist: {}", StringUtils::UTF16toUTF8(*it));
-                }
+                Logging::debug("Finished processing additional save folders for title {:X}", mId);
             }
-            Logging::debug("Finished processing additional save folders for title {:X}", mId);
         }
         catch (const std::exception& e) {
             Logging::error("Exception when processing additional save folders: {}", e.what());
@@ -412,32 +414,34 @@ void Title::refreshDirectories(void)
         // extdata backups from configuration
         try {
             std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
-            Logging::debug("Found {} additional extdata folders for title {:X}", additionalFolders.size(), mId);
-            for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-                Logging::debug("Processing additional extdata folder: {}", StringUtils::UTF16toUTF8(*it));
-                if (io::directoryExists(Archive::sdmc(), *it)) {
-                    Logging::debug("Additional extdata folder exists: {}", StringUtils::UTF16toUTF8(*it));
-                    // we have other folders to parse
-                    Directory list(Archive::sdmc(), *it);
-                    if (list.good()) {
-                        Logging::debug("Additional extdata folder is good: {}", StringUtils::UTF16toUTF8(*it));
-                        for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                            if (list.folder(i)) {
-                                Logging::debug("Found extdata folder: {}", StringUtils::UTF16toUTF8(list.entry(i)));
-                                mExtdata.push_back(list.entry(i));
-                                mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+            if (!additionalFolders.empty()) {
+                Logging::debug("Found {} additional extdata folders for title {:X}", additionalFolders.size(), mId);
+                for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
+                    Logging::debug("Processing additional extdata folder: {}", StringUtils::UTF16toUTF8(*it));
+                    if (io::directoryExists(Archive::sdmc(), *it)) {
+                        Logging::debug("Additional extdata folder exists: {}", StringUtils::UTF16toUTF8(*it));
+                        // we have other folders to parse
+                        Directory list(Archive::sdmc(), *it);
+                        if (list.good()) {
+                            Logging::debug("Additional extdata folder is good: {}", StringUtils::UTF16toUTF8(*it));
+                            for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                                if (list.folder(i)) {
+                                    Logging::debug("Found extdata folder: {}", StringUtils::UTF16toUTF8(list.entry(i)));
+                                    mExtdata.push_back(list.entry(i));
+                                    mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                                }
                             }
+                        }
+                        else {
+                            Logging::error("Additional extdata folder is not good: {}", StringUtils::UTF16toUTF8(*it));
                         }
                     }
                     else {
-                        Logging::error("Additional extdata folder is not good: {}", StringUtils::UTF16toUTF8(*it));
+                        Logging::error("Additional extdata folder does not exist: {}", StringUtils::UTF16toUTF8(*it));
                     }
                 }
-                else {
-                    Logging::error("Additional extdata folder does not exist: {}", StringUtils::UTF16toUTF8(*it));
-                }
+                Logging::debug("Finished processing additional extdata folders for title {:X}", mId);
             }
-            Logging::debug("Finished processing additional extdata folders for title {:X}", mId);
         }
         catch (const std::exception& e) {
             Logging::error("Exception when processing additional extdata folders: {}", e.what());
