@@ -25,6 +25,7 @@
  */
 
 #include "MainScreen.hpp"
+#include "loader.hpp"
 #include "server.hpp"
 
 static constexpr size_t rowlen = 4, collen = 8;
@@ -101,7 +102,7 @@ void MainScreen::drawTop(void) const
 {
     auto selEnt          = MS::selectedEntries();
     const size_t entries = hid.maxVisibleEntries();
-    const size_t max     = hid.maxEntries(getTitleCount()) + 1;
+    const size_t max     = hid.maxEntries(TitleLoader::getTitleCount()) + 1;
 
     C2D_TargetClear(g_top, COLOR_BLACK_DARKERR);
     C2D_TargetClear(g_bottom, COLOR_BLACK_DARKERR);
@@ -137,7 +138,7 @@ void MainScreen::drawTop(void) const
     }
     else {
         for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-            C2D_Image titleIcon = icon(k);
+            C2D_Image titleIcon = TitleLoader::icon(k);
             if (titleIcon.subtex->width == 48) {
                 C2D_DrawImageAt(titleIcon, selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
             }
@@ -146,7 +147,7 @@ void MainScreen::drawTop(void) const
             }
         }
 
-        if (getTitleCount() > 0) {
+        if (TitleLoader::getTitleCount() > 0) {
             drawSelector();
         }
 
@@ -157,7 +158,7 @@ void MainScreen::drawTop(void) const
                 C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
             }
 
-            if (favorite(k)) {
+            if (TitleLoader::favorite(k)) {
                 C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 3, 0.5f, 16, 16, COLOR_GOLD);
                 C2D_SpriteSetPos(&star, selectorX(k) + 27, selectorY(k) - 1);
                 C2D_DrawSpriteTinted(&star, &checkboxTint);
@@ -222,9 +223,9 @@ void MainScreen::drawBottom(void) const
 
     if (g_isLoadingTitles) {}
 
-    else if (getTitleCount() > 0) {
+    else if (TitleLoader::getTitleCount() > 0) {
         Title title;
-        getTitle(title, hid.fullIndex());
+        TitleLoader::getTitle(title, hid.fullIndex());
 
         directoryList->flush();
         std::vector<std::u16string> dirs = mode == MODE_SAVE ? title.saves() : title.extdata();
@@ -300,8 +301,8 @@ void MainScreen::updateSelector(void)
     }
 
     if (!g_bottomScrollEnabled) {
-        if (getTitleCount() > 0) {
-            size_t count = getTitleCount();
+        size_t count = TitleLoader::getTitleCount();
+        if (count > 0) {
             hid.update(count);
             directoryList->resetIndex();
         }
@@ -379,10 +380,10 @@ void MainScreen::handleEvents(const InputState& input)
                     *this, "Delete selected backup?",
                     [this, isSaveMode, index]() {
                         Title title;
-                        getTitle(title, hid.fullIndex());
+                        TitleLoader::getTitle(title, hid.fullIndex());
                         std::u16string path = isSaveMode ? title.fullSavePath(index) : title.fullExtdataPath(index);
                         io::deleteBackupFolder(path);
-                        refreshDirectories(title.id());
+                        TitleLoader::refreshDirectories(title.id());
                         directoryList->setIndex(index - 1);
                         this->removeOverlay();
                     },
@@ -415,7 +416,7 @@ void MainScreen::handleEvents(const InputState& input)
 
     if (selectionTimer > 90) {
         MS::clearSelectedEntries();
-        for (size_t i = 0, sz = getTitleCount(); i < sz; i++) {
+        for (size_t i = 0, sz = TitleLoader::getTitleCount(); i < sz; i++) {
             MS::addSelectedEntry(i);
         }
         selectionTimer = 0;
@@ -432,7 +433,7 @@ void MainScreen::handleEvents(const InputState& input)
         hid.reset();
         MS::clearSelectedEntries();
         directoryList->resetIndex();
-        Threads::executeTask(loadTitlesThread);
+        Threads::executeTask(TitleLoader::loadTitlesThread);
         refreshTimer = 0;
     }
 
@@ -490,9 +491,9 @@ void MainScreen::handleEvents(const InputState& input)
         }
     }
 
-    if (getTitleCount() > 0) {
+    if (TitleLoader::getTitleCount() > 0) {
         Title title;
-        getTitle(title, hid.fullIndex());
+        TitleLoader::getTitle(title, hid.fullIndex());
         if ((title.isActivityLog() && buttonPlayCoins->released()) || ((hidKeysDown() & KEY_TOUCH) && input.py < 20 && input.px > 294)) {
             if (!Archive::setPlayCoins()) {
                 currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");

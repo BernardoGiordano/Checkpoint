@@ -25,6 +25,7 @@
  */
 
 #include "io.hpp"
+#include "loader.hpp"
 
 bool io::fileExists(const std::string& path)
 {
@@ -170,7 +171,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
     Result res             = 0;
 
     Title title;
-    getTitle(title, index);
+    TitleLoader::getTitle(title, index);
 
     Logging::info("Started backup of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
 
@@ -231,7 +232,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
                 return std::make_tuple(false, res, message);
             }
 
-            refreshDirectories(title.id());
+            TitleLoader::refreshDirectories(title.id());
         }
         else {
             Logging::error("Failed to open save archive with result 0x{:08X}.", res);
@@ -311,7 +312,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
 
         delete[] saveFile;
         stream.close();
-        refreshDirectories(title.id());
+        TitleLoader::refreshDirectories(title.id());
     }
 
     Logging::info("Backup succeeded.");
@@ -324,7 +325,7 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
     Result res        = 0;
 
     Title title;
-    getTitle(title, index);
+    TitleLoader::getTitle(title, index);
 
     Logging::info("Started restore of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
 

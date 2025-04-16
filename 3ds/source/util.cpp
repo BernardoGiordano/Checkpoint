@@ -25,6 +25,7 @@
  */
 
 #include "util.hpp"
+#include "loader.hpp"
 #include "server.hpp"
 #include "thread.hpp"
 #include "title.hpp"
@@ -116,12 +117,12 @@ Result servicesInit(void)
         Logging::warning("Failed to create socket buffer.");
     }
 
-    Threads::executeTask(loadTitlesThread);
+    Threads::executeTask(TitleLoader::loadTitlesThread);
 
     if (Configuration::getInstance().shouldScanCard()) {
-        cartScanFlagTestAndSet();
-        Threads::create(cartScan);
-        ATEXIT(clearCartScanFlag);
+        TitleLoader::cartScanFlagTestAndSet();
+        Threads::create(TitleLoader::cartScan);
+        ATEXIT(TitleLoader::clearCartScanFlag);
     }
 
     // consoleDebugInit(debugDevice_SVC);

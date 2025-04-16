@@ -102,16 +102,6 @@ private:
     C2D_Image mIcon;
 };
 
-void getTitle(Title& dst, int i);
-int getTitleCount(void);
-C2D_Image icon(int i);
-bool favorite(int i);
-
-void loadFilter(void);
-void refreshDirectories(u64 id);
-void loadTitlesThread(void);
-void cartScan(void);
-void cartScanFlagTestAndSet(void);
-void clearCartScanFlag(void);
+C2D_Image loadTextureFromBytes(u16* bigIconData);
 
 #endif
