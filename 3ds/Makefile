@@ -32,7 +32,7 @@ include $(DEVKITARM)/3ds_rules
 #     - <libctru folder>/default_icon.png
 #---------------------------------------------------------------------------------
 APP_TITLE		:= 	Checkpoint
-APP_DESCRIPTION	:=	Fast and simple save manager
+APP_DESCRIPTION	:=	Checkpoint: fast and simple save manager
 APP_AUTHOR		:=	Bernardo Giordano, FlagBrew
 
 TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
