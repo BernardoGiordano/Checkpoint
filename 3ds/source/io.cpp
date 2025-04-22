@@ -287,15 +287,11 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
         for (u32 i = 0; i < saveSize / sectorSize; ++i) {
             res = SPIReadSaveData(cardType, sectorSize * i, saveFile + sectorSize * i, sectorSize);
             if (R_FAILED(res)) {
-                break;
+                delete[] saveFile;
+                FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
+                Logging::error("Failed to read save data from SPI with result 0x{:08X}.", res);
+                return std::make_tuple(false, res, "Failed to backup save.");
             }
-        }
-
-        if (R_FAILED(res)) {
-            delete[] saveFile;
-            FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-            Logging::error("Failed to delete directory recursively after failing to write save to the sd card with result 0x{:08X}.", res);
-            return std::make_tuple(false, res, "Failed to backup save.");
         }
 
         FSStream stream(Archive::sdmc(), copyPath, FS_OPEN_WRITE, saveSize);
@@ -409,14 +405,10 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
         for (u32 i = 0; i < saveSize / pageSize; ++i) {
             res = SPIWriteSaveData(cardType, pageSize * i, saveFile + pageSize * i, pageSize);
             if (R_FAILED(res)) {
-                break;
+                delete[] saveFile;
+                Logging::error("Failed to write save data to SPI with result 0x{:08X}.", res);
+                return std::make_tuple(false, res, "Failed to restore save.");
             }
-        }
-
-        if (R_FAILED(res)) {
-            delete[] saveFile;
-            Logging::error("Failed to restore save with result 0x{:08X}.", res);
-            return std::make_tuple(false, res, "Failed to restore save.");
         }
 
         delete[] saveFile;
