@@ -35,7 +35,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     selectionTimer = 0;
     refreshTimer   = 0;
 
-    staticBuf  = C2D_TextBufNew(261);
+    staticBuf  = C2D_TextBufNew(280);
     dynamicBuf = C2D_TextBufNew(256);
 
     buttonBackup    = std::make_unique<Clickable>(204, 102, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Backup \uE004", true);
