@@ -72,7 +72,7 @@ std::u16string Directory::entry(size_t index)
 
 bool Directory::folder(size_t index)
 {
-    return index < mList.size() ? mList.at(index).attributes == FS_ATTRIBUTE_DIRECTORY : false;
+    return index < mList.size() ? (mList.at(index).attributes & FS_ATTRIBUTE_DIRECTORY) != 0 : false;
 }
 
 size_t Directory::size(void)
