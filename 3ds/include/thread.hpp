@@ -1,6 +1,6 @@
 /*
  *   This file is part of PKSM
- *   Copyright (C) 2016-2025 FlagBrew
+ *   Copyright (C) 2016-2026 FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -97,7 +97,7 @@ namespace Threads {
         template <typename EPFunc>
         std::pair<void (*)(void*), void*> getFuncAndArg(EPFunc&& entrypoint)
             requires std::invocable<EPFunc> && std::is_convertible_v<EPFunc, std::invoke_result_t<EPFunc> (*)()> &&
-                     (sizeof(std::invoke_result_t<EPFunc> (*)()) == sizeof(void*))
+                     (sizeof(std::invoke_result_t<EPFunc>(*)()) == sizeof(void*))
         {
             return {+[](void* a) { std::invoke(reinterpret_cast<std::invoke_result_t<EPFunc> (*)()>(a)); },
                 reinterpret_cast<void*>(static_cast<std::invoke_result_t<EPFunc> (*)()>(entrypoint))};
@@ -123,7 +123,7 @@ namespace Threads {
         struct member_pointer_class {
         private:
             template <typename C, typename T>
-            static C declclass(T C::* m);
+            static C declclass(T C::*m);
 
         public:
             using type = decltype(declclass(std::declval<MF>()));

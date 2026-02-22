@@ -1,6 +1,6 @@
 /*
  *   This file is part of PKSM
- *   Copyright (C) 2016-2025 FlagBrew
+ *   Copyright (C) 2016-2026 FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -73,8 +73,8 @@ namespace internal {
 
     private:
         template <std::size_t... ArrAccess>
-        static constexpr auto get_tuple(std::index_sequence<ArrAccess...>)
-            -> std::tuple<std::tuple_element_t<indices[ArrAccess], std::tuple<Args...>>...>;
+        static constexpr auto get_tuple(
+            std::index_sequence<ArrAccess...>) -> std::tuple<std::tuple_element_t<indices[ArrAccess], std::tuple<Args...>>...>;
 
     public:
         using type = decltype(get_tuple(std::make_index_sequence<indices.size()>{}));
