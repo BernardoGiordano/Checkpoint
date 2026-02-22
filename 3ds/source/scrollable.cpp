@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -70,7 +70,10 @@ void Scrollable::updateSelection(void)
 
 void Scrollable::draw(bool condition)
 {
-    const size_t baseIndex = mVisibleEntries * mPage;
+    if (size() == 0 || mVisibleEntries * (size_t)mPage >= size()) {
+        setIndex(0);
+    }
+    const size_t baseIndex = mVisibleEntries * (size_t)mPage;
     const size_t sz        = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
         mCells.at(i)->draw(0.5f, g_bottomScrollEnabled && mCells.at(i)->selected() ? COLOR_PURPLE_LIGHT : 0);

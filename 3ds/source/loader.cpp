@@ -28,10 +28,12 @@
 #include "main.hpp"
 #include "title.hpp"
 #include <chrono>
+#include <mutex>
 
 namespace {
     std::vector<Title> titleSaves;
     std::vector<Title> titleExtdatas;
+    std::mutex titlesMutex;
 
     bool forceRefresh           = false;
     std::atomic_flag doCartScan = ATOMIC_FLAG_INIT;
@@ -77,33 +79,54 @@ bool TitleLoader::validId(u64 id)
 void TitleLoader::getTitle(Title& dst, int i)
 {
     const Mode_t mode = Archive::mode();
-    if (i < getTitleCount()) {
-        dst = mode == MODE_SAVE ? titleSaves.at(i) : titleExtdatas.at(i);
+    std::lock_guard<std::mutex> lock(titlesMutex);
+    const auto& vec = mode == MODE_SAVE ? titleSaves : titleExtdatas;
+    if (i >= 0 && i < (int)vec.size()) {
+        dst = vec.at(i);
+    }
+    else {
+        dst.load();
+        dst.setIcon(Gui::noIcon());
     }
 }
 
 int TitleLoader::getTitleCount(void)
 {
     const Mode_t mode = Archive::mode();
+    std::lock_guard<std::mutex> lock(titlesMutex);
     return mode == MODE_SAVE ? titleSaves.size() : titleExtdatas.size();
 }
 
 C2D_Image TitleLoader::icon(int i)
 {
     const Mode_t mode = Archive::mode();
-    return mode == MODE_SAVE ? titleSaves.at(i).icon() : titleExtdatas.at(i).icon();
+    std::lock_guard<std::mutex> lock(titlesMutex);
+    auto& vec = mode == MODE_SAVE ? titleSaves : titleExtdatas;
+    if (i >= 0 && i < (int)vec.size()) {
+        return vec.at(i).icon();
+    }
+    return Gui::noIcon();
 }
 
 bool TitleLoader::favorite(int i)
 {
     const Mode_t mode = Archive::mode();
-    u64 id            = mode == MODE_SAVE ? titleSaves.at(i).id() : titleExtdatas.at(i).id();
+    u64 id;
+    {
+        std::lock_guard<std::mutex> lock(titlesMutex);
+        auto& vec = mode == MODE_SAVE ? titleSaves : titleExtdatas;
+        if (i < 0 || i >= (int)vec.size()) {
+            return false;
+        }
+        id = vec.at(i).id();
+    }
     return Configuration::getInstance().favorite(id);
 }
 
 void TitleLoader::refreshDirectories(u64 id)
 {
     const Mode_t mode = Archive::mode();
+    std::lock_guard<std::mutex> lock(titlesMutex);
     if (mode == MODE_SAVE) {
         for (size_t i = 0; i < titleSaves.size(); i++) {
             if (titleSaves.at(i).id() == id) {
@@ -332,6 +355,10 @@ void TitleLoader::importTitleListCache(void)
 
 bool TitleLoader::scanCard(void)
 {
+    if (g_isLoadingTitles) {
+        return false;
+    }
+
     static bool isScanning = false;
     if (isScanning) {
         return false;
@@ -356,11 +383,13 @@ bool TitleLoader::scanCard(void)
                     if (title.load(id, MEDIATYPE_GAME_CARD, cardType)) {
                         ret = true;
                         if (title.accessibleSave()) {
+                            std::lock_guard<std::mutex> lock(titlesMutex);
                             if (titleSaves.empty() || titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
                                 titleSaves.insert(titleSaves.begin(), title);
                             }
                         }
                         if (title.accessibleExtdata()) {
+                            std::lock_guard<std::mutex> lock(titlesMutex);
                             if (titleExtdatas.empty() || titleExtdatas.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
                                 titleExtdatas.insert(titleExtdatas.begin(), title);
                             }
@@ -373,6 +402,7 @@ bool TitleLoader::scanCard(void)
             Title title;
             if (title.load(0, MEDIATYPE_GAME_CARD, cardType)) {
                 ret = true;
+                std::lock_guard<std::mutex> lock(titlesMutex);
                 if (titleSaves.empty() || titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
                     titleSaves.insert(titleSaves.begin(), title);
                 }
@@ -411,11 +441,14 @@ void TitleLoader::cartScan(void)
             }
             else {
                 FSUSER_CardSlotPowerOff(&power);
-                if (!titleSaves.empty() && titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
-                    titleSaves.erase(titleSaves.begin());
-                }
-                if (!titleExtdatas.empty() && titleExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
-                    titleExtdatas.erase(titleExtdatas.begin());
+                if (!g_isLoadingTitles) {
+                    std::lock_guard<std::mutex> lock(titlesMutex);
+                    if (!titleSaves.empty() && titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+                        titleSaves.erase(titleSaves.begin());
+                    }
+                    if (!titleExtdatas.empty() && titleExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+                        titleExtdatas.erase(titleExtdatas.begin());
+                    }
                 }
                 oldCardIn = false;
             }

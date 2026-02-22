@@ -1,6 +1,6 @@
 /*
  *   This file is part of PKSM
- *   Copyright (C) 2016-2020 Bernardo Giordano, Admiral Fish, piepie62
+ *   Copyright (C) 2016-2026 Bernardo Giordano, Admiral Fish, piepie62
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -35,18 +35,10 @@ void IHid<ListDirection, PageDirection, Delay>::update(size_t count)
 
     mMaxPages = (count % mMaxVisibleEntries == 0) ? count / mMaxVisibleEntries : count / mMaxVisibleEntries + 1;
 
-    if (leftTriggerHeld()) {
-        if (currentTime <= mLastTime + Delay) {
-            return;
-        }
-
+    if (leftTriggerHeld() && currentTime > mLastTime + Delay) {
         pageBack();
     }
-    else if (rightTriggerHeld()) {
-        if (currentTime <= mLastTime + Delay) {
-            return;
-        }
-
+    else if (rightTriggerHeld() && currentTime > mLastTime + Delay) {
         pageForward();
     }
 
@@ -73,6 +65,7 @@ void IHid<ListDirection, PageDirection, Delay>::update(size_t count)
         }
         else if (upHeld()) {
             if (currentTime <= mLastTime + Delay) {
+                correctIndex(count);
                 return;
             }
             if (mIndex < mColumns) {
@@ -87,6 +80,7 @@ void IHid<ListDirection, PageDirection, Delay>::update(size_t count)
         }
         else if (downHeld()) {
             if (currentTime <= mLastTime + Delay) {
+                correctIndex(count);
                 return;
             }
             mIndex += mColumns;
@@ -128,6 +122,7 @@ void IHid<ListDirection, PageDirection, Delay>::update(size_t count)
         }
         else if (leftHeld()) {
             if (currentTime <= mLastTime + Delay) {
+                correctIndex(count);
                 return;
             }
             if (mIndex % mColumns != 0) {
@@ -142,6 +137,7 @@ void IHid<ListDirection, PageDirection, Delay>::update(size_t count)
         }
         else if (rightHeld()) {
             if (currentTime <= mLastTime + Delay) {
+                correctIndex(count);
                 return;
             }
             if (mIndex % mColumns != mColumns - 1) {
@@ -184,6 +180,7 @@ void IHid<ListDirection, PageDirection, Delay>::update(size_t count)
         }
         else if (leftHeld()) {
             if (currentTime <= mLastTime + Delay) {
+                correctIndex(count);
                 return;
             }
             if (mIndex / mRows != 0) {
@@ -198,6 +195,7 @@ void IHid<ListDirection, PageDirection, Delay>::update(size_t count)
         }
         else if (rightHeld()) {
             if (currentTime <= mLastTime + Delay) {
+                correctIndex(count);
                 return;
             }
             mIndex += mRows;
@@ -241,6 +239,7 @@ void IHid<ListDirection, PageDirection, Delay>::update(size_t count)
         }
         else if (upHeld()) {
             if (currentTime <= mLastTime + Delay) {
+                correctIndex(count);
                 return;
             }
             if (mIndex % mRows > 0) {
@@ -255,6 +254,7 @@ void IHid<ListDirection, PageDirection, Delay>::update(size_t count)
         }
         else if (downHeld()) {
             if (currentTime <= mLastTime + Delay) {
+                correctIndex(count);
                 return;
             }
             if ((mIndex % mRows) < mRows - 1) {

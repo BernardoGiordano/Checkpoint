@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -59,7 +59,12 @@ public:
     void page(int v) { mPage = v; }
     size_t maxEntries(size_t count) const
     {
-        return (count - mPage * mMaxVisibleEntries) > mMaxVisibleEntries ? mMaxVisibleEntries - 1 : count - mPage * mMaxVisibleEntries - 1;
+        const size_t pageStart = (size_t)mPage * mMaxVisibleEntries;
+        if (count <= pageStart) {
+            return 0;
+        }
+        const size_t remaining = count - pageStart;
+        return remaining > mMaxVisibleEntries ? mMaxVisibleEntries - 1 : remaining - 1;
     }
     void pageBack()
     {

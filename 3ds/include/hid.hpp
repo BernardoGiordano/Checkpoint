@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -38,16 +38,16 @@ public:
     Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns) {}
 
 private:
-    bool downDown() const override { return hidKeysDown() & KEY_DOWN; }
-    bool upDown() const override { return hidKeysDown() & KEY_UP; }
-    bool leftDown() const override { return hidKeysDown() & KEY_LEFT; }
-    bool rightDown() const override { return hidKeysDown() & KEY_RIGHT; }
+    bool downDown() const override { return hidKeysDown() & (KEY_DOWN | KEY_CPAD_DOWN); }
+    bool upDown() const override { return hidKeysDown() & (KEY_UP | KEY_CPAD_UP); }
+    bool leftDown() const override { return hidKeysDown() & (KEY_LEFT | KEY_CPAD_LEFT); }
+    bool rightDown() const override { return hidKeysDown() & (KEY_RIGHT | KEY_CPAD_RIGHT); }
     bool leftTriggerDown() const override { return hidKeysDown() & KEY_L || hidKeysDown() & KEY_ZL; }
     bool rightTriggerDown() const override { return hidKeysDown() & KEY_R || hidKeysDown() & KEY_ZR; }
-    bool downHeld() const override { return hidKeysHeld() & KEY_DOWN; }
-    bool upHeld() const override { return hidKeysHeld() & KEY_UP; }
-    bool leftHeld() const override { return hidKeysHeld() & KEY_LEFT; }
-    bool rightHeld() const override { return hidKeysHeld() & KEY_RIGHT; }
+    bool downHeld() const override { return hidKeysHeld() & (KEY_DOWN | KEY_CPAD_DOWN); }
+    bool upHeld() const override { return hidKeysHeld() & (KEY_UP | KEY_CPAD_UP); }
+    bool leftHeld() const override { return hidKeysHeld() & (KEY_LEFT | KEY_CPAD_LEFT); }
+    bool rightHeld() const override { return hidKeysHeld() & (KEY_RIGHT | KEY_CPAD_RIGHT); }
     bool leftTriggerHeld() const override { return hidKeysHeld() & KEY_L || hidKeysHeld() & KEY_ZL; }
     bool rightTriggerHeld() const override { return hidKeysHeld() & KEY_R || hidKeysHeld() & KEY_ZR; }
     u64 tick() const override { return svcGetSystemTick(); }

@@ -29,6 +29,7 @@
 
 #include "Screen.hpp"
 #include "logging.hpp"
+#include <atomic>
 #include <citro2d.h>
 #include <memory>
 #include <vector>
@@ -38,9 +39,9 @@ inline bool g_bottomScrollEnabled       = false;
 inline float g_timer                    = 0;
 inline std::string g_selectedCheatKey;
 inline std::vector<std::string> g_selectedCheatCodes;
-inline volatile bool g_isLoadingTitles = false;
-inline int g_loadingTitlesCounter      = 0;
-inline int g_loadingTitlesLimit        = 0;
+inline std::atomic<bool> g_isLoadingTitles = false;
+inline int g_loadingTitlesCounter          = 0;
+inline int g_loadingTitlesLimit            = 0;
 
 inline std::u16string g_currentFile;
 inline bool g_isTransferringFile = false;
