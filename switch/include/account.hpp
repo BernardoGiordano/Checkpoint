@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -55,7 +55,9 @@ inline bool operator==(const AccountUid& x, u64 y)
 
 inline bool operator<(const AccountUid& x, const AccountUid& y)
 {
-    return x.uid[0] < y.uid[0] && x.uid[1] == y.uid[1];
+    if (x.uid[0] != y.uid[0])
+        return x.uid[0] < y.uid[0];
+    return x.uid[1] < y.uid[1];
 }
 
 struct User {
