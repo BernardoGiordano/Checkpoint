@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@
 
 #include "loader.hpp"
 #include "main.hpp"
-#include "thread.hpp"
 #include "title.hpp"
 #include <chrono>
 
@@ -37,28 +36,6 @@ namespace {
     bool forceRefresh           = false;
     std::atomic_flag doCartScan = ATOMIC_FLAG_INIT;
     const size_t ENTRYSIZE      = 5341;
-
-    struct ExportTitleListCacheParams {
-        std::vector<Title> titleSaves;
-        std::vector<Title> titleExtdatas;
-        std::u16string savecachePath;
-        std::u16string extdatacachePath;
-    };
-
-    static void exportTitleListCacheThreaded(void* arg)
-    {
-        auto start = std::chrono::high_resolution_clock::now();
-
-        ExportTitleListCacheParams* params = static_cast<ExportTitleListCacheParams*>(arg);
-        TitleLoader::exportTitleListCache(params->titleSaves, params->savecachePath);
-        TitleLoader::exportTitleListCache(params->titleExtdatas, params->extdatacachePath);
-
-        auto end      = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        Logging::debug("Title cache export completed in {} ms", duration.count());
-
-        delete params;
-    }
 }
 
 bool TitleLoader::validId(u64 id)
@@ -617,10 +594,14 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
             }
         });
 
-        if (!optimizedLoad) {
-            ExportTitleListCacheParams* params = new ExportTitleListCacheParams(titleSaves, titleExtdatas, savecachePath, extdatacachePath);
-            Logging::debug("Starting title cache export thread");
-            Threads::executeTask(exportTitleListCacheThreaded, params);
+        if (!optimizedLoad || forceRefreshParam) {
+            auto exportStart = std::chrono::high_resolution_clock::now();
+            Logging::debug("Starting title cache export");
+            exportTitleListCache(titleSaves, savecachePath);
+            exportTitleListCache(titleExtdatas, extdatacachePath);
+            auto exportEnd      = std::chrono::high_resolution_clock::now();
+            auto exportDuration = std::chrono::duration_cast<std::chrono::milliseconds>(exportEnd - exportStart);
+            Logging::debug("Title cache export completed in {} ms", exportDuration.count());
         }
 
         FS_CardType cardType;
