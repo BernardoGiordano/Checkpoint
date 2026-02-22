@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -166,9 +166,17 @@ Configuration::Configuration(void)
     s_http_server_opts.auth_domain   = "flagbrew.org";
 }
 
+void Configuration::cleanup(void)
+{
+    if (!mCleanedUp) {
+        mCleanedUp = true;
+        mg_mgr_free(&mgr);
+    }
+}
+
 Configuration::~Configuration(void)
 {
-    mg_mgr_free(&mgr);
+    cleanup();
 }
 
 void Configuration::store(void)

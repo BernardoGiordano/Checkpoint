@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -52,6 +52,7 @@ public:
     bool isPKSMBridgeEnabled(void);
     bool isFTPEnabled(void);
     std::vector<std::string> additionalSaveFolders(u64 id);
+    void cleanup(void);
     void pollServer(void);
     void save(void);
     void load(void);
@@ -73,6 +74,7 @@ private:
     nlohmann::json mJson;
     bool PKSMBridgeEnabled;
     bool FTPEnabled;
+    bool mCleanedUp = false;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders;
 };

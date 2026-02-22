@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ void freeIcons(void)
     for (auto& i : icons) {
         SDL_DestroyTexture(i.second);
     }
+    icons.clear();
 }
 
 static void loadIcon(u64 id, NsApplicationControlData* nsacd, size_t iconsize)

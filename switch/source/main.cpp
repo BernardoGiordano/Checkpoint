@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -86,6 +86,7 @@ int main(void)
     threadWaitForExit(&networkThread);
     threadClose(&networkThread);
 
+    g_screen.reset();
     servicesExit();
     exit(0);
 }
