@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -181,9 +181,46 @@ void MainScreen::draw() const
     if (g_isTransferringFile) {
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
 
-        u32 w, h;
-        SDLH_GetTextDimensions(28, g_currentFile.c_str(), &w, &h);
-        SDLH_DrawText(28, (1280 - w) / 2, (720 - h) / 2, COLOR_WHITE, g_currentFile.c_str());
+        // Modal box centered on screen
+        const int mx = 370, my = 270, mw = 540, mh = 180;
+        SDLH_DrawRect(mx, my, mw, mh, COLOR_BLACK_DARKERR);
+        drawOutline(mx, my, mw, mh, 3, COLOR_PURPLE_LIGHT);
+
+        // Title
+        std::string titleStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
+        u32 title_w, title_h;
+        SDLH_GetTextDimensions(26, titleStr.c_str(), &title_w, &title_h);
+        SDLH_DrawText(26, mx + (mw - (int)title_w) / 2, my + 14, COLOR_WHITE, titleStr.c_str());
+
+        // Current filename
+        u32 fname_w, fname_h;
+        std::string fname = trimToFit(g_currentFile, mw - 40, 22);
+        SDLH_GetTextDimensions(22, fname.c_str(), &fname_w, &fname_h);
+        SDLH_DrawText(22, mx + (mw - (int)fname_w) / 2, my + 14 + (int)title_h + 8, COLOR_GREY_LIGHT, fname.c_str());
+
+        // Progress bar
+        const int barX = mx + 20, barY = my + 110, barW = mw - 40, barH = 18;
+        SDLH_DrawRect(barX, barY, barW, barH, COLOR_BLACK_MEDIUM);
+
+        float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
+        if (progress > 1.0f)
+            progress = 1.0f;
+        int fillW = (int)(barW * progress);
+        if (fillW > 0) {
+            SDLH_DrawRect(barX, barY, fillW, barH, COLOR_PURPLE_LIGHT);
+        }
+        drawOutline(barX, barY, barW, barH, 2, COLOR_GREY_LIGHT);
+
+        // Count (left) and percentage (right) below bar
+        char countStr[24];
+        snprintf(countStr, sizeof(countStr), "%zu / %zu", g_copyCount, g_copyTotal);
+        char pctStr[8];
+        snprintf(pctStr, sizeof(pctStr), "%d%%%%", (int)(progress * 100));
+
+        u32 pct_w, pct_h;
+        SDLH_GetTextDimensions(20, pctStr, &pct_w, &pct_h);
+        SDLH_DrawText(20, barX, barY + barH + 6, COLOR_GREY_LIGHT, countStr);
+        SDLH_DrawText(20, barX + barW - (int)pct_w, barY + barH + 6, COLOR_WHITE, pctStr);
     }
 }
 

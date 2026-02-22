@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -30,6 +30,24 @@ bool io::fileExists(const std::string& path)
 {
     struct stat buffer;
     return (stat(path.c_str(), &buffer) == 0);
+}
+
+size_t io::countFiles(const std::string& path)
+{
+    size_t count = 0;
+    Directory items(path);
+    if (!items.good()) {
+        return 0;
+    }
+    for (size_t i = 0, sz = items.size(); i < sz; i++) {
+        if (items.folder(i)) {
+            count += io::countFiles(path + items.entry(i) + "/");
+        }
+        else {
+            count++;
+        }
+    }
+    return count;
 }
 
 void io::copyFile(const std::string& srcPath, const std::string& dstPath)
@@ -72,6 +90,7 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
     delete[] buf;
     fclose(src);
     fclose(dst);
+    g_copyCount++;
 
     // commit each file to the save
     if (dstPath.rfind("save:/", 0) == 0) {
@@ -229,7 +248,10 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
     }
 
     io::createDirectory(dstPath);
-    res = io::copyDirectory("save:/", dstPath + "/");
+    g_copyCount    = 0;
+    g_copyTotal    = io::countFiles("save:/");
+    g_transferMode = "Backup";
+    res            = io::copyDirectory("save:/", dstPath + "/");
     if (R_FAILED(res)) {
         FileSystem::unmount();
         io::deleteFolderRecursively((dstPath + "/").c_str());
@@ -293,7 +315,10 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
         return std::make_tuple(false, res, "Failed to delete save.");
     }
 
-    res = io::copyDirectory(srcPath, dstPath);
+    g_copyCount    = 0;
+    g_copyTotal    = io::countFiles(srcPath);
+    g_transferMode = "Restore";
+    res            = io::copyDirectory(srcPath, dstPath);
     if (R_FAILED(res)) {
         FileSystem::unmount();
         Logging::error("Failed to copy directory {} to {} with result 0x{:08X}. Skipping...", srcPath, dstPath, res);

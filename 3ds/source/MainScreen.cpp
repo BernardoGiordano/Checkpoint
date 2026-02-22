@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     refreshTimer   = 0;
 
     staticBuf  = C2D_TextBufNew(280);
-    dynamicBuf = C2D_TextBufNew(256);
+    dynamicBuf = C2D_TextBufNew(512);
 
     buttonBackup    = std::make_unique<Clickable>(204, 102, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Backup \uE004", true);
     buttonRestore   = std::make_unique<Clickable>(204, 139, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Restore \uE005", true);
@@ -202,11 +202,12 @@ void MainScreen::drawTop(void) const
         if (g_isTransferringFile) {
             C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
 
-            float size = 0.7f;
-            C2D_Text text;
-            C2D_TextParse(&text, dynamicBuf, StringUtils::UTF16toUTF8(g_currentFile).c_str());
-            C2D_TextOptimize(&text);
-            C2D_DrawText(&text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(text, size)) / 2),
+            const float size    = 0.7f;
+            std::string modeStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
+            C2D_Text modeText;
+            C2D_TextParse(&modeText, dynamicBuf, modeStr.c_str());
+            C2D_TextOptimize(&modeText);
+            C2D_DrawText(&modeText, C2D_WithColor, ceilf((400 - StringUtils::textWidth(modeText, size)) / 2),
                 ceilf((240 - size * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, size, size, COLOR_WHITE);
         }
     }
@@ -283,7 +284,57 @@ void MainScreen::drawBottom(void) const
     }
 
     if (g_isTransferringFile) {
-        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
+        C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
+
+        // Modal box
+        const int mx = 30, my = 65, mw = 260, mh = 110;
+        C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
+        Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
+
+        // Title
+        std::string titleStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
+        C2D_Text titleText;
+        C2D_TextParse(&titleText, dynamicBuf, titleStr.c_str());
+        C2D_TextOptimize(&titleText);
+        C2D_DrawText(
+            &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
+
+        // Current filename
+        std::string fname = StringUtils::UTF16toUTF8(g_currentFile);
+        C2D_Text fileText;
+        C2D_TextParse(&fileText, dynamicBuf, fname.c_str());
+        C2D_TextOptimize(&fileText);
+        C2D_DrawText(
+            &fileText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(fileText, 0.5f)) / 2), my + 38, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
+
+        // Progress bar
+        const int barX = mx + 12, barY = my + 65, barW = mw - 24, barH = 12;
+        C2D_DrawRectSolid(barX, barY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+
+        float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
+        if (progress > 1.0f)
+            progress = 1.0f;
+        int fillW = (int)(barW * progress);
+        if (fillW > 0) {
+            C2D_DrawRectSolid(barX, barY, 0.5f, fillW, barH, COLOR_PURPLE_LIGHT);
+        }
+        Gui::drawOutline(barX, barY, barW, barH, 1, COLOR_GREY_LIGHT);
+
+        // Count (left) and percentage (right) below bar
+        char countStr[24];
+        snprintf(countStr, sizeof(countStr), "%zu / %zu", g_copyCount, g_copyTotal);
+        C2D_Text countText;
+        C2D_TextParse(&countText, dynamicBuf, countStr);
+        C2D_TextOptimize(&countText);
+        C2D_DrawText(&countText, C2D_WithColor, barX, barY + barH + 4, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+
+        char pctStr[8];
+        snprintf(pctStr, sizeof(pctStr), "%d%%", (int)(progress * 100));
+        C2D_Text pctText;
+        C2D_TextParse(&pctText, dynamicBuf, pctStr);
+        C2D_TextOptimize(&pctText);
+        C2D_DrawText(
+            &pctText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(pctText, 0.45f)), barY + barH + 4, 0.5f, 0.45f, 0.45f, COLOR_WHITE);
     }
 }
 

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -41,6 +41,25 @@ bool io::fileExists(FS_Archive archive, const std::u16string& path)
     return exist;
 }
 
+size_t io::countFiles(FS_Archive arch, const std::u16string& path)
+{
+    size_t count = 0;
+    Directory items(arch, path);
+    if (!items.good()) {
+        return 0;
+    }
+    for (size_t i = 0, sz = items.size(); i < sz; i++) {
+        if (items.folder(i)) {
+            std::u16string subdir = path + items.entry(i) + StringUtils::UTF8toUTF16("/");
+            count += io::countFiles(arch, subdir);
+        }
+        else {
+            count++;
+        }
+    }
+    return count;
+}
+
 void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath)
 {
     g_isTransferringFile = true;
@@ -67,7 +86,6 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
             output.write(buf, rd);
 
             // avoid freezing the UI
-            // this will be made less horrible next time...
             C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
             g_screen->drawTop();
             C2D_SceneBegin(g_bottom);
@@ -75,6 +93,7 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
             Gui::frameEnd();
         } while (!input.eof());
         delete[] buf;
+        g_copyCount++;
     }
     else {
         Logging::error(
@@ -223,6 +242,10 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
 
             std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/");
 
+            g_copyCount    = 0;
+            g_copyTotal    = io::countFiles(archive, StringUtils::UTF8toUTF16("/"));
+            g_transferMode = "Backup";
+
             res = io::copyDirectory(archive, Archive::sdmc(), StringUtils::UTF8toUTF16("/"), copyPath);
             if (R_FAILED(res)) {
                 std::string message = mode == MODE_SAVE ? "Failed to backup save." : "Failed to backup extdata.";
@@ -345,6 +368,10 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
             else {
                 deleteFolderRecursively(archive, dstPath);
             }
+
+            g_copyCount    = 0;
+            g_copyTotal    = io::countFiles(Archive::sdmc(), srcPath);
+            g_transferMode = "Restore";
 
             res = io::copyDirectory(Archive::sdmc(), archive, srcPath, dstPath);
             if (R_FAILED(res)) {

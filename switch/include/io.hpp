@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -46,6 +46,7 @@ namespace io {
     std::tuple<bool, Result, std::string> backup(size_t index, AccountUid uid, size_t cellIndex);
     std::tuple<bool, Result, std::string> restore(size_t index, AccountUid uid, size_t cellIndex, const std::string& nameFromCell);
 
+    size_t countFiles(const std::string& path);
     Result copyDirectory(const std::string& srcPath, const std::string& dstPath);
     void copyFile(const std::string& srcPath, const std::string& dstPath);
     Result createDirectory(const std::string& path);
