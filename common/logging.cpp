@@ -55,7 +55,7 @@ namespace {
             return;
         }
         if (logFile != NULL) {
-            fprintf(logFile, logBuffer.c_str());
+            fprintf(logFile, "%s", logBuffer.c_str());
             fflush(logFile);
             logBuffer.clear();
         }
