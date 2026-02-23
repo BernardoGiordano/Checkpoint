@@ -69,8 +69,10 @@ void MainScreen::draw() const
 
     drawPulsingOutline(
         1280 - SIDEBAR_w + (SIDEBAR_w - USER_ICON_SIZE) / 2, 720 - USER_ICON_SIZE - 30, USER_ICON_SIZE, USER_ICON_SIZE, 2, COLOR_GREEN);
-    SDLH_DrawImageScale(
-        Account::icon(g_currentUId), 1280 - SIDEBAR_w + (SIDEBAR_w - USER_ICON_SIZE) / 2, 720 - USER_ICON_SIZE - 30, USER_ICON_SIZE, USER_ICON_SIZE);
+    if (Account::icon(g_currentUId) != NULL) {
+        SDLH_DrawImageScale(Account::icon(g_currentUId), 1280 - SIDEBAR_w + (SIDEBAR_w - USER_ICON_SIZE) / 2, 720 - USER_ICON_SIZE - 30,
+            USER_ICON_SIZE, USER_ICON_SIZE);
+    }
 
     u32 username_w, username_h;
     std::string username = Account::shortName(g_currentUId);

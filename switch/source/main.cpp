@@ -59,7 +59,7 @@ int main(void)
     // get the user IDs
     std::vector<AccountUid> userIds = Account::ids();
     // set g_currentUId to a default user in case we loaded at least one user
-    if (g_currentUId == 0)
+    if (g_currentUId == 0 && !userIds.empty())
         g_currentUId = userIds.at(0);
 
     Thread networkThread;
