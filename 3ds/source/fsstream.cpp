@@ -34,7 +34,9 @@ FSStream::FSStream(FS_Archive archive, const std::u16string& path, u32 flags)
 
     mResult = FSUSER_OpenFile(&mHandle, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
     if (R_SUCCEEDED(mResult)) {
-        FSFILE_GetSize(mHandle, (u64*)&mSize);
+        u64 size64 = 0;
+        FSFILE_GetSize(mHandle, &size64);
+        mSize = (u32)size64;
         mGood = true;
     }
 }
