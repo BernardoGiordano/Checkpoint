@@ -162,7 +162,7 @@ Result io::deleteFolderRecursively(const std::string& path)
 
     for (size_t i = 0, sz = dir.size(); i < sz; i++) {
         if (dir.folder(i)) {
-            std::string newpath = path + "/" + dir.entry(i) + "/";
+            std::string newpath = path + dir.entry(i) + "/";
             deleteFolderRecursively(newpath);
             newpath = path + dir.entry(i);
             rmdir(newpath.c_str());

@@ -175,7 +175,7 @@ Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
 
     for (size_t i = 0, sz = dir.size(); i < sz; i++) {
         if (dir.folder(i)) {
-            std::u16string newpath = path + StringUtils::UTF8toUTF16("/") + dir.entry(i) + StringUtils::UTF8toUTF16("/");
+            std::u16string newpath = path + dir.entry(i) + StringUtils::UTF8toUTF16("/");
             deleteFolderRecursively(arch, newpath);
             newpath = path + dir.entry(i);
             FSUSER_DeleteDirectory(arch, fsMakePath(PATH_UTF16, newpath.data()));
