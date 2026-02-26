@@ -77,8 +77,10 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
 
     FSStream output(dstArch, dstPath, FS_OPEN_WRITE, input.size());
     if (output.good()) {
-        size_t slashpos = srcPath.rfind(StringUtils::UTF8toUTF16("/"));
-        g_currentFile   = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
+        size_t slashpos     = srcPath.rfind(StringUtils::UTF8toUTF16("/"));
+        g_currentFile       = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
+        g_currentFileSize   = input.size();
+        g_currentFileOffset = 0;
 
         u32 rd;
         u8* buf = new u8[size];
@@ -88,6 +90,7 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
                 break;
             }
             output.write(buf, rd);
+            g_currentFileOffset += rd;
 
             // avoid freezing the UI
             C3D_FrameBegin(C3D_FRAME_SYNCDRAW);

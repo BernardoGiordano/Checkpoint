@@ -287,7 +287,7 @@ void MainScreen::drawBottom(void) const
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
 
         // Modal box
-        const int mx = 30, my = 65, mw = 260, mh = 110;
+        const int mx = 30, my = 65, mw = 260, mh = 130;
         C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
         Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
 
@@ -305,36 +305,67 @@ void MainScreen::drawBottom(void) const
         C2D_TextParse(&fileText, dynamicBuf, fname.c_str());
         C2D_TextOptimize(&fileText);
         C2D_DrawText(
-            &fileText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(fileText, 0.5f)) / 2), my + 38, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
+            &fileText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(fileText, 0.5f)) / 2), my + 30, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
 
-        // Progress bar
-        const int barX = mx + 12, barY = my + 65, barW = mw - 24, barH = 12;
-        C2D_DrawRectSolid(barX, barY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+        const int barX = mx + 12, barW = mw - 24, barH = 10;
+
+        // Per-save progress bar
+        const int saveBarY = my + 52;
+        C2D_DrawRectSolid(barX, saveBarY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
 
         float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
         if (progress > 1.0f)
             progress = 1.0f;
-        int fillW = (int)(barW * progress);
-        if (fillW > 0) {
-            C2D_DrawRectSolid(barX, barY, 0.5f, fillW, barH, COLOR_PURPLE_LIGHT);
+        int saveFillW = (int)(barW * progress);
+        if (saveFillW > 0) {
+            C2D_DrawRectSolid(barX, saveBarY, 0.5f, saveFillW, barH, COLOR_PURPLE_LIGHT);
         }
-        Gui::drawOutline(barX, barY, barW, barH, 1, COLOR_GREY_LIGHT);
+        Gui::drawOutline(barX, saveBarY, barW, barH, 1, COLOR_GREY_LIGHT);
 
-        // Count (left) and percentage (right) below bar
+        // Count (left) and percentage (right) below per-save bar
         char countStr[24];
         snprintf(countStr, sizeof(countStr), "%zu / %zu", g_copyCount, g_copyTotal);
         C2D_Text countText;
         C2D_TextParse(&countText, dynamicBuf, countStr);
         C2D_TextOptimize(&countText);
-        C2D_DrawText(&countText, C2D_WithColor, barX, barY + barH + 4, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+        C2D_DrawText(&countText, C2D_WithColor, barX, saveBarY + barH + 3, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
 
         char pctStr[8];
         snprintf(pctStr, sizeof(pctStr), "%d%%", (int)(progress * 100));
         C2D_Text pctText;
         C2D_TextParse(&pctText, dynamicBuf, pctStr);
         C2D_TextOptimize(&pctText);
-        C2D_DrawText(
-            &pctText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(pctText, 0.45f)), barY + barH + 4, 0.5f, 0.45f, 0.45f, COLOR_WHITE);
+        C2D_DrawText(&pctText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(pctText, 0.45f)), saveBarY + barH + 3, 0.5f, 0.45f, 0.45f,
+            COLOR_WHITE);
+
+        // Per-file progress bar
+        const int fileBarY = my + 82;
+        C2D_DrawRectSolid(barX, fileBarY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+
+        float fileProgress = (g_currentFileSize > 0) ? (float)g_currentFileOffset / (float)g_currentFileSize : 0.0f;
+        if (fileProgress > 1.0f)
+            fileProgress = 1.0f;
+        int fileFillW = (int)(barW * fileProgress);
+        if (fileFillW > 0) {
+            C2D_DrawRectSolid(barX, fileBarY, 0.5f, fileFillW, barH, COLOR_PURPLE_LIGHT);
+        }
+        Gui::drawOutline(barX, fileBarY, barW, barH, 1, COLOR_GREY_LIGHT);
+
+        // KB transferred (left) and percentage (right) below per-file bar
+        char kbStr[32];
+        snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", g_currentFileOffset / 1024.0f, g_currentFileSize / 1024.0f);
+        C2D_Text kbText;
+        C2D_TextParse(&kbText, dynamicBuf, kbStr);
+        C2D_TextOptimize(&kbText);
+        C2D_DrawText(&kbText, C2D_WithColor, barX, fileBarY + barH + 3, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+
+        char filePctStr[8];
+        snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)(fileProgress * 100));
+        C2D_Text filePctText;
+        C2D_TextParse(&filePctText, dynamicBuf, filePctStr);
+        C2D_TextOptimize(&filePctText);
+        C2D_DrawText(&filePctText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(filePctText, 0.45f)), fileBarY + barH + 3, 0.5f, 0.45f,
+            0.45f, COLOR_WHITE);
     }
 }
 

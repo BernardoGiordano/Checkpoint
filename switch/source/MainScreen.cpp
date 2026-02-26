@@ -184,7 +184,7 @@ void MainScreen::draw() const
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
 
         // Modal box centered on screen
-        const int mx = 370, my = 270, mw = 540, mh = 180;
+        const int mx = 370, my = 260, mw = 540, mh = 230;
         SDLH_DrawRect(mx, my, mw, mh, COLOR_BLACK_DARKERR);
         drawOutline(mx, my, mw, mh, 3, COLOR_PURPLE_LIGHT);
 
@@ -200,20 +200,22 @@ void MainScreen::draw() const
         SDLH_GetTextDimensions(22, fname.c_str(), &fname_w, &fname_h);
         SDLH_DrawText(22, mx + (mw - (int)fname_w) / 2, my + 14 + (int)title_h + 8, COLOR_GREY_LIGHT, fname.c_str());
 
-        // Progress bar
-        const int barX = mx + 20, barY = my + 110, barW = mw - 40, barH = 18;
-        SDLH_DrawRect(barX, barY, barW, barH, COLOR_BLACK_MEDIUM);
+        const int barX = mx + 20, barW = mw - 40, barH = 18;
+
+        // Per-save progress bar
+        const int saveBarY = my + 108;
+        SDLH_DrawRect(barX, saveBarY, barW, barH, COLOR_BLACK_MEDIUM);
 
         float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
         if (progress > 1.0f)
             progress = 1.0f;
-        int fillW = (int)(barW * progress);
-        if (fillW > 0) {
-            SDLH_DrawRect(barX, barY, fillW, barH, COLOR_PURPLE_LIGHT);
+        int saveFillW = (int)(barW * progress);
+        if (saveFillW > 0) {
+            SDLH_DrawRect(barX, saveBarY, saveFillW, barH, COLOR_PURPLE_LIGHT);
         }
-        drawOutline(barX, barY, barW, barH, 2, COLOR_GREY_LIGHT);
+        drawOutline(barX, saveBarY, barW, barH, 2, COLOR_GREY_LIGHT);
 
-        // Count (left) and percentage (right) below bar
+        // Count (left) and percentage (right) below per-save bar
         char countStr[24];
         snprintf(countStr, sizeof(countStr), "%zu / %zu", g_copyCount, g_copyTotal);
         char pctStr[8];
@@ -221,8 +223,32 @@ void MainScreen::draw() const
 
         u32 pct_w, pct_h;
         SDLH_GetTextDimensions(20, pctStr, &pct_w, &pct_h);
-        SDLH_DrawText(20, barX, barY + barH + 6, COLOR_GREY_LIGHT, countStr);
-        SDLH_DrawText(20, barX + barW - (int)pct_w, barY + barH + 6, COLOR_WHITE, pctStr);
+        SDLH_DrawText(20, barX, saveBarY + barH + 6, COLOR_GREY_LIGHT, countStr);
+        SDLH_DrawText(20, barX + barW - (int)pct_w, saveBarY + barH + 6, COLOR_WHITE, pctStr);
+
+        // Per-file progress bar
+        const int fileBarY = my + 160;
+        SDLH_DrawRect(barX, fileBarY, barW, barH, COLOR_BLACK_MEDIUM);
+
+        float fileProgress = (g_currentFileSize > 0) ? (float)g_currentFileOffset / (float)g_currentFileSize : 0.0f;
+        if (fileProgress > 1.0f)
+            fileProgress = 1.0f;
+        int fileFillW = (int)(barW * fileProgress);
+        if (fileFillW > 0) {
+            SDLH_DrawRect(barX, fileBarY, fileFillW, barH, COLOR_PURPLE_LIGHT);
+        }
+        drawOutline(barX, fileBarY, barW, barH, 2, COLOR_GREY_LIGHT);
+
+        // KB transferred (left) and percentage (right) below per-file bar
+        char kbStr[40];
+        snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", g_currentFileOffset / 1024.0f, g_currentFileSize / 1024.0f);
+        char filePctStr[8];
+        snprintf(filePctStr, sizeof(filePctStr), "%d%%%%", (int)(fileProgress * 100));
+
+        u32 filePct_w;
+        SDLH_GetTextDimensions(20, filePctStr, &filePct_w, NULL);
+        SDLH_DrawText(20, barX, fileBarY + barH + 6, COLOR_GREY_LIGHT, kbStr);
+        SDLH_DrawText(20, barX + barW - (int)filePct_w, fileBarY + barH + 6, COLOR_WHITE, filePctStr);
     }
 }
 

@@ -73,13 +73,16 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
     u8* buf    = new u8[BUFFER_SIZE];
     u64 offset = 0;
 
-    size_t slashpos = srcPath.rfind("/");
-    g_currentFile   = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
+    size_t slashpos     = srcPath.rfind("/");
+    g_currentFile       = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
+    g_currentFileSize   = sz;
+    g_currentFileOffset = 0;
 
     while (offset < sz) {
         u32 count = fread((char*)buf, 1, BUFFER_SIZE, src);
         fwrite((char*)buf, 1, count, dst);
         offset += count;
+        g_currentFileOffset = offset;
 
         // avoid freezing the UI
         // this will be made less horrible next time...

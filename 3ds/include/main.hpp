@@ -48,5 +48,7 @@ inline bool g_isTransferringFile = false;
 inline size_t g_copyCount        = 0;
 inline size_t g_copyTotal        = 0;
 inline std::string g_transferMode;
+inline u32 g_currentFileOffset = 0;
+inline u32 g_currentFileSize   = 0;
 
 #endif
