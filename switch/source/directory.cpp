@@ -45,10 +45,9 @@ Directory::Directory(const std::string& root)
             struct DirectoryEntry de = {name, directory};
             mList.push_back(de);
         }
+        closedir(dir);
+        mGood = true;
     }
-
-    closedir(dir);
-    mGood = true;
 }
 
 Result Directory::error(void)
