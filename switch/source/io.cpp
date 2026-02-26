@@ -80,6 +80,10 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
 
     while (offset < sz) {
         u32 count = fread((char*)buf, 1, BUFFER_SIZE, src);
+        if (count == 0) {
+            Logging::error("fread returned 0 for file {} at offset {}/{} with errno {}. Aborting copy.", srcPath, offset, sz, errno);
+            break;
+        }
         fwrite((char*)buf, 1, count, dst);
         offset += count;
         g_currentFileOffset = offset;
