@@ -34,6 +34,7 @@ Directory::Directory(FS_Archive archive, const std::u16string& root)
 
     mError = FSUSER_OpenDirectory(&handle, archive, fsMakePath(PATH_UTF16, root.data()));
     if (R_FAILED(mError)) {
+        Logging::error("FSUSER_OpenDirectory failed with result 0x{:08X} for path {}", mError, StringUtils::UTF16toUTF8(root));
         return;
     }
 
@@ -41,14 +42,25 @@ Directory::Directory(FS_Archive archive, const std::u16string& root)
     do {
         FS_DirectoryEntry item;
         mError = FSDIR_Read(handle, &result, 1, &item);
+        if (R_FAILED(mError)) {
+            Logging::error("FSDIR_Read failed with result 0x{:08X} for path {}", mError, StringUtils::UTF16toUTF8(root));
+            break;
+        }
         if (result == 1) {
             mList.push_back(item);
         }
     } while (result);
 
-    mError = FSDIR_Close(handle);
+    Result readError = mError;
+    mError           = FSDIR_Close(handle);
     if (R_FAILED(mError)) {
+        Logging::error("FSDIR_Close failed with result 0x{:08X} for path {}", mError, StringUtils::UTF16toUTF8(root));
         mList.clear();
+        return;
+    }
+
+    if (R_FAILED(readError)) {
+        mError = readError;
         return;
     }
 
