@@ -71,6 +71,7 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
     }
     else {
         Logging::error("Failed to open source file {} during copy with result {}. Skipping...", StringUtils::UTF16toUTF8(srcPath), input.result());
+        g_isTransferringFile = false;
         return;
     }
 
@@ -83,6 +84,9 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
         u8* buf = new u8[size];
         do {
             rd = input.read(buf, size);
+            if (rd == 0) {
+                break;
+            }
             output.write(buf, rd);
 
             // avoid freezing the UI
