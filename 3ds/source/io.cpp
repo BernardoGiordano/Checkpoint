@@ -221,6 +221,11 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
                 customPath = isNewFolder ? KeyboardManager::get().keyboard(suggestion) : StringUtils::UTF8toUTF16("");
             }
 
+            if (isNewFolder && customPath.empty()) {
+                FSUSER_CloseArchive(archive);
+                return std::make_tuple(false, 0, "");
+            }
+
             std::u16string dstPath;
             if (!isNewFolder) {
                 // we're overriding an existing folder
@@ -284,6 +289,10 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
         }
         else {
             customPath = isNewFolder ? KeyboardManager::get().keyboard(suggestion) : StringUtils::UTF8toUTF16("");
+        }
+
+        if (isNewFolder && customPath.empty()) {
+            return std::make_tuple(false, 0, "");
         }
 
         std::u16string dstPath;

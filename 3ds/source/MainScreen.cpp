@@ -414,8 +414,11 @@ void MainScreen::handleEvents(const InputState& input)
                         if (std::get<0>(result)) {
                             currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                         }
-                        else {
+                        else if (std::get<1>(result) != 0) {
                             currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                        }
+                        else {
+                            this->removeOverlay();
                         }
                     },
                     [this]() { this->removeOverlay(); });
@@ -543,8 +546,11 @@ void MainScreen::handleEvents(const InputState& input)
                     if (std::get<0>(result)) {
                         currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                     }
-                    else {
+                    else if (std::get<1>(result) != 0) {
                         currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                    }
+                    else {
+                        this->removeOverlay();
                     }
                 },
                 [this]() { this->removeOverlay(); });
