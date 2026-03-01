@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@
 #include "multiselection.hpp"
 #include "pksmbridge.hpp"
 #include "scrollable.hpp"
+#include "title.hpp"
 #include <tuple>
 
 typedef enum { TITLES, CELLS } entryType_t;
@@ -66,15 +67,22 @@ protected:
     void setPKSMBridgeFlag(bool f);
     void updateButtons(void);
     std::string sortMode(void) const;
+    void setSaveTypeFilter(saveTypeFilter_t filter);
+    size_t rawIndex(void) const;
 
 private:
     entryType_t type;
     int selectionTimer;
     bool pksmBridge;
     bool wantInstructions;
+    bool sidebarFocused              = false;
+    bool sidebarExitFrame            = false;
+    int sidebarCursor                = 0;
+    saveTypeFilter_t mSaveTypeFilter = FILTER_SAVES;
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::unique_ptr<Scrollable> backupList;
     std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;
+    std::unique_ptr<Clickable> buttonSaves, buttonBCAT, buttonDevice;
     char ver[8];
 };
 

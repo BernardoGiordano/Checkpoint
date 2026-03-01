@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -31,9 +31,11 @@
 #include <switch.h>
 
 namespace FileSystem {
-    Result mount(FsFileSystem* fileSystem, u64 titleID, AccountUid userID);
-    int mount(FsFileSystem fs);
-    void unmount(void);
+    Result mountSave(FsFileSystem* fileSystem, u64 titleID, AccountUid userID);
+    Result mountBcatSave(FsFileSystem* fileSystem, u64 titleID);
+    Result mountDeviceSave(FsFileSystem* fileSystem, u64 titleID);
+    int mountDevice(FsFileSystem fs);
+    void unmountDevice(void);
 }
 
 #endif

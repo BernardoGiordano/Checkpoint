@@ -189,26 +189,38 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
         title.userId().uid[0]);
 
     FsFileSystem fileSystem;
-    res = FileSystem::mount(&fileSystem, title.id(), title.userId());
+    if (title.saveDataType() == FsSaveDataType_Bcat) {
+        res = FileSystem::mountBcatSave(&fileSystem, title.id());
+    }
+    else if (title.saveDataType() == FsSaveDataType_Device) {
+        res = FileSystem::mountDeviceSave(&fileSystem, title.id());
+    }
+    else {
+        res = FileSystem::mountSave(&fileSystem, title.id(), title.userId());
+    }
     if (R_SUCCEEDED(res)) {
-        int rc = FileSystem::mount(fileSystem);
+        int rc = FileSystem::mountDevice(fileSystem);
         if (rc == -1) {
-            FileSystem::unmount();
-            Logging::error("Failed to mount filesystem during backup. Title id: 0x{:016X}; User id: 0x{:X}{:X}.", title.id(), title.userId().uid[1],
-                title.userId().uid[0]);
+            FileSystem::unmountDevice();
+            Logging::error("Failed to mount filesystem during backup. Title id: 0x{:016X}.", title.id());
             return std::make_tuple(false, -2, "Failed to mount save.");
         }
     }
     else {
-        Logging::error("Failed to mount filesystem during backup with result 0x{:08X}. Title id: 0x%016lX; User id: 0x{:X}{:X}.", res, title.id(),
-            title.userId().uid[1], title.userId().uid[0]);
+        Logging::error("Failed to mount filesystem during backup with result 0x{:08X}. Title id: 0x{:016X}.", res, title.id());
         return std::make_tuple(false, res, "Failed to mount save.");
     }
 
-    std::string suggestion = DateTime::dateTimeStr() + " " +
-                             (StringUtils::containsInvalidChar(Account::username(title.userId()))
-                                     ? ""
-                                     : StringUtils::removeNotAscii(StringUtils::removeAccents(Account::username(title.userId()))));
+    std::string suggestion;
+    if (title.saveDataType() == FsSaveDataType_Bcat || title.saveDataType() == FsSaveDataType_Device) {
+        suggestion = DateTime::dateTimeStr();
+    }
+    else {
+        suggestion = DateTime::dateTimeStr() + " " +
+                     (StringUtils::containsInvalidChar(Account::username(title.userId()))
+                             ? ""
+                             : StringUtils::removeNotAscii(StringUtils::removeAccents(Account::username(title.userId()))));
+    }
     std::string customPath;
 
     if (MS::multipleSelectionEnabled()) {
@@ -222,7 +234,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
                     customPath = StringUtils::removeForbiddenCharacters(keyboardResponse.second);
                 }
                 else {
-                    FileSystem::unmount();
+                    FileSystem::unmountDevice();
                     Logging::info("Copy operation aborted by the user through the system keyboard.");
                     return std::make_tuple(false, 0, "Operation aborted by the user.");
                 }
@@ -248,7 +260,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
     if (!isNewFolder || io::directoryExists(dstPath)) {
         int rc = io::deleteFolderRecursively((dstPath + "/").c_str());
         if (rc != 0) {
-            FileSystem::unmount();
+            FileSystem::unmountDevice();
             Logging::error("Failed to recursively delete directory {} with result {}.", dstPath, rc);
             return std::make_tuple(false, (Result)rc, "Failed to delete the existing backup\ndirectory recursively.");
         }
@@ -260,7 +272,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
     g_transferMode = "Backup";
     res            = io::copyDirectory("save:/", dstPath + "/");
     if (R_FAILED(res)) {
-        FileSystem::unmount();
+        FileSystem::unmountDevice();
         io::deleteFolderRecursively((dstPath + "/").c_str());
         Logging::error("Failed to copy directory {} with result 0x{:08X}. Skipping...", dstPath, res);
         return std::make_tuple(false, res, "Failed to backup save.");
@@ -268,7 +280,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
 
     refreshDirectories(title.id());
 
-    FileSystem::unmount();
+    FileSystem::unmountDevice();
     if (!MS::multipleSelectionEnabled()) {
         blinkLed(4);
         ret = std::make_tuple(true, 0, "Progress correctly saved to disk.");
@@ -296,19 +308,25 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
         title.userId().uid[0]);
 
     FsFileSystem fileSystem;
-    res = FileSystem::mount(&fileSystem, title.id(), title.userId());
+    if (title.saveDataType() == FsSaveDataType_Bcat) {
+        res = FileSystem::mountBcatSave(&fileSystem, title.id());
+    }
+    else if (title.saveDataType() == FsSaveDataType_Device) {
+        res = FileSystem::mountDeviceSave(&fileSystem, title.id());
+    }
+    else {
+        res = FileSystem::mountSave(&fileSystem, title.id(), title.userId());
+    }
     if (R_SUCCEEDED(res)) {
-        int rc = FileSystem::mount(fileSystem);
+        int rc = FileSystem::mountDevice(fileSystem);
         if (rc == -1) {
-            FileSystem::unmount();
-            Logging::error("Failed to mount filesystem during restore. Title id: 0x{:016X}; User id: 0x{:X}{:X}.", title.id(), title.userId().uid[1],
-                title.userId().uid[0]);
+            FileSystem::unmountDevice();
+            Logging::error("Failed to mount filesystem during restore. Title id: 0x{:016X}.", title.id());
             return std::make_tuple(false, -2, "Failed to mount save.");
         }
     }
     else {
-        Logging::error("Failed to mount filesystem during restore with result 0x{:08X}. Title id: 0x{:016X}; User id: 0x{:X}{:X}.", res, title.id(),
-            title.userId().uid[1], title.userId().uid[0]);
+        Logging::error("Failed to mount filesystem during restore with result 0x{:08X}. Title id: 0x{:016X}.", res, title.id());
         return std::make_tuple(false, res, "Failed to mount save.");
     }
 
@@ -317,7 +335,7 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
 
     res = io::deleteFolderRecursively(dstPath.c_str());
     if (R_FAILED(res)) {
-        FileSystem::unmount();
+        FileSystem::unmountDevice();
         Logging::error("Failed to recursively delete directory {} with result 0x{:08X}.", dstPath, res);
         return std::make_tuple(false, res, "Failed to delete save.");
     }
@@ -327,7 +345,7 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
     g_transferMode = "Restore";
     res            = io::copyDirectory(srcPath, dstPath);
     if (R_FAILED(res)) {
-        FileSystem::unmount();
+        FileSystem::unmountDevice();
         Logging::error("Failed to copy directory {} to {} with result 0x{:08X}. Skipping...", srcPath, dstPath, res);
         return std::make_tuple(false, res, "Failed to restore save.");
     }
@@ -342,7 +360,7 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
         ret = std::make_tuple(true, 0, nameFromCell + "\nhas been restored successfully.");
     }
 
-    FileSystem::unmount();
+    FileSystem::unmountDevice();
 
     Logging::info("Restore succeeded.");
     return ret;

@@ -53,12 +53,23 @@ void Title::init(u8 saveDataType, u64 id, AccountUid userID, const std::string& 
     mId           = id;
     mUserId       = userID;
     mSaveDataType = saveDataType;
-    mUserName     = Account::username(userID);
+    mUserName     = mSaveDataType == FsSaveDataType_Bcat ? "BCAT" : (mSaveDataType == FsSaveDataType_Device ? "Device" : Account::username(userID));
     mAuthor       = author;
     mName         = name;
     mSafeName     = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
-    mPath         = "sdmc:/switch/Checkpoint/saves/" + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
-    mDisplayName  = StringUtils::removeAccents(mName);
+
+    std::string baseDir;
+    if (mSaveDataType == FsSaveDataType_Bcat) {
+        baseDir = "sdmc:/switch/Checkpoint/bcat/";
+    }
+    else if (mSaveDataType == FsSaveDataType_Device) {
+        baseDir = "sdmc:/switch/Checkpoint/device/";
+    }
+    else {
+        baseDir = "sdmc:/switch/Checkpoint/saves/";
+    }
+    mPath        = baseDir + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
+    mDisplayName = StringUtils::removeAccents(mName);
 
     if (!io::directoryExists(mPath)) {
         io::createDirectory(mPath);
@@ -220,6 +231,9 @@ void loadTitles(void)
         return;
     }
 
+    std::vector<Title> bcatTitles;
+    std::vector<Title> deviceTitles;
+
     while (1) {
         res = fsSaveDataInfoReaderRead(&reader, &info, 1, &total_entries);
         if (R_FAILED(res) || total_entries == 0) {
@@ -266,10 +280,64 @@ void loadTitles(void)
                 nle = NULL;
             }
         }
+        else if (info.save_data_type == FsSaveDataType_Bcat) {
+            u64 tid = info.application_id;
+            u64 sid = info.save_data_id;
+            if (!Configuration::getInstance().filter(tid)) {
+                res = nsGetApplicationControlData(NsApplicationControlSource_Storage, tid, nsacd, sizeof(NsApplicationControlData), &outsize);
+                if (R_SUCCEEDED(res) && !(outsize < sizeof(nsacd->nacp))) {
+                    res = nacpGetLanguageEntry(&nsacd->nacp, &nle);
+                    if (R_SUCCEEDED(res) && nle != NULL) {
+                        Title title;
+                        AccountUid bcatUid = {0};
+                        title.init(FsSaveDataType_Bcat, tid, bcatUid, std::string(nle->name), std::string(nle->author));
+                        title.saveId(sid);
+
+                        loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
+                        bcatTitles.push_back(title);
+                    }
+                }
+                nle = NULL;
+            }
+        }
+        else if (info.save_data_type == FsSaveDataType_Device) {
+            u64 tid = info.application_id;
+            u64 sid = info.save_data_id;
+            if (!Configuration::getInstance().filter(tid)) {
+                res = nsGetApplicationControlData(NsApplicationControlSource_Storage, tid, nsacd, sizeof(NsApplicationControlData), &outsize);
+                if (R_SUCCEEDED(res) && !(outsize < sizeof(nsacd->nacp))) {
+                    res = nacpGetLanguageEntry(&nsacd->nacp, &nle);
+                    if (R_SUCCEEDED(res) && nle != NULL) {
+                        Title title;
+                        AccountUid deviceUid = {0};
+                        title.init(FsSaveDataType_Device, tid, deviceUid, std::string(nle->name), std::string(nle->author));
+                        title.saveId(sid);
+
+                        loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
+                        deviceTitles.push_back(title);
+                    }
+                }
+                nle = NULL;
+            }
+        }
     }
 
     free(nsacd);
     fsSaveDataInfoReaderClose(&reader);
+
+    // append BCAT titles to every user's list
+    for (auto& pair : titles) {
+        for (const auto& bcatTitle : bcatTitles) {
+            pair.second.push_back(bcatTitle);
+        }
+    }
+
+    // append device save titles to every user's list
+    for (auto& pair : titles) {
+        for (const auto& deviceTitle : deviceTitles) {
+            pair.second.push_back(deviceTitle);
+        }
+    }
 
     sortTitles();
 }
@@ -335,6 +403,80 @@ SDL_Texture* smallIcon(AccountUid uid, size_t i)
 {
     std::unordered_map<AccountUid, std::vector<Title>>::iterator it = titles.find(uid);
     return it != titles.end() ? it->second.at(i).icon() : NULL;
+}
+
+static u8 filterToSaveDataType(saveTypeFilter_t filter)
+{
+    switch (filter) {
+        case FILTER_BCAT:
+            return FsSaveDataType_Bcat;
+        case FILTER_DEVICE:
+            return FsSaveDataType_Device;
+        case FILTER_SAVES:
+        default:
+            return FsSaveDataType_Account;
+    }
+}
+
+size_t getFilteredTitleCount(AccountUid uid, saveTypeFilter_t filter)
+{
+    auto it = titles.find(uid);
+    if (it == titles.end())
+        return 0;
+    u8 type      = filterToSaveDataType(filter);
+    size_t count = 0;
+    for (auto& t : it->second) {
+        if (t.saveDataType() == type)
+            count++;
+    }
+    return count;
+}
+
+void getFilteredTitle(Title& dst, AccountUid uid, saveTypeFilter_t filter, size_t i)
+{
+    auto it = titles.find(uid);
+    if (it == titles.end())
+        return;
+    u8 type      = filterToSaveDataType(filter);
+    size_t count = 0;
+    for (auto& t : it->second) {
+        if (t.saveDataType() == type) {
+            if (count == i) {
+                dst = t;
+                return;
+            }
+            count++;
+        }
+    }
+}
+
+size_t filteredToRawIndex(AccountUid uid, saveTypeFilter_t filter, size_t filteredIdx)
+{
+    auto it = titles.find(uid);
+    if (it == titles.end())
+        return 0;
+    u8 type      = filterToSaveDataType(filter);
+    size_t count = 0;
+    for (size_t j = 0; j < it->second.size(); j++) {
+        if (it->second[j].saveDataType() == type) {
+            if (count == filteredIdx)
+                return j;
+            count++;
+        }
+    }
+    return 0;
+}
+
+bool filteredFavorite(AccountUid uid, saveTypeFilter_t filter, int i)
+{
+    size_t raw = filteredToRawIndex(uid, filter, (size_t)i);
+    return favorite(uid, (int)raw);
+}
+
+SDL_Texture* filteredSmallIcon(AccountUid uid, saveTypeFilter_t filter, size_t i)
+{
+    size_t raw = filteredToRawIndex(uid, filter, i);
+    return smallIcon(uid, raw);
 }
 
 std::unordered_map<std::string, std::string> getCompleteTitleList(void)

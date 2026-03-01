@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -81,6 +81,8 @@ private:
     u32 mLastPlayedTimestamp;
 };
 
+typedef enum { FILTER_SAVES, FILTER_BCAT, FILTER_DEVICE } saveTypeFilter_t;
+
 void getTitle(Title& dst, AccountUid uid, size_t i);
 size_t getTitleCount(AccountUid uid);
 void loadTitles(void);
@@ -91,5 +93,11 @@ bool favorite(AccountUid uid, int i);
 void freeIcons(void);
 SDL_Texture* smallIcon(AccountUid uid, size_t i);
 std::unordered_map<std::string, std::string> getCompleteTitleList(void);
+
+size_t getFilteredTitleCount(AccountUid uid, saveTypeFilter_t filter);
+void getFilteredTitle(Title& dst, AccountUid uid, saveTypeFilter_t filter, size_t i);
+size_t filteredToRawIndex(AccountUid uid, saveTypeFilter_t filter, size_t filteredIdx);
+bool filteredFavorite(AccountUid uid, saveTypeFilter_t filter, int i);
+SDL_Texture* filteredSmallIcon(AccountUid uid, saveTypeFilter_t filter, size_t i);
 
 #endif

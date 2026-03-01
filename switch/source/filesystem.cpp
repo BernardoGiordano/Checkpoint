@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -26,17 +26,27 @@
 
 #include "filesystem.hpp"
 
-Result FileSystem::mount(FsFileSystem* fileSystem, u64 titleID, AccountUid userID)
+Result FileSystem::mountSave(FsFileSystem* fileSystem, u64 titleID, AccountUid userID)
 {
     return fsOpen_SaveData(fileSystem, titleID, userID);
 }
 
-int FileSystem::mount(FsFileSystem fs)
+Result FileSystem::mountBcatSave(FsFileSystem* fileSystem, u64 titleID)
+{
+    return fsOpen_BcatSaveData(fileSystem, titleID);
+}
+
+Result FileSystem::mountDeviceSave(FsFileSystem* fileSystem, u64 titleID)
+{
+    return fsOpen_DeviceSaveData(fileSystem, titleID);
+}
+
+int FileSystem::mountDevice(FsFileSystem fs)
 {
     return fsdevMountDevice("save", fs);
 }
 
-void FileSystem::unmount(void)
+void FileSystem::unmountDevice(void)
 {
     fsdevUnmountDevice("save");
 }
