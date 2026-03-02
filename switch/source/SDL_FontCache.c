@@ -1195,7 +1195,7 @@ Uint8 FC_GetGlyphData(FC_Font* font, FC_GlyphData* result, Uint32 codepoint)
                 ucs4 = ((u[0] & 0x07) << 18) | ((u[1] & 0x3F) << 12) | ((u[2] & 0x3F) << 6) | (u[3] & 0x3F);
         }
 
-        // Nintendo PUA symbols: use the extended symbol font
+        // Use the extended symbol font for PUA symbols
         if (ucs4 >= 0xE000 && ucs4 <= 0xF8FF && font->ttf_ext != NULL) {
             surf = TTF_RenderUTF8_Blended(font->ttf_ext, buff, white);
         }
