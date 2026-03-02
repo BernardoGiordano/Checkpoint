@@ -33,7 +33,7 @@ TransferMenuOverlay::TransferMenuOverlay(Screen& screen, const std::function<voi
     : Overlay(screen), hid(2, 2)
 {
     textBuf = C2D_TextBufNew(64);
-    C2D_TextParse(&text, textBuf, "Transferir backups");
+    C2D_TextParse(&text, textBuf, "Send Data");
     C2D_TextOptimize(&text);
 
     sendFunc    = callbackSend;
@@ -42,8 +42,8 @@ TransferMenuOverlay::TransferMenuOverlay(Screen& screen, const std::function<voi
     posx = ceilf(320 - text.width * 0.6f) / 2;
     posy = 40 + ceilf(120 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2;
 
-    buttonSend    = std::make_unique<Clickable>(42, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "\uE000 Enviar", true);
-    buttonReceive = std::make_unique<Clickable>(162, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "\uE001 Recibir", true);
+    buttonSend    = std::make_unique<Clickable>(42, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "\uE000 Send", true);
+    buttonReceive = std::make_unique<Clickable>(162, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "\uE001 Receive", true);
 }
 
 TransferMenuOverlay::~TransferMenuOverlay(void)

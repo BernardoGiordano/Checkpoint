@@ -518,17 +518,6 @@ namespace {
             backupName = "Received_" + DateTime::dateTimeStr();
         }
 
-        std::u16string tempZipPath = StringUtils::UTF8toUTF16(TEMP_ZIP_RECV);
-        FSStream output(Archive::sdmc(), tempZipPath, FS_OPEN_WRITE, (u32)fileData.size());
-        if (!output.good()) {
-            cleanup();
-            return {500, "application/json", "{\"ok\":false,\"error\":\"Failed to store ZIP\"}"};
-        }
-        if (!fileData.empty()) {
-            output.write(fileData.data(), (u32)fileData.size());
-        }
-        output.close();
-
         std::u16string basePath = StringUtils::UTF8toUTF16(dataType == "extdata" ? "/3ds/Checkpoint/extdata/" : "/3ds/Checkpoint/saves/");
 
         std::u16string destRoot;
@@ -570,15 +559,30 @@ namespace {
         }
         io::createDirectory(Archive::sdmc(), backupRoot);
 
-        std::string extractError;
-        bool ok = extractZip(tempZipPath, backupRoot, extractError);
-        FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, tempZipPath.data()));
+        std::string fileName = meta.value("fileName", "");
+        if (fileName.empty()) {
+            fileName = "received.bin";
+        }
+        std::u16string safeFileName = StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(fileName.c_str()));
+        std::string safeFileNameUtf8 = StringUtils::UTF16toUTF8(safeFileName);
+        if (safeFileNameUtf8.empty()) {
+            safeFileNameUtf8 = "received.bin";
+            safeFileName = StringUtils::UTF8toUTF16("received.bin");
+        }
+        ensureDirectoryPath(backupRoot, safeFileNameUtf8);
+
+        std::u16string outputPath = backupRoot + safeFileName;
+        FSStream output(Archive::sdmc(), outputPath, FS_OPEN_WRITE, (u32)fileData.size());
+        if (!output.good()) {
+            cleanup();
+            return {500, "application/json", "{\"ok\":false,\"error\":\"Failed to store file\"}"};
+        }
+        if (!fileData.empty()) {
+            output.write(fileData.data(), (u32)fileData.size());
+        }
+        output.close();
 
         cleanup();
-
-        if (!ok) {
-            return {500, "application/json", "{\"ok\":false,\"error\":\"Extract failed\"}"};
-        }
 
         if (foundTitle) {
             TitleLoader::refreshDirectories(tid);
@@ -679,15 +683,19 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
     const std::string& ip, u16 port, const std::string& token, std::string& outError)
 {
     std::vector<FileEntry> files;
-    u32 zipSize = 0;
-    std::u16string zipPath = StringUtils::UTF8toUTF16(TEMP_ZIP_SEND);
-
-    if (!writeZip(backupPath, zipPath, files, zipSize)) {
-        outError = "Failed to create ZIP.";
+    collectFiles(Archive::sdmc(), backupPath, StringUtils::UTF8toUTF16(""), files);
+    if (files.empty()) {
+        outError = "No files to send.";
+        return false;
+    }
+    if (files.size() != 1) {
+        outError = "Multiple files found. ZIP transfer required.";
         return false;
     }
 
-    g_transferBytesTotal = zipSize;
+    const FileEntry& entry = files.front();
+
+    g_transferBytesTotal = entry.size;
     g_transferBytesDone = 0;
     g_transferMode = "Enviando";
     g_transferIsNetwork = true;
@@ -698,7 +706,8 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
     meta["titleName"] = title.shortDescription();
     meta["dataType"] = dataType;
     meta["backupName"] = backupName;
-    meta["zipBytesTotal"] = zipSize;
+    meta["fileBytesTotal"] = entry.size;
+    meta["fileName"] = entry.relPath;
     meta["timestamp"] = DateTime::logDateTime();
 
     std::string metaStr = meta.dump();
@@ -709,13 +718,21 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
         "Content-Type: application/json\r\n\r\n" +
         metaStr + "\r\n";
 
+    std::string fileName = entry.relPath;
+    size_t slashPos = fileName.find_last_of('/');
+    if (slashPos != std::string::npos) {
+        fileName = fileName.substr(slashPos + 1);
+    }
+    if (fileName.empty()) {
+        fileName = "backup.bin";
+    }
     std::string partFileHeader = "--" + boundary + "\r\n"
-        "Content-Disposition: form-data; name=\"file\"; filename=\"backup.zip\"\r\n"
-        "Content-Type: application/zip\r\n\r\n";
+        "Content-Disposition: form-data; name=\"file\"; filename=\"" + fileName + "\"\r\n"
+        "Content-Type: application/octet-stream\r\n\r\n";
 
     std::string partEnd = "\r\n--" + boundary + "--\r\n";
 
-    u32 contentLength = partMeta.size() + partFileHeader.size() + zipSize + partEnd.size();
+    u32 contentLength = partMeta.size() + partFileHeader.size() + entry.size + partEnd.size();
 
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (sock < 0) {
@@ -747,7 +764,7 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
         partFileHeader.size());
 
     if (ok) {
-        FSStream input(Archive::sdmc(), zipPath, FS_OPEN_READ);
+        FSStream input(Archive::sdmc(), entry.absPath, FS_OPEN_READ);
         if (!input.good()) {
             ok = false;
         }
@@ -783,8 +800,6 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
     recv(sock, responseBuf, sizeof(responseBuf) - 1, 0);
 
     close(sock);
-
-    FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, zipPath.data()));
 
     g_isTransferringFile = false;
     g_transferIsNetwork = false;
