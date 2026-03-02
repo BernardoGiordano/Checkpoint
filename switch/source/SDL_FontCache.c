@@ -247,11 +247,17 @@ static FC_GlyphData* FC_MapFind(FC_Map* map, Uint32 codepoint)
     return NULL;
 }
 
+// Maximum number of fallback fonts for CJK/international character support
+#define FC_MAX_FALLBACK_FONTS 8
+
 struct FC_Font {
     SDL_Renderer* renderer;
     TTF_Font* ttf_source;  // TTF_Font source of characters
     TTF_Font* ttf_ext;     // TTF_Font source of system symbols
     Uint8 owns_ttf_source; // Can we delete the TTF_Font ourselves?
+
+    TTF_Font* ttf_fallbacks[FC_MAX_FALLBACK_FONTS];
+    int num_fallbacks;
 
     FC_FilterEnum filter;
 
@@ -539,6 +545,10 @@ static void FC_Init(FC_Font* font)
     font->ttf_source      = NULL;
     font->ttf_ext         = NULL;
     font->owns_ttf_source = 0;
+
+    for (int i = 0; i < FC_MAX_FALLBACK_FONTS; i++)
+        font->ttf_fallbacks[i] = NULL;
+    font->num_fallbacks = 0;
 
     font->filter = FC_FILTER_NEAREST;
 
@@ -988,6 +998,16 @@ Uint8 FC_LoadFont_RW(FC_Font* font, FC_Target* renderer, SDL_RWops* file_rwops_t
     return result;
 }
 
+Uint8 FC_AddFallbackFont(FC_Font* font, TTF_Font* fallback)
+{
+    if (font == NULL || fallback == NULL)
+        return 0;
+    if (font->num_fallbacks >= FC_MAX_FALLBACK_FONTS)
+        return 0;
+    font->ttf_fallbacks[font->num_fallbacks++] = fallback;
+    return 1;
+}
+
 void FC_ClearFont(FC_Font* font)
 {
     int i;
@@ -1149,7 +1169,7 @@ Uint8 FC_GetGlyphData(FC_Font* font, FC_GlyphData* result, Uint32 codepoint)
         SDL_Surface* surf;
         FC_Image* cache_image;
 
-        if (font->ttf_source == NULL || font->ttf_ext)
+        if (font->ttf_source == NULL)
             return 0;
 
         FC_GetUTF8FromCodepoint(buff, codepoint);
@@ -1161,7 +1181,38 @@ Uint8 FC_GetGlyphData(FC_Font* font, FC_GlyphData* result, Uint32 codepoint)
 
         SDL_QueryTexture(cache_image, NULL, NULL, &w, &h);
 
-        surf = TTF_RenderUTF8_Blended(codepoint >= 0xE000 ? font->ttf_ext : font->ttf_source, buff, white);
+        // Decode the actual Unicode scalar value from UTF-8 for glyph lookup
+        Uint32 ucs4 = 0;
+        {
+            const unsigned char* u = (const unsigned char*)buff;
+            if (u[0] <= 0x7F)
+                ucs4 = u[0];
+            else if (u[0] < 0xE0)
+                ucs4 = ((u[0] & 0x1F) << 6) | (u[1] & 0x3F);
+            else if (u[0] < 0xF0)
+                ucs4 = ((u[0] & 0x0F) << 12) | ((u[1] & 0x3F) << 6) | (u[2] & 0x3F);
+            else
+                ucs4 = ((u[0] & 0x07) << 18) | ((u[1] & 0x3F) << 12) | ((u[2] & 0x3F) << 6) | (u[3] & 0x3F);
+        }
+
+        // Nintendo PUA symbols: use the extended symbol font
+        if (ucs4 >= 0xE000 && ucs4 <= 0xF8FF && font->ttf_ext != NULL) {
+            surf = TTF_RenderUTF8_Blended(font->ttf_ext, buff, white);
+        }
+        else {
+            // Find the best font for this glyph: primary, then fallbacks
+            TTF_Font* chosen = font->ttf_source;
+            if (ucs4 <= 0xFFFF && !TTF_GlyphIsProvided(font->ttf_source, (Uint16)ucs4)) {
+                int fi;
+                for (fi = 0; fi < font->num_fallbacks; fi++) {
+                    if (TTF_GlyphIsProvided(font->ttf_fallbacks[fi], (Uint16)ucs4)) {
+                        chosen = font->ttf_fallbacks[fi];
+                        break;
+                    }
+                }
+            }
+            surf = TTF_RenderUTF8_Blended(chosen, buff, white);
+        }
         if (surf == NULL) {
             return 0;
         }
@@ -2338,12 +2389,24 @@ void FC_ResetFontFromRendererReset(FC_Font* font, SDL_Renderer* renderer, Uint32
     ext      = font->ttf_ext;
     col      = font->default_color;
     owns_ttf = font->owns_ttf_source;
+
+    // Preserve fallback fonts across the reset
+    TTF_Font* saved_fallbacks[FC_MAX_FALLBACK_FONTS];
+    int saved_num_fallbacks = font->num_fallbacks;
+    for (int fi = 0; fi < saved_num_fallbacks; fi++)
+        saved_fallbacks[fi] = font->ttf_fallbacks[fi];
+
     FC_Init(font);
 
     // Can only reload glyphs if we own the SDL_RWops.
     if (owns_ttf)
         FC_LoadFontFromTTF(font, renderer, ttf, ext, col);
     font->owns_ttf_source = owns_ttf;
+
+    // Restore fallback fonts
+    font->num_fallbacks = saved_num_fallbacks;
+    for (int fi = 0; fi < saved_num_fallbacks; fi++)
+        font->ttf_fallbacks[fi] = saved_fallbacks[fi];
 }
 
 // Setters

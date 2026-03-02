@@ -201,7 +201,7 @@ void MainScreen::draw() const
         SDLH_GetTextDimensions(26, gameName.c_str(), &title_w, NULL);
 
         if (title_w >= 680) {
-            gameName = gameName.substr(0, 38) + "...";
+            gameName = trimToFit(gameName, 680, 26);
             SDLH_GetTextDimensions(26, gameName.c_str(), &title_w, NULL);
         }
 
