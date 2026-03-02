@@ -41,6 +41,15 @@ Result FileSystem::mountDeviceSave(FsFileSystem* fileSystem, u64 titleID)
     return fsOpen_DeviceSaveData(fileSystem, titleID);
 }
 
+Result FileSystem::mountSystemSave(FsFileSystem* fileSystem, u64 systemSaveDataId, u8 spaceId)
+{
+    FsSaveDataAttribute attr = {};
+    attr.system_save_data_id = systemSaveDataId;
+    attr.save_data_type      = FsSaveDataType_System;
+    attr.save_data_rank      = FsSaveDataRank_Primary;
+    return fsOpenSaveDataFileSystemBySystemSaveDataId(fileSystem, (FsSaveDataSpaceId)spaceId, &attr);
+}
+
 int FileSystem::mountDevice(FsFileSystem fs)
 {
     return fsdevMountDevice("save", fs);

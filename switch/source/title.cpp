@@ -48,15 +48,53 @@ static void loadIcon(u64 id, NsApplicationControlData* nsacd, size_t iconsize)
     }
 }
 
-void Title::init(u8 saveDataType, u64 id, AccountUid userID, const std::string& name, const std::string& author)
+static constexpr SDL_Color systemSavePalette[] = {
+    {45, 80, 140, 255},  // muted blue
+    {120, 50, 130, 255}, // muted purple
+    {40, 110, 100, 255}, // teal
+    {130, 60, 70, 255},  // muted red
+    {60, 100, 60, 255},  // forest green
+    {130, 95, 45, 255},  // muted amber
+    {80, 65, 120, 255},  // lavender
+    {50, 90, 110, 255},  // steel blue
+};
+
+static void loadPlaceholderIcon(u64 id)
 {
-    mId           = id;
-    mUserId       = userID;
-    mSaveDataType = saveDataType;
-    mUserName     = mSaveDataType == FsSaveDataType_Bcat ? "BCAT" : (mSaveDataType == FsSaveDataType_Device ? "Device" : Account::username(userID));
-    mAuthor       = author;
-    mName         = name;
-    mSafeName     = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
+    auto it = icons.find(id);
+    if (it == icons.end()) {
+        SDL_Color color      = systemSavePalette[id % (sizeof(systemSavePalette) / sizeof(systemSavePalette[0]))];
+        SDL_Texture* texture = nullptr;
+        SDLH_CreateColorTexture(&texture, 256, 256, color);
+        if (texture) {
+            icons.insert({id, texture});
+        }
+    }
+}
+
+void Title::init(u8 saveDataType, u64 id, AccountUid userID, const std::string& name, const std::string& author, u8 spaceId)
+{
+    mId              = id;
+    mUserId          = userID;
+    mSaveDataType    = saveDataType;
+    mSaveDataSpaceId = spaceId;
+
+    if (mSaveDataType == FsSaveDataType_Bcat) {
+        mUserName = "BCAT";
+    }
+    else if (mSaveDataType == FsSaveDataType_Device) {
+        mUserName = "Device";
+    }
+    else if (mSaveDataType == FsSaveDataType_System) {
+        mUserName = "System";
+    }
+    else {
+        mUserName = Account::username(userID);
+    }
+
+    mAuthor   = author;
+    mName     = name;
+    mSafeName = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
 
     std::string baseDir;
     if (mSaveDataType == FsSaveDataType_Bcat) {
@@ -64,6 +102,9 @@ void Title::init(u8 saveDataType, u64 id, AccountUid userID, const std::string& 
     }
     else if (mSaveDataType == FsSaveDataType_Device) {
         baseDir = "sdmc:/switch/Checkpoint/device/";
+    }
+    else if (mSaveDataType == FsSaveDataType_System) {
+        baseDir = "sdmc:/switch/Checkpoint/system/";
     }
     else {
         baseDir = "sdmc:/switch/Checkpoint/saves/";
@@ -81,6 +122,11 @@ void Title::init(u8 saveDataType, u64 id, AccountUid userID, const std::string& 
 u8 Title::saveDataType(void)
 {
     return mSaveDataType;
+}
+
+u8 Title::saveDataSpaceId(void)
+{
+    return mSaveDataSpaceId;
 }
 
 u64 Title::id(void)
@@ -233,6 +279,7 @@ void loadTitles(void)
 
     std::vector<Title> bcatTitles;
     std::vector<Title> deviceTitles;
+    std::vector<Title> systemTitles;
 
     while (1) {
         res = fsSaveDataInfoReaderRead(&reader, &info, 1, &total_entries);
@@ -325,6 +372,40 @@ void loadTitles(void)
     free(nsacd);
     fsSaveDataInfoReaderClose(&reader);
 
+    // enumerate system saves from the System space
+    res = fsOpenSaveDataInfoReader(&reader, FsSaveDataSpaceId_System);
+    if (R_SUCCEEDED(res)) {
+        while (1) {
+            res = fsSaveDataInfoReaderRead(&reader, &info, 1, &total_entries);
+            if (R_FAILED(res) || total_entries == 0) {
+                break;
+            }
+
+            if (info.save_data_type == FsSaveDataType_System) {
+                u64 tid = info.system_save_data_id;
+                u64 sid = info.save_data_id;
+                if (!Configuration::getInstance().filter(tid)) {
+                    // verify the save can be mounted before adding it
+                    FsFileSystem testFs;
+                    Result mountRes = FileSystem::mountSystemSave(&testFs, tid, info.save_data_space_id);
+                    if (R_FAILED(mountRes)) {
+                        continue;
+                    }
+                    fsFsClose(&testFs);
+
+                    Title title;
+                    AccountUid systemUid = {0};
+                    std::string name     = StringUtils::format("0x%016llX", tid);
+                    title.init(FsSaveDataType_System, tid, systemUid, name, "", info.save_data_space_id);
+                    title.saveId(sid);
+                    loadPlaceholderIcon(tid);
+                    systemTitles.push_back(title);
+                }
+            }
+        }
+        fsSaveDataInfoReaderClose(&reader);
+    }
+
     // append BCAT titles to every user's list
     for (auto& pair : titles) {
         for (const auto& bcatTitle : bcatTitles) {
@@ -336,6 +417,13 @@ void loadTitles(void)
     for (auto& pair : titles) {
         for (const auto& deviceTitle : deviceTitles) {
             pair.second.push_back(deviceTitle);
+        }
+    }
+
+    // append system save titles to every user's list
+    for (auto& pair : titles) {
+        for (const auto& systemTitle : systemTitles) {
+            pair.second.push_back(systemTitle);
         }
     }
 
@@ -412,6 +500,8 @@ static u8 filterToSaveDataType(saveTypeFilter_t filter)
             return FsSaveDataType_Bcat;
         case FILTER_DEVICE:
             return FsSaveDataType_Device;
+        case FILTER_SYSTEM:
+            return FsSaveDataType_System;
         case FILTER_SAVES:
         default:
             return FsSaveDataType_Account;

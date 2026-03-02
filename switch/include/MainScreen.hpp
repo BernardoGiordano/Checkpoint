@@ -82,7 +82,7 @@ private:
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::unique_ptr<Scrollable> backupList;
     std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;
-    std::unique_ptr<Clickable> buttonSaves, buttonBCAT, buttonDevice;
+    std::unique_ptr<Clickable> buttonSaves, buttonBCAT, buttonDevice, buttonSystem;
     char ver[8];
 };
 

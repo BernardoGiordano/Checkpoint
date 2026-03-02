@@ -50,6 +50,7 @@ Result servicesInit(void)
     io::createDirectory("sdmc:/switch/Checkpoint/saves");
     io::createDirectory("sdmc:/switch/Checkpoint/bcat");
     io::createDirectory("sdmc:/switch/Checkpoint/device");
+    io::createDirectory("sdmc:/switch/Checkpoint/system");
     io::createDirectory("sdmc:/switch/Checkpoint/logs");
 
     Logging::info("Starting Checkpoint loading...");

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -239,4 +239,14 @@ std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize)
         }
     }
     return newtext;
+}
+
+void SDLH_CreateColorTexture(SDL_Texture** texture, int w, int h, SDL_Color color)
+{
+    SDL_Surface* surface = SDL_CreateRGBSurface(0, w, h, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+    if (surface) {
+        SDL_FillRect(surface, NULL, SDL_MapRGBA(surface->format, color.r, color.g, color.b, color.a));
+        *texture = SDL_CreateTextureFromSurface(s_renderer, surface);
+        SDL_FreeSurface(surface);
+    }
 }

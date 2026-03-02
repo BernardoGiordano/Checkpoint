@@ -34,6 +34,7 @@ namespace FileSystem {
     Result mountSave(FsFileSystem* fileSystem, u64 titleID, AccountUid userID);
     Result mountBcatSave(FsFileSystem* fileSystem, u64 titleID);
     Result mountDeviceSave(FsFileSystem* fileSystem, u64 titleID);
+    Result mountSystemSave(FsFileSystem* fileSystem, u64 systemSaveDataId, u8 spaceId);
     int mountDevice(FsFileSystem fs);
     void unmountDevice(void);
 }

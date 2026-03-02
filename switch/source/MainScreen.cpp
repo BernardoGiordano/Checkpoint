@@ -49,14 +49,17 @@ MainScreen::MainScreen(const InputState& input) : hid(rowlen * collen, collen, i
     buttonCheats->canChangeColorWhenSelected(true);
 
     int filterY = TOPBAR_h + 12;
-    buttonSaves = std::make_unique<Clickable>(FILTER_BTN_X, filterY, FILTER_BTN_SIZE, FILTER_BTN_SIZE, COLOR_PURPLE_DARK, COLOR_WHITE, "S", true);
+    buttonSaves = std::make_unique<Clickable>(FILTER_BTN_X, filterY, FILTER_BTN_SIZE, FILTER_BTN_SIZE, COLOR_PURPLE_DARK, COLOR_WHITE, "A", true);
     buttonBCAT  = std::make_unique<Clickable>(
         FILTER_BTN_X, filterY + FILTER_BTN_SPACING, FILTER_BTN_SIZE, FILTER_BTN_SIZE, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "B", true);
     buttonDevice = std::make_unique<Clickable>(
         FILTER_BTN_X, filterY + FILTER_BTN_SPACING * 2, FILTER_BTN_SIZE, FILTER_BTN_SIZE, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "D", true);
+    buttonSystem = std::make_unique<Clickable>(
+        FILTER_BTN_X, filterY + FILTER_BTN_SPACING * 3, FILTER_BTN_SIZE, FILTER_BTN_SIZE, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "S", true);
     buttonSaves->canChangeColorWhenSelected(true);
     buttonBCAT->canChangeColorWhenSelected(true);
     buttonDevice->canChangeColorWhenSelected(true);
+    buttonSystem->canChangeColorWhenSelected(true);
 }
 
 int MainScreen::selectorX(size_t i) const
@@ -85,6 +88,8 @@ void MainScreen::setSaveTypeFilter(saveTypeFilter_t filter)
     buttonBCAT->setColors(filter == FILTER_BCAT ? COLOR_PURPLE_DARK : COLOR_BLACK_DARKER, filter == FILTER_BCAT ? COLOR_WHITE : COLOR_GREY_LIGHT);
     buttonDevice->setColors(
         filter == FILTER_DEVICE ? COLOR_PURPLE_DARK : COLOR_BLACK_DARKER, filter == FILTER_DEVICE ? COLOR_WHITE : COLOR_GREY_LIGHT);
+    buttonSystem->setColors(
+        filter == FILTER_SYSTEM ? COLOR_PURPLE_DARK : COLOR_BLACK_DARKER, filter == FILTER_SYSTEM ? COLOR_WHITE : COLOR_GREY_LIGHT);
 }
 
 void MainScreen::draw() const
@@ -109,6 +114,7 @@ void MainScreen::draw() const
     buttonSaves->draw(24, COLOR_PURPLE_LIGHT);
     buttonBCAT->draw(24, COLOR_PURPLE_LIGHT);
     buttonDevice->draw(24, COLOR_PURPLE_LIGHT);
+    buttonSystem->draw(24, COLOR_PURPLE_LIGHT);
 
     // sidebar focus indicator
     if (sidebarFocused) {
@@ -223,7 +229,10 @@ void MainScreen::draw() const
         buttonCheats->draw(30, COLOR_PURPLE_LIGHT);
     }
     else {
-        const char* emptyMsg = mSaveTypeFilter == FILTER_BCAT ? "No BCAT saves" : mSaveTypeFilter == FILTER_DEVICE ? "No Device saves" : "No saves";
+        const char* emptyMsg = mSaveTypeFilter == FILTER_BCAT     ? "No BCAT saves"
+                               : mSaveTypeFilter == FILTER_DEVICE ? "No Device saves"
+                               : mSaveTypeFilter == FILTER_SYSTEM ? "No System saves"
+                                                                  : "No saves";
         u32 emptyW;
         SDLH_GetTextDimensions(26, emptyMsg, &emptyW, NULL);
         SDLH_DrawText(26, LEFT_SIDEBAR_w + (532 - emptyW) / 2, 360, COLOR_GREY_LIGHT, emptyMsg);
@@ -353,7 +362,7 @@ void MainScreen::updateSelector(const InputState& input)
         }
         else if ((input.kDown & HidNpadButton_Left) && hid.index() % collen == 0) {
             sidebarFocused = true;
-            sidebarCursor  = mSaveTypeFilter == FILTER_SAVES ? 0 : mSaveTypeFilter == FILTER_BCAT ? 1 : 2;
+            sidebarCursor  = mSaveTypeFilter == FILTER_SAVES ? 0 : mSaveTypeFilter == FILTER_BCAT ? 1 : mSaveTypeFilter == FILTER_DEVICE ? 2 : 3;
         }
         else {
             hid.update(count);
@@ -410,17 +419,21 @@ void MainScreen::handleEvents(const InputState& input)
         setSaveTypeFilter(FILTER_DEVICE);
         sidebarFocused = false;
     }
+    else if (buttonSystem->released()) {
+        setSaveTypeFilter(FILTER_SYSTEM);
+        sidebarFocused = false;
+    }
 
     // handle sidebar D-pad navigation
     if (sidebarFocused) {
         if (kdown & HidNpadButton_Up) {
-            sidebarCursor = sidebarCursor > 0 ? sidebarCursor - 1 : 2;
+            sidebarCursor = sidebarCursor > 0 ? sidebarCursor - 1 : 3;
         }
         else if (kdown & HidNpadButton_Down) {
-            sidebarCursor = sidebarCursor < 2 ? sidebarCursor + 1 : 0;
+            sidebarCursor = sidebarCursor < 3 ? sidebarCursor + 1 : 0;
         }
         if (kdown & HidNpadButton_A) {
-            static constexpr saveTypeFilter_t filters[] = {FILTER_SAVES, FILTER_BCAT, FILTER_DEVICE};
+            static constexpr saveTypeFilter_t filters[] = {FILTER_SAVES, FILTER_BCAT, FILTER_DEVICE, FILTER_SYSTEM};
             setSaveTypeFilter(filters[sidebarCursor]);
         }
         // Right/B exit is handled in updateSelector to prevent double cursor movement
@@ -433,6 +446,8 @@ void MainScreen::handleEvents(const InputState& input)
             setSaveTypeFilter(FILTER_BCAT);
         else if (mSaveTypeFilter == FILTER_BCAT)
             setSaveTypeFilter(FILTER_DEVICE);
+        else if (mSaveTypeFilter == FILTER_DEVICE)
+            setSaveTypeFilter(FILTER_SYSTEM);
         else
             setSaveTypeFilter(FILTER_SAVES);
     }

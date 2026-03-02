@@ -195,6 +195,9 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
     else if (title.saveDataType() == FsSaveDataType_Device) {
         res = FileSystem::mountDeviceSave(&fileSystem, title.id());
     }
+    else if (title.saveDataType() == FsSaveDataType_System) {
+        res = FileSystem::mountSystemSave(&fileSystem, title.id(), title.saveDataSpaceId());
+    }
     else {
         res = FileSystem::mountSave(&fileSystem, title.id(), title.userId());
     }
@@ -212,7 +215,8 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
     }
 
     std::string suggestion;
-    if (title.saveDataType() == FsSaveDataType_Bcat || title.saveDataType() == FsSaveDataType_Device) {
+    if (title.saveDataType() == FsSaveDataType_Bcat || title.saveDataType() == FsSaveDataType_Device ||
+        title.saveDataType() == FsSaveDataType_System) {
         suggestion = DateTime::dateTimeStr();
     }
     else {
@@ -313,6 +317,9 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
     }
     else if (title.saveDataType() == FsSaveDataType_Device) {
         res = FileSystem::mountDeviceSave(&fileSystem, title.id());
+    }
+    else if (title.saveDataType() == FsSaveDataType_System) {
+        res = FileSystem::mountSystemSave(&fileSystem, title.id(), title.saveDataSpaceId());
     }
     else {
         res = FileSystem::mountSave(&fileSystem, title.id(), title.userId());
