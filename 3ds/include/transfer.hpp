@@ -24,34 +24,24 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef MAIN_HPP
-#define MAIN_HPP
+#ifndef TRANSFER_HPP
+#define TRANSFER_HPP
 
-#include "Screen.hpp"
-#include "logging.hpp"
-#include <atomic>
-#include <citro2d.h>
-#include <memory>
-#include <vector>
+#include "title.hpp"
+#include <string>
 
-inline std::shared_ptr<Screen> g_screen = nullptr;
-inline bool g_bottomScrollEnabled       = false;
-inline float g_timer                    = 0;
-inline std::string g_selectedCheatKey;
-inline std::vector<std::string> g_selectedCheatCodes;
-inline std::atomic<bool> g_isLoadingTitles = false;
-inline int g_loadingTitlesCounter          = 0;
-inline int g_loadingTitlesLimit            = 0;
+namespace Transfer {
+    bool startReceiver(std::string& outError);
+    void stopReceiver(void);
+    bool receiverRunning(void);
+    std::string receiverToken(void);
+    std::string receiverIp(void);
+    int receiverPort(void);
+    std::string receiverNotice(void);
+    void clearReceiverNotice(void);
 
-inline std::u16string g_currentFile;
-inline bool g_isTransferringFile = false;
-inline size_t g_copyCount        = 0;
-inline size_t g_copyTotal        = 0;
-inline std::string g_transferMode;
-inline u32 g_currentFileOffset = 0;
-inline u32 g_currentFileSize   = 0;
-inline bool g_transferIsNetwork = false;
-inline u64 g_transferBytesDone  = 0;
-inline u64 g_transferBytesTotal = 0;
+    bool sendBackup(const Title& title, const std::u16string& backupPath, const std::string& backupName, const std::string& dataType,
+        const std::string& ip, u16 port, const std::string& token, std::string& outError);
+}
 
 #endif

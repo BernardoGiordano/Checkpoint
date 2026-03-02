@@ -31,6 +31,7 @@
 #include "ErrorOverlay.hpp"
 #include "InfoOverlay.hpp"
 #include "Screen.hpp"
+#include "TransferOverlay.hpp"
 #include "YesNoOverlay.hpp"
 #include "clickable.hpp"
 #include "gui.hpp"
@@ -57,10 +58,11 @@ protected:
     void updateSelector(void);
     void updateButtons(void);
     std::string nameFromCell(size_t index) const;
+    void startTransferSend(void);
 
 private:
     Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
-    std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonCheats, buttonPlayCoins;
+    std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonCheats, buttonPlayCoins, buttonTransfer;
     std::unique_ptr<Scrollable> directoryList;
     char ver[10];
 

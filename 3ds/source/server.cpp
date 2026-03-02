@@ -25,6 +25,7 @@
  */
 
 #include "server.hpp"
+#include "main.hpp"
 #include "logging.hpp"
 #include "thread.hpp"
 #include <3ds.h>
@@ -33,6 +34,7 @@
 #include <string>
 
 #include <arpa/inet.h>
+#include <cstdlib>
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -59,16 +61,85 @@ namespace {
         return "";
     }
 
+    static size_t parseContentLength(const std::string& headers)
+    {
+        size_t pos = headers.find("Content-Length:");
+        if (pos == std::string::npos) {
+            pos = headers.find("Content-length:");
+        }
+        if (pos == std::string::npos) {
+            return 0;
+        }
+        pos += strlen("Content-Length:");
+        while (pos < headers.size() && (headers[pos] == ' ' || headers[pos] == '\t')) {
+            pos++;
+        }
+        size_t end = headers.find("\r\n", pos);
+        if (end == std::string::npos) {
+            end = headers.size();
+        }
+        return (size_t)strtoul(headers.substr(pos, end - pos).c_str(), nullptr, 10);
+    }
+
+    static std::string readRequest(s32 clientSocket)
+    {
+        std::string data;
+        data.reserve(4096);
+        char buffer[2048];
+        ssize_t received = 0;
+        size_t headerEnd = std::string::npos;
+        size_t contentLength = 0;
+        std::string path;
+        bool trackTransfer = false;
+
+        while (true) {
+            received = recv(clientSocket, buffer, sizeof(buffer), 0);
+            if (received <= 0) {
+                break;
+            }
+            data.append(buffer, received);
+
+            if (headerEnd == std::string::npos) {
+                headerEnd = data.find("\r\n\r\n");
+                if (headerEnd != std::string::npos) {
+                    contentLength = parseContentLength(data.substr(0, headerEnd));
+                    path = extractPath(data.substr(0, headerEnd));
+                    if (path == "/transfer/upload") {
+                        trackTransfer = true;
+                        g_transferIsNetwork = true;
+                        g_transferMode = "Recibiendo";
+                        g_transferBytesTotal = contentLength;
+                        g_transferBytesDone = 0;
+                        g_isTransferringFile = true;
+                    }
+                    if (contentLength == 0) {
+                        break;
+                    }
+                }
+            }
+
+            if (headerEnd != std::string::npos) {
+                size_t totalNeeded = headerEnd + 4 + contentLength;
+                if (trackTransfer && data.size() > headerEnd + 4) {
+                    g_transferBytesDone = data.size() - (headerEnd + 4);
+                }
+                if (data.size() >= totalNeeded) {
+                    break;
+                }
+            }
+        }
+
+        return data;
+    }
+
     static void handleHttpRequest(s32 clientSocket)
     {
-        char buffer[1024] = {0};
-        recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-        std::string request(buffer);
+        std::string request = readRequest(clientSocket);
         std::string path = extractPath(request);
-        auto it          = handlers.find(path);
+        auto it = handlers.find(path);
         if (it != handlers.end()) {
             Server::HttpResponse response = it->second(path, request);
-            std::string header            = "HTTP/1.1 " + std::to_string(response.statusCode);
+            std::string header = "HTTP/1.1 " + std::to_string(response.statusCode);
             header += (response.statusCode == 200 ? " OK" : (response.statusCode == 404 ? " Not Found" : " Error"));
             header += "\r\nContent-Type: " + response.contentType;
             header += "\r\nContent-Length: " + std::to_string(response.body.length());

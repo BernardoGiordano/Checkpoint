@@ -27,8 +27,31 @@
 #include "MainScreen.hpp"
 #include "loader.hpp"
 #include "server.hpp"
+#include "transfer.hpp"
+#include <3ds.h>
+#include <cctype>
 
 static constexpr size_t rowlen = 4, collen = 8;
+
+namespace {
+    std::string rawKeyboard(const std::string& suggestion, const std::string& hint, size_t maxLen)
+    {
+        SwkbdState swkbd;
+        const size_t kBufSize = 64;
+        size_t limit = std::min(maxLen, kBufSize);
+        if (limit < 2) {
+            limit = 2;
+        }
+        swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, limit - 1);
+        swkbdSetValidation(&swkbd, SWKBD_NOTBLANK_NOTEMPTY, 0, 0);
+        swkbdSetInitialText(&swkbd, suggestion.c_str());
+        swkbdSetHintText(&swkbd, hint.c_str());
+        char buf[kBufSize] = {0};
+        SwkbdButton button = swkbdInputText(&swkbd, buf, sizeof(buf));
+        buf[sizeof(buf) - 1] = '\0';
+        return button == SWKBD_BUTTON_CONFIRM ? std::string(buf) : std::string();
+    }
+}
 
 MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
 {
@@ -42,11 +65,13 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     buttonRestore   = std::make_unique<Clickable>(204, 139, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Restore \uE005", true);
     buttonCheats    = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Cheats", true);
     buttonPlayCoins = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "\uE075 Coins", true);
+    buttonTransfer  = std::make_unique<Clickable>(4, 223, 110, 16, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Transferir", true);
     directoryList   = std::make_unique<Scrollable>(6, 102, 196, 110, 5);
     buttonBackup->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
     buttonCheats->canChangeColorWhenSelected(true);
     buttonPlayCoins->canChangeColorWhenSelected(true);
+    buttonTransfer->canChangeColorWhenSelected(true);
 
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 
@@ -202,8 +227,18 @@ void MainScreen::drawTop(void) const
         if (g_isTransferringFile) {
             C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
 
-            const float size    = 0.7f;
-            std::string modeStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
+            const float size = 0.7f;
+            std::string modeStr;
+            if (g_transferIsNetwork) {
+                u64 total = g_transferBytesTotal;
+                u64 done  = g_transferBytesDone;
+                int pct   = total > 0 ? (int)((done * 100) / total) : 0;
+                std::string prefix = g_transferMode.empty() ? "Transferencia" : g_transferMode;
+                modeStr = StringUtils::format("%s... %d%% (%llu / %llu)", prefix.c_str(), pct, (unsigned long long)done, (unsigned long long)total);
+            }
+            else {
+                modeStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
+            }
             C2D_Text modeText;
             C2D_TextParse(&modeText, dynamicBuf, modeStr.c_str());
             C2D_TextOptimize(&modeText);
@@ -273,7 +308,9 @@ void MainScreen::drawBottom(void) const
         }
     }
 
-    C2D_DrawText(&ins4, C2D_WithColor, ceilf((320 - ins4.width * 0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
+    buttonTransfer->draw(0.55f, COLOR_PURPLE_LIGHT);
+    C2D_DrawText(
+        &ins4, C2D_WithColor, ceilf(320 - StringUtils::textWidth(ins4, 0.47f) - 4), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
 
     if (hidKeysHeld() & KEY_SELECT) {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
@@ -286,86 +323,125 @@ void MainScreen::drawBottom(void) const
     if (g_isTransferringFile) {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
 
-        // Modal box
-        const int mx = 30, my = 65, mw = 260, mh = 130;
-        C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
-        Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
+        if (g_transferIsNetwork) {
+            const int mx = 30, my = 65, mw = 260, mh = 110;
+            C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
+            Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
 
-        // Title
-        std::string titleStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
-        C2D_Text titleText;
-        C2D_TextParse(&titleText, dynamicBuf, titleStr.c_str());
-        C2D_TextOptimize(&titleText);
-        C2D_DrawText(
-            &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
+            u64 total = g_transferBytesTotal;
+            u64 done  = g_transferBytesDone;
+            int pct   = total > 0 ? (int)((done * 100) / total) : 0;
+            std::string prefix = g_transferMode.empty() ? "Transferencia" : g_transferMode;
+            std::string titleStr = StringUtils::format("%s... %d%%", prefix.c_str(), pct);
 
-        // Current filename
-        std::string fname = StringUtils::UTF16toUTF8(g_currentFile);
-        C2D_Text fileText;
-        C2D_TextParse(&fileText, dynamicBuf, fname.c_str());
-        C2D_TextOptimize(&fileText);
-        C2D_DrawText(
-            &fileText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(fileText, 0.5f)) / 2), my + 30, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
+            C2D_Text titleText;
+            C2D_TextParse(&titleText, dynamicBuf, titleStr.c_str());
+            C2D_TextOptimize(&titleText);
+            C2D_DrawText(
+                &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
 
-        const int barX = mx + 12, barW = mw - 24, barH = 10;
+            std::string bytesStr = StringUtils::format("%llu / %llu", (unsigned long long)done, (unsigned long long)total);
+            C2D_Text bytesText;
+            C2D_TextParse(&bytesText, dynamicBuf, bytesStr.c_str());
+            C2D_TextOptimize(&bytesText);
+            C2D_DrawText(
+                &bytesText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(bytesText, 0.5f)) / 2), my + 38, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
 
-        // Per-save progress bar
-        const int saveBarY = my + 52;
-        C2D_DrawRectSolid(barX, saveBarY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
-
-        float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
-        if (progress > 1.0f)
-            progress = 1.0f;
-        int saveFillW = (int)(barW * progress);
-        if (saveFillW > 0) {
-            C2D_DrawRectSolid(barX, saveBarY, 0.5f, saveFillW, barH, COLOR_PURPLE_LIGHT);
+            const int barX = mx + 12, barW = mw - 24, barH = 10;
+            const int barY = my + 65;
+            C2D_DrawRectSolid(barX, barY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+            float progress = (total > 0) ? (float)done / (float)total : 0.0f;
+            if (progress > 1.0f) {
+                progress = 1.0f;
+            }
+            int fillW = (int)(barW * progress);
+            if (fillW > 0) {
+                C2D_DrawRectSolid(barX, barY, 0.5f, fillW, barH, COLOR_PURPLE_LIGHT);
+            }
+            Gui::drawOutline(barX, barY, barW, barH, 1, COLOR_GREY_LIGHT);
         }
-        Gui::drawOutline(barX, saveBarY, barW, barH, 1, COLOR_GREY_LIGHT);
+        else {
+            // Modal box
+            const int mx = 30, my = 65, mw = 260, mh = 130;
+            C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
+            Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
 
-        // Count (left) and percentage (right) below per-save bar
-        char countStr[24];
-        snprintf(countStr, sizeof(countStr), "%zu / %zu", g_copyCount, g_copyTotal);
-        C2D_Text countText;
-        C2D_TextParse(&countText, dynamicBuf, countStr);
-        C2D_TextOptimize(&countText);
-        C2D_DrawText(&countText, C2D_WithColor, barX, saveBarY + barH + 3, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+            // Title
+            std::string titleStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
+            C2D_Text titleText;
+            C2D_TextParse(&titleText, dynamicBuf, titleStr.c_str());
+            C2D_TextOptimize(&titleText);
+            C2D_DrawText(
+                &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
 
-        char pctStr[8];
-        snprintf(pctStr, sizeof(pctStr), "%d%%", (int)(progress * 100));
-        C2D_Text pctText;
-        C2D_TextParse(&pctText, dynamicBuf, pctStr);
-        C2D_TextOptimize(&pctText);
-        C2D_DrawText(&pctText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(pctText, 0.45f)), saveBarY + barH + 3, 0.5f, 0.45f, 0.45f,
-            COLOR_WHITE);
+            // Current filename
+            std::string fname = StringUtils::UTF16toUTF8(g_currentFile);
+            C2D_Text fileText;
+            C2D_TextParse(&fileText, dynamicBuf, fname.c_str());
+            C2D_TextOptimize(&fileText);
+            C2D_DrawText(
+                &fileText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(fileText, 0.5f)) / 2), my + 30, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
 
-        // Per-file progress bar
-        const int fileBarY = my + 82;
-        C2D_DrawRectSolid(barX, fileBarY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+            const int barX = mx + 12, barW = mw - 24, barH = 10;
 
-        float fileProgress = (g_currentFileSize > 0) ? (float)g_currentFileOffset / (float)g_currentFileSize : 0.0f;
-        if (fileProgress > 1.0f)
-            fileProgress = 1.0f;
-        int fileFillW = (int)(barW * fileProgress);
-        if (fileFillW > 0) {
-            C2D_DrawRectSolid(barX, fileBarY, 0.5f, fileFillW, barH, COLOR_PURPLE_LIGHT);
+            // Per-save progress bar
+            const int saveBarY = my + 52;
+            C2D_DrawRectSolid(barX, saveBarY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+
+            float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
+            if (progress > 1.0f)
+                progress = 1.0f;
+            int saveFillW = (int)(barW * progress);
+            if (saveFillW > 0) {
+                C2D_DrawRectSolid(barX, saveBarY, 0.5f, saveFillW, barH, COLOR_PURPLE_LIGHT);
+            }
+            Gui::drawOutline(barX, saveBarY, barW, barH, 1, COLOR_GREY_LIGHT);
+
+            // Count (left) and percentage (right) below per-save bar
+            char countStr[24];
+            snprintf(countStr, sizeof(countStr), "%zu / %zu", g_copyCount, g_copyTotal);
+            C2D_Text countText;
+            C2D_TextParse(&countText, dynamicBuf, countStr);
+            C2D_TextOptimize(&countText);
+            C2D_DrawText(&countText, C2D_WithColor, barX, saveBarY + barH + 3, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+
+            char pctStr[8];
+            snprintf(pctStr, sizeof(pctStr), "%d%%", (int)(progress * 100));
+            C2D_Text pctText;
+            C2D_TextParse(&pctText, dynamicBuf, pctStr);
+            C2D_TextOptimize(&pctText);
+            C2D_DrawText(&pctText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(pctText, 0.45f)), saveBarY + barH + 3, 0.5f, 0.45f,
+                0.45f, COLOR_WHITE);
+
+            // Per-file progress bar
+            const int fileBarY = my + 82;
+            C2D_DrawRectSolid(barX, fileBarY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+
+            float fileProgress = (g_currentFileSize > 0) ? (float)g_currentFileOffset / (float)g_currentFileSize : 0.0f;
+            if (fileProgress > 1.0f)
+                fileProgress = 1.0f;
+            int fileFillW = (int)(barW * fileProgress);
+            if (fileFillW > 0) {
+                C2D_DrawRectSolid(barX, fileBarY, 0.5f, fileFillW, barH, COLOR_PURPLE_LIGHT);
+            }
+            Gui::drawOutline(barX, fileBarY, barW, barH, 1, COLOR_GREY_LIGHT);
+
+            // KB transferred (left) and percentage (right) below per-file bar
+            char kbStr[32];
+            snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", g_currentFileOffset / 1024.0f, g_currentFileSize / 1024.0f);
+            C2D_Text kbText;
+            C2D_TextParse(&kbText, dynamicBuf, kbStr);
+            C2D_TextOptimize(&kbText);
+            C2D_DrawText(&kbText, C2D_WithColor, barX, fileBarY + barH + 3, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+
+            char filePctStr[8];
+            snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)(fileProgress * 100));
+            C2D_Text filePctText;
+            C2D_TextParse(&filePctText, dynamicBuf, filePctStr);
+            C2D_TextOptimize(&filePctText);
+            C2D_DrawText(&filePctText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(filePctText, 0.45f)), fileBarY + barH + 3, 0.5f,
+                0.45f, 0.45f, COLOR_WHITE);
         }
-        Gui::drawOutline(barX, fileBarY, barW, barH, 1, COLOR_GREY_LIGHT);
-
-        // KB transferred (left) and percentage (right) below per-file bar
-        char kbStr[32];
-        snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", g_currentFileOffset / 1024.0f, g_currentFileSize / 1024.0f);
-        C2D_Text kbText;
-        C2D_TextParse(&kbText, dynamicBuf, kbStr);
-        C2D_TextOptimize(&kbText);
-        C2D_DrawText(&kbText, C2D_WithColor, barX, fileBarY + barH + 3, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
-
-        char filePctStr[8];
-        snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)(fileProgress * 100));
-        C2D_Text filePctText;
-        C2D_TextParse(&filePctText, dynamicBuf, filePctStr);
-        C2D_TextOptimize(&filePctText);
-        C2D_DrawText(&filePctText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(filePctText, 0.45f)), fileBarY + barH + 3, 0.5f, 0.45f,
-            0.45f, COLOR_WHITE);
     }
 }
 
@@ -522,6 +598,23 @@ void MainScreen::handleEvents(const InputState& input)
         refreshTimer = 0;
     }
 
+    if (buttonTransfer->released()) {
+        currentOverlay = std::make_shared<TransferMenuOverlay>(
+            *this,
+            [this]() {
+                this->removeOverlay();
+                this->startTransferSend();
+            },
+            [this]() {
+                std::string error;
+                if (!Transfer::startReceiver(error)) {
+                    this->currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, error.empty() ? "Failed to start receiver." : error);
+                    return;
+                }
+                this->currentOverlay = std::make_shared<ReceiveOverlay>(*this);
+            });
+    }
+
     if (buttonBackup->released() || (kDown & KEY_L)) {
         if (MS::multipleSelectionEnabled()) {
             directoryList->resetIndex();
@@ -668,4 +761,62 @@ void MainScreen::updateButtons(void)
 std::string MainScreen::nameFromCell(size_t index) const
 {
     return directoryList->cellName(index);
+}
+
+void MainScreen::startTransferSend(void)
+{
+    if (TitleLoader::getTitleCount() <= 0) {
+        currentOverlay = std::make_shared<InfoOverlay>(*this, "No titles available.");
+        return;
+    }
+
+    size_t cellIndex = directoryList->index();
+    if (!g_bottomScrollEnabled || cellIndex == 0) {
+        currentOverlay = std::make_shared<InfoOverlay>(*this, "Select a backup to send.");
+        return;
+    }
+
+    Title title;
+    TitleLoader::getTitle(title, hid.fullIndex());
+
+    std::string backupName = nameFromCell(cellIndex);
+    std::u16string backupPath = Archive::mode() == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
+
+    std::string ipPort = rawKeyboard("192.168.1.10:8000", "IP:PUERTO del receptor", 32);
+    if (ipPort.empty()) {
+        return;
+    }
+
+    size_t colon = ipPort.find(':');
+    if (colon == std::string::npos) {
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Invalid IP:PORT.");
+        return;
+    }
+    std::string ip = ipPort.substr(0, colon);
+    int port = atoi(ipPort.substr(colon + 1).c_str());
+    if (ip.empty() || port <= 0 || port > 65535) {
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Invalid IP:PORT.");
+        return;
+    }
+
+    std::string pin = rawKeyboard("1234", "PIN (4-6 digitos)", 8);
+    if (pin.empty()) {
+        return;
+    }
+    bool pinOk = pin.size() >= 4 && pin.size() <= 6 &&
+        std::all_of(pin.begin(), pin.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
+    if (!pinOk) {
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "PIN must be 4-6 digits.");
+        return;
+    }
+
+    std::string error;
+    std::string dataType = Archive::mode() == MODE_SAVE ? "save" : "extdata";
+    bool ok = Transfer::sendBackup(title, backupPath, backupName, dataType, ip, (u16)port, pin, error);
+    if (ok) {
+        currentOverlay = std::make_shared<InfoOverlay>(*this, "Transfer completed.");
+    }
+    else {
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, error.empty() ? "Transfer failed." : error);
+    }
 }

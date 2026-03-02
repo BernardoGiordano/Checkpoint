@@ -24,34 +24,45 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef MAIN_HPP
-#define MAIN_HPP
+#ifndef TRANSFEROVERLAY_HPP
+#define TRANSFEROVERLAY_HPP
 
-#include "Screen.hpp"
-#include "logging.hpp"
-#include <atomic>
-#include <citro2d.h>
+#include "Overlay.hpp"
+#include "clickable.hpp"
+#include "colors.hpp"
+#include "gui.hpp"
+#include "hid.hpp"
+#include <functional>
 #include <memory>
-#include <vector>
+#include <string>
 
-inline std::shared_ptr<Screen> g_screen = nullptr;
-inline bool g_bottomScrollEnabled       = false;
-inline float g_timer                    = 0;
-inline std::string g_selectedCheatKey;
-inline std::vector<std::string> g_selectedCheatCodes;
-inline std::atomic<bool> g_isLoadingTitles = false;
-inline int g_loadingTitlesCounter          = 0;
-inline int g_loadingTitlesLimit            = 0;
+class TransferMenuOverlay : public Overlay {
+public:
+    TransferMenuOverlay(Screen& screen, const std::function<void()>& callbackSend, const std::function<void()>& callbackReceive);
+    ~TransferMenuOverlay(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
+    void update(const InputState& input) override;
 
-inline std::u16string g_currentFile;
-inline bool g_isTransferringFile = false;
-inline size_t g_copyCount        = 0;
-inline size_t g_copyTotal        = 0;
-inline std::string g_transferMode;
-inline u32 g_currentFileOffset = 0;
-inline u32 g_currentFileSize   = 0;
-inline bool g_transferIsNetwork = false;
-inline u64 g_transferBytesDone  = 0;
-inline u64 g_transferBytesTotal = 0;
+private:
+    u32 posx, posy;
+    C2D_TextBuf textBuf;
+    C2D_Text text;
+    std::unique_ptr<Clickable> buttonSend, buttonReceive;
+    Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
+    std::function<void()> sendFunc, receiveFunc;
+};
+
+class ReceiveOverlay : public Overlay {
+public:
+    ReceiveOverlay(Screen& screen);
+    ~ReceiveOverlay(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
+    void update(const InputState& input) override;
+
+private:
+    C2D_TextBuf textBuf;
+};
 
 #endif
