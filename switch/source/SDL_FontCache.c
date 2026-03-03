@@ -1101,6 +1101,12 @@ Uint8 FC_AddGlyphToCache(FC_Font* font, SDL_Surface* glyph_surface)
     img = SDL_CreateTextureFromSurface(renderer, glyph_surface);
 
     destrect = font->last_glyph.rect;
+    // Use the actual glyph surface dimensions for the dest rect so
+    // SDL_RenderCopy does not scale the glyph to font->height (which
+    // includes the 1.2x line-spacing padding).  This matches the
+    // SDL_BlitSurface behaviour used during initial glyph loading.
+    destrect.w = glyph_surface->w;
+    destrect.h = glyph_surface->h;
     SDL_SetRenderTarget(renderer, dest);
     SDL_RenderCopy(renderer, img, NULL, &destrect);
     SDL_SetRenderTarget(renderer, prev_target);
