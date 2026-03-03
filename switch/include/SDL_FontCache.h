@@ -98,6 +98,8 @@ Uint8 FC_LoadFontFromTTF(FC_Font* font, SDL_Renderer* renderer, TTF_Font* ttf, T
 Uint8 FC_LoadFont_RW(FC_Font* font, SDL_Renderer* renderer, SDL_RWops* file_rwops_ttf, SDL_RWops* file_rwops_ext, Uint8 own_rwops, Uint32 pointSize,
     SDL_Color color, int style);
 
+Uint8 FC_AddFallbackFont(FC_Font* font, TTF_Font* fallback);
+
 void FC_ClearFont(FC_Font* font);
 
 void FC_FreeFont(FC_Font* font);

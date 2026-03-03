@@ -32,6 +32,13 @@ static SDL_Texture* s_star;
 static SDL_Texture* s_checkbox;
 
 static PlFontData fontData, fontExtData;
+
+struct FallbackFontData {
+    void* address;
+    size_t size;
+};
+static FallbackFontData s_fallbackData[4];
+static int s_numFallbacks = 0;
 static std::unordered_map<int, FC_Font*> s_fonts;
 
 static FC_Font* getFontFromMap(int size)
@@ -41,6 +48,13 @@ static FC_Font* getFontFromMap(int size)
         FC_Font* f = FC_CreateFont();
         FC_LoadFont_RW(f, s_renderer, SDL_RWFromMem((void*)fontData.address, fontData.size),
             SDL_RWFromMem((void*)fontExtData.address, fontExtData.size), 1, size, COLOR_BLACK, TTF_STYLE_NORMAL);
+        // Register CJK/Korean fallback fonts for this size
+        for (int i = 0; i < s_numFallbacks; i++) {
+            TTF_Font* fallback = TTF_OpenFontRW(SDL_RWFromMem(s_fallbackData[i].address, s_fallbackData[i].size), 1, size);
+            if (fallback != NULL) {
+                FC_AddFallbackFont(f, fallback);
+            }
+        }
         s_fonts.insert({size, f});
         return f;
     }
@@ -77,6 +91,23 @@ bool SDLH_Init(void)
 
     plGetSharedFontByType(&fontData, PlSharedFontType_Standard);
     plGetSharedFontByType(&fontExtData, PlSharedFontType_NintendoExt);
+
+    // Load CJK/Korean fallback fonts
+    static const PlSharedFontType fallbackTypes[] = {
+        PlSharedFontType_KO,
+        PlSharedFontType_ChineseSimplified,
+        PlSharedFontType_ExtChineseSimplified,
+        PlSharedFontType_ChineseTraditional,
+    };
+    s_numFallbacks = 0;
+    for (size_t i = 0; i < sizeof(fallbackTypes) / sizeof(fallbackTypes[0]); i++) {
+        PlFontData fd;
+        if (R_SUCCEEDED(plGetSharedFontByType(&fd, fallbackTypes[i])) && fd.address != NULL) {
+            s_fallbackData[s_numFallbacks].address = fd.address;
+            s_fallbackData[s_numFallbacks].size    = fd.size;
+            s_numFallbacks++;
+        }
+    }
 
     // utils
     SDLH_GetTextDimensions(13, "...", &g_username_dotsize, NULL);
@@ -228,15 +259,19 @@ std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize)
 {
     u32 width;
     std::string newtext = "";
-    for (size_t i = 0, len = text.length(); i < len; i++) {
-        SDLH_GetTextDimensions(textsize, newtext.c_str(), &width, NULL);
-        if (width < maxsize) {
-            newtext += text[i];
-        }
-        else {
+    const char* src     = text.c_str();
+    while (*src != '\0') {
+        int charsize = U8_charsize(src);
+        if (charsize < 1)
+            break;
+        std::string candidate = newtext + std::string(src, charsize);
+        SDLH_GetTextDimensions(textsize, candidate.c_str(), &width, NULL);
+        if (width >= maxsize) {
             newtext += "...";
             break;
         }
+        newtext = candidate;
+        src += charsize;
     }
     return newtext;
 }
