@@ -267,6 +267,13 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
                 return std::make_tuple(false, res, message);
             }
 
+            res = FSUSER_ControlArchive(Archive::sdmc(), ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+            if (R_FAILED(res)) {
+                FSUSER_CloseArchive(archive);
+                Logging::error("Failed to commit SDMC archive with result 0x{:08X}.", res);
+                return std::make_tuple(false, res, "Failed to commit backup to SD card.");
+            }
+
             TitleLoader::refreshDirectories(title.id());
         }
         else {
@@ -347,6 +354,13 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
 
         delete[] saveFile;
         stream.close();
+
+        res = FSUSER_ControlArchive(Archive::sdmc(), ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+        if (R_FAILED(res)) {
+            Logging::error("Failed to commit SDMC archive with result 0x{:08X}.", res);
+            return std::make_tuple(false, res, "Failed to commit backup to SD card.");
+        }
+
         TitleLoader::refreshDirectories(title.id());
     }
 
