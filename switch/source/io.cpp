@@ -282,6 +282,12 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
         return std::make_tuple(false, res, "Failed to backup save.");
     }
 
+    // res = fsdevCommitDevice("sdmc");
+    // if (R_FAILED(res)) {
+    //     Logging::error("Failed to commit SDMC device with result 0x{:08X}.", res);
+    //     return std::make_tuple(false, res, "Failed to commit backup to SD card.");
+    // }
+
     refreshDirectories(title.id());
 
     FileSystem::unmountDevice();
