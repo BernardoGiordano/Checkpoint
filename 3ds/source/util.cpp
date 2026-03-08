@@ -139,16 +139,14 @@ void calculateTitleDBHash(u8* hash)
     AM_GetTitleCount(MEDIATYPE_SD, &titleCount);
     if (Configuration::getInstance().nandSaves()) {
         AM_GetTitleCount(MEDIATYPE_NAND, &nandCount);
-        std::vector<u64> ordered;
-        ordered.reserve(titleCount + nandCount);
+        std::vector<u64> ordered(titleCount + nandCount);
         AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
-        AM_GetTitleList(&nandTitlesRead, MEDIATYPE_NAND, nandCount, ordered.data() + titlesRead * sizeof(u64));
+        AM_GetTitleList(&nandTitlesRead, MEDIATYPE_NAND, nandCount, ordered.data() + titlesRead);
         sort(ordered.begin(), ordered.end());
         sha256(hash, (u8*)ordered.data(), (titleCount + nandCount) * sizeof(u64));
     }
     else {
-        std::vector<u64> ordered;
-        ordered.reserve(titleCount);
+        std::vector<u64> ordered(titleCount);
         AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
         sort(ordered.begin(), ordered.end());
         sha256(hash, (u8*)ordered.data(), titleCount * sizeof(u64));
