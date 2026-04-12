@@ -90,6 +90,24 @@ void TitleLoader::getTitle(Title& dst, int i)
     }
 }
 
+bool TitleLoader::getTitleById(Title& dst, u64 id)
+{
+    std::lock_guard<std::mutex> lock(titlesMutex);
+    for (const auto& title : titleSaves) {
+        if (title.id() == id) {
+            dst = title;
+            return true;
+        }
+    }
+    for (const auto& title : titleExtdatas) {
+        if (title.id() == id) {
+            dst = title;
+            return true;
+        }
+    }
+    return false;
+}
+
 int TitleLoader::getTitleCount(void)
 {
     const Mode_t mode = Archive::mode();
@@ -125,20 +143,15 @@ bool TitleLoader::favorite(int i)
 
 void TitleLoader::refreshDirectories(u64 id)
 {
-    const Mode_t mode = Archive::mode();
     std::lock_guard<std::mutex> lock(titlesMutex);
-    if (mode == MODE_SAVE) {
-        for (size_t i = 0; i < titleSaves.size(); i++) {
-            if (titleSaves.at(i).id() == id) {
-                titleSaves.at(i).refreshDirectories();
-            }
+    for (size_t i = 0; i < titleSaves.size(); i++) {
+        if (titleSaves.at(i).id() == id) {
+            titleSaves.at(i).refreshDirectories();
         }
     }
-    else {
-        for (size_t i = 0; i < titleExtdatas.size(); i++) {
-            if (titleExtdatas.at(i).id() == id) {
-                titleExtdatas.at(i).refreshDirectories();
-            }
+    for (size_t i = 0; i < titleExtdatas.size(); i++) {
+        if (titleExtdatas.at(i).id() == id) {
+            titleExtdatas.at(i).refreshDirectories();
         }
     }
 }

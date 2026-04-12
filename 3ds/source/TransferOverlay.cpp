@@ -115,13 +115,13 @@ void ReceiveOverlay::drawBottom(void) const
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
     C2D_DrawRectSolid(30, 40, 0.5f, 260, 160, COLOR_BLACK_DARKERR);
 
-    std::string info = "Receptor activo";
+    std::string info = "Receiver active";
     if (Transfer::receiverRunning()) {
-        info = StringUtils::format("IP: %s\nPuerto: %d\nPIN: %s", Transfer::receiverIp().c_str(), Transfer::receiverPort(),
+        info = StringUtils::format("IP: %s\nPort: %d\nPIN: %s", Transfer::receiverIp().c_str(), Transfer::receiverPort(),
             Transfer::receiverToken().c_str());
     }
     else {
-        info = "Receptor detenido";
+        info = "Receiver stopped";
     }
 
     C2D_Text infoText;
@@ -134,7 +134,8 @@ void ReceiveOverlay::drawBottom(void) const
         u64 total = g_transferBytesTotal;
         u64 done  = g_transferBytesDone;
         int pct   = total > 0 ? (int)((done * 100) / total) : 0;
-        std::string status = StringUtils::format("Recibiendo... %d%% (%llu / %llu)", pct, (unsigned long long)done, (unsigned long long)total);
+        std::string prefix = g_transferMode.empty() ? "Downloading backup" : g_transferMode;
+        std::string status = StringUtils::format("%s... %d%% (%llu / %llu)", prefix.c_str(), pct, (unsigned long long)done, (unsigned long long)total);
         C2D_Text statusText;
         C2D_TextParse(&statusText, textBuf, status.c_str());
         C2D_TextOptimize(&statusText);
@@ -151,7 +152,7 @@ void ReceiveOverlay::drawBottom(void) const
     }
 
     C2D_Text hintText;
-    C2D_TextParse(&hintText, textBuf, "B para salir");
+    C2D_TextParse(&hintText, textBuf, "Press B to close");
     C2D_TextOptimize(&hintText);
     C2D_DrawText(&hintText, C2D_WithColor, 40, 170, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
 }

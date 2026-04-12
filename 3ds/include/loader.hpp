@@ -33,6 +33,7 @@
 
 namespace TitleLoader {
     void getTitle(Title& dst, int i);
+    bool getTitleById(Title& dst, u64 id);
     int getTitleCount(void);
     C2D_Image icon(int i);
     bool favorite(int i);

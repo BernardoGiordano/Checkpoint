@@ -233,7 +233,7 @@ void MainScreen::drawTop(void) const
                 u64 total = g_transferBytesTotal;
                 u64 done  = g_transferBytesDone;
                 int pct   = total > 0 ? (int)((done * 100) / total) : 0;
-                std::string prefix = g_transferMode.empty() ? "Transferencia" : g_transferMode;
+                std::string prefix = g_transferMode.empty() ? "Transferring backup" : g_transferMode;
                 modeStr = StringUtils::format("%s... %d%% (%llu / %llu)", prefix.c_str(), pct, (unsigned long long)done, (unsigned long long)total);
             }
             else {
@@ -330,7 +330,7 @@ void MainScreen::drawBottom(void) const
             u64 total = g_transferBytesTotal;
             u64 done  = g_transferBytesDone;
             int pct   = total > 0 ? (int)((done * 100) / total) : 0;
-            std::string prefix = g_transferMode.empty() ? "Transferencia" : g_transferMode;
+            std::string prefix = g_transferMode.empty() ? "Transferring backup" : g_transferMode;
             std::string titleStr = StringUtils::format("%s... %d%%", prefix.c_str(), pct);
 
             C2D_Text titleText;

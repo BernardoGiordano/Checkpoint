@@ -108,7 +108,7 @@ namespace {
                     if (path == "/transfer/upload") {
                         trackTransfer = true;
                         g_transferIsNetwork = true;
-                        g_transferMode = "Recibiendo";
+                        g_transferMode = "Downloading backup";
                         g_transferBytesTotal = contentLength;
                         g_transferBytesDone = 0;
                         g_isTransferringFile = true;
