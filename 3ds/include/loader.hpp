@@ -33,6 +33,9 @@
 
 namespace TitleLoader {
     void getTitle(Title& dst, int i);
+    bool getTitleById(Title& dst, u64 id);
+    bool getTitleByName(Title& dst, const std::string& name);
+    void refreshAllDirectories(void);
     int getTitleCount(void);
     C2D_Image icon(int i);
     bool favorite(int i);

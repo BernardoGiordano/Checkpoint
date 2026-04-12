@@ -86,15 +86,18 @@ CFLAGS	:=	-g -gdwarf-4 -Wall -Wextra -Wno-psabi -O3 -mword-relocations -flto=aut
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D__3DS__ -D_GNU_SOURCE=1
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++23
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++23 
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS	:= -lbz2 -lcitro2d -lcitro3d -lctru -lm
 
-CXX		:= `which ccache` $(CXX)
-CC		:= `which ccache` $(CC)
+CCACHE	:=	$(shell command -v ccache 2>/dev/null)
+ifneq ($(strip $(CCACHE)),)
+CXX		:=	$(CCACHE) $(CXX)
+CC		:=	$(CCACHE) $(CC)
+endif
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

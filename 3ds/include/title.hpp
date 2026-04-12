@@ -60,7 +60,7 @@ public:
     std::u16string fullExtdataPath(size_t index);
     u32 highId(void);
     C2D_Image icon(void);
-    u64 id(void);
+    u64 id(void) const;
     bool isActivityLog(void);
     void load(void);
     bool load(u64 id, FS_MediaType mediaType, FS_CardType cardType);
@@ -76,7 +76,7 @@ public:
     std::u16string fullSavePath(size_t index);
     std::vector<std::u16string> saves(void);
     void setIcon(C2D_Image icon);
-    std::string shortDescription(void);
+    std::string shortDescription(void) const;
     std::u16string getShortDescription(void);
     CardType SPICardType(void);
     u32 uniqueId(void);
