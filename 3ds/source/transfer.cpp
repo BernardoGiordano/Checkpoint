@@ -49,8 +49,8 @@
 
 namespace {
     static const int TRANSFER_PORT = 8000;
-    static const char* TEMP_ZIP_SEND = "sdmc:/3ds/Checkpoint/transfer_send.zip";
-    static const char* TEMP_ZIP_RECV = "sdmc:/3ds/Checkpoint/transfer_recv.zip";
+    [[maybe_unused]] static const char* TEMP_ZIP_SEND = "sdmc:/3ds/Checkpoint/transfer_send.zip";
+    [[maybe_unused]] static const char* TEMP_ZIP_RECV = "sdmc:/3ds/Checkpoint/transfer_recv.zip";
 
     std::string g_token;
     std::string g_receiverIp;
@@ -165,7 +165,7 @@ namespace {
         out.write(b, 4);
     }
 
-    bool writeZip(const std::u16string& root, const std::u16string& zipPath, std::vector<FileEntry>& files, u32& outZipSize)
+    [[maybe_unused]] bool writeZip(const std::u16string& root, const std::u16string& zipPath, std::vector<FileEntry>& files, u32& outZipSize)
     {
         files.clear();
         collectFiles(Archive::sdmc(), root, StringUtils::UTF8toUTF16(""), files);
@@ -308,7 +308,7 @@ namespace {
         return true;
     }
 
-    bool extractZip(const std::u16string& zipPath, const std::u16string& destRoot, std::string& outError)
+    [[maybe_unused]] bool extractZip(const std::u16string& zipPath, const std::u16string& destRoot, std::string& outError)
     {
         FSStream input(Archive::sdmc(), zipPath, FS_OPEN_READ);
         if (!input.good()) {

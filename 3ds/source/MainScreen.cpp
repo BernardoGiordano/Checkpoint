@@ -265,10 +265,9 @@ void MainScreen::drawBottom(void) const
 
         directoryList->flush();
         std::vector<std::u16string> dirs = mode == MODE_SAVE ? title.saves() : title.extdata();
-        static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
 
         for (size_t i = 0; i < dirs.size(); i++) {
-            directoryList->push_back(COLOR_BLACK_DARKERR, COLOR_WHITE, convert.to_bytes(dirs.at(i)), i == directoryList->index());
+            directoryList->push_back(COLOR_BLACK_DARKERR, COLOR_WHITE, StringUtils::UTF16toUTF8(dirs.at(i)), i == directoryList->index());
         }
 
         C2D_Text longDesc, c2dTitleInfo;

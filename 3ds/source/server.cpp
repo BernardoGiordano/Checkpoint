@@ -34,6 +34,7 @@
 #include <string>
 
 #include <arpa/inet.h>
+#include <atomic>
 #include <cstdlib>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -44,7 +45,7 @@ namespace {
     static const int SERVER_PORT   = 8000;
     std::atomic_flag serverRunning = ATOMIC_FLAG_INIT;
     s32 serverSocket               = -1;
-    bool isRunning                 = false;
+    std::atomic<bool> serverIsRunning{false};
     std::string serverAddress;
 
     std::map<std::string, Server::HttpHandler> handlers;
@@ -163,7 +164,7 @@ namespace {
         // Set server socket to non-blocking
         fcntl(serverSocket, F_SETFL, fcntl(serverSocket, F_GETFL, 0) | O_NONBLOCK);
 
-        isRunning = true;
+        serverIsRunning.store(true);
         while (serverRunning.test_and_set()) {
             s32 clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientLen);
 
@@ -180,6 +181,8 @@ namespace {
             // Prevent 100% CPU usage
             svcSleepThread(100000000); // 100ms
         }
+
+        serverIsRunning.store(false);
     }
 }
 
@@ -197,7 +200,7 @@ void Server::unregisterHandler(const std::string& path)
 
 bool Server::isRunning(void)
 {
-    return isRunning;
+    return serverIsRunning.load();
 }
 
 std::string Server::getAddress(void)
@@ -243,6 +246,7 @@ void Server::init()
 
 void Server::exit()
 {
+    serverIsRunning.store(false);
     serverRunning.clear();
 
     if (serverSocket >= 0) {

@@ -25,6 +25,7 @@
  */
 
 #include "common.hpp"
+#include <cstdint>
 
 std::string DateTime::timeStr(void)
 {
@@ -57,8 +58,51 @@ std::string DateTime::logDateTime(void)
 
 std::string StringUtils::UTF16toUTF8(const std::u16string& src)
 {
-    static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
-    std::string dst = convert.to_bytes(src);
+    std::string dst;
+    dst.reserve(src.size());
+
+    for (size_t i = 0; i < src.size(); ++i) {
+        uint32_t codepoint = src[i];
+
+        if (codepoint >= 0xD800 && codepoint <= 0xDBFF) {
+            if (i + 1 < src.size()) {
+                uint32_t low = src[i + 1];
+                if (low >= 0xDC00 && low <= 0xDFFF) {
+                    codepoint = 0x10000 + (((codepoint - 0xD800) << 10) | (low - 0xDC00));
+                    ++i;
+                }
+                else {
+                    codepoint = 0xFFFD;
+                }
+            }
+            else {
+                codepoint = 0xFFFD;
+            }
+        }
+        else if (codepoint >= 0xDC00 && codepoint <= 0xDFFF) {
+            codepoint = 0xFFFD;
+        }
+
+        if (codepoint <= 0x7F) {
+            dst.push_back(static_cast<char>(codepoint));
+        }
+        else if (codepoint <= 0x7FF) {
+            dst.push_back(static_cast<char>(0xC0 | ((codepoint >> 6) & 0x1F)));
+            dst.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+        }
+        else if (codepoint <= 0xFFFF) {
+            dst.push_back(static_cast<char>(0xE0 | ((codepoint >> 12) & 0x0F)));
+            dst.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+            dst.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+        }
+        else {
+            dst.push_back(static_cast<char>(0xF0 | ((codepoint >> 18) & 0x07)));
+            dst.push_back(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F)));
+            dst.push_back(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F)));
+            dst.push_back(static_cast<char>(0x80 | (codepoint & 0x3F)));
+        }
+    }
+
     return dst;
 }
 
