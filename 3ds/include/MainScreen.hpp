@@ -57,6 +57,7 @@ protected:
     void handleEvents(const InputState& input);
     void updateSelector(void);
     void updateButtons(void);
+    void refreshTitlesFull(void);
     std::string nameFromCell(size_t index) const;
     void startTransferSend(void);
 

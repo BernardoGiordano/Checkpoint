@@ -33,7 +33,7 @@ TransferMenuOverlay::TransferMenuOverlay(Screen& screen, const std::function<voi
     : Overlay(screen), hid(2, 2)
 {
     textBuf = C2D_TextBufNew(64);
-    C2D_TextParse(&text, textBuf, "Send Data");
+    C2D_TextParse(&text, textBuf, "Choose Send or Receive");
     C2D_TextOptimize(&text);
 
     sendFunc    = callbackSend;
@@ -42,7 +42,7 @@ TransferMenuOverlay::TransferMenuOverlay(Screen& screen, const std::function<voi
     posx = ceilf(320 - text.width * 0.6f) / 2;
     posy = 40 + ceilf(120 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2;
 
-    buttonSend    = std::make_unique<Clickable>(42, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "\uE000 Send", true);
+    buttonSend    = std::make_unique<Clickable>(42, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "\uE005 Send", true);
     buttonReceive = std::make_unique<Clickable>(162, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "\uE001 Receive", true);
 }
 
@@ -77,19 +77,20 @@ void TransferMenuOverlay::drawBottom(void) const
 void TransferMenuOverlay::update(const InputState& input)
 {
     (void)input;
+    u32 kDown = hidKeysDown();
     hid.update(2);
 
     hid.index(buttonSend->held() ? 0 : buttonReceive->held() ? 1 : hid.index());
     buttonSend->selected(hid.index() == 0);
     buttonReceive->selected(hid.index() == 1);
 
-    if (buttonSend->released() || ((hidKeysDown() & KEY_A) && hid.index() == 0)) {
+    if ((kDown & KEY_R) || buttonSend->released() || ((kDown & KEY_A) && hid.index() == 0)) {
         sendFunc();
     }
-    else if (buttonReceive->released() || ((hidKeysDown() & KEY_A) && hid.index() == 1)) {
+    else if ((kDown & KEY_B) || buttonReceive->released() || ((kDown & KEY_A) && hid.index() == 1)) {
         receiveFunc();
     }
-    else if (hidKeysDown() & KEY_B) {
+    else if (kDown & KEY_START) {
         screen.removeOverlay();
     }
 }
@@ -114,6 +115,38 @@ void ReceiveOverlay::drawBottom(void) const
     C2D_TextBufClear(textBuf);
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
     C2D_DrawRectSolid(30, 40, 0.5f, 260, 160, COLOR_BLACK_DARKERR);
+
+    bool completed = Transfer::receiverHasCompleted();
+    if (completed && !(g_transferIsNetwork && g_isTransferringFile)) {
+        std::string backupName = Transfer::receiverCompletedName();
+        if (backupName.empty()) {
+            backupName = "(unnamed backup)";
+        }
+
+        C2D_Text titleText;
+        C2D_TextParse(&titleText, textBuf, "File received");
+        C2D_TextOptimize(&titleText);
+        C2D_DrawText(&titleText, C2D_WithColor, 40, 60, 0.5f, 0.65f, 0.65f, COLOR_WHITE);
+
+        C2D_Text nameText;
+        C2D_TextParse(&nameText, textBuf, backupName.c_str());
+        C2D_TextOptimize(&nameText);
+        C2D_DrawText(&nameText, C2D_WithColor, 40, 92, 0.5f, 0.52f, 0.52f, COLOR_GREY_LIGHT);
+
+        std::string notice = Transfer::receiverNotice();
+        if (!notice.empty()) {
+            C2D_Text noticeText;
+            C2D_TextParse(&noticeText, textBuf, notice.c_str());
+            C2D_TextOptimize(&noticeText);
+            C2D_DrawText(&noticeText, C2D_WithColor, 40, 122, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+        }
+
+        C2D_Text hintText;
+        C2D_TextParse(&hintText, textBuf, "Press A (OK) to refresh now");
+        C2D_TextOptimize(&hintText);
+        C2D_DrawText(&hintText, C2D_WithColor, 40, 170, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
+        return;
+    }
 
     std::string info = "Receiver active";
     if (Transfer::receiverRunning()) {
@@ -160,8 +193,16 @@ void ReceiveOverlay::drawBottom(void) const
 void ReceiveOverlay::update(const InputState& input)
 {
     (void)input;
+    if (Transfer::receiverHasCompleted() && (hidKeysDown() & KEY_A)) {
+        Transfer::stopReceiver();
+        Transfer::clearReceiverCompletion();
+        Transfer::clearReceiverNotice();
+        screen.removeOverlay();
+        return;
+    }
     if (hidKeysDown() & KEY_B) {
         Transfer::stopReceiver();
+        Transfer::clearReceiverCompletion();
         Transfer::clearReceiverNotice();
         screen.removeOverlay();
     }

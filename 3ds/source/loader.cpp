@@ -28,6 +28,7 @@
 #include "main.hpp"
 #include "title.hpp"
 #include <chrono>
+#include <cctype>
 #include <mutex>
 
 namespace {
@@ -38,6 +39,15 @@ namespace {
     bool forceRefresh           = false;
     std::atomic_flag doCartScan = ATOMIC_FLAG_INIT;
     const size_t ENTRYSIZE      = 5341;
+
+    std::string toLowerAscii(const std::string& s)
+    {
+        std::string out = s;
+        for (size_t i = 0; i < out.size(); i++) {
+            out[i] = (char)std::tolower((unsigned char)out[i]);
+        }
+        return out;
+    }
 }
 
 bool TitleLoader::validId(u64 id)
@@ -108,6 +118,29 @@ bool TitleLoader::getTitleById(Title& dst, u64 id)
     return false;
 }
 
+bool TitleLoader::getTitleByName(Title& dst, const std::string& name)
+{
+    if (name.empty()) {
+        return false;
+    }
+
+    std::string needle = toLowerAscii(name);
+    std::lock_guard<std::mutex> lock(titlesMutex);
+    for (const auto& title : titleSaves) {
+        if (toLowerAscii(title.shortDescription()) == needle) {
+            dst = title;
+            return true;
+        }
+    }
+    for (const auto& title : titleExtdatas) {
+        if (toLowerAscii(title.shortDescription()) == needle) {
+            dst = title;
+            return true;
+        }
+    }
+    return false;
+}
+
 int TitleLoader::getTitleCount(void)
 {
     const Mode_t mode = Archive::mode();
@@ -153,6 +186,17 @@ void TitleLoader::refreshDirectories(u64 id)
         if (titleExtdatas.at(i).id() == id) {
             titleExtdatas.at(i).refreshDirectories();
         }
+    }
+}
+
+void TitleLoader::refreshAllDirectories(void)
+{
+    std::lock_guard<std::mutex> lock(titlesMutex);
+    for (auto& title : titleSaves) {
+        title.refreshDirectories();
+    }
+    for (auto& title : titleExtdatas) {
+        title.refreshDirectories();
     }
 }
 

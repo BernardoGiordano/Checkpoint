@@ -34,11 +34,15 @@ namespace Transfer {
     bool startReceiver(std::string& outError);
     void stopReceiver(void);
     bool receiverRunning(void);
+    bool consumePendingRefresh(void);
     std::string receiverToken(void);
     std::string receiverIp(void);
     int receiverPort(void);
     std::string receiverNotice(void);
+    bool receiverHasCompleted(void);
+    std::string receiverCompletedName(void);
     void clearReceiverNotice(void);
+    void clearReceiverCompletion(void);
 
     bool sendBackup(const Title& title, const std::u16string& backupPath, const std::string& backupName, const std::string& dataType,
         const std::string& ip, u16 port, const std::string& token, std::string& outError);

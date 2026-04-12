@@ -65,7 +65,7 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     buttonRestore   = std::make_unique<Clickable>(204, 139, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Restore \uE005", true);
     buttonCheats    = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Cheats", true);
     buttonPlayCoins = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "\uE075 Coins", true);
-    buttonTransfer  = std::make_unique<Clickable>(4, 223, 110, 16, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Transferir", true);
+    buttonTransfer  = std::make_unique<Clickable>(4, 223, 110, 16, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Transfer", true);
     directoryList   = std::make_unique<Scrollable>(6, 102, 196, 110, 5);
     buttonBackup->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
@@ -446,8 +446,20 @@ void MainScreen::drawBottom(void) const
 
 void MainScreen::update(const InputState& input)
 {
+    if (Transfer::consumePendingRefresh()) {
+        refreshTitlesFull();
+    }
     updateSelector();
     handleEvents(input);
+}
+
+void MainScreen::refreshTitlesFull(void)
+{
+    hid.reset();
+    MS::clearSelectedEntries();
+    directoryList->resetIndex();
+    Threads::executeTask(TitleLoader::loadTitlesThread);
+    refreshTimer = 0;
 }
 
 void MainScreen::updateSelector(void)
@@ -590,11 +602,7 @@ void MainScreen::handleEvents(const InputState& input)
     }
 
     if (refreshTimer > 90) {
-        hid.reset();
-        MS::clearSelectedEntries();
-        directoryList->resetIndex();
-        Threads::executeTask(TitleLoader::loadTitlesThread);
-        refreshTimer = 0;
+        refreshTitlesFull();
     }
 
     if (buttonTransfer->released()) {
@@ -816,6 +824,11 @@ void MainScreen::startTransferSend(void)
         currentOverlay = std::make_shared<InfoOverlay>(*this, "Transfer completed.");
     }
     else {
-        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, error.empty() ? "Transfer failed." : error);
+        if (error == "Selected backup is empty.") {
+            currentOverlay = std::make_shared<InfoOverlay>(*this, error);
+        }
+        else {
+            currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, error.empty() ? "Transfer failed." : error);
+        }
     }
 }
