@@ -42,8 +42,12 @@
 #include <unistd.h>
 
 namespace {
-    static const int SERVER_PORT   = 8000;
-    std::atomic_flag serverRunning = ATOMIC_FLAG_INIT;
+    static const int SERVER_PORT = 8000;
+    // Hard upper bound on a single request we are willing to buffer in RAM.
+    // The whole request is held in memory, so this caps worst-case allocation
+    // and prevents a malformed/malicious Content-Length from exhausting the heap.
+    static const size_t MAX_REQUEST_SIZE = 32 * 1024 * 1024;
+    std::atomic_flag serverRunning       = ATOMIC_FLAG_INIT;
     s32 serverSocket               = -1;
     std::atomic<bool> serverIsRunning{false};
     std::string serverAddress;
@@ -82,13 +86,14 @@ namespace {
         return (size_t)strtoul(headers.substr(pos, end - pos).c_str(), nullptr, 10);
     }
 
-    static std::string readRequest(s32 clientSocket)
+    static std::string readRequest(s32 clientSocket, bool& outTooLarge)
     {
+        outTooLarge = false;
         std::string data;
         data.reserve(4096);
         char buffer[2048];
-        ssize_t received = 0;
-        size_t headerEnd = std::string::npos;
+        ssize_t received     = 0;
+        size_t headerEnd     = std::string::npos;
         size_t contentLength = 0;
         std::string path;
         bool trackTransfer = false;
@@ -101,10 +106,20 @@ namespace {
             data.append(buffer, received);
 
             if (headerEnd == std::string::npos) {
+                // No header terminator yet: guard against a client that never
+                // sends one (or buries it past the cap) and grows us unbounded.
+                if (data.size() > MAX_REQUEST_SIZE) {
+                    outTooLarge = true;
+                    break;
+                }
                 headerEnd = data.find("\r\n\r\n");
                 if (headerEnd != std::string::npos) {
                     contentLength = parseContentLength(data.substr(0, headerEnd));
-                    path = extractPath(data.substr(0, headerEnd));
+                    path          = extractPath(data.substr(0, headerEnd));
+                    if (contentLength > MAX_REQUEST_SIZE) {
+                        outTooLarge = true;
+                        break;
+                    }
                     if (path == "/transfer/upload") {
                         trackTransfer = true;
                         g_transferIsNetwork = true;
@@ -120,6 +135,8 @@ namespace {
             }
 
             if (headerEnd != std::string::npos) {
+                // contentLength is bounded by MAX_REQUEST_SIZE above, so this read
+                // is bounded too: we stop as soon as the declared body has arrived.
                 size_t totalNeeded = headerEnd + 4 + contentLength;
                 if (trackTransfer && data.size() > headerEnd + 4) {
                     g_transferBytesDone = data.size() - (headerEnd + 4);
@@ -135,7 +152,19 @@ namespace {
 
     static void handleHttpRequest(s32 clientSocket)
     {
-        std::string request = readRequest(clientSocket);
+        bool tooLarge        = false;
+        std::string request  = readRequest(clientSocket, tooLarge);
+        if (tooLarge) {
+            // Reset any transfer UI state we may have set while reading headers.
+            g_isTransferringFile = false;
+            g_transferIsNetwork  = false;
+            std::string body   = "{\"ok\":false,\"error\":\"Payload too large\"}";
+            std::string header = "HTTP/1.1 413 Payload Too Large\r\nContent-Type: application/json\r\nContent-Length: " +
+                                 std::to_string(body.length()) + "\r\n\r\n";
+            send(clientSocket, header.c_str(), header.length(), 0);
+            send(clientSocket, body.c_str(), body.length(), 0);
+            return;
+        }
         std::string path = extractPath(request);
         auto it = handlers.find(path);
         if (it != handlers.end()) {

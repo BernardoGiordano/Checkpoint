@@ -525,15 +525,24 @@ namespace {
         return headers.substr(pos, end - pos);
     }
 
-    bool parseMultipart(const std::string& request, std::string& outMeta, std::string& outFile, std::string& outError)
+    // Parses the multipart body without copying it. The (small) meta part is
+    // returned by value, but the (potentially large) file part is returned as an
+    // [offset, length) range into the original request buffer so it can be written
+    // straight to disk without duplicating it in memory.
+    bool parseMultipart(const std::string& request, std::string& outMeta, size_t& outFileOffset, size_t& outFileLen, std::string& outError)
     {
+        outMeta.clear();
+        outFileOffset = 0;
+        outFileLen    = 0;
+        bool haveFile = false;
+
         size_t headerEnd = request.find("\r\n\r\n");
         if (headerEnd == std::string::npos) {
             outError = "Bad request.";
             return false;
         }
         std::string headers = request.substr(0, headerEnd);
-        std::string body = request.substr(headerEnd + 4);
+        size_t bodyStart    = headerEnd + 4;
 
         std::string contentType = headerValue(headers, "Content-Type");
         size_t bpos = contentType.find("boundary=");
@@ -547,43 +556,44 @@ namespace {
         }
 
         std::string boundaryMarker = "--" + boundary;
-        size_t pos = body.find(boundaryMarker);
+        std::string nextBoundaryMarker = "\r\n" + boundaryMarker;
+        size_t pos = request.find(boundaryMarker, bodyStart);
         while (pos != std::string::npos) {
             pos += boundaryMarker.size();
-            if (pos + 2 <= body.size() && body.compare(pos, 2, "--") == 0) {
+            if (pos + 2 <= request.size() && request.compare(pos, 2, "--") == 0) {
                 break;
             }
-            if (pos + 2 <= body.size() && body.compare(pos, 2, "\r\n") == 0) {
+            if (pos + 2 <= request.size() && request.compare(pos, 2, "\r\n") == 0) {
                 pos += 2;
             }
 
-            size_t partHeaderEnd = body.find("\r\n\r\n", pos);
+            size_t partHeaderEnd = request.find("\r\n\r\n", pos);
             if (partHeaderEnd == std::string::npos) {
                 break;
             }
-            std::string partHeader = body.substr(pos, partHeaderEnd - pos);
+            std::string partHeader = request.substr(pos, partHeaderEnd - pos);
             size_t dataStart = partHeaderEnd + 4;
-            size_t nextBoundary = body.find("\r\n" + boundaryMarker, dataStart);
+            size_t nextBoundary = request.find(nextBoundaryMarker, dataStart);
             if (nextBoundary == std::string::npos) {
                 break;
             }
-            size_t dataEnd = nextBoundary;
-            if (dataEnd >= 2 && body.compare(dataEnd - 2, 2, "\r\n") == 0) {
-                dataEnd -= 2;
-            }
-            std::string partData = body.substr(dataStart, dataEnd - dataStart);
+            // nextBoundary points at the CRLF that precedes the delimiter, so the
+            // part data is exactly [dataStart, nextBoundary).
+            size_t dataLen = nextBoundary - dataStart;
 
             if (partHeader.find("name=\"meta\"") != std::string::npos) {
-                outMeta = partData;
+                outMeta = request.substr(dataStart, dataLen);
             }
             else if (partHeader.find("name=\"file\"") != std::string::npos) {
-                outFile = partData;
+                outFileOffset = dataStart;
+                outFileLen    = dataLen;
+                haveFile      = true;
             }
 
             pos = nextBoundary + 2;
         }
 
-        if (outMeta.empty() || outFile.empty()) {
+        if (outMeta.empty() || !haveFile) {
             outError = "Incomplete form data.";
             return false;
         }
@@ -618,12 +628,14 @@ namespace {
         }
 
         std::string metaJson;
-        std::string fileData;
+        size_t fileOffset = 0;
+        size_t fileLen    = 0;
         std::string error;
-        if (!parseMultipart(requestData, metaJson, fileData, error)) {
+        if (!parseMultipart(requestData, metaJson, fileOffset, fileLen, error)) {
             cleanup();
             return {400, "application/json", "{\"ok\":false,\"error\":\"Bad upload\"}"};
         }
+        const char* fileData = requestData.data() + fileOffset;
 
         auto meta = nlohmann::json::parse(metaJson, nullptr, false);
         if (meta.is_discarded()) {
@@ -711,21 +723,21 @@ namespace {
             outputPath = backupRoot + safeFileName;
         }
 
-        FSStream output(Archive::sdmc(), outputPath, FS_OPEN_WRITE, (u32)fileData.size());
+        FSStream output(Archive::sdmc(), outputPath, FS_OPEN_WRITE, (u32)fileLen);
         if (!output.good()) {
             cleanup();
             std::string message = StringUtils::format("Failed to store file (0x%08lX).", output.result());
             return {500, "application/json", "{\"ok\":false,\"error\":\"" + message + "\"}"};
         }
-        if (!fileData.empty()) {
-            output.write(fileData.data(), (u32)fileData.size());
+        if (fileLen > 0) {
+            output.write(fileData, (u32)fileLen);
         }
         output.close();
 
         if (isZip) {
             g_transferMode = "Extracting package";
             g_transferIsNetwork = true;
-            g_transferBytesTotal = (u32)fileData.size();
+            g_transferBytesTotal = (u32)fileLen;
             g_transferBytesDone = 0;
 
             std::string extractError;
