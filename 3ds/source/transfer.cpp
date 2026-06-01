@@ -43,6 +43,7 @@
 #include <cstring>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <vector>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -58,8 +59,24 @@ namespace {
     bool g_receiverRunning = false;
     std::atomic<bool> g_pendingRefresh{false};
     std::atomic<bool> g_receiverCompleted{false};
+    // g_receiverNotice / g_receiverCompletedName are written by the HTTP server
+    // thread (in handleUpload) and read by the UI thread, so they are guarded by
+    // this mutex. Pass an empty string to clear.
+    std::mutex g_receiverMutex;
     std::string g_receiverNotice;
     std::string g_receiverCompletedName;
+
+    void setReceiverNotice(const std::string& notice)
+    {
+        std::lock_guard<std::mutex> lock(g_receiverMutex);
+        g_receiverNotice = notice;
+    }
+
+    void setReceiverCompletedName(const std::string& name)
+    {
+        std::lock_guard<std::mutex> lock(g_receiverMutex);
+        g_receiverCompletedName = name;
+    }
 
     struct FileEntry {
         std::u16string absPath;
@@ -288,7 +305,7 @@ namespace {
                     break;
                 }
                 output.write(buf.get(), rd);
-                g_transferBytesDone += rd;
+                transferAddDone(rd);
                 renderTransferFrame();
             }
             input.close();
@@ -492,7 +509,7 @@ namespace {
                 output.write(buf.get(), rd);
                 remaining -= rd;
 
-                g_transferBytesDone += rd;
+                transferAddDone(rd);
             }
             if (remaining != 0) {
                 outError = "Corrupted ZIP payload.";
@@ -648,7 +665,7 @@ namespace {
         std::string titleName = meta.value("titleName", "Unknown");
         std::string backupName = meta.value("backupName", "");
         bool isZip = meta.value("isZip", false);
-        g_receiverNotice.clear();
+        setReceiverNotice("");
         if (backupName.empty()) {
             backupName = "Received_" + DateTime::dateTimeStr();
         }
@@ -675,7 +692,7 @@ namespace {
                 destRoot = (dataType == "extdata") ? t.extdataPath() : t.savePath();
                 foundTitle = true;
                 mappedByName = true;
-                g_receiverNotice = "Warning: title ID mismatch. Backup mapped by title name.";
+                setReceiverNotice("Warning: title ID mismatch. Backup mapped by title name.");
                 Logging::warning("Title ID {} not found, mapped by title name '{}'.", titleId, titleName);
             }
         }
@@ -690,7 +707,7 @@ namespace {
             if (!io::directoryExists(Archive::sdmc(), destRoot)) {
                 io::createDirectory(Archive::sdmc(), destRoot);
             }
-            g_receiverNotice = "Warning: unknown title. Stored in:\n" + StringUtils::UTF16toUTF8(destRoot);
+            setReceiverNotice("Warning: unknown title. Stored in:\n" + StringUtils::UTF16toUTF8(destRoot));
             Logging::warning("Received backup for unknown title {} (stored under {}).", titleId, StringUtils::UTF16toUTF8(destRoot));
         }
 
@@ -735,10 +752,9 @@ namespace {
         output.close();
 
         if (isZip) {
-            g_transferMode = "Extracting package";
+            transferSetMode("Extracting package");
             g_transferIsNetwork = true;
-            g_transferBytesTotal = (u32)fileLen;
-            g_transferBytesDone = 0;
+            transferSetProgress(0, (u64)fileLen);
 
             std::string extractError;
             bool extracted = extractZip(outputPath, backupRoot, extractError);
@@ -750,15 +766,15 @@ namespace {
                 return {500, "application/json", "{\"ok\":false,\"error\":\"" + message + "\"}"};
             }
 
-            g_transferBytesDone = g_transferBytesTotal;
+            transferSetDone((u64)fileLen);
         }
 
         cleanup();
 
         if (!mappedByName && foundTitle) {
-            g_receiverNotice.clear();
+            setReceiverNotice("");
         }
-        g_receiverCompletedName = backupName;
+        setReceiverCompletedName(backupName);
         g_receiverCompleted.store(true);
         g_pendingRefresh.store(true);
 
@@ -795,8 +811,8 @@ bool Transfer::startReceiver(std::string& outError)
         int pin = 1000 + (rand() % 9000);
         g_token = StringUtils::format("%04d", pin);
         g_receiverIp = Server::getAddress();
-        g_receiverNotice.clear();
-        g_receiverCompletedName.clear();
+        setReceiverNotice("");
+        setReceiverCompletedName("");
         g_receiverCompleted.store(false);
         size_t pos = g_receiverIp.find("://");
         if (pos != std::string::npos) {
@@ -852,6 +868,7 @@ int Transfer::receiverPort(void)
 
 std::string Transfer::receiverNotice(void)
 {
+    std::lock_guard<std::mutex> lock(g_receiverMutex);
     return g_receiverNotice;
 }
 
@@ -862,17 +879,18 @@ bool Transfer::receiverHasCompleted(void)
 
 std::string Transfer::receiverCompletedName(void)
 {
+    std::lock_guard<std::mutex> lock(g_receiverMutex);
     return g_receiverCompletedName;
 }
 
 void Transfer::clearReceiverNotice(void)
 {
-    g_receiverNotice.clear();
+    setReceiverNotice("");
 }
 
 void Transfer::clearReceiverCompletion(void)
 {
-    g_receiverCompletedName.clear();
+    setReceiverCompletedName("");
     g_receiverCompleted.store(false);
 }
 
@@ -898,11 +916,10 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
     };
 
     if (isZip) {
-        g_transferMode = "Preparing backup package";
+        transferSetMode("Preparing backup package");
         g_transferIsNetwork = true;
         g_isTransferringFile = true;
-        g_transferBytesDone = 0;
-        g_transferBytesTotal = totalFileBytes(files);
+        transferSetProgress(0, totalFileBytes(files));
 
         std::vector<FileEntry> zipEntries;
         u32 zipSize = 0;
@@ -932,9 +949,8 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
         payloadSize = entry.size;
     }
 
-    g_transferBytesTotal = payloadSize;
-    g_transferBytesDone = 0;
-    g_transferMode = "Sending backup";
+    transferSetProgress(0, payloadSize);
+    transferSetMode("Sending backup");
     g_transferIsNetwork = true;
     g_isTransferringFile = true;
 
@@ -1022,7 +1038,7 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
                     ok = false;
                     break;
                 }
-                g_transferBytesDone += rd;
+                transferAddDone(rd);
                 renderTransferFrame();
             }
             input.close();

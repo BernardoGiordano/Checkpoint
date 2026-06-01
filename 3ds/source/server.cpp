@@ -138,9 +138,8 @@ namespace {
                     if (path == "/transfer/upload") {
                         trackTransfer = true;
                         g_transferIsNetwork = true;
-                        g_transferMode = "Downloading backup";
-                        g_transferBytesTotal = contentLength;
-                        g_transferBytesDone = 0;
+                        transferSetMode("Downloading backup");
+                        transferSetProgress(0, contentLength);
                         g_isTransferringFile = true;
                     }
                     if (contentLength == 0) {
@@ -154,7 +153,7 @@ namespace {
                 // is bounded too: we stop as soon as the declared body has arrived.
                 size_t totalNeeded = headerEnd + 4 + contentLength;
                 if (trackTransfer && data.size() > headerEnd + 4) {
-                    g_transferBytesDone = data.size() - (headerEnd + 4);
+                    transferSetDone(data.size() - (headerEnd + 4));
                 }
                 if (data.size() >= totalNeeded) {
                     break;

@@ -229,15 +229,16 @@ void MainScreen::drawTop(void) const
 
             const float size = 0.7f;
             std::string modeStr;
+            std::string mode = transferGetMode();
             if (g_transferIsNetwork) {
-                u64 total = g_transferBytesTotal;
-                u64 done  = g_transferBytesDone;
-                int pct   = total > 0 ? (int)((done * 100) / total) : 0;
-                std::string prefix = g_transferMode.empty() ? "Transferring backup" : g_transferMode;
+                u64 total = 0, done = 0;
+                transferGetProgress(done, total);
+                int pct            = total > 0 ? (int)((done * 100) / total) : 0;
+                std::string prefix = mode.empty() ? "Transferring backup" : mode;
                 modeStr = StringUtils::format("%s... %d%% (%llu / %llu)", prefix.c_str(), pct, (unsigned long long)done, (unsigned long long)total);
             }
             else {
-                modeStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
+                modeStr = (mode.empty() ? "Copying files" : mode) + " in progress...";
             }
             C2D_Text modeText;
             C2D_TextParse(&modeText, dynamicBuf, modeStr.c_str());
@@ -327,10 +328,11 @@ void MainScreen::drawBottom(void) const
             C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
             Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
 
-            u64 total = g_transferBytesTotal;
-            u64 done  = g_transferBytesDone;
-            int pct   = total > 0 ? (int)((done * 100) / total) : 0;
-            std::string prefix = g_transferMode.empty() ? "Transferring backup" : g_transferMode;
+            u64 total = 0, done = 0;
+            transferGetProgress(done, total);
+            int pct              = total > 0 ? (int)((done * 100) / total) : 0;
+            std::string mode     = transferGetMode();
+            std::string prefix   = mode.empty() ? "Transferring backup" : mode;
             std::string titleStr = StringUtils::format("%s... %d%%", prefix.c_str(), pct);
 
             C2D_Text titleText;
@@ -366,7 +368,8 @@ void MainScreen::drawBottom(void) const
             Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
 
             // Title
-            std::string titleStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
+            std::string mode     = transferGetMode();
+            std::string titleStr = (mode.empty() ? "Copying files" : mode) + " in progress...";
             C2D_Text titleText;
             C2D_TextParse(&titleText, dynamicBuf, titleStr.c_str());
             C2D_TextOptimize(&titleText);
