@@ -88,7 +88,7 @@ typedef enum {
     FLASH_512KB_1   = 6,
     FLASH_512KB_2   = 7,
     FLASH_1MB       = 8,
-    FLASH_8MB       = 9, // <- can't restore savegames, and maybe not read them atm
+    FLASH_8MB       = 9, // <- needs erase-sector + page-program to restore (see SPIWriteSaveData)
     FLASH_STD_DUMMY = 4,
 
     FLASH_512KB_INFRARED = 10,

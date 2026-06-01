@@ -201,7 +201,20 @@ Result SPIWriteSaveData(CardType type, u32 offset, void* data, u32 size)
                 cmd[3]  = (u8)pos;
                 break;
             case FLASH_8MB:
-                return 0xC8E13404; // writing is unsupported (so is reading? need to test)
+                // 8MB flash chips do not
+                // support the auto-erasing page-write command. They must be erased one sector at a time
+                // and then written with the plain page-program command. The restore loop writes the save
+                // sequentially from offset 0, so each 64KB sector gets erased the first time it is reached.
+                if ((pos % 0x10000) == 0) {
+                    if ((res = SPIEraseSector(type, pos)))
+                        return res;
+                }
+                cmdSize = 4;
+                cmd[0]  = SPI_CMD_PP;
+                cmd[1]  = (u8)(pos >> 16);
+                cmd[2]  = (u8)(pos >> 8);
+                cmd[3]  = (u8)pos;
+                break;
             default:
                 return 0; // never happens
         }
@@ -312,7 +325,7 @@ Result SPIReadSaveData(CardType type, u32 offset, void* data, u32 size)
 Result SPIEraseSector(CardType type, u32 offset)
 {
     u8 cmd[4] = {SPI_FLASH_CMD_SE, (u8)(offset >> 16), (u8)(offset >> 8), (u8)offset};
-    if (type == NO_CHIP || type == FLASH_8MB)
+    if (type == NO_CHIP)
         return 0xC8E13404;
 
     if (type < FLASH_256KB_1 && fill_buf == NULL) {
