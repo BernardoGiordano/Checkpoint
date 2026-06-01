@@ -38,6 +38,7 @@
 #include <cstdlib>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -86,6 +87,11 @@ namespace {
         return (size_t)strtoul(headers.substr(pos, end - pos).c_str(), nullptr, 10);
     }
 
+    // Per-recv idle timeout. The server is single-threaded, so without a bound a
+    // stalled (or malicious) client would hang the whole receiver indefinitely.
+    // The 3DS SOC layer doesn't support SO_RCVTIMEO, so we gate recv with poll.
+    static const int RECV_TIMEOUT_MS = 15000;
+
     static std::string readRequest(s32 clientSocket, bool& outTooLarge)
     {
         outTooLarge = false;
@@ -99,6 +105,15 @@ namespace {
         bool trackTransfer = false;
 
         while (true) {
+            struct pollfd pfd;
+            pfd.fd      = clientSocket;
+            pfd.events  = POLLIN;
+            pfd.revents = 0;
+            int ready   = poll(&pfd, 1, RECV_TIMEOUT_MS);
+            if (ready <= 0) {
+                // Timed out or poll error: abandon this (possibly stalled) request.
+                break;
+            }
             received = recv(clientSocket, buffer, sizeof(buffer), 0);
             if (received <= 0) {
                 break;
