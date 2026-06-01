@@ -559,7 +559,10 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
                             if (title.accessibleSave()) {
                                 titleSaves.push_back(title);
                             }
-                            // TODO: extdata?
+
+                            if (title.accessibleExtdata()) {
+                                titleExtdatas.push_back(title);
+                            }
                         }
                     }
 
