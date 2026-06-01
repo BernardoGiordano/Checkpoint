@@ -227,24 +227,41 @@ void MainScreen::drawTop(void) const
         if (g_isTransferringFile) {
             C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
 
-            const float size = 0.7f;
-            std::string modeStr;
-            std::string mode = transferGetMode();
+            const float size     = 0.7f;
+            const float lineFeed = size * fontGetInfo(NULL)->lineFeed;
+            std::string mode     = transferGetMode();
             if (g_transferIsNetwork) {
+                // Two centered lines keep the (potentially long) mode label and the
+                // size readout on screen, matching the bottom progress modal.
                 u64 total = 0, done = 0;
                 transferGetProgress(done, total);
                 int pct            = total > 0 ? (int)((done * 100) / total) : 0;
                 std::string prefix = mode.empty() ? "Transferring backup" : mode;
-                modeStr = StringUtils::format("%s... %d%% (%llu / %llu)", prefix.c_str(), pct, (unsigned long long)done, (unsigned long long)total);
+                std::string line1  = StringUtils::format("%s... %d%%", prefix.c_str(), pct);
+                std::string line2  = transferBytesToMB(done, total);
+
+                float startY = ceilf((240 - 2 * lineFeed) / 2);
+
+                C2D_Text line1Text;
+                C2D_TextParse(&line1Text, dynamicBuf, line1.c_str());
+                C2D_TextOptimize(&line1Text);
+                C2D_DrawText(&line1Text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(line1Text, size)) / 2), startY, 0.9f, size, size,
+                    COLOR_WHITE);
+
+                C2D_Text line2Text;
+                C2D_TextParse(&line2Text, dynamicBuf, line2.c_str());
+                C2D_TextOptimize(&line2Text);
+                C2D_DrawText(&line2Text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(line2Text, size)) / 2), startY + lineFeed, 0.9f, size,
+                    size, COLOR_GREY_LIGHT);
             }
             else {
-                modeStr = (mode.empty() ? "Copying files" : mode) + " in progress...";
+                std::string modeStr = (mode.empty() ? "Copying files" : mode) + " in progress...";
+                C2D_Text modeText;
+                C2D_TextParse(&modeText, dynamicBuf, modeStr.c_str());
+                C2D_TextOptimize(&modeText);
+                C2D_DrawText(&modeText, C2D_WithColor, ceilf((400 - StringUtils::textWidth(modeText, size)) / 2), ceilf((240 - lineFeed) / 2), 0.9f,
+                    size, size, COLOR_WHITE);
             }
-            C2D_Text modeText;
-            C2D_TextParse(&modeText, dynamicBuf, modeStr.c_str());
-            C2D_TextOptimize(&modeText);
-            C2D_DrawText(&modeText, C2D_WithColor, ceilf((400 - StringUtils::textWidth(modeText, size)) / 2),
-                ceilf((240 - size * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, size, size, COLOR_WHITE);
         }
     }
 }
@@ -341,7 +358,7 @@ void MainScreen::drawBottom(void) const
             C2D_DrawText(
                 &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
 
-            std::string bytesStr = StringUtils::format("%llu / %llu", (unsigned long long)done, (unsigned long long)total);
+            std::string bytesStr = transferBytesToMB(done, total);
             C2D_Text bytesText;
             C2D_TextParse(&bytesText, dynamicBuf, bytesStr.c_str());
             C2D_TextOptimize(&bytesText);

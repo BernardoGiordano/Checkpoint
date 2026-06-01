@@ -31,6 +31,7 @@
 #include "logging.hpp"
 #include <atomic>
 #include <citro2d.h>
+#include <cstdio>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -98,6 +99,14 @@ inline void transferGetProgress(u64& done, u64& total)
     std::lock_guard<std::mutex> lock(g_transferStatusMutex);
     done  = g_transferBytesDone;
     total = g_transferBytesTotal;
+}
+
+// Formats a "done / total" byte pair in MB for the transfer progress UI.
+inline std::string transferBytesToMB(u64 done, u64 total)
+{
+    char buf[48];
+    snprintf(buf, sizeof(buf), "%.1f / %.1f MB", (double)done / (1024.0 * 1024.0), (double)total / (1024.0 * 1024.0));
+    return std::string(buf);
 }
 
 #endif

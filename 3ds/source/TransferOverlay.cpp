@@ -169,7 +169,7 @@ void ReceiveOverlay::drawBottom(void) const
         int pct            = total > 0 ? (int)((done * 100) / total) : 0;
         std::string mode   = transferGetMode();
         std::string prefix = mode.empty() ? "Downloading backup" : mode;
-        std::string status = StringUtils::format("%s... %d%% (%llu / %llu)", prefix.c_str(), pct, (unsigned long long)done, (unsigned long long)total);
+        std::string status = StringUtils::format("%s... %d%% (%s)", prefix.c_str(), pct, transferBytesToMB(done, total).c_str());
         C2D_Text statusText;
         C2D_TextParse(&statusText, textBuf, status.c_str());
         C2D_TextOptimize(&statusText);
