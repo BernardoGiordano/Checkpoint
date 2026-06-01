@@ -592,10 +592,12 @@ namespace {
 
     Server::HttpResponse handleInfo(const std::string&, const std::string&)
     {
+        // Note: the PIN token is intentionally NOT exposed here. It must only ever
+        // be shown on the receiver's screen and entered manually on the sender, so
+        // that a device on the same network cannot read it and authenticate itself.
         nlohmann::json info;
         info["device"] = "3DS";
         info["version"] = StringUtils::format("%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
-        info["token"] = g_token;
         info["maxUploadBytes"] = 0;
         info["freeSpaceBytes"] = 0;
         return {200, "application/json", info.dump()};
