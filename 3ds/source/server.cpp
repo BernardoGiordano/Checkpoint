@@ -31,6 +31,7 @@
 #include <3ds.h>
 #include <cstring>
 #include <map>
+#include <mutex>
 #include <string>
 
 #include <arpa/inet.h>
@@ -54,6 +55,9 @@ namespace {
     std::string serverAddress;
 
     std::map<std::string, Server::HttpHandler> handlers;
+    // handlers is mutated from the main thread (register/unregister on receiver
+    // start/stop) while the network thread looks handlers up, so guard it.
+    std::mutex handlersMutex;
 
     std::string extractPath(const std::string& request)
     {
@@ -180,9 +184,18 @@ namespace {
             return;
         }
         std::string path = extractPath(request);
-        auto it = handlers.find(path);
-        if (it != handlers.end()) {
-            Server::HttpResponse response = it->second(path, request);
+        Server::HttpHandler handler;
+        bool found = false;
+        {
+            std::lock_guard<std::mutex> lock(handlersMutex);
+            auto it = handlers.find(path);
+            if (it != handlers.end()) {
+                handler = it->second;
+                found   = true;
+            }
+        }
+        if (found) {
+            Server::HttpResponse response = handler(path, request);
             std::string header = "HTTP/1.1 " + std::to_string(response.statusCode);
             header += (response.statusCode == 200 ? " OK" : (response.statusCode == 404 ? " Not Found" : " Error"));
             header += "\r\nContent-Type: " + response.contentType;
@@ -231,13 +244,19 @@ namespace {
 
 void Server::registerHandler(const std::string& path, Server::HttpHandler handler)
 {
-    handlers[path] = handler;
+    {
+        std::lock_guard<std::mutex> lock(handlersMutex);
+        handlers[path] = handler;
+    }
     Logging::info("Registered HTTP handler for path {}", path);
 }
 
 void Server::unregisterHandler(const std::string& path)
 {
-    handlers.erase(path);
+    {
+        std::lock_guard<std::mutex> lock(handlersMutex);
+        handlers.erase(path);
+    }
     Logging::info("Unregistered HTTP handler for path {}", path);
 }
 
@@ -297,7 +316,10 @@ void Server::exit()
         serverSocket = -1;
     }
 
-    handlers.clear();
+    {
+        std::lock_guard<std::mutex> lock(handlersMutex);
+        handlers.clear();
+    }
 
     Logging::trace("HTTP server stopped");
 }
