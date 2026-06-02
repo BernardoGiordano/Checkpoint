@@ -78,6 +78,7 @@ void Title::init(u8 saveDataType, u64 id, AccountUid userID, const std::string& 
     mUserId          = userID;
     mSaveDataType    = saveDataType;
     mSaveDataSpaceId = spaceId;
+    mJournalSize     = 0;
 
     if (mSaveDataType == FsSaveDataType_Bcat) {
         mUserName = "BCAT";
@@ -142,6 +143,16 @@ u64 Title::saveId(void)
 void Title::saveId(u64 saveId)
 {
     mSaveId = saveId;
+}
+
+u64 Title::journalSize(void)
+{
+    return mJournalSize;
+}
+
+void Title::journalSize(u64 journalSize)
+{
+    mJournalSize = journalSize;
 }
 
 AccountUid Title::userId(void)
@@ -299,6 +310,7 @@ void loadTitles(void)
                         Title title;
                         title.init(info.save_data_type, tid, uid, std::string(nle->name), std::string(nle->author));
                         title.saveId(sid);
+                        title.journalSize(nsacd->nacp.user_account_save_data_journal_size);
 
                         // load play statistics
                         PdmPlayStatistics stats;
@@ -339,6 +351,7 @@ void loadTitles(void)
                         AccountUid bcatUid = {0};
                         title.init(FsSaveDataType_Bcat, tid, bcatUid, std::string(nle->name), std::string(nle->author));
                         title.saveId(sid);
+                        title.journalSize(nsacd->nacp.bcat_delivery_cache_storage_size);
 
                         loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
                         bcatTitles.push_back(title);
@@ -359,6 +372,7 @@ void loadTitles(void)
                         AccountUid deviceUid = {0};
                         title.init(FsSaveDataType_Device, tid, deviceUid, std::string(nle->name), std::string(nle->author));
                         title.saveId(sid);
+                        title.journalSize(nsacd->nacp.device_save_data_journal_size);
 
                         loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
                         deviceTitles.push_back(title);

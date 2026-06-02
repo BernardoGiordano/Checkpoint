@@ -50,7 +50,7 @@ size_t io::countFiles(const std::string& path)
     return count;
 }
 
-void io::copyFile(const std::string& srcPath, const std::string& dstPath)
+void io::copyFile(const std::string& srcPath, const std::string& dstPath, u64 commitWriteLimit)
 {
     g_isTransferringFile = true;
 
@@ -78,6 +78,12 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
     g_currentFileSize   = sz;
     g_currentFileOffset = 0;
 
+    // when writing to the save device, the journal can only hold a limited amount of
+    // uncommitted data: commit partway through large files so a single file bigger than
+    // the journal doesn't overflow it at commit time.
+    const bool toSaveDevice = dstPath.rfind("save:/", 0) == 0;
+    u64 journalPending      = 0;
+
     while (offset < sz) {
         u32 count = fread((char*)buf, 1, BUFFER_SIZE, src);
         if (count == 0) {
@@ -88,6 +94,24 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
         offset += count;
         g_currentFileOffset = offset;
 
+        if (toSaveDevice && commitWriteLimit > 0 && offset < sz) {
+            journalPending += count;
+            if (journalPending >= commitWriteLimit) {
+                journalPending = 0;
+                fflush(dst);
+                fclose(dst);
+                Result cres = fsdevCommitDevice("save");
+                if (R_FAILED(cres)) {
+                    Logging::error("Failed mid-file commit of {} at offset {}/{} with result 0x{:08X}.", dstPath, offset, sz, cres);
+                }
+                dst = fopen(dstPath.c_str(), "ab");
+                if (dst == NULL) {
+                    Logging::error("Failed to reopen destination file {} after commit with errno {}. Aborting copy.", dstPath, errno);
+                    break;
+                }
+            }
+        }
+
         // avoid freezing the UI
         // this will be made less horrible next time...
         g_screen->draw();
@@ -96,19 +120,20 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
 
     delete[] buf;
     fclose(src);
-    fclose(dst);
+    if (dst != NULL) {
+        fclose(dst);
+    }
     g_copyCount++;
 
     // commit each file to the save
-    if (dstPath.rfind("save:/", 0) == 0) {
-        Logging::error("Committing file {} to the save archive.", dstPath);
+    if (toSaveDevice) {
         fsdevCommitDevice("save");
     }
 
     g_isTransferringFile = false;
 }
 
-Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath)
+Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath, u64 commitWriteLimit)
 {
     Result res = 0;
     bool quit  = false;
@@ -127,14 +152,14 @@ Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath)
             if (R_SUCCEEDED(res)) {
                 newsrc += "/";
                 newdst += "/";
-                res = io::copyDirectory(newsrc, newdst);
+                res = io::copyDirectory(newsrc, newdst, commitWriteLimit);
             }
             else {
                 quit = true;
             }
         }
         else {
-            io::copyFile(newsrc, newdst);
+            io::copyFile(newsrc, newdst, commitWriteLimit);
         }
     }
 
@@ -347,10 +372,24 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
         return std::make_tuple(false, res, "Failed to delete save.");
     }
 
+    // commit the wipe before writing so the deletions don't add to the journal pressure
+    // accumulated while restoring the backup.
+    res = fsdevCommitDevice("save");
+    if (R_FAILED(res)) {
+        FileSystem::unmountDevice();
+        Logging::error("Failed to commit save wipe with result 0x{:08X}.", res);
+        return std::make_tuple(false, res, "Failed to commit to save device.");
+    }
+
+    // leave a safety margin under the journal size so the in-flight commits never overflow it.
+    // a journal size of 0 (unknown, e.g. system saves) disables mid-file commits.
+    u64 journalSize      = title.journalSize();
+    u64 commitWriteLimit = journalSize > JOURNAL_COMMIT_MARGIN ? journalSize - JOURNAL_COMMIT_MARGIN : journalSize;
+
     g_copyCount    = 0;
     g_copyTotal    = io::countFiles(srcPath);
     g_transferMode = "Restore";
-    res            = io::copyDirectory(srcPath, dstPath);
+    res            = io::copyDirectory(srcPath, dstPath, commitWriteLimit);
     if (R_FAILED(res)) {
         FileSystem::unmountDevice();
         Logging::error("Failed to copy directory {} to {} with result 0x{:08X}. Skipping...", srcPath, dstPath, res);
