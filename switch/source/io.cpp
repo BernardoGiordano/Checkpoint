@@ -50,6 +50,27 @@ size_t io::countFiles(const std::string& path)
     return count;
 }
 
+u64 io::getDirectorySize(const std::string& path)
+{
+    u64 size = 0;
+    Directory items(path);
+    if (!items.good()) {
+        return 0;
+    }
+    for (size_t i = 0, sz = items.size(); i < sz; i++) {
+        if (items.folder(i)) {
+            size += io::getDirectorySize(path + items.entry(i) + "/");
+        }
+        else {
+            struct stat st;
+            if (stat((path + items.entry(i)).c_str(), &st) == 0) {
+                size += st.st_size;
+            }
+        }
+    }
+    return size;
+}
+
 void io::copyFile(const std::string& srcPath, const std::string& dstPath, u64 commitWriteLimit)
 {
     g_isTransferringFile = true;
@@ -200,6 +221,20 @@ Result io::deleteFolderRecursively(const std::string& path)
 
     rmdir(path.c_str());
     return 0;
+}
+
+static Result mountTitleSave(Title& title, FsFileSystem* fileSystem)
+{
+    switch (title.saveDataType()) {
+        case FsSaveDataType_Bcat:
+            return FileSystem::mountBcatSave(fileSystem, title.id());
+        case FsSaveDataType_Device:
+            return FileSystem::mountDeviceSave(fileSystem, title.id());
+        case FsSaveDataType_System:
+            return FileSystem::mountSystemSave(fileSystem, title.id(), title.saveDataSpaceId());
+        default:
+            return FileSystem::mountSave(fileSystem, title.id(), title.userId());
+    }
 }
 
 std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, size_t cellIndex)
@@ -364,6 +399,41 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
 
     std::string srcPath = title.fullPath(cellIndex) + "/";
     std::string dstPath = "save:/";
+
+    // if the backup is larger than the currently allocated save data, grow the partition
+    // before restoring (a save can outgrow its initial allocation as the game progresses).
+    u64 journalSizeMax = title.journalSizeMax();
+    if (journalSizeMax > 0) {
+        u64 backupSize = io::getDirectorySize(srcPath);
+        s64 totalSpace = 0;
+        res            = fsFsGetTotalSpace(fsdevGetDeviceFileSystem("save"), "/", &totalSpace);
+        if (R_SUCCEEDED(res) && backupSize > (u64)totalSpace) {
+            FileSystem::unmountDevice();
+
+            s64 newDataSize = (s64)(backupSize + SAVE_EXTEND_MARGIN);
+            res = fsExtendSaveDataFileSystem((FsSaveDataSpaceId)title.saveDataSpaceId(), title.saveId(), newDataSize, (s64)journalSizeMax);
+            if (R_FAILED(res)) {
+                Logging::error("Failed to extend save data to {} bytes with result 0x{:08X}. Title id: 0x{:016X}.", newDataSize, res, title.id());
+                return std::make_tuple(false, res, "Failed to extend the save data\nto fit the backup.");
+            }
+            Logging::info("Extended save data of title 0x{:016X} to {} bytes to fit backup of {} bytes.", title.id(), newDataSize, backupSize);
+
+            // remount the now larger save
+            res = mountTitleSave(title, &fileSystem);
+            if (R_SUCCEEDED(res)) {
+                int rc = FileSystem::mountDevice(fileSystem);
+                if (rc == -1) {
+                    FileSystem::unmountDevice();
+                    Logging::error("Failed to remount filesystem after extend. Title id: 0x{:016X}.", title.id());
+                    return std::make_tuple(false, -2, "Failed to mount save.");
+                }
+            }
+            else {
+                Logging::error("Failed to remount filesystem after extend with result 0x{:08X}. Title id: 0x{:016X}.", res, title.id());
+                return std::make_tuple(false, res, "Failed to mount save.");
+            }
+        }
+    }
 
     res = io::deleteFolderRecursively(dstPath.c_str());
     if (R_FAILED(res)) {

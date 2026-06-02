@@ -45,11 +45,15 @@
 // safety margin left free in the save journal when committing partway through a file
 #define JOURNAL_COMMIT_MARGIN 0x100000
 
+// extra headroom added on top of the backup size when extending the save data partition
+#define SAVE_EXTEND_MARGIN 0x500000
+
 namespace io {
     std::tuple<bool, Result, std::string> backup(size_t index, AccountUid uid, size_t cellIndex);
     std::tuple<bool, Result, std::string> restore(size_t index, AccountUid uid, size_t cellIndex, const std::string& nameFromCell);
 
     size_t countFiles(const std::string& path);
+    u64 getDirectorySize(const std::string& path);
     Result copyDirectory(const std::string& srcPath, const std::string& dstPath, u64 commitWriteLimit = 0);
     void copyFile(const std::string& srcPath, const std::string& dstPath, u64 commitWriteLimit = 0);
     Result createDirectory(const std::string& path);
