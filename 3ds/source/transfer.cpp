@@ -43,6 +43,7 @@
 #include <cstring>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <vector>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -58,8 +59,24 @@ namespace {
     bool g_receiverRunning = false;
     std::atomic<bool> g_pendingRefresh{false};
     std::atomic<bool> g_receiverCompleted{false};
+    // g_receiverNotice / g_receiverCompletedName are written by the HTTP server
+    // thread (in handleUpload) and read by the UI thread, so they are guarded by
+    // this mutex. Pass an empty string to clear.
+    std::mutex g_receiverMutex;
     std::string g_receiverNotice;
     std::string g_receiverCompletedName;
+
+    void setReceiverNotice(const std::string& notice)
+    {
+        std::lock_guard<std::mutex> lock(g_receiverMutex);
+        g_receiverNotice = notice;
+    }
+
+    void setReceiverCompletedName(const std::string& name)
+    {
+        std::lock_guard<std::mutex> lock(g_receiverMutex);
+        g_receiverCompletedName = name;
+    }
 
     struct FileEntry {
         std::u16string absPath;
@@ -288,7 +305,7 @@ namespace {
                     break;
                 }
                 output.write(buf.get(), rd);
-                g_transferBytesDone += rd;
+                transferAddDone(rd);
                 renderTransferFrame();
             }
             input.close();
@@ -492,7 +509,7 @@ namespace {
                 output.write(buf.get(), rd);
                 remaining -= rd;
 
-                g_transferBytesDone += rd;
+                transferAddDone(rd);
             }
             if (remaining != 0) {
                 outError = "Corrupted ZIP payload.";
@@ -525,15 +542,24 @@ namespace {
         return headers.substr(pos, end - pos);
     }
 
-    bool parseMultipart(const std::string& request, std::string& outMeta, std::string& outFile, std::string& outError)
+    // Parses the multipart body without copying it. The (small) meta part is
+    // returned by value, but the (potentially large) file part is returned as an
+    // [offset, length) range into the original request buffer so it can be written
+    // straight to disk without duplicating it in memory.
+    bool parseMultipart(const std::string& request, std::string& outMeta, size_t& outFileOffset, size_t& outFileLen, std::string& outError)
     {
+        outMeta.clear();
+        outFileOffset = 0;
+        outFileLen    = 0;
+        bool haveFile = false;
+
         size_t headerEnd = request.find("\r\n\r\n");
         if (headerEnd == std::string::npos) {
             outError = "Bad request.";
             return false;
         }
         std::string headers = request.substr(0, headerEnd);
-        std::string body = request.substr(headerEnd + 4);
+        size_t bodyStart    = headerEnd + 4;
 
         std::string contentType = headerValue(headers, "Content-Type");
         size_t bpos = contentType.find("boundary=");
@@ -547,43 +573,44 @@ namespace {
         }
 
         std::string boundaryMarker = "--" + boundary;
-        size_t pos = body.find(boundaryMarker);
+        std::string nextBoundaryMarker = "\r\n" + boundaryMarker;
+        size_t pos = request.find(boundaryMarker, bodyStart);
         while (pos != std::string::npos) {
             pos += boundaryMarker.size();
-            if (pos + 2 <= body.size() && body.compare(pos, 2, "--") == 0) {
+            if (pos + 2 <= request.size() && request.compare(pos, 2, "--") == 0) {
                 break;
             }
-            if (pos + 2 <= body.size() && body.compare(pos, 2, "\r\n") == 0) {
+            if (pos + 2 <= request.size() && request.compare(pos, 2, "\r\n") == 0) {
                 pos += 2;
             }
 
-            size_t partHeaderEnd = body.find("\r\n\r\n", pos);
+            size_t partHeaderEnd = request.find("\r\n\r\n", pos);
             if (partHeaderEnd == std::string::npos) {
                 break;
             }
-            std::string partHeader = body.substr(pos, partHeaderEnd - pos);
+            std::string partHeader = request.substr(pos, partHeaderEnd - pos);
             size_t dataStart = partHeaderEnd + 4;
-            size_t nextBoundary = body.find("\r\n" + boundaryMarker, dataStart);
+            size_t nextBoundary = request.find(nextBoundaryMarker, dataStart);
             if (nextBoundary == std::string::npos) {
                 break;
             }
-            size_t dataEnd = nextBoundary;
-            if (dataEnd >= 2 && body.compare(dataEnd - 2, 2, "\r\n") == 0) {
-                dataEnd -= 2;
-            }
-            std::string partData = body.substr(dataStart, dataEnd - dataStart);
+            // nextBoundary points at the CRLF that precedes the delimiter, so the
+            // part data is exactly [dataStart, nextBoundary).
+            size_t dataLen = nextBoundary - dataStart;
 
             if (partHeader.find("name=\"meta\"") != std::string::npos) {
-                outMeta = partData;
+                outMeta = request.substr(dataStart, dataLen);
             }
             else if (partHeader.find("name=\"file\"") != std::string::npos) {
-                outFile = partData;
+                outFileOffset = dataStart;
+                outFileLen    = dataLen;
+                haveFile      = true;
             }
 
             pos = nextBoundary + 2;
         }
 
-        if (outMeta.empty() || outFile.empty()) {
+        if (outMeta.empty() || !haveFile) {
             outError = "Incomplete form data.";
             return false;
         }
@@ -592,10 +619,12 @@ namespace {
 
     Server::HttpResponse handleInfo(const std::string&, const std::string&)
     {
+        // Note: the PIN token is intentionally NOT exposed here. It must only ever
+        // be shown on the receiver's screen and entered manually on the sender, so
+        // that a device on the same network cannot read it and authenticate itself.
         nlohmann::json info;
         info["device"] = "3DS";
         info["version"] = StringUtils::format("%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
-        info["token"] = g_token;
         info["maxUploadBytes"] = 0;
         info["freeSpaceBytes"] = 0;
         return {200, "application/json", info.dump()};
@@ -616,12 +645,14 @@ namespace {
         }
 
         std::string metaJson;
-        std::string fileData;
+        size_t fileOffset = 0;
+        size_t fileLen    = 0;
         std::string error;
-        if (!parseMultipart(requestData, metaJson, fileData, error)) {
+        if (!parseMultipart(requestData, metaJson, fileOffset, fileLen, error)) {
             cleanup();
             return {400, "application/json", "{\"ok\":false,\"error\":\"Bad upload\"}"};
         }
+        const char* fileData = requestData.data() + fileOffset;
 
         auto meta = nlohmann::json::parse(metaJson, nullptr, false);
         if (meta.is_discarded()) {
@@ -634,7 +665,7 @@ namespace {
         std::string titleName = meta.value("titleName", "Unknown");
         std::string backupName = meta.value("backupName", "");
         bool isZip = meta.value("isZip", false);
-        g_receiverNotice.clear();
+        setReceiverNotice("");
         if (backupName.empty()) {
             backupName = "Received_" + DateTime::dateTimeStr();
         }
@@ -661,7 +692,7 @@ namespace {
                 destRoot = (dataType == "extdata") ? t.extdataPath() : t.savePath();
                 foundTitle = true;
                 mappedByName = true;
-                g_receiverNotice = "Warning: title ID mismatch. Backup mapped by title name.";
+                setReceiverNotice("Warning: title ID mismatch. Backup mapped by title name.");
                 Logging::warning("Title ID {} not found, mapped by title name '{}'.", titleId, titleName);
             }
         }
@@ -676,7 +707,7 @@ namespace {
             if (!io::directoryExists(Archive::sdmc(), destRoot)) {
                 io::createDirectory(Archive::sdmc(), destRoot);
             }
-            g_receiverNotice = "Warning: unknown title. Stored in:\n" + StringUtils::UTF16toUTF8(destRoot);
+            setReceiverNotice("Warning: unknown title. Stored in:\n" + StringUtils::UTF16toUTF8(destRoot));
             Logging::warning("Received backup for unknown title {} (stored under {}).", titleId, StringUtils::UTF16toUTF8(destRoot));
         }
 
@@ -709,22 +740,21 @@ namespace {
             outputPath = backupRoot + safeFileName;
         }
 
-        FSStream output(Archive::sdmc(), outputPath, FS_OPEN_WRITE, (u32)fileData.size());
+        FSStream output(Archive::sdmc(), outputPath, FS_OPEN_WRITE, (u32)fileLen);
         if (!output.good()) {
             cleanup();
             std::string message = StringUtils::format("Failed to store file (0x%08lX).", output.result());
             return {500, "application/json", "{\"ok\":false,\"error\":\"" + message + "\"}"};
         }
-        if (!fileData.empty()) {
-            output.write(fileData.data(), (u32)fileData.size());
+        if (fileLen > 0) {
+            output.write(fileData, (u32)fileLen);
         }
         output.close();
 
         if (isZip) {
-            g_transferMode = "Extracting package";
+            transferSetMode("Extracting package");
             g_transferIsNetwork = true;
-            g_transferBytesTotal = (u32)fileData.size();
-            g_transferBytesDone = 0;
+            transferSetProgress(0, (u64)fileLen);
 
             std::string extractError;
             bool extracted = extractZip(outputPath, backupRoot, extractError);
@@ -736,15 +766,15 @@ namespace {
                 return {500, "application/json", "{\"ok\":false,\"error\":\"" + message + "\"}"};
             }
 
-            g_transferBytesDone = g_transferBytesTotal;
+            transferSetDone((u64)fileLen);
         }
 
         cleanup();
 
         if (!mappedByName && foundTitle) {
-            g_receiverNotice.clear();
+            setReceiverNotice("");
         }
-        g_receiverCompletedName = backupName;
+        setReceiverCompletedName(backupName);
         g_receiverCompleted.store(true);
         g_pendingRefresh.store(true);
 
@@ -781,8 +811,8 @@ bool Transfer::startReceiver(std::string& outError)
         int pin = 1000 + (rand() % 9000);
         g_token = StringUtils::format("%04d", pin);
         g_receiverIp = Server::getAddress();
-        g_receiverNotice.clear();
-        g_receiverCompletedName.clear();
+        setReceiverNotice("");
+        setReceiverCompletedName("");
         g_receiverCompleted.store(false);
         size_t pos = g_receiverIp.find("://");
         if (pos != std::string::npos) {
@@ -838,6 +868,7 @@ int Transfer::receiverPort(void)
 
 std::string Transfer::receiverNotice(void)
 {
+    std::lock_guard<std::mutex> lock(g_receiverMutex);
     return g_receiverNotice;
 }
 
@@ -848,17 +879,18 @@ bool Transfer::receiverHasCompleted(void)
 
 std::string Transfer::receiverCompletedName(void)
 {
+    std::lock_guard<std::mutex> lock(g_receiverMutex);
     return g_receiverCompletedName;
 }
 
 void Transfer::clearReceiverNotice(void)
 {
-    g_receiverNotice.clear();
+    setReceiverNotice("");
 }
 
 void Transfer::clearReceiverCompletion(void)
 {
-    g_receiverCompletedName.clear();
+    setReceiverCompletedName("");
     g_receiverCompleted.store(false);
 }
 
@@ -884,11 +916,10 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
     };
 
     if (isZip) {
-        g_transferMode = "Preparing backup package";
+        transferSetMode("Preparing backup package");
         g_transferIsNetwork = true;
         g_isTransferringFile = true;
-        g_transferBytesDone = 0;
-        g_transferBytesTotal = totalFileBytes(files);
+        transferSetProgress(0, totalFileBytes(files));
 
         std::vector<FileEntry> zipEntries;
         u32 zipSize = 0;
@@ -918,9 +949,8 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
         payloadSize = entry.size;
     }
 
-    g_transferBytesTotal = payloadSize;
-    g_transferBytesDone = 0;
-    g_transferMode = "Sending backup";
+    transferSetProgress(0, payloadSize);
+    transferSetMode("Sending backup");
     g_transferIsNetwork = true;
     g_isTransferringFile = true;
 
@@ -1008,7 +1038,7 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
                     ok = false;
                     break;
                 }
-                g_transferBytesDone += rd;
+                transferAddDone(rd);
                 renderTransferFrame();
             }
             input.close();

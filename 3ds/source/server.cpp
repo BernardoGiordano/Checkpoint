@@ -31,6 +31,7 @@
 #include <3ds.h>
 #include <cstring>
 #include <map>
+#include <mutex>
 #include <string>
 
 #include <arpa/inet.h>
@@ -38,17 +39,25 @@
 #include <cstdlib>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 namespace {
-    static const int SERVER_PORT   = 8000;
-    std::atomic_flag serverRunning = ATOMIC_FLAG_INIT;
+    static const int SERVER_PORT = 8000;
+    // Hard upper bound on a single request we are willing to buffer in RAM.
+    // The whole request is held in memory, so this caps worst-case allocation
+    // and prevents a malformed/malicious Content-Length from exhausting the heap.
+    static const size_t MAX_REQUEST_SIZE = 32 * 1024 * 1024;
+    std::atomic_flag serverRunning       = ATOMIC_FLAG_INIT;
     s32 serverSocket               = -1;
     std::atomic<bool> serverIsRunning{false};
     std::string serverAddress;
 
     std::map<std::string, Server::HttpHandler> handlers;
+    // handlers is mutated from the main thread (register/unregister on receiver
+    // start/stop) while the network thread looks handlers up, so guard it.
+    std::mutex handlersMutex;
 
     std::string extractPath(const std::string& request)
     {
@@ -82,18 +91,33 @@ namespace {
         return (size_t)strtoul(headers.substr(pos, end - pos).c_str(), nullptr, 10);
     }
 
-    static std::string readRequest(s32 clientSocket)
+    // Per-recv idle timeout. The server is single-threaded, so without a bound a
+    // stalled (or malicious) client would hang the whole receiver indefinitely.
+    // The 3DS SOC layer doesn't support SO_RCVTIMEO, so we gate recv with poll.
+    static const int RECV_TIMEOUT_MS = 15000;
+
+    static std::string readRequest(s32 clientSocket, bool& outTooLarge)
     {
+        outTooLarge = false;
         std::string data;
         data.reserve(4096);
         char buffer[2048];
-        ssize_t received = 0;
-        size_t headerEnd = std::string::npos;
+        ssize_t received     = 0;
+        size_t headerEnd     = std::string::npos;
         size_t contentLength = 0;
         std::string path;
         bool trackTransfer = false;
 
         while (true) {
+            struct pollfd pfd;
+            pfd.fd      = clientSocket;
+            pfd.events  = POLLIN;
+            pfd.revents = 0;
+            int ready   = poll(&pfd, 1, RECV_TIMEOUT_MS);
+            if (ready <= 0) {
+                // Timed out or poll error: abandon this (possibly stalled) request.
+                break;
+            }
             received = recv(clientSocket, buffer, sizeof(buffer), 0);
             if (received <= 0) {
                 break;
@@ -101,16 +125,25 @@ namespace {
             data.append(buffer, received);
 
             if (headerEnd == std::string::npos) {
+                // No header terminator yet: guard against a client that never
+                // sends one (or buries it past the cap) and grows us unbounded.
+                if (data.size() > MAX_REQUEST_SIZE) {
+                    outTooLarge = true;
+                    break;
+                }
                 headerEnd = data.find("\r\n\r\n");
                 if (headerEnd != std::string::npos) {
                     contentLength = parseContentLength(data.substr(0, headerEnd));
-                    path = extractPath(data.substr(0, headerEnd));
+                    path          = extractPath(data.substr(0, headerEnd));
+                    if (contentLength > MAX_REQUEST_SIZE) {
+                        outTooLarge = true;
+                        break;
+                    }
                     if (path == "/transfer/upload") {
                         trackTransfer = true;
                         g_transferIsNetwork = true;
-                        g_transferMode = "Downloading backup";
-                        g_transferBytesTotal = contentLength;
-                        g_transferBytesDone = 0;
+                        transferSetMode("Downloading backup");
+                        transferSetProgress(0, contentLength);
                         g_isTransferringFile = true;
                     }
                     if (contentLength == 0) {
@@ -120,9 +153,11 @@ namespace {
             }
 
             if (headerEnd != std::string::npos) {
+                // contentLength is bounded by MAX_REQUEST_SIZE above, so this read
+                // is bounded too: we stop as soon as the declared body has arrived.
                 size_t totalNeeded = headerEnd + 4 + contentLength;
                 if (trackTransfer && data.size() > headerEnd + 4) {
-                    g_transferBytesDone = data.size() - (headerEnd + 4);
+                    transferSetDone(data.size() - (headerEnd + 4));
                 }
                 if (data.size() >= totalNeeded) {
                     break;
@@ -135,11 +170,32 @@ namespace {
 
     static void handleHttpRequest(s32 clientSocket)
     {
-        std::string request = readRequest(clientSocket);
+        bool tooLarge        = false;
+        std::string request  = readRequest(clientSocket, tooLarge);
+        if (tooLarge) {
+            // Reset any transfer UI state we may have set while reading headers.
+            g_isTransferringFile = false;
+            g_transferIsNetwork  = false;
+            std::string body   = "{\"ok\":false,\"error\":\"Payload too large\"}";
+            std::string header = "HTTP/1.1 413 Payload Too Large\r\nContent-Type: application/json\r\nContent-Length: " +
+                                 std::to_string(body.length()) + "\r\n\r\n";
+            send(clientSocket, header.c_str(), header.length(), 0);
+            send(clientSocket, body.c_str(), body.length(), 0);
+            return;
+        }
         std::string path = extractPath(request);
-        auto it = handlers.find(path);
-        if (it != handlers.end()) {
-            Server::HttpResponse response = it->second(path, request);
+        Server::HttpHandler handler;
+        bool found = false;
+        {
+            std::lock_guard<std::mutex> lock(handlersMutex);
+            auto it = handlers.find(path);
+            if (it != handlers.end()) {
+                handler = it->second;
+                found   = true;
+            }
+        }
+        if (found) {
+            Server::HttpResponse response = handler(path, request);
             std::string header = "HTTP/1.1 " + std::to_string(response.statusCode);
             header += (response.statusCode == 200 ? " OK" : (response.statusCode == 404 ? " Not Found" : " Error"));
             header += "\r\nContent-Type: " + response.contentType;
@@ -188,13 +244,19 @@ namespace {
 
 void Server::registerHandler(const std::string& path, Server::HttpHandler handler)
 {
-    handlers[path] = handler;
+    {
+        std::lock_guard<std::mutex> lock(handlersMutex);
+        handlers[path] = handler;
+    }
     Logging::info("Registered HTTP handler for path {}", path);
 }
 
 void Server::unregisterHandler(const std::string& path)
 {
-    handlers.erase(path);
+    {
+        std::lock_guard<std::mutex> lock(handlersMutex);
+        handlers.erase(path);
+    }
     Logging::info("Unregistered HTTP handler for path {}", path);
 }
 
@@ -254,7 +316,10 @@ void Server::exit()
         serverSocket = -1;
     }
 
-    handlers.clear();
+    {
+        std::lock_guard<std::mutex> lock(handlersMutex);
+        handlers.clear();
+    }
 
     Logging::trace("HTTP server stopped");
 }

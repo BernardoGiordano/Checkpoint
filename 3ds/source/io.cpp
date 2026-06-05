@@ -256,7 +256,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
 
             g_copyCount    = 0;
             g_copyTotal    = io::countFiles(archive, StringUtils::UTF8toUTF16("/"));
-            g_transferMode = "Backup";
+            transferSetMode("Backup");
 
             res = io::copyDirectory(archive, Archive::sdmc(), StringUtils::UTF8toUTF16("/"), copyPath);
             if (R_FAILED(res)) {
@@ -387,7 +387,7 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
 
             g_copyCount    = 0;
             g_copyTotal    = io::countFiles(Archive::sdmc(), srcPath);
-            g_transferMode = "Restore";
+            transferSetMode("Restore");
 
             res = io::copyDirectory(Archive::sdmc(), archive, srcPath, dstPath);
             if (R_FAILED(res)) {

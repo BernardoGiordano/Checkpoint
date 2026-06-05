@@ -164,11 +164,12 @@ void ReceiveOverlay::drawBottom(void) const
 
     int noticeY = 120;
     if (g_transferIsNetwork && g_isTransferringFile) {
-        u64 total = g_transferBytesTotal;
-        u64 done  = g_transferBytesDone;
-        int pct   = total > 0 ? (int)((done * 100) / total) : 0;
-        std::string prefix = g_transferMode.empty() ? "Downloading backup" : g_transferMode;
-        std::string status = StringUtils::format("%s... %d%% (%llu / %llu)", prefix.c_str(), pct, (unsigned long long)done, (unsigned long long)total);
+        u64 total = 0, done = 0;
+        transferGetProgress(done, total);
+        int pct            = total > 0 ? (int)((done * 100) / total) : 0;
+        std::string mode   = transferGetMode();
+        std::string prefix = mode.empty() ? "Downloading backup" : mode;
+        std::string status = StringUtils::format("%s... %d%% (%s)", prefix.c_str(), pct, transferBytesToMB(done, total).c_str());
         C2D_Text statusText;
         C2D_TextParse(&statusText, textBuf, status.c_str());
         C2D_TextOptimize(&statusText);

@@ -31,7 +31,10 @@
 #include "logging.hpp"
 #include <atomic>
 #include <citro2d.h>
+#include <cstdio>
 #include <memory>
+#include <mutex>
+#include <string>
 #include <vector>
 
 inline std::shared_ptr<Screen> g_screen = nullptr;
@@ -53,5 +56,57 @@ inline u32 g_currentFileSize   = 0;
 inline bool g_transferIsNetwork = false;
 inline u64 g_transferBytesDone  = 0;
 inline u64 g_transferBytesTotal = 0;
+
+// g_transferMode and the byte counters are written by the HTTP server thread
+// (while receiving) and read by the UI thread, so all access must go through
+// these helpers. Concurrent access to the std::string is otherwise undefined
+// behavior, and 64-bit reads tear on the 3DS's 32-bit core.
+inline std::mutex g_transferStatusMutex;
+
+inline void transferSetMode(const std::string& mode)
+{
+    std::lock_guard<std::mutex> lock(g_transferStatusMutex);
+    g_transferMode = mode;
+}
+
+inline std::string transferGetMode(void)
+{
+    std::lock_guard<std::mutex> lock(g_transferStatusMutex);
+    return g_transferMode;
+}
+
+inline void transferSetProgress(u64 done, u64 total)
+{
+    std::lock_guard<std::mutex> lock(g_transferStatusMutex);
+    g_transferBytesDone  = done;
+    g_transferBytesTotal = total;
+}
+
+inline void transferSetDone(u64 done)
+{
+    std::lock_guard<std::mutex> lock(g_transferStatusMutex);
+    g_transferBytesDone = done;
+}
+
+inline void transferAddDone(u64 delta)
+{
+    std::lock_guard<std::mutex> lock(g_transferStatusMutex);
+    g_transferBytesDone += delta;
+}
+
+inline void transferGetProgress(u64& done, u64& total)
+{
+    std::lock_guard<std::mutex> lock(g_transferStatusMutex);
+    done  = g_transferBytesDone;
+    total = g_transferBytesTotal;
+}
+
+// Formats a "done / total" byte pair in MB for the transfer progress UI.
+inline std::string transferBytesToMB(u64 done, u64 total)
+{
+    char buf[48];
+    snprintf(buf, sizeof(buf), "%.1f / %.1f MB", (double)done / (1024.0 * 1024.0), (double)total / (1024.0 * 1024.0));
+    return std::string(buf);
+}
 
 #endif
