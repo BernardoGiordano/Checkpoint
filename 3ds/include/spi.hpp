@@ -88,7 +88,7 @@ typedef enum {
     FLASH_512KB_1   = 6,
     FLASH_512KB_2   = 7,
     FLASH_1MB       = 8,
-    FLASH_8MB       = 9, // <- needs erase-sector + page-program to restore (see SPIWriteSaveData)
+    FLASH_8MB       = 9, // <- must be unlocked (SPIUnlock) then erase-sector + page-program to restore
     FLASH_STD_DUMMY = 4,
 
     FLASH_512KB_INFRARED = 10,
@@ -108,6 +108,7 @@ u32 SPIGetCapacity(CardType type);
 Result SPIWriteSaveData(CardType type, u32 offset, void* data, u32 size);
 Result SPIReadSaveData(CardType type, u32 offset, void* data, u32 size);
 Result SPIEraseSector(CardType type, u32 offset);
+Result SPIUnlock(CardType type);
 
 } // extern "C"
 
