@@ -57,8 +57,38 @@ std::string DateTime::logDateTime(void)
 
 std::string StringUtils::UTF16toUTF8(const std::u16string& src)
 {
-    static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
-    std::string dst = convert.to_bytes(src);
+    std::string dst;
+    dst.reserve(src.size());
+    for (size_t i = 0; i < src.size(); i++) {
+        char32_t cp = src[i];
+        // Combine surrogate pairs into a single code point
+        if (cp >= 0xD800 && cp <= 0xDBFF && i + 1 < src.size()) {
+            const char16_t low = src[i + 1];
+            if (low >= 0xDC00 && low <= 0xDFFF) {
+                cp = 0x10000 + ((cp - 0xD800) << 10) + (low - 0xDC00);
+                i++;
+            }
+        }
+
+        if (cp < 0x80) {
+            dst.push_back(static_cast<char>(cp));
+        }
+        else if (cp < 0x800) {
+            dst.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+            dst.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        }
+        else if (cp < 0x10000) {
+            dst.push_back(static_cast<char>(0xE0 | (cp >> 12)));
+            dst.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+            dst.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        }
+        else {
+            dst.push_back(static_cast<char>(0xF0 | (cp >> 18)));
+            dst.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+            dst.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+            dst.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        }
+    }
     return dst;
 }
 
