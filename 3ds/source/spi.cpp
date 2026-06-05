@@ -85,18 +85,21 @@ Result SPIEnableWriting(CardType type)
 {
     u8 cmd = SPI_CMD_WREN, statusReg = 0;
     Result res = SPIWriteRead(type, &cmd, 1, NULL, 0, 0, 0);
+    int panic  = 0;
 
     if (res || type == EEPROM_512B)
         return res; // Weird, but works (otherwise we're getting an infinite loop for that chip type).
     cmd = SPI_CMD_RDSR;
 
+    // A locked/unresponsive chip (e.g. a still write-protected 8MB cart)
+    // answers 0xFF to every command, so bail out instead of freezing the console here.
     do {
         res = SPIWriteRead(type, &cmd, 1, &statusReg, 1, 0, 0);
         if (res)
             return res;
-    } while (statusReg & ~SPI_FLG_WEL);
+    } while ((statusReg & ~SPI_FLG_WEL) && ++panic < 1000);
 
-    return 0;
+    return panic >= 1000 ? 1 : 0;
 }
 
 Result SPIReadJEDECIDAndStatusReg(CardType type, u32* id, u8* statusReg)
@@ -352,6 +355,55 @@ Result SPIEraseSector(CardType type, u32 offset)
     return 0;
 }
 
+// Send a single raw SPI command frame at 512KHz (one chip-select assertion).
+static Result SPISendCommand8MB(const u8* cmd, u32 cmdSize)
+{
+    u8 transferOp = pxiDevMakeTransferOption(BAUDRATE_512KHZ, BUSMODE_1BIT);
+    u64 waitOp    = pxiDevMakeWaitOperation(WAIT_NONE, DEASSERT_NONE, 0LL);
+    u64 dummy     = 0;
+
+    PXIDEV_SPIBuffer headerBuffer = {&dummy, 0U, transferOp, waitOp};
+    PXIDEV_SPIBuffer cmdBuffer    = {(void*)cmd, cmdSize, transferOp, waitOp};
+    PXIDEV_SPIBuffer nullBuffer   = {NULL, 0U, transferOp, waitOp};
+    PXIDEV_SPIBuffer footerBuffer = {&dummy, 0U, transferOp, waitOp};
+
+    return PXIDEV_SPIMultiWriteRead(&headerBuffer, &cmdBuffer, &nullBuffer, &nullBuffer, &nullBuffer, &footerBuffer);
+}
+
+// The 8MB flash chip ships with a
+// vendor write/read protection ("big protection") enabled. Until it is lifted the chip answers
+// 0xFF to every command, which makes reads return garbage and the SPIEnableWriting status poll
+// spin forever (freezing the console on restore). This is the unlock sequence used by
+// ndsi-savedumper (auxspi_disable_big_protection), where each
+// open()/close() pair is one chip-select transaction.
+Result SPIUnlock(CardType type)
+{
+    if (type != FLASH_8MB)
+        return 0;
+
+    static const u8 seq0[] = {0xf1};
+    static const u8 seq1[] = {SPI_CMD_WREN};
+    static const u8 seq2[] = {0xfa, 0x01, 0x31};
+    static const u8 seq3[] = {0x14};
+    static const u8 seq4[] = {SPI_CMD_WREN};
+    static const u8 seq5[] = {0xf8, 0x01, 0x00};
+    static const u8 seq6[] = {0x0e};
+
+    const u8* seqs[]  = {seq0, seq1, seq2, seq3, seq4, seq5, seq6};
+    const u32 sizes[] = {sizeof(seq0), sizeof(seq1), sizeof(seq2), sizeof(seq3), sizeof(seq4), sizeof(seq5), sizeof(seq6)};
+
+    for (u32 i = 0; i < sizeof(seqs) / sizeof(seqs[0]); ++i) {
+        Result res = SPISendCommand8MB(seqs[i], sizes[i]);
+        if (res) {
+            Logging::warning("8MB flash unlock step {} failed with result 0x{:016X}.", i, res);
+            return res;
+        }
+    }
+
+    Logging::info("8MB flash protection unlocked.");
+    return 0;
+}
+
 // The following routine use code from savegame-manager:
 
 /*
@@ -497,8 +549,10 @@ Result SPIGetCardType(CardType* type, int infrared)
         }
         if (jedec == 0x204017) {
             *type = FLASH_8MB;
-            return 0;
-        } // 8MB. savegame-manager: which one? (more work is required to unlock this save chip!)
+            // This chip is write/read protected out of the box; lift the protection now so that
+            // backups read real data and restores don't freeze polling a locked status register.
+            return SPIUnlock(FLASH_8MB);
+        }
         if (jedec == 0x208013) {
             *type = FLASH_512KB_1;
             return 0;
