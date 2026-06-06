@@ -49,6 +49,7 @@ Result servicesInit(void);
 namespace StringUtils {
     std::u16string removeForbiddenCharacters(std::u16string src);
     std::u16string UTF8toUTF16(const char* src);
+    std::string UTF16toUTF8(const std::u16string& src);
     std::string splitWord(const std::string& text, float scaleX, float maxWidth);
     float textWidth(const std::string& text, float scaleX);
     float textWidth(const C2D_Text& text, float scaleX);
