@@ -57,4 +57,7 @@ inline std::string g_transferMode;
 inline u64 g_currentFileOffset = 0;
 inline u64 g_currentFileSize   = 0;
 
+inline size_t g_multiSelectCount = 0;
+inline size_t g_multiSelectTotal = 0;
+
 #endif

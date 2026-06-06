@@ -286,8 +286,13 @@ void MainScreen::drawBottom(void) const
     if (g_isTransferringFile) {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
 
+        // An extra bar is shown to track the overall progress when backing up multiple saves at once
+        const bool multiSelect = g_multiSelectTotal > 1;
+
         // Modal box
-        const int mx = 30, my = 65, mw = 260, mh = 130;
+        const int mx = 30, mw = 260;
+        const int mh = multiSelect ? 162 : 130;
+        const int my = multiSelect ? 40 : 65;
         C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
         Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
 
@@ -309,63 +314,57 @@ void MainScreen::drawBottom(void) const
 
         const int barX = mx + 12, barW = mw - 24, barH = 10;
 
-        // Per-save progress bar
-        const int saveBarY = my + 52;
-        C2D_DrawRectSolid(barX, saveBarY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+        auto drawProgressBar = [&](int y, float frac, const char* leftLabel, const char* rightLabel) {
+            if (frac > 1.0f)
+                frac = 1.0f;
+            C2D_DrawRectSolid(barX, y, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+            int fillW = (int)(barW * frac);
+            if (fillW > 0) {
+                C2D_DrawRectSolid(barX, y, 0.5f, fillW, barH, COLOR_PURPLE_LIGHT);
+            }
+            Gui::drawOutline(barX, y, barW, barH, 1, COLOR_GREY_LIGHT);
 
-        float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
-        if (progress > 1.0f)
-            progress = 1.0f;
-        int saveFillW = (int)(barW * progress);
-        if (saveFillW > 0) {
-            C2D_DrawRectSolid(barX, saveBarY, 0.5f, saveFillW, barH, COLOR_PURPLE_LIGHT);
+            C2D_Text leftText;
+            C2D_TextParse(&leftText, dynamicBuf, leftLabel);
+            C2D_TextOptimize(&leftText);
+            C2D_DrawText(&leftText, C2D_WithColor, barX, y + barH + 3, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+
+            C2D_Text rightText;
+            C2D_TextParse(&rightText, dynamicBuf, rightLabel);
+            C2D_TextOptimize(&rightText);
+            C2D_DrawText(&rightText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(rightText, 0.45f)), y + barH + 3, 0.5f, 0.45f, 0.45f,
+                COLOR_WHITE);
+        };
+
+        int barY = my + 52;
+
+        // Overall progress bar across the selected saves (multi-selection only)
+        if (multiSelect) {
+            float overallProgress = (float)g_multiSelectCount / (float)g_multiSelectTotal;
+            char overallCountStr[24];
+            snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", g_multiSelectCount + 1, g_multiSelectTotal);
+            char overallPctStr[8];
+            snprintf(overallPctStr, sizeof(overallPctStr), "%d%%", (int)(overallProgress * 100));
+            drawProgressBar(barY, overallProgress, overallCountStr, overallPctStr);
+            barY += 30;
         }
-        Gui::drawOutline(barX, saveBarY, barW, barH, 1, COLOR_GREY_LIGHT);
 
-        // Count (left) and percentage (right) below per-save bar
+        // Per-save progress bar
+        float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
         char countStr[24];
-        snprintf(countStr, sizeof(countStr), "%zu / %zu", g_copyCount, g_copyTotal);
-        C2D_Text countText;
-        C2D_TextParse(&countText, dynamicBuf, countStr);
-        C2D_TextOptimize(&countText);
-        C2D_DrawText(&countText, C2D_WithColor, barX, saveBarY + barH + 3, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
-
+        snprintf(countStr, sizeof(countStr), "File %zu / %zu", g_copyCount, g_copyTotal);
         char pctStr[8];
-        snprintf(pctStr, sizeof(pctStr), "%d%%", (int)(progress * 100));
-        C2D_Text pctText;
-        C2D_TextParse(&pctText, dynamicBuf, pctStr);
-        C2D_TextOptimize(&pctText);
-        C2D_DrawText(&pctText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(pctText, 0.45f)), saveBarY + barH + 3, 0.5f, 0.45f, 0.45f,
-            COLOR_WHITE);
+        snprintf(pctStr, sizeof(pctStr), "%d%%", (int)((progress > 1.0f ? 1.0f : progress) * 100));
+        drawProgressBar(barY, progress, countStr, pctStr);
+        barY += 30;
 
         // Per-file progress bar
-        const int fileBarY = my + 82;
-        C2D_DrawRectSolid(barX, fileBarY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
-
         float fileProgress = (g_currentFileSize > 0) ? (float)g_currentFileOffset / (float)g_currentFileSize : 0.0f;
-        if (fileProgress > 1.0f)
-            fileProgress = 1.0f;
-        int fileFillW = (int)(barW * fileProgress);
-        if (fileFillW > 0) {
-            C2D_DrawRectSolid(barX, fileBarY, 0.5f, fileFillW, barH, COLOR_PURPLE_LIGHT);
-        }
-        Gui::drawOutline(barX, fileBarY, barW, barH, 1, COLOR_GREY_LIGHT);
-
-        // KB transferred (left) and percentage (right) below per-file bar
         char kbStr[32];
         snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", g_currentFileOffset / 1024.0f, g_currentFileSize / 1024.0f);
-        C2D_Text kbText;
-        C2D_TextParse(&kbText, dynamicBuf, kbStr);
-        C2D_TextOptimize(&kbText);
-        C2D_DrawText(&kbText, C2D_WithColor, barX, fileBarY + barH + 3, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
-
         char filePctStr[8];
-        snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)(fileProgress * 100));
-        C2D_Text filePctText;
-        C2D_TextParse(&filePctText, dynamicBuf, filePctStr);
-        C2D_TextOptimize(&filePctText);
-        C2D_DrawText(&filePctText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(filePctText, 0.45f)), fileBarY + barH + 3, 0.5f, 0.45f,
-            0.45f, COLOR_WHITE);
+        snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
+        drawProgressBar(barY, fileProgress, kbStr, filePctStr);
     }
 }
 
@@ -526,8 +525,10 @@ void MainScreen::handleEvents(const InputState& input)
         if (MS::multipleSelectionEnabled()) {
             directoryList->resetIndex();
             std::vector<size_t> list = MS::selectedEntries();
+            g_multiSelectTotal       = list.size();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                auto result = io::backup(list.at(i), directoryList->index());
+                g_multiSelectCount = i;
+                auto result        = io::backup(list.at(i), directoryList->index());
                 if (std::get<0>(result)) {
                     currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                 }
@@ -535,6 +536,8 @@ void MainScreen::handleEvents(const InputState& input)
                     currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
                 }
             }
+            g_multiSelectTotal = 0;
+            g_multiSelectCount = 0;
             MS::clearSelectedEntries();
             updateButtons();
         }

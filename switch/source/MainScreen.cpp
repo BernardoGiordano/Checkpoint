@@ -267,8 +267,13 @@ void MainScreen::draw() const
     if (g_isTransferringFile) {
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
 
+        // An extra bar is shown to track the overall progress when backing up multiple saves at once
+        const bool multiSelect = g_multiSelectTotal > 1;
+
         // Modal box centered on screen
-        const int mx = 370, my = 260, mw = 540, mh = 230;
+        const int mx = 370, mw = 540;
+        const int mh = multiSelect ? 290 : 230;
+        const int my = multiSelect ? 230 : 260;
         SDLH_DrawRect(mx, my, mw, mh, COLOR_BLACK_DARKERR);
         drawOutline(mx, my, mw, mh, 3, COLOR_PURPLE_LIGHT);
 
@@ -286,53 +291,51 @@ void MainScreen::draw() const
 
         const int barX = mx + 20, barW = mw - 40, barH = 18;
 
-        // Per-save progress bar
-        const int saveBarY = my + 108;
-        SDLH_DrawRect(barX, saveBarY, barW, barH, COLOR_BLACK_MEDIUM);
+        auto drawProgressBar = [&](int y, float frac, const char* leftLabel, const char* rightLabel) {
+            if (frac > 1.0f)
+                frac = 1.0f;
+            SDLH_DrawRect(barX, y, barW, barH, COLOR_BLACK_MEDIUM);
+            int fillW = (int)(barW * frac);
+            if (fillW > 0) {
+                SDLH_DrawRect(barX, y, fillW, barH, COLOR_PURPLE_LIGHT);
+            }
+            drawOutline(barX, y, barW, barH, 2, COLOR_GREY_LIGHT);
 
-        float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
-        if (progress > 1.0f)
-            progress = 1.0f;
-        int saveFillW = (int)(barW * progress);
-        if (saveFillW > 0) {
-            SDLH_DrawRect(barX, saveBarY, saveFillW, barH, COLOR_PURPLE_LIGHT);
+            u32 right_w;
+            SDLH_GetTextDimensions(20, rightLabel, &right_w, NULL);
+            SDLH_DrawText(20, barX, y + barH + 6, COLOR_GREY_LIGHT, leftLabel);
+            SDLH_DrawText(20, barX + barW - (int)right_w, y + barH + 6, COLOR_WHITE, rightLabel);
+        };
+
+        int barY = my + 108;
+
+        // Overall progress bar across the selected saves (multi-selection only)
+        if (multiSelect) {
+            float overallProgress = (float)g_multiSelectCount / (float)g_multiSelectTotal;
+            char overallCountStr[24];
+            snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", g_multiSelectCount + 1, g_multiSelectTotal);
+            char overallPctStr[8];
+            snprintf(overallPctStr, sizeof(overallPctStr), "%d%%%%", (int)(overallProgress * 100));
+            drawProgressBar(barY, overallProgress, overallCountStr, overallPctStr);
+            barY += 52;
         }
-        drawOutline(barX, saveBarY, barW, barH, 2, COLOR_GREY_LIGHT);
 
-        // Count (left) and percentage (right) below per-save bar
+        // Per-save progress bar
+        float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
         char countStr[24];
-        snprintf(countStr, sizeof(countStr), "%zu / %zu", g_copyCount, g_copyTotal);
+        snprintf(countStr, sizeof(countStr), "File %zu / %zu", g_copyCount, g_copyTotal);
         char pctStr[8];
-        snprintf(pctStr, sizeof(pctStr), "%d%%%%", (int)(progress * 100));
-
-        u32 pct_w, pct_h;
-        SDLH_GetTextDimensions(20, pctStr, &pct_w, &pct_h);
-        SDLH_DrawText(20, barX, saveBarY + barH + 6, COLOR_GREY_LIGHT, countStr);
-        SDLH_DrawText(20, barX + barW - (int)pct_w, saveBarY + barH + 6, COLOR_WHITE, pctStr);
+        snprintf(pctStr, sizeof(pctStr), "%d%%%%", (int)((progress > 1.0f ? 1.0f : progress) * 100));
+        drawProgressBar(barY, progress, countStr, pctStr);
+        barY += 52;
 
         // Per-file progress bar
-        const int fileBarY = my + 160;
-        SDLH_DrawRect(barX, fileBarY, barW, barH, COLOR_BLACK_MEDIUM);
-
         float fileProgress = (g_currentFileSize > 0) ? (float)g_currentFileOffset / (float)g_currentFileSize : 0.0f;
-        if (fileProgress > 1.0f)
-            fileProgress = 1.0f;
-        int fileFillW = (int)(barW * fileProgress);
-        if (fileFillW > 0) {
-            SDLH_DrawRect(barX, fileBarY, fileFillW, barH, COLOR_PURPLE_LIGHT);
-        }
-        drawOutline(barX, fileBarY, barW, barH, 2, COLOR_GREY_LIGHT);
-
-        // KB transferred (left) and percentage (right) below per-file bar
         char kbStr[40];
         snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", g_currentFileOffset / 1024.0f, g_currentFileSize / 1024.0f);
         char filePctStr[8];
-        snprintf(filePctStr, sizeof(filePctStr), "%d%%%%", (int)(fileProgress * 100));
-
-        u32 filePct_w;
-        SDLH_GetTextDimensions(20, filePctStr, &filePct_w, NULL);
-        SDLH_DrawText(20, barX, fileBarY + barH + 6, COLOR_GREY_LIGHT, kbStr);
-        SDLH_DrawText(20, barX + barW - (int)filePct_w, fileBarY + barH + 6, COLOR_WHITE, filePctStr);
+        snprintf(filePctStr, sizeof(filePctStr), "%d%%%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
+        drawProgressBar(barY, fileProgress, kbStr, filePctStr);
     }
 }
 
@@ -626,7 +629,9 @@ void MainScreen::handleEvents(const InputState& input)
         if (MS::multipleSelectionEnabled()) {
             resetIndex(CELLS);
             std::vector<size_t> list = MS::selectedEntries();
+            g_multiSelectTotal       = list.size();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                g_multiSelectCount = i;
                 // translate filtered index to raw index for multi-selection
                 size_t raw  = filteredToRawIndex(g_currentUId, mSaveTypeFilter, list.at(i));
                 auto result = io::backup(raw, g_currentUId, this->index(CELLS));
@@ -637,6 +642,8 @@ void MainScreen::handleEvents(const InputState& input)
                     currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
                 }
             }
+            g_multiSelectTotal = 0;
+            g_multiSelectCount = 0;
             MS::clearSelectedEntries();
             updateButtons();
             blinkLed(4);

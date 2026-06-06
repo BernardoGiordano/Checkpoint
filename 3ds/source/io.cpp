@@ -27,6 +27,17 @@
 #include "io.hpp"
 #include "loader.hpp"
 
+// Renders a single frame so the UI (e.g. the transfer progress modal) keeps refreshing
+// while a long, blocking operation is running on the main thread.
+static void renderTransferFrame()
+{
+    C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    g_screen->drawTop();
+    C2D_SceneBegin(g_bottom);
+    g_screen->drawBottom();
+    Gui::frameEnd();
+}
+
 bool io::fileExists(const std::string& path)
 {
     struct stat buffer;
@@ -93,11 +104,7 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
             g_currentFileOffset += rd;
 
             // avoid freezing the UI
-            C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-            g_screen->drawTop();
-            C2D_SceneBegin(g_bottom);
-            g_screen->drawBottom();
-            Gui::frameEnd();
+            renderTransferFrame();
         } while (!input.eof());
         delete[] buf;
         g_copyCount++;
@@ -322,16 +329,29 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
         std::u16string copyPath =
             dstPath + StringUtils::UTF8toUTF16("/") + StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
 
-        u8* saveFile = new u8[saveSize];
-        for (u32 i = 0; i < saveSize / sectorSize; ++i) {
+        g_isTransferringFile = true;
+        g_transferMode       = "Backup";
+        g_copyCount          = 0;
+        g_copyTotal          = 1;
+        g_currentFile        = StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
+        g_currentFileSize    = saveSize;
+        g_currentFileOffset  = 0;
+
+        u8* saveFile      = new u8[saveSize];
+        const u32 sectors = saveSize / sectorSize;
+        for (u32 i = 0; i < sectors; ++i) {
             res = SPIReadSaveData(cardType, sectorSize * i, saveFile + sectorSize * i, sectorSize);
             if (R_FAILED(res)) {
                 delete[] saveFile;
+                g_isTransferringFile = false;
                 FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
                 Logging::error("Failed to read save data from SPI with result 0x{:08X}.", res);
                 return std::make_tuple(false, res, "Failed to backup save.");
             }
+            g_currentFileOffset = sectorSize * (i + 1);
+            renderTransferFrame();
         }
+        g_copyCount = 1;
 
         FSStream stream(Archive::sdmc(), copyPath, FS_OPEN_WRITE, saveSize);
         if (stream.good()) {
@@ -340,6 +360,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
         else {
             delete[] saveFile;
             stream.close();
+            g_isTransferringFile = false;
             FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
             Logging::error("Failed to delete directory recursively after failing to write save to the sd card with result 0x{:08X}.", res);
             return std::make_tuple(false, res, "Failed to backup save.");
@@ -347,6 +368,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
 
         delete[] saveFile;
         stream.close();
+        g_isTransferringFile = false;
         TitleLoader::refreshDirectories(title.id());
     }
 
@@ -445,14 +467,32 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
             return std::make_tuple(false, res, "Failed to read save file backup.");
         }
 
-        for (u32 i = 0; i < saveSize / pageSize; ++i) {
+        g_isTransferringFile = true;
+        g_transferMode       = "Restore";
+        g_copyCount          = 0;
+        g_copyTotal          = 1;
+        g_currentFile        = StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
+        g_currentFileSize    = saveSize;
+        g_currentFileOffset  = 0;
+
+        const u32 pages = saveSize / pageSize;
+        // many small pages would render far too many frames, so refresh the UI at most ~64 times
+        const u32 renderInterval = pages > 64 ? pages / 64 : 1;
+        for (u32 i = 0; i < pages; ++i) {
             res = SPIWriteSaveData(cardType, pageSize * i, saveFile + pageSize * i, pageSize);
             if (R_FAILED(res)) {
                 delete[] saveFile;
+                g_isTransferringFile = false;
                 Logging::error("Failed to write save data to SPI with result 0x{:08X}.", res);
                 return std::make_tuple(false, res, "Failed to restore save.");
             }
+            g_currentFileOffset = pageSize * (i + 1);
+            if (i % renderInterval == 0 || i + 1 == pages) {
+                renderTransferFrame();
+            }
         }
+        g_copyCount          = 1;
+        g_isTransferringFile = false;
 
         delete[] saveFile;
     }
