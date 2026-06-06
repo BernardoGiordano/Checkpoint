@@ -91,8 +91,8 @@ Result SPIEnableWriting(CardType type)
         return res; // Weird, but works (otherwise we're getting an infinite loop for that chip type).
     cmd = SPI_CMD_RDSR;
 
-    // A locked/unresponsive chip (e.g. a still write-protected 8MB cart)
-    // answers 0xFF to every command, so bail out instead of freezing the console here.
+    // Bail out after a bounded number of polls instead of spinning forever: if the status register
+    // never settles (e.g. an 8MB cart whose protection was not lifted), this would otherwise hang.
     do {
         res = SPIWriteRead(type, &cmd, 1, &statusReg, 1, 0, 0);
         if (res)
@@ -381,13 +381,19 @@ Result SPIUnlock(CardType type)
     if (type != FLASH_8MB)
         return 0;
 
-    static const u8 seq0[] = {0xf1};
-    static const u8 seq1[] = {SPI_CMD_WREN};
-    static const u8 seq2[] = {0xfa, 0x01, 0x31};
-    static const u8 seq3[] = {0x14};
-    static const u8 seq4[] = {SPI_CMD_WREN};
-    static const u8 seq5[] = {0xf8, 0x01, 0x00};
-    static const u8 seq6[] = {0x0e};
+    // Each sequence below is one chip-select transaction. In the DS reference these frames are
+    // built with auxspi_open()/auxspi_close[_lite](). auxspi_close() (used after the 0xfa, 0xf8 and
+    // 0x0e commands) clocks one extra 0x00 byte while CS is still asserted, then deasserts it;
+    // auxspi_close_lite() (used after 0xf1, WREN and 0x14) deasserts without that extra byte. The
+    // trailing byte is part of the command frame on the wire, so it must be replicated here or the
+    // protection is never actually lifted even though PXIDEV reports success.
+    static const u8 seq0[] = {0xf1};                   // close_lite: no trailing byte
+    static const u8 seq1[] = {SPI_CMD_WREN};           // close_lite
+    static const u8 seq2[] = {0xfa, 0x01, 0x31, 0x00}; // close: trailing 0x00
+    static const u8 seq3[] = {0x14};                   // close_lite
+    static const u8 seq4[] = {SPI_CMD_WREN};           // close_lite
+    static const u8 seq5[] = {0xf8, 0x01, 0x00, 0x00}; // close: trailing 0x00
+    static const u8 seq6[] = {0x0e, 0x00};             // close: trailing 0x00
 
     const u8* seqs[]  = {seq0, seq1, seq2, seq3, seq4, seq5, seq6};
     const u32 sizes[] = {sizeof(seq0), sizeof(seq1), sizeof(seq2), sizeof(seq3), sizeof(seq4), sizeof(seq5), sizeof(seq6)};
@@ -547,10 +553,11 @@ Result SPIGetCardType(CardType* type, int infrared)
             *type = NO_CHIP; // did anything go wrong?
             Logging::info("infrared is 1, *type = NO_CHIP");
         }
-        if (jedec == 0x204017) {
+        if (jedec == 0x204017 || jedec == 0x202017) {
             *type = FLASH_8MB;
-            // This chip is write/read protected out of the box; lift the protection now so that
-            // backups read real data and restores don't freeze polling a locked status register.
+            // Both documented 8MB IDs ship with their data area read/write
+            // protected; lift the protection now so backups read real data and restores can write.
+            // RDID/RDSR keep responding normally while protected, which is why detection succeeds.
             return SPIUnlock(FLASH_8MB);
         }
         if (jedec == 0x208013) {
