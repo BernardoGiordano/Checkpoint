@@ -239,8 +239,9 @@ void MainScreen::drawBottom(void) const
         std::string desc = title.longDescription();
         std::replace(desc.begin(), desc.end(), '\n', ' ');
 
-        std::string titleInfo =
-            StringUtils::format("ID: %08X (%s)\nMedia type: %s", (int)title.lowId(), title.productCode, title.mediaTypeString().c_str());
+        std::string titleInfo = title.lowId() != 0 ? StringUtils::format("ID: %08X (%s)\nMedia type: %s", (int)title.lowId(), title.productCode,
+                                                         title.mediaTypeString().c_str())
+                                                   : StringUtils::format("Media type: %s", title.mediaTypeString().c_str());
 
         C2D_TextParse(&longDesc, dynamicBuf, desc.c_str());
         C2D_TextParse(&c2dTitleInfo, dynamicBuf, titleInfo.c_str());
