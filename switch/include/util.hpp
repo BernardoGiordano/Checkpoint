@@ -50,6 +50,7 @@ namespace StringUtils {
     std::string removeAccents(std::string str);
     std::string removeNotAscii(std::string str);
     std::u16string UTF8toUTF16(const char* src);
+    std::string UTF16toUTF8(const std::u16string& src);
 }
 
 #endif

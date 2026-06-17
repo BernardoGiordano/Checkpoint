@@ -57,6 +57,9 @@ inline bool g_transferIsNetwork = false;
 inline u64 g_transferBytesDone  = 0;
 inline u64 g_transferBytesTotal = 0;
 
+inline size_t g_multiSelectCount = 0;
+inline size_t g_multiSelectTotal = 0;
+
 // g_transferMode and the byte counters are written by the HTTP server thread
 // (while receiving) and read by the UI thread, so all access must go through
 // these helpers. Concurrent access to the std::string is otherwise undefined

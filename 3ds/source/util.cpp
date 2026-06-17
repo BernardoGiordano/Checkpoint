@@ -139,16 +139,14 @@ void calculateTitleDBHash(u8* hash)
     AM_GetTitleCount(MEDIATYPE_SD, &titleCount);
     if (Configuration::getInstance().nandSaves()) {
         AM_GetTitleCount(MEDIATYPE_NAND, &nandCount);
-        std::vector<u64> ordered;
-        ordered.reserve(titleCount + nandCount);
+        std::vector<u64> ordered(titleCount + nandCount);
         AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
-        AM_GetTitleList(&nandTitlesRead, MEDIATYPE_NAND, nandCount, ordered.data() + titlesRead * sizeof(u64));
+        AM_GetTitleList(&nandTitlesRead, MEDIATYPE_NAND, nandCount, ordered.data() + titlesRead);
         sort(ordered.begin(), ordered.end());
         sha256(hash, (u8*)ordered.data(), (titleCount + nandCount) * sizeof(u64));
     }
     else {
-        std::vector<u64> ordered;
-        ordered.reserve(titleCount);
+        std::vector<u64> ordered(titleCount);
         AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
         sort(ordered.begin(), ordered.end());
         sha256(hash, (u8*)ordered.data(), titleCount * sizeof(u64));
@@ -157,9 +155,26 @@ void calculateTitleDBHash(u8* hash)
 
 std::u16string StringUtils::UTF8toUTF16(const char* src)
 {
-    char16_t tmp[256] = {0};
-    utf8_to_utf16((uint16_t*)tmp, (uint8_t*)src, 256);
-    return std::u16string(tmp);
+    const uint8_t* in = (const uint8_t*)src;
+    ssize_t units     = utf8_to_utf16(nullptr, in, 0);
+    if (units < 0) {
+        return u"";
+    }
+    std::u16string dst(units, u'\0');
+    utf8_to_utf16((uint16_t*)dst.data(), in, units + 1);
+    return dst;
+}
+
+std::string StringUtils::UTF16toUTF8(const std::u16string& src)
+{
+    const uint16_t* in = (const uint16_t*)src.c_str();
+    ssize_t units      = utf16_to_utf8(nullptr, in, 0);
+    if (units < 0) {
+        return "";
+    }
+    std::string dst(units, '\0');
+    utf16_to_utf8((uint8_t*)dst.data(), in, units + 1);
+    return dst;
 }
 
 std::u16string StringUtils::removeForbiddenCharacters(std::u16string src)

@@ -162,7 +162,7 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUi
         return std::make_tuple(false, errno, "Socket accept failed.");
     }
 
-    size_t size;
+    size_t size = 0;
     Title title;
     getTitle(title, uid, index);
     std::string filename;
@@ -175,8 +175,10 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUi
         size     = 0x180B19;
     }
     else {
-        filename = "DEFAULT";
-        // WHAT DO WE DO ABOUT SIZE?
+        close(fd);
+        close(fdconn);
+        Logging::error("Unsupported title for pksmbridge: {:016X}.", title.id());
+        return std::make_tuple(false, errno, "Unsupported title for pksmbridge.");
     }
     std::string srcPath = title.fullPath(cellIndex) + filename;
     FILE* save          = fopen(srcPath.c_str(), "wb");

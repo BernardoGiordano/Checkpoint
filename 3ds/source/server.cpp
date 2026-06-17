@@ -310,6 +310,7 @@ void Server::exit()
 {
     serverIsRunning.store(false);
     serverRunning.clear();
+    serverIsRunning = false;
 
     if (serverSocket >= 0) {
         close(serverSocket);
