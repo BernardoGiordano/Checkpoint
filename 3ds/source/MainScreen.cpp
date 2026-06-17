@@ -812,7 +812,7 @@ void MainScreen::startTransferSend(void)
     std::string backupName = nameFromCell(cellIndex);
     std::u16string backupPath = Archive::mode() == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
 
-    std::string ipPort = rawKeyboard("192.168.1.10:8000", "IP:PUERTO del receptor", 32);
+    std::string ipPort = rawKeyboard("192.168.1.10:8000", "Receiver IP:PORT", 32);
     if (ipPort.empty()) {
         return;
     }
@@ -829,14 +829,16 @@ void MainScreen::startTransferSend(void)
         return;
     }
 
-    std::string pin = rawKeyboard("1234", "PIN (4-6 digitos)", 8);
+    std::string pin = rawKeyboard("1234", "PIN (4 digits)", 5);
     if (pin.empty()) {
         return;
     }
-    bool pinOk = pin.size() >= 4 && pin.size() <= 6 &&
+    // The receiver always generates a 4-digit PIN, so require exactly 4 here;
+    // a longer PIN could never match.
+    bool pinOk = pin.size() == 4 &&
         std::all_of(pin.begin(), pin.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
     if (!pinOk) {
-        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "PIN must be 4-6 digits.");
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "PIN must be 4 digits.");
         return;
     }
 

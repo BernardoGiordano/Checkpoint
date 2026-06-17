@@ -129,27 +129,6 @@ namespace {
         return c;
     }
 
-    u32 computeCrc(FS_Archive arch, const std::u16string& path)
-    {
-        FSStream input(arch, path, FS_OPEN_READ);
-        if (!input.good()) {
-            return 0;
-        }
-        initCrc();
-        u32 crc = 0xFFFFFFFFu;
-        static const u32 kBuf = 0x4000;
-        std::unique_ptr<u8[]> buf(new u8[kBuf]);
-        while (!input.eof()) {
-            u32 rd = input.read(buf.get(), kBuf);
-            if (rd == 0) {
-                break;
-            }
-            crc = updateCrc(crc, buf.get(), rd);
-        }
-        input.close();
-        return crc ^ 0xFFFFFFFFu;
-    }
-
     void collectFiles(
         FS_Archive arch, const std::u16string& root, const std::u16string& sub, std::vector<FileEntry>& out, std::vector<std::string>* outDirs = nullptr)
     {
@@ -221,10 +200,6 @@ namespace {
             return false;
         }
 
-        for (auto& entry : files) {
-            entry.crc = computeCrc(Archive::sdmc(), entry.absPath);
-        }
-
         u32 total = 22; // end of central directory
         for (const auto& dir : dirs) {
             total += 30 + dir.size(); // local header
@@ -247,6 +222,7 @@ namespace {
 
         static const u32 kBuf = 0x4000;
         std::unique_ptr<u8[]> buf(new u8[kBuf]);
+        initCrc();
 
         for (const auto& dir : dirs) {
             ZipEntry centralEntry;
@@ -275,10 +251,15 @@ namespace {
         for (const auto& entry : files) {
             ZipEntry centralEntry;
             centralEntry.name = entry.relPath;
-            centralEntry.crc = entry.crc;
+            centralEntry.crc = 0;
             centralEntry.size = entry.size;
             centralEntry.offset = output.offset();
             centralEntry.isDirectory = false;
+
+            // The CRC is computed during the single streaming pass below and
+            // backfilled into this local-header field afterwards, so each file
+            // is read only once instead of once for the CRC and once to stream.
+            u32 crcFieldOffset = centralEntry.offset + 14;
 
             writeLe32(output, 0x04034b50);
             writeLe16(output, 20);
@@ -286,7 +267,7 @@ namespace {
             writeLe16(output, 0);
             writeLe16(output, 0);
             writeLe16(output, 0);
-            writeLe32(output, entry.crc);
+            writeLe32(output, 0); // CRC placeholder, backfilled after streaming
             writeLe32(output, entry.size);
             writeLe32(output, entry.size);
             writeLe16(output, (u16)entry.relPath.size());
@@ -299,17 +280,27 @@ namespace {
                 outError = StringUtils::format("Cannot read source file for packaging (0x%08lX).", input.result());
                 return false;
             }
+            u32 crc = 0xFFFFFFFFu;
             while (!input.eof()) {
                 u32 rd = input.read(buf.get(), kBuf);
                 if (rd == 0) {
                     break;
                 }
+                crc = updateCrc(crc, buf.get(), rd);
                 output.write(buf.get(), rd);
                 transferAddDone(rd);
                 renderTransferFrame();
             }
             input.close();
+            crc ^= 0xFFFFFFFFu;
 
+            // Backfill the real CRC into the local header, then resume appending.
+            u32 endOffset = output.offset();
+            output.offset(crcFieldOffset);
+            writeLe32(output, crc);
+            output.offset(endOffset);
+
+            centralEntry.crc = crc;
             central.push_back(centralEntry);
         }
 
@@ -475,7 +466,6 @@ namespace {
                 input.close();
                 return false;
             }
-            (void)crc;
 
             if (!name.empty() && name.back() == '/') {
                 std::u16string dirPath = destRoot + StringUtils::UTF8toUTF16(name.c_str());
@@ -496,6 +486,8 @@ namespace {
 
             static const u32 kBuf = 0x4000;
             std::unique_ptr<u8[]> buf(new u8[kBuf]);
+            initCrc();
+            u32 computedCrc = 0xFFFFFFFFu;
             u32 remaining = compSize;
             while (remaining > 0) {
                 u32 chunk = remaining > kBuf ? kBuf : remaining;
@@ -506,6 +498,7 @@ namespace {
                     input.close();
                     return false;
                 }
+                computedCrc = updateCrc(computedCrc, buf.get(), rd);
                 output.write(buf.get(), rd);
                 remaining -= rd;
 
@@ -518,6 +511,16 @@ namespace {
                 return false;
             }
             output.close();
+
+            // Verify the extracted data against the CRC stored in the ZIP entry,
+            // so a corrupted or truncated transfer is rejected instead of being
+            // written out as-is.
+            computedCrc ^= 0xFFFFFFFFu;
+            if (computedCrc != crc) {
+                outError = "Checksum mismatch in received file.";
+                input.close();
+                return false;
+            }
         }
 
         input.close();
@@ -630,6 +633,20 @@ namespace {
         return {200, "application/json", info.dump()};
     }
 
+    // Constant-time comparison so a wrong PIN can't be narrowed down by timing
+    // how far the comparison got before it failed.
+    bool constantTimeEquals(const std::string& a, const std::string& b)
+    {
+        if (a.size() != b.size()) {
+            return false;
+        }
+        unsigned char diff = 0;
+        for (size_t i = 0; i < a.size(); ++i) {
+            diff |= (unsigned char)(a[i] ^ b[i]);
+        }
+        return diff == 0;
+    }
+
     Server::HttpResponse handleUpload(const std::string&, const std::string& requestData)
     {
         auto cleanup = []() {
@@ -639,7 +656,7 @@ namespace {
         size_t headerEnd = requestData.find("\r\n\r\n");
         std::string headers = headerEnd == std::string::npos ? requestData : requestData.substr(0, headerEnd);
         std::string token = headerValue(headers, "X-CP-Token");
-        if (token != g_token) {
+        if (!constantTimeEquals(token, g_token)) {
             cleanup();
             return {403, "application/json", "{\"ok\":false,\"error\":\"Invalid token\"}"};
         }
@@ -1002,7 +1019,15 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
-    addr.sin_addr.s_addr = inet_addr(ip.c_str());
+    if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) != 1) {
+        close(sock);
+        if (isZip) {
+            FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, payloadPath.data()));
+        }
+        clearTransferState();
+        outError = "Invalid IP address.";
+        return false;
+    }
     if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
         close(sock);
         if (isZip) {
