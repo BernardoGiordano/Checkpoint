@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,33 +24,28 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef LOADER_HPP
-#define LOADER_HPP
+#ifndef TRANSFER_HPP
+#define TRANSFER_HPP
 
 #include "title.hpp"
-#include <atomic>
-#include <vector>
+#include <string>
 
-namespace TitleLoader {
-    void getTitle(Title& dst, int i);
-    bool getTitleById(Title& dst, u64 id);
-    bool getTitleByName(Title& dst, const std::string& name);
-    void refreshAllDirectories(void);
-    int getTitleCount(void);
-    C2D_Image icon(int i);
-    bool favorite(int i);
+namespace Transfer {
+    bool startReceiver(std::string& outError);
+    void stopReceiver(void);
+    bool receiverRunning(void);
+    bool consumePendingRefresh(void);
+    std::string receiverToken(void);
+    std::string receiverIp(void);
+    int receiverPort(void);
+    std::string receiverNotice(void);
+    bool receiverHasCompleted(void);
+    std::string receiverCompletedName(void);
+    void clearReceiverNotice(void);
+    void clearReceiverCompletion(void);
 
-    void loadTitles(bool forceRefreshParam);
-    void refreshDirectories(u64 id);
-    void loadTitlesThread(void);
-    void cartScan(void);
-    void cartScanFlagTestAndSet(void);
-    void clearCartScanFlag(void);
-
-    bool validId(u64 id);
-    bool scanCard(void);
-    void exportTitleListCache(std::vector<Title>& list, const std::u16string& path);
-    void importTitleListCache(void);
+    bool sendBackup(const Title& title, const std::u16string& backupPath, const std::string& backupName, const std::string& dataType,
+        const std::string& ip, u16 port, const std::string& token, std::string& outError);
 }
 
-#endif // LOADER_HPP
+#endif

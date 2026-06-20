@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,33 +24,45 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef LOADER_HPP
-#define LOADER_HPP
+#ifndef TRANSFEROVERLAY_HPP
+#define TRANSFEROVERLAY_HPP
 
-#include "title.hpp"
-#include <atomic>
-#include <vector>
+#include "Overlay.hpp"
+#include "clickable.hpp"
+#include "colors.hpp"
+#include "gui.hpp"
+#include "hid.hpp"
+#include <functional>
+#include <memory>
+#include <string>
 
-namespace TitleLoader {
-    void getTitle(Title& dst, int i);
-    bool getTitleById(Title& dst, u64 id);
-    bool getTitleByName(Title& dst, const std::string& name);
-    void refreshAllDirectories(void);
-    int getTitleCount(void);
-    C2D_Image icon(int i);
-    bool favorite(int i);
+class TransferMenuOverlay : public Overlay {
+public:
+    TransferMenuOverlay(Screen& screen, const std::function<void()>& callbackSend, const std::function<void()>& callbackReceive);
+    ~TransferMenuOverlay(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
+    void update(const InputState& input) override;
 
-    void loadTitles(bool forceRefreshParam);
-    void refreshDirectories(u64 id);
-    void loadTitlesThread(void);
-    void cartScan(void);
-    void cartScanFlagTestAndSet(void);
-    void clearCartScanFlag(void);
+private:
+    u32 posx, posy;
+    C2D_TextBuf textBuf;
+    C2D_Text text;
+    std::unique_ptr<Clickable> buttonSend, buttonReceive;
+    Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
+    std::function<void()> sendFunc, receiveFunc;
+};
 
-    bool validId(u64 id);
-    bool scanCard(void);
-    void exportTitleListCache(std::vector<Title>& list, const std::u16string& path);
-    void importTitleListCache(void);
-}
+class ReceiveOverlay : public Overlay {
+public:
+    ReceiveOverlay(Screen& screen);
+    ~ReceiveOverlay(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
+    void update(const InputState& input) override;
 
-#endif // LOADER_HPP
+private:
+    C2D_TextBuf textBuf;
+};
+
+#endif

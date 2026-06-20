@@ -93,8 +93,11 @@ LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS	:= -lbz2 -lcitro2d -lcitro3d -lctru -lm
 
-CXX		:= `which ccache` $(CXX)
-CC		:= `which ccache` $(CC)
+CCACHE	:=	$(shell command -v ccache 2>/dev/null)
+ifneq ($(strip $(CCACHE)),)
+CXX		:=	$(CCACHE) $(CXX)
+CC		:=	$(CCACHE) $(CC)
+endif
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

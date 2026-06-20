@@ -270,7 +270,7 @@ std::string Title::mediaTypeString(void)
     return " ";
 }
 
-std::string Title::shortDescription(void)
+std::string Title::shortDescription(void) const
 {
     return StringUtils::UTF16toUTF8(mShortDescription);
 }
@@ -463,7 +463,7 @@ u32 Title::uniqueId(void)
     return (lowId() >> 8);
 }
 
-u64 Title::id(void)
+u64 Title::id(void) const
 {
     return mId;
 }

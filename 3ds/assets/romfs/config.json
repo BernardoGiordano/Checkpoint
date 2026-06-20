@@ -13,5 +13,6 @@
   },
   "nand_saves": false,
   "scan_cart": false,
-  "version": 3
+  "transfer_enabled": false,
+  "version": 4
 }
