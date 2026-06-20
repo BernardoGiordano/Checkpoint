@@ -78,6 +78,7 @@ private:
     C2D_ImageTint flagTint;
     int selectionTimer;
     int refreshTimer;
+    bool transferEnabled;
 };
 
 #endif

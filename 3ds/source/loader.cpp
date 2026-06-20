@@ -27,8 +27,8 @@
 #include "loader.hpp"
 #include "main.hpp"
 #include "title.hpp"
-#include <chrono>
 #include <cctype>
+#include <chrono>
 #include <mutex>
 
 namespace {

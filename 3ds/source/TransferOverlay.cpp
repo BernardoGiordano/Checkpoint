@@ -150,8 +150,8 @@ void ReceiveOverlay::drawBottom(void) const
 
     std::string info = "Receiver active";
     if (Transfer::receiverRunning()) {
-        info = StringUtils::format("IP: %s\nPort: %d\nPIN: %s", Transfer::receiverIp().c_str(), Transfer::receiverPort(),
-            Transfer::receiverToken().c_str());
+        info = StringUtils::format(
+            "IP: %s\nPort: %d\nPIN: %s", Transfer::receiverIp().c_str(), Transfer::receiverPort(), Transfer::receiverToken().c_str());
     }
     else {
         info = "Receiver stopped";

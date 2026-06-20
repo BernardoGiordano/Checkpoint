@@ -66,6 +66,10 @@ Configuration::Configuration(void)
                     (*mJson)["scan_cart"] = false;
                     updateJson            = true;
                 }
+                if (!(mJson->contains("transfer_enabled") && (*mJson)["transfer_enabled"].is_boolean())) {
+                    (*mJson)["transfer_enabled"] = false;
+                    updateJson                   = true;
+                }
                 if (!(mJson->contains("filter") && (*mJson)["filter"].is_array())) {
                     (*mJson)["filter"] = nlohmann::json::array();
                     updateJson         = true;
@@ -130,8 +134,9 @@ Configuration::Configuration(void)
                 mFavoriteIds.emplace(strtoull(id.c_str(), NULL, 16));
             }
 
-            mNandSaves = (*mJson)["nand_saves"];
-            mScanCard  = (*mJson)["scan_cart"];
+            mNandSaves       = (*mJson)["nand_saves"];
+            mScanCard        = (*mJson)["scan_cart"];
+            mTransferEnabled = (*mJson)["transfer_enabled"];
 
             // parse additional save folders
             auto js = (*mJson)["additional_save_folders"];
@@ -219,4 +224,9 @@ std::vector<std::u16string> Configuration::additionalExtdataFolders(u64 id)
 bool Configuration::shouldScanCard(void)
 {
     return mScanCard;
+}
+
+bool Configuration::transferEnabled(void)
+{
+    return mTransferEnabled;
 }

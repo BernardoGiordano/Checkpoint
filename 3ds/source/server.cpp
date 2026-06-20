@@ -25,8 +25,8 @@
  */
 
 #include "server.hpp"
-#include "main.hpp"
 #include "logging.hpp"
+#include "main.hpp"
 #include "thread.hpp"
 #include <3ds.h>
 #include <cstring>
@@ -50,7 +50,7 @@ namespace {
     // and prevents a malformed/malicious Content-Length from exhausting the heap.
     static const size_t MAX_REQUEST_SIZE = 32 * 1024 * 1024;
     std::atomic_flag serverRunning       = ATOMIC_FLAG_INIT;
-    s32 serverSocket               = -1;
+    s32 serverSocket                     = -1;
     std::atomic<bool> serverIsRunning{false};
     std::string serverAddress;
 
@@ -140,7 +140,7 @@ namespace {
                         break;
                     }
                     if (path == "/transfer/upload") {
-                        trackTransfer = true;
+                        trackTransfer       = true;
                         g_transferIsNetwork = true;
                         transferSetMode("Downloading backup");
                         transferSetProgress(0, contentLength);
@@ -170,15 +170,15 @@ namespace {
 
     static void handleHttpRequest(s32 clientSocket)
     {
-        bool tooLarge        = false;
-        std::string request  = readRequest(clientSocket, tooLarge);
+        bool tooLarge       = false;
+        std::string request = readRequest(clientSocket, tooLarge);
         if (tooLarge) {
             // Reset any transfer UI state we may have set while reading headers.
             g_isTransferringFile = false;
             g_transferIsNetwork  = false;
-            std::string body   = "{\"ok\":false,\"error\":\"Payload too large\"}";
-            std::string header = "HTTP/1.1 413 Payload Too Large\r\nContent-Type: application/json\r\nContent-Length: " +
-                                 std::to_string(body.length()) + "\r\n\r\n";
+            std::string body     = "{\"ok\":false,\"error\":\"Payload too large\"}";
+            std::string header =
+                "HTTP/1.1 413 Payload Too Large\r\nContent-Type: application/json\r\nContent-Length: " + std::to_string(body.length()) + "\r\n\r\n";
             send(clientSocket, header.c_str(), header.length(), 0);
             send(clientSocket, body.c_str(), body.length(), 0);
             return;
@@ -196,7 +196,7 @@ namespace {
         }
         if (found) {
             Server::HttpResponse response = handler(path, request);
-            std::string header = "HTTP/1.1 " + std::to_string(response.statusCode);
+            std::string header            = "HTTP/1.1 " + std::to_string(response.statusCode);
             header += (response.statusCode == 200 ? " OK" : (response.statusCode == 404 ? " Not Found" : " Error"));
             header += "\r\nContent-Type: " + response.contentType;
             header += "\r\nContent-Length: " + std::to_string(response.body.length());

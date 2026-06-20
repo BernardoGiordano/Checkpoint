@@ -25,6 +25,7 @@
  */
 
 #include "MainScreen.hpp"
+#include "configuration.hpp"
 #include "loader.hpp"
 #include "server.hpp"
 #include "transfer.hpp"
@@ -38,7 +39,7 @@ namespace {
     {
         SwkbdState swkbd;
         const size_t kBufSize = 64;
-        size_t limit = std::min(maxLen, kBufSize);
+        size_t limit          = std::min(maxLen, kBufSize);
         if (limit < 2) {
             limit = 2;
         }
@@ -46,8 +47,8 @@ namespace {
         swkbdSetValidation(&swkbd, SWKBD_NOTBLANK_NOTEMPTY, 0, 0);
         swkbdSetInitialText(&swkbd, suggestion.c_str());
         swkbdSetHintText(&swkbd, hint.c_str());
-        char buf[kBufSize] = {0};
-        SwkbdButton button = swkbdInputText(&swkbd, buf, sizeof(buf));
+        char buf[kBufSize]   = {0};
+        SwkbdButton button   = swkbdInputText(&swkbd, buf, sizeof(buf));
         buf[sizeof(buf) - 1] = '\0';
         return button == SWKBD_BUTTON_CONFIRM ? std::string(buf) : std::string();
     }
@@ -57,6 +58,8 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
 {
     selectionTimer = 0;
     refreshTimer   = 0;
+    // Wi-Fi backup transfer is gated behind a config flag, disabled by default.
+    transferEnabled = Configuration::getInstance().transferEnabled();
 
     staticBuf  = C2D_TextBufNew(280);
     dynamicBuf = C2D_TextBufNew(512);
@@ -245,8 +248,8 @@ void MainScreen::drawTop(void) const
                 C2D_Text line1Text;
                 C2D_TextParse(&line1Text, dynamicBuf, line1.c_str());
                 C2D_TextOptimize(&line1Text);
-                C2D_DrawText(&line1Text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(line1Text, size)) / 2), startY, 0.9f, size, size,
-                    COLOR_WHITE);
+                C2D_DrawText(
+                    &line1Text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(line1Text, size)) / 2), startY, 0.9f, size, size, COLOR_WHITE);
 
                 C2D_Text line2Text;
                 C2D_TextParse(&line2Text, dynamicBuf, line2.c_str());
@@ -326,9 +329,10 @@ void MainScreen::drawBottom(void) const
         }
     }
 
-    buttonTransfer->draw(0.55f, COLOR_PURPLE_LIGHT);
-    C2D_DrawText(
-        &ins4, C2D_WithColor, ceilf(320 - StringUtils::textWidth(ins4, 0.47f) - 4), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
+    if (transferEnabled) {
+        buttonTransfer->draw(0.55f, COLOR_PURPLE_LIGHT);
+    }
+    C2D_DrawText(&ins4, C2D_WithColor, ceilf(320 - StringUtils::textWidth(ins4, 0.47f) - 4), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
 
     if (hidKeysHeld() & KEY_SELECT) {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
@@ -363,8 +367,8 @@ void MainScreen::drawBottom(void) const
             C2D_Text bytesText;
             C2D_TextParse(&bytesText, dynamicBuf, bytesStr.c_str());
             C2D_TextOptimize(&bytesText);
-            C2D_DrawText(
-                &bytesText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(bytesText, 0.5f)) / 2), my + 38, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
+            C2D_DrawText(&bytesText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(bytesText, 0.5f)) / 2), my + 38, 0.5f, 0.5f, 0.5f,
+                COLOR_GREY_LIGHT);
 
             const int barX = mx + 12, barW = mw - 24, barH = 10;
             const int barY = my + 65;
@@ -426,8 +430,8 @@ void MainScreen::drawBottom(void) const
                 C2D_Text rightText;
                 C2D_TextParse(&rightText, dynamicBuf, rightLabel);
                 C2D_TextOptimize(&rightText);
-                C2D_DrawText(&rightText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(rightText, 0.45f)), y + barH + 3, 0.5f, 0.45f, 0.45f,
-                    COLOR_WHITE);
+                C2D_DrawText(&rightText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(rightText, 0.45f)), y + barH + 3, 0.5f, 0.45f,
+                    0.45f, COLOR_WHITE);
             };
 
             int barY = my + 52;
@@ -624,7 +628,7 @@ void MainScreen::handleEvents(const InputState& input)
         refreshTitlesFull();
     }
 
-    if (buttonTransfer->released()) {
+    if (transferEnabled && buttonTransfer->released()) {
         currentOverlay = std::make_shared<TransferMenuOverlay>(
             *this,
             [this]() {
@@ -809,7 +813,7 @@ void MainScreen::startTransferSend(void)
     Title title;
     TitleLoader::getTitle(title, hid.fullIndex());
 
-    std::string backupName = nameFromCell(cellIndex);
+    std::string backupName    = nameFromCell(cellIndex);
     std::u16string backupPath = Archive::mode() == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
 
     std::string ipPort = rawKeyboard("192.168.1.10:8000", "Receiver IP:PORT", 32);
@@ -823,7 +827,7 @@ void MainScreen::startTransferSend(void)
         return;
     }
     std::string ip = ipPort.substr(0, colon);
-    int port = atoi(ipPort.substr(colon + 1).c_str());
+    int port       = atoi(ipPort.substr(colon + 1).c_str());
     if (ip.empty() || port <= 0 || port > 65535) {
         currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Invalid IP:PORT.");
         return;
@@ -835,8 +839,7 @@ void MainScreen::startTransferSend(void)
     }
     // The receiver always generates a 4-digit PIN, so require exactly 4 here;
     // a longer PIN could never match.
-    bool pinOk = pin.size() == 4 &&
-        std::all_of(pin.begin(), pin.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
+    bool pinOk = pin.size() == 4 && std::all_of(pin.begin(), pin.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
     if (!pinOk) {
         currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "PIN must be 4 digits.");
         return;
@@ -844,7 +847,7 @@ void MainScreen::startTransferSend(void)
 
     std::string error;
     std::string dataType = Archive::mode() == MODE_SAVE ? "save" : "extdata";
-    bool ok = Transfer::sendBackup(title, backupPath, backupName, dataType, ip, (u16)port, pin, error);
+    bool ok              = Transfer::sendBackup(title, backupPath, backupName, dataType, ip, (u16)port, pin, error);
     if (ok) {
         currentOverlay = std::make_shared<InfoOverlay>(*this, "Transfer completed.");
     }
