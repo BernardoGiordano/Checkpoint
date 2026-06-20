@@ -91,13 +91,24 @@ Result SPIEnableWriting(CardType type)
         return res; // Weird, but works (otherwise we're getting an infinite loop for that chip type).
     cmd = SPI_CMD_RDSR;
 
-    // Bail out after a bounded number of polls instead of spinning forever: if the status register
-    // never settles (e.g. an 8MB cart whose protection was not lifted), this would otherwise hang.
+    // Bail out after a bounded number of polls instead of spinning forever.
+    // The actual precondition for a write is that the write-enable latch (WEL) is set. The 8MB
+    // cart legitimately leaves block-protect/SRWD bits set in the status register even when armed for
+    // writing (sr stays 0x86, and those bits cannot be cleared via WRSR — SRWD + WP# hardware-lock
+    // them), so for it we only require WEL. Every other chip clears to a bare 0x02 after WREN, so the
+    // stricter "nothing but WEL set" check is kept for them to preserve existing behaviour.
     do {
         res = SPIWriteRead(type, &cmd, 1, &statusReg, 1, 0, 0);
         if (res)
             return res;
-    } while ((statusReg & ~SPI_FLG_WEL) && ++panic < 1000);
+        if (type == FLASH_8MB) {
+            if (statusReg & SPI_FLG_WEL)
+                break;
+        }
+        else if (!(statusReg & ~SPI_FLG_WEL)) {
+            break;
+        }
+    } while (++panic < 1000);
 
     return panic >= 1000 ? 1 : 0;
 }
@@ -370,12 +381,15 @@ static Result SPISendCommand8MB(const u8* cmd, u32 cmdSize)
     return PXIDEV_SPIMultiWriteRead(&headerBuffer, &cmdBuffer, &nullBuffer, &nullBuffer, &nullBuffer, &footerBuffer);
 }
 
-// The 8MB flash chip ships with a
-// vendor write/read protection ("big protection") enabled. Until it is lifted the chip answers
-// 0xFF to every command, which makes reads return garbage and the SPIEnableWriting status poll
-// spin forever (freezing the console on restore). This is the unlock sequence used by
-// ndsi-savedumper (auxspi_disable_big_protection), where each
-// open()/close() pair is one chip-select transaction.
+// The 8MB flash cart ships write-protected: its status register has block-protect
+// and SRWD bits set (observed sr = 0x84, then 0x86 once the write-enable latch is armed). READS work
+// regardless — the data area returns real bytes — so backup needs no unlock. Only WRITES/erases are
+// gated. The vendor "big protection" frames below (from ndsi-savedumper's auxspi_disable_big_protection)
+// free the array for writing; the leftover block-protect bit in the status register is cosmetic on this
+// chip (verified on hardware: writes/erases land while sr stays 0x86), and SPIEnableWriting is relaxed
+// for FLASH_8MB to only require the write-enable latch rather than a fully-clear register. Attempting to
+// clear those bits with WREN + WRSR(0x00) was verified to be a no-op (SRWD + the cart's WP# pin
+// hardware-lock the register), so it is intentionally omitted.
 Result SPIUnlock(CardType type)
 {
     if (type != FLASH_8MB)
@@ -385,8 +399,7 @@ Result SPIUnlock(CardType type)
     // built with auxspi_open()/auxspi_close[_lite](). auxspi_close() (used after the 0xfa, 0xf8 and
     // 0x0e commands) clocks one extra 0x00 byte while CS is still asserted, then deasserts it;
     // auxspi_close_lite() (used after 0xf1, WREN and 0x14) deasserts without that extra byte. The
-    // trailing byte is part of the command frame on the wire, so it must be replicated here or the
-    // protection is never actually lifted even though PXIDEV reports success.
+    // trailing byte is part of the command frame on the wire, so it must be replicated here.
     static const u8 seq0[] = {0xf1};                   // close_lite: no trailing byte
     static const u8 seq1[] = {SPI_CMD_WREN};           // close_lite
     static const u8 seq2[] = {0xfa, 0x01, 0x31, 0x00}; // close: trailing 0x00
@@ -479,7 +492,7 @@ Result SPIGetCardType(CardType* type, int infrared)
     while (tries < maxTries) {
         res = SPIReadJEDECIDAndStatusReg(t, &jedec, &sr); // dummy
         if (R_SUCCEEDED(res)) {
-            Logging::info("Found JEDEC: 0x{:016X}", jedec);
+            Logging::info("Found JEDEC: 0x{:016X} (status register 0x{:02X})", jedec, sr);
             Logging::info("CardType (While inside maxTries loop): {}", (int)t);
             if (std::find(std::begin(knownJEDECS), std::end(knownJEDECS), jedec) != std::end(knownJEDECS)) {
                 Logging::info("Found a jedec equal to one in the ordered list. Type: {}", (int)*type);
@@ -494,6 +507,18 @@ Result SPIGetCardType(CardType* type, int infrared)
 
         if (res)
             return res;
+
+        // 8MB flash cart: identify it purely by JEDEC id here, BEFORE the
+        // status-register disambiguation below. Its data area ships write-protected, so RDSR
+        // returns a nonzero value (e.g. 0x84 = SRWD | block-protect) instead of 0x00. That makes the
+        // `(sr & 0xfd) == 0x00` break checks all fail, so `t` falls through to FLASH_INFRARED_DUMMY
+        // and — because FLASH_INFRARED_DUMMY and FLASH_8MB are BOTH 9 in the CardType enum — the
+        // post-loop chain misroutes the cart into the infrared branch and reports it as a 512KB save.
+        if (jedec == 0x204017 || jedec == 0x202017) {
+            *type = FLASH_8MB;
+            Logging::info("Detected 8MB flash cart (BBDX) by JEDEC 0x{:06X}; unlocking write protection.", jedec);
+            return SPIUnlock(FLASH_8MB);
+        }
 
         if ((sr & 0xfd) == 0x00 && (jedec != 0x00ffffff)) {
             break;
@@ -553,13 +578,8 @@ Result SPIGetCardType(CardType* type, int infrared)
             *type = NO_CHIP; // did anything go wrong?
             Logging::info("infrared is 1, *type = NO_CHIP");
         }
-        if (jedec == 0x204017 || jedec == 0x202017) {
-            *type = FLASH_8MB;
-            // Both documented 8MB IDs ship with their data area read/write
-            // protected; lift the protection now so backups read real data and restores can write.
-            // RDID/RDSR keep responding normally while protected, which is why detection succeeds.
-            return SPIUnlock(FLASH_8MB);
-        }
+        // Note: the 8MB flash cart (JEDEC 0x204017 / 0x202017) is handled by the early short-circuit
+        // inside the detection loop above, before the status-register disambiguation can misroute it.
         if (jedec == 0x208013) {
             *type = FLASH_512KB_1;
             return 0;

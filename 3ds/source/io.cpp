@@ -467,6 +467,13 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
             return std::make_tuple(false, res, "Failed to read save file backup.");
         }
 
+        // The 8MB flash cart is write-protected until its vendor unlock runs.
+        // Detection already unlocks it, but re-arm it here so a restore is never gated by protection
+        // (idempotent and cheap: a handful of short 512KHz frames).
+        if (cardType == FLASH_8MB) {
+            SPIUnlock(cardType);
+        }
+
         g_isTransferringFile = true;
         g_transferMode       = "Restore";
         g_copyCount          = 0;
