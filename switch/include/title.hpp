@@ -60,6 +60,10 @@ public:
     void refreshDirectories(void);
     u64 saveId();
     void saveId(u64 id);
+    u64 journalSize();
+    void journalSize(u64 size);
+    u64 journalSizeMax();
+    void journalSizeMax(u64 size);
     std::vector<std::string> saves(void);
     u8 saveDataType(void);
     u8 saveDataSpaceId(void);
@@ -69,6 +73,8 @@ public:
 private:
     u64 mId;
     u64 mSaveId;
+    u64 mJournalSize;
+    u64 mJournalSizeMax;
     AccountUid mUserId;
     std::string mUserName;
     std::string mName;

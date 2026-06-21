@@ -50,7 +50,28 @@ size_t io::countFiles(const std::string& path)
     return count;
 }
 
-void io::copyFile(const std::string& srcPath, const std::string& dstPath)
+u64 io::getDirectorySize(const std::string& path)
+{
+    u64 size = 0;
+    Directory items(path);
+    if (!items.good()) {
+        return 0;
+    }
+    for (size_t i = 0, sz = items.size(); i < sz; i++) {
+        if (items.folder(i)) {
+            size += io::getDirectorySize(path + items.entry(i) + "/");
+        }
+        else {
+            struct stat st;
+            if (stat((path + items.entry(i)).c_str(), &st) == 0) {
+                size += st.st_size;
+            }
+        }
+    }
+    return size;
+}
+
+void io::copyFile(const std::string& srcPath, const std::string& dstPath, u64 commitWriteLimit)
 {
     g_isTransferringFile = true;
 
@@ -78,6 +99,12 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
     g_currentFileSize   = sz;
     g_currentFileOffset = 0;
 
+    // when writing to the save device, the journal can only hold a limited amount of
+    // uncommitted data: commit partway through large files so a single file bigger than
+    // the journal doesn't overflow it at commit time.
+    const bool toSaveDevice = dstPath.rfind("save:/", 0) == 0;
+    u64 journalPending      = 0;
+
     while (offset < sz) {
         u32 count = fread((char*)buf, 1, BUFFER_SIZE, src);
         if (count == 0) {
@@ -88,6 +115,24 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
         offset += count;
         g_currentFileOffset = offset;
 
+        if (toSaveDevice && commitWriteLimit > 0 && offset < sz) {
+            journalPending += count;
+            if (journalPending >= commitWriteLimit) {
+                journalPending = 0;
+                fflush(dst);
+                fclose(dst);
+                Result cres = fsdevCommitDevice("save");
+                if (R_FAILED(cres)) {
+                    Logging::error("Failed mid-file commit of {} at offset {}/{} with result 0x{:08X}.", dstPath, offset, sz, cres);
+                }
+                dst = fopen(dstPath.c_str(), "ab");
+                if (dst == NULL) {
+                    Logging::error("Failed to reopen destination file {} after commit with errno {}. Aborting copy.", dstPath, errno);
+                    break;
+                }
+            }
+        }
+
         // avoid freezing the UI
         // this will be made less horrible next time...
         g_screen->draw();
@@ -96,19 +141,20 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
 
     delete[] buf;
     fclose(src);
-    fclose(dst);
+    if (dst != NULL) {
+        fclose(dst);
+    }
     g_copyCount++;
 
     // commit each file to the save
-    if (dstPath.rfind("save:/", 0) == 0) {
-        Logging::error("Committing file {} to the save archive.", dstPath);
+    if (toSaveDevice) {
         fsdevCommitDevice("save");
     }
 
     g_isTransferringFile = false;
 }
 
-Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath)
+Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath, u64 commitWriteLimit)
 {
     Result res = 0;
     bool quit  = false;
@@ -127,14 +173,14 @@ Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath)
             if (R_SUCCEEDED(res)) {
                 newsrc += "/";
                 newdst += "/";
-                res = io::copyDirectory(newsrc, newdst);
+                res = io::copyDirectory(newsrc, newdst, commitWriteLimit);
             }
             else {
                 quit = true;
             }
         }
         else {
-            io::copyFile(newsrc, newdst);
+            io::copyFile(newsrc, newdst, commitWriteLimit);
         }
     }
 
@@ -175,6 +221,20 @@ Result io::deleteFolderRecursively(const std::string& path)
 
     rmdir(path.c_str());
     return 0;
+}
+
+static Result mountTitleSave(Title& title, FsFileSystem* fileSystem)
+{
+    switch (title.saveDataType()) {
+        case FsSaveDataType_Bcat:
+            return FileSystem::mountBcatSave(fileSystem, title.id());
+        case FsSaveDataType_Device:
+            return FileSystem::mountDeviceSave(fileSystem, title.id());
+        case FsSaveDataType_System:
+            return FileSystem::mountSystemSave(fileSystem, title.id(), title.saveDataSpaceId());
+        default:
+            return FileSystem::mountSave(fileSystem, title.id(), title.userId());
+    }
 }
 
 std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, size_t cellIndex)
@@ -340,6 +400,41 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
     std::string srcPath = title.fullPath(cellIndex) + "/";
     std::string dstPath = "save:/";
 
+    // if the backup is larger than the currently allocated save data, grow the partition
+    // before restoring (a save can outgrow its initial allocation as the game progresses).
+    u64 journalSizeMax = title.journalSizeMax();
+    if (journalSizeMax > 0) {
+        u64 backupSize = io::getDirectorySize(srcPath);
+        s64 totalSpace = 0;
+        res            = fsFsGetTotalSpace(fsdevGetDeviceFileSystem("save"), "/", &totalSpace);
+        if (R_SUCCEEDED(res) && backupSize > (u64)totalSpace) {
+            FileSystem::unmountDevice();
+
+            s64 newDataSize = (s64)(backupSize + SAVE_EXTEND_MARGIN);
+            res = fsExtendSaveDataFileSystem((FsSaveDataSpaceId)title.saveDataSpaceId(), title.saveId(), newDataSize, (s64)journalSizeMax);
+            if (R_FAILED(res)) {
+                Logging::error("Failed to extend save data to {} bytes with result 0x{:08X}. Title id: 0x{:016X}.", newDataSize, res, title.id());
+                return std::make_tuple(false, res, "Failed to extend the save data\nto fit the backup.");
+            }
+            Logging::info("Extended save data of title 0x{:016X} to {} bytes to fit backup of {} bytes.", title.id(), newDataSize, backupSize);
+
+            // remount the now larger save
+            res = mountTitleSave(title, &fileSystem);
+            if (R_SUCCEEDED(res)) {
+                int rc = FileSystem::mountDevice(fileSystem);
+                if (rc == -1) {
+                    FileSystem::unmountDevice();
+                    Logging::error("Failed to remount filesystem after extend. Title id: 0x{:016X}.", title.id());
+                    return std::make_tuple(false, -2, "Failed to mount save.");
+                }
+            }
+            else {
+                Logging::error("Failed to remount filesystem after extend with result 0x{:08X}. Title id: 0x{:016X}.", res, title.id());
+                return std::make_tuple(false, res, "Failed to mount save.");
+            }
+        }
+    }
+
     res = io::deleteFolderRecursively(dstPath.c_str());
     if (R_FAILED(res)) {
         FileSystem::unmountDevice();
@@ -347,10 +442,24 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
         return std::make_tuple(false, res, "Failed to delete save.");
     }
 
+    // commit the wipe before writing so the deletions don't add to the journal pressure
+    // accumulated while restoring the backup.
+    res = fsdevCommitDevice("save");
+    if (R_FAILED(res)) {
+        FileSystem::unmountDevice();
+        Logging::error("Failed to commit save wipe with result 0x{:08X}.", res);
+        return std::make_tuple(false, res, "Failed to commit to save device.");
+    }
+
+    // leave a safety margin under the journal size so the in-flight commits never overflow it.
+    // a journal size of 0 (unknown, e.g. system saves) disables mid-file commits.
+    u64 journalSize      = title.journalSize();
+    u64 commitWriteLimit = journalSize > JOURNAL_COMMIT_MARGIN ? journalSize - JOURNAL_COMMIT_MARGIN : journalSize;
+
     g_copyCount    = 0;
     g_copyTotal    = io::countFiles(srcPath);
     g_transferMode = "Restore";
-    res            = io::copyDirectory(srcPath, dstPath);
+    res            = io::copyDirectory(srcPath, dstPath, commitWriteLimit);
     if (R_FAILED(res)) {
         FileSystem::unmountDevice();
         Logging::error("Failed to copy directory {} to {} with result 0x{:08X}. Skipping...", srcPath, dstPath, res);
