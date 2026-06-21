@@ -264,11 +264,12 @@ void MainScreen::draw() const
         }
     }
 
-    if (g_isTransferringFile) {
+    const TransferSnapshot transfer = TransferStatus::snapshot();
+    if (transfer.active) {
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
 
         // An extra bar is shown to track the overall progress when backing up multiple saves at once
-        const bool multiSelect = g_multiSelectTotal > 1;
+        const bool multiSelect = multiSelectTotal > 1;
 
         // Modal box centered on screen
         const int mx = 370, mw = 540;
@@ -278,14 +279,14 @@ void MainScreen::draw() const
         drawOutline(mx, my, mw, mh, 3, COLOR_PURPLE_LIGHT);
 
         // Title
-        std::string titleStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
+        std::string titleStr = (transfer.mode.empty() ? "Copying files" : transfer.mode) + " in progress...";
         u32 title_w, title_h;
         SDLH_GetTextDimensions(26, titleStr.c_str(), &title_w, &title_h);
         SDLH_DrawText(26, mx + (mw - (int)title_w) / 2, my + 14, COLOR_WHITE, titleStr.c_str());
 
         // Current filename
         u32 fname_w, fname_h;
-        std::string fname = trimToFit(g_currentFile, mw - 40, 22);
+        std::string fname = trimToFit(transfer.currentFile, mw - 40, 22);
         SDLH_GetTextDimensions(22, fname.c_str(), &fname_w, &fname_h);
         SDLH_DrawText(22, mx + (mw - (int)fname_w) / 2, my + 14 + (int)title_h + 8, COLOR_GREY_LIGHT, fname.c_str());
 
@@ -311,9 +312,9 @@ void MainScreen::draw() const
 
         // Overall progress bar across the selected saves (multi-selection only)
         if (multiSelect) {
-            float overallProgress = (float)g_multiSelectCount / (float)g_multiSelectTotal;
+            float overallProgress = (float)multiSelectCount / (float)multiSelectTotal;
             char overallCountStr[24];
-            snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", g_multiSelectCount + 1, g_multiSelectTotal);
+            snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", multiSelectCount + 1, multiSelectTotal);
             char overallPctStr[8];
             snprintf(overallPctStr, sizeof(overallPctStr), "%d%%%%", (int)(overallProgress * 100));
             drawProgressBar(barY, overallProgress, overallCountStr, overallPctStr);
@@ -321,18 +322,18 @@ void MainScreen::draw() const
         }
 
         // Per-save progress bar
-        float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
+        float progress = (transfer.copyTotal > 0) ? (float)transfer.copyCount / (float)transfer.copyTotal : 0.0f;
         char countStr[24];
-        snprintf(countStr, sizeof(countStr), "File %zu / %zu", g_copyCount, g_copyTotal);
+        snprintf(countStr, sizeof(countStr), "File %zu / %zu", transfer.copyCount, transfer.copyTotal);
         char pctStr[8];
         snprintf(pctStr, sizeof(pctStr), "%d%%%%", (int)((progress > 1.0f ? 1.0f : progress) * 100));
         drawProgressBar(barY, progress, countStr, pctStr);
         barY += 52;
 
         // Per-file progress bar
-        float fileProgress = (g_currentFileSize > 0) ? (float)g_currentFileOffset / (float)g_currentFileSize : 0.0f;
+        float fileProgress = (transfer.currentFileSize > 0) ? (float)transfer.currentFileOffset / (float)transfer.currentFileSize : 0.0f;
         char kbStr[40];
-        snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", g_currentFileOffset / 1024.0f, g_currentFileSize / 1024.0f);
+        snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", transfer.currentFileOffset / 1024.0f, transfer.currentFileSize / 1024.0f);
         char filePctStr[8];
         snprintf(filePctStr, sizeof(filePctStr), "%d%%%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
         drawProgressBar(barY, fileProgress, kbStr, filePctStr);
@@ -629,9 +630,9 @@ void MainScreen::handleEvents(const InputState& input)
         if (MS::multipleSelectionEnabled()) {
             resetIndex(CELLS);
             std::vector<size_t> list = MS::selectedEntries();
-            g_multiSelectTotal       = list.size();
+            multiSelectTotal         = list.size();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                g_multiSelectCount = i;
+                multiSelectCount = i;
                 // translate filtered index to raw index for multi-selection
                 size_t raw  = filteredToRawIndex(g_currentUId, mSaveTypeFilter, list.at(i));
                 auto result = io::backup(raw, g_currentUId, this->index(CELLS));
@@ -642,8 +643,8 @@ void MainScreen::handleEvents(const InputState& input)
                     currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
                 }
             }
-            g_multiSelectTotal = 0;
-            g_multiSelectCount = 0;
+            multiSelectTotal = 0;
+            multiSelectCount = 0;
             MS::clearSelectedEntries();
             updateButtons();
             blinkLed(4);

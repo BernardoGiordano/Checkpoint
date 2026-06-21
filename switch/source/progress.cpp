@@ -24,36 +24,51 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef IO_HPP
-#define IO_HPP
-
-#include "KeyboardManager.hpp"
-#include "account.hpp"
-#include "directory.hpp"
-#include "multiselection.hpp"
 #include "progress.hpp"
-#include "title.hpp"
-#include "util.hpp"
-#include <dirent.h>
-#include <switch.h>
-#include <sys/stat.h>
-#include <tuple>
-#include <unistd.h>
-#include <utility>
+#include "SDLHelper.hpp"
+#include "main.hpp"
+#include "transferstatus.hpp"
 
-#define BUFFER_SIZE 0x80000
-
-namespace io {
-    std::tuple<bool, Result, std::string> backup(size_t index, AccountUid uid, size_t cellIndex);
-    std::tuple<bool, Result, std::string> restore(size_t index, AccountUid uid, size_t cellIndex, const std::string& nameFromCell);
-
-    size_t countFiles(const std::string& path);
-    Result copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
-    void copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
-    Result createDirectory(const std::string& path);
-    Result deleteFolderRecursively(const std::string& path);
-    bool directoryExists(const std::string& path);
-    bool fileExists(const std::string& path);
+// Renders a single frame so the transfer progress modal keeps refreshing while a
+// long, blocking copy is running on the main thread.
+static void renderTransferFrame()
+{
+    g_screen->draw();
+    SDLH_Render();
 }
 
-#endif
+void UiProgressSink::begin(const std::string& mode, size_t totalFiles)
+{
+    TransferStatus::beginLocal(mode, totalFiles);
+}
+
+void UiProgressSink::startFile(const std::string& name, u64 size)
+{
+    TransferStatus::startFile(name, size);
+    mFileSize     = size;
+    mLastRendered = -1;
+    renderTransferFrame();
+}
+
+void UiProgressSink::advanceBytes(u64 offset)
+{
+    TransferStatus::setFileOffset(offset);
+
+    // Throttle to ~64 frames per file: only render when the offset crosses into a
+    // new 1/64 bucket. Tiny files (size 0) just render once.
+    int bucket = mFileSize == 0 ? 0 : static_cast<int>((offset * 64) / mFileSize);
+    if (bucket != mLastRendered) {
+        mLastRendered = bucket;
+        renderTransferFrame();
+    }
+}
+
+void UiProgressSink::finishFile()
+{
+    TransferStatus::finishFile();
+}
+
+void UiProgressSink::end()
+{
+    TransferStatus::end();
+}
