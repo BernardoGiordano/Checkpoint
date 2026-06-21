@@ -25,6 +25,7 @@
  */
 
 #include "title.hpp"
+#include "savedatasource.hpp"
 
 static std::unordered_map<AccountUid, std::vector<Title>> titles;
 static std::unordered_map<u64, SDL_Texture*> icons;
@@ -79,37 +80,14 @@ void Title::init(u8 saveDataType, u64 id, AccountUid userID, const std::string& 
     mSaveDataType    = saveDataType;
     mSaveDataSpaceId = spaceId;
 
-    if (mSaveDataType == FsSaveDataType_Bcat) {
-        mUserName = "BCAT";
-    }
-    else if (mSaveDataType == FsSaveDataType_Device) {
-        mUserName = "Device";
-    }
-    else if (mSaveDataType == FsSaveDataType_System) {
-        mUserName = "System";
-    }
-    else {
-        mUserName = Account::username(userID);
-    }
+    SaveDataSource source(mSaveDataType);
+    mUserName = source.isUserAccount() ? Account::username(userID) : source.fixedUserName();
 
     mAuthor   = author;
     mName     = name;
     mSafeName = StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", mId) : StringUtils::removeForbiddenCharacters(name);
 
-    std::string baseDir;
-    if (mSaveDataType == FsSaveDataType_Bcat) {
-        baseDir = "sdmc:/switch/Checkpoint/bcat/";
-    }
-    else if (mSaveDataType == FsSaveDataType_Device) {
-        baseDir = "sdmc:/switch/Checkpoint/device/";
-    }
-    else if (mSaveDataType == FsSaveDataType_System) {
-        baseDir = "sdmc:/switch/Checkpoint/system/";
-    }
-    else {
-        baseDir = "sdmc:/switch/Checkpoint/saves/";
-    }
-    mPath        = baseDir + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
+    mPath        = source.baseDir() + StringUtils::format("0x%016llX", mId) + " " + mSafeName;
     mDisplayName = StringUtils::removeAccents(mName);
 
     if (!io::directoryExists(mPath)) {
@@ -470,7 +448,9 @@ size_t getTitleCount(AccountUid uid)
     return it != titles.end() ? it->second.size() : 0;
 }
 
-bool favorite(AccountUid uid, int i)
+// Raw-index favorite lookup; reached only through filteredFavorite, which maps the
+// filtered cell index back to the raw title index first.
+static bool favorite(AccountUid uid, int i)
 {
     std::unordered_map<AccountUid, std::vector<Title>>::iterator it = titles.find(uid);
     return it != titles.end() ? Configuration::getInstance().favorite(it->second.at(i).id()) : false;
@@ -487,7 +467,8 @@ void refreshDirectories(u64 id)
     }
 }
 
-SDL_Texture* smallIcon(AccountUid uid, size_t i)
+// Raw-index icon lookup; reached only through filteredSmallIcon.
+static SDL_Texture* smallIcon(AccountUid uid, size_t i)
 {
     std::unordered_map<AccountUid, std::vector<Title>>::iterator it = titles.find(uid);
     return it != titles.end() ? it->second.at(i).icon() : NULL;

@@ -92,9 +92,7 @@ void loadTitles(void);
 void sortTitles(void);
 void rotateSortMode(void);
 void refreshDirectories(u64 id);
-bool favorite(AccountUid uid, int i);
 void freeIcons(void);
-SDL_Texture* smallIcon(AccountUid uid, size_t i);
 std::unordered_map<std::string, std::string> getCompleteTitleList(void);
 
 size_t getFilteredTitleCount(AccountUid uid, saveTypeFilter_t filter);

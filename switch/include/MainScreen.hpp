@@ -70,6 +70,8 @@ protected:
     std::string sortMode(void) const;
     void setSaveTypeFilter(saveTypeFilter_t filter);
     size_t rawIndex(void) const;
+    void doBackup(size_t rawIdx, size_t cellIndex);
+    void doRestore(size_t rawIdx, size_t cellIndex);
 
 private:
     entryType_t type;
