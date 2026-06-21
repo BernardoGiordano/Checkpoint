@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -52,8 +52,8 @@ public:
     ~Title(void);
 
     bool accessibleSave(void);
-    bool isGBAVC(void);
     bool accessibleExtdata(void);
+    bool isGBAVC(void);
     FS_CardType cardType(void);
     std::vector<std::u16string> extdata(void);
     u32 extdataId(void);
@@ -61,7 +61,7 @@ public:
     std::u16string fullExtdataPath(size_t index);
     u32 highId(void);
     C2D_Image icon(void);
-    u64 id(void);
+    u64 id(void) const;
     bool isActivityLog(void);
     void load(void);
     bool load(u64 id, FS_MediaType mediaType, FS_CardType cardType);
@@ -77,7 +77,7 @@ public:
     std::u16string fullSavePath(size_t index);
     std::vector<std::u16string> saves(void);
     void setIcon(C2D_Image icon);
-    std::string shortDescription(void);
+    std::string shortDescription(void) const;
     std::u16string getShortDescription(void);
     CardType SPICardType(void);
     u32 uniqueId(void);
@@ -87,6 +87,7 @@ public:
 private:
     bool mAccessibleSave;
     bool mAccessibleExtdata;
+    bool mGBA;
     std::u16string mShortDescription;
     std::u16string mLongDescription;
     std::u16string mSavePath;
@@ -97,21 +98,12 @@ private:
     std::vector<std::u16string> mExtdata;
     std::vector<std::u16string> mFullExtdataPaths;
     u64 mId;
-    bool mGBA;
     FS_MediaType mMedia;
     FS_CardType mCard;
     CardType mCardType;
     C2D_Image mIcon;
 };
 
-void getTitle(Title& dst, int i);
-int getTitleCount(void);
-C2D_Image icon(int i);
-bool favorite(int i);
-
-void loadFilter(void);
-void loadTitles(bool forceRefresh);
-void refreshDirectories(u64 id);
-void updateCard(void);
+C2D_Image loadTextureFromBytes(u16* bigIconData);
 
 #endif

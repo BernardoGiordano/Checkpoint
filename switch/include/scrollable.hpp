@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ class Scrollable : public IScrollable<SDL_Color> {
 public:
     Scrollable(u32 x, u32 y, u32 w, u32 h, size_t visibleEntries) : IScrollable(x, y, w, h, visibleEntries), mHid(visibleEntries, 1) {}
 
-    virtual ~Scrollable(void) {}
+    virtual ~Scrollable() = default;
 
     void draw(bool condition = false) override;
     void setIndex(size_t i);

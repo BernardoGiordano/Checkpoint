@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -43,8 +43,9 @@
  */
 
 #include "spi.hpp"
+#include <vector>
 
-static std::vector<u32> knownJEDECs = {0x204012, 0x621600, 0x204013, 0x621100, 0x204014, 0x202017, 0x204017, 0x208013};
+static const u32 knownJEDECS[] = {0x204012, 0x621600, 0x204013, 0x621100, 0x204014, 0x202017, 0x204017, 0x208013};
 
 u8* fill_buf = NULL;
 
@@ -84,18 +85,32 @@ Result SPIEnableWriting(CardType type)
 {
     u8 cmd = SPI_CMD_WREN, statusReg = 0;
     Result res = SPIWriteRead(type, &cmd, 1, NULL, 0, 0, 0);
+    int panic  = 0;
 
     if (res || type == EEPROM_512B)
         return res; // Weird, but works (otherwise we're getting an infinite loop for that chip type).
     cmd = SPI_CMD_RDSR;
 
+    // Bail out after a bounded number of polls instead of spinning forever.
+    // The actual precondition for a write is that the write-enable latch (WEL) is set. The 8MB
+    // cart legitimately leaves block-protect/SRWD bits set in the status register even when armed for
+    // writing (sr stays 0x86, and those bits cannot be cleared via WRSR — SRWD + WP# hardware-lock
+    // them), so for it we only require WEL. Every other chip clears to a bare 0x02 after WREN, so the
+    // stricter "nothing but WEL set" check is kept for them to preserve existing behaviour.
     do {
         res = SPIWriteRead(type, &cmd, 1, &statusReg, 1, 0, 0);
         if (res)
             return res;
-    } while (statusReg & ~SPI_FLG_WEL);
+        if (type == FLASH_8MB) {
+            if (statusReg & SPI_FLG_WEL)
+                break;
+        }
+        else if (!(statusReg & ~SPI_FLG_WEL)) {
+            break;
+        }
+    } while (++panic < 1000);
 
-    return 0;
+    return panic >= 1000 ? 1 : 0;
 }
 
 Result SPIReadJEDECIDAndStatusReg(CardType type, u32* id, u8* statusReg)
@@ -200,7 +215,20 @@ Result SPIWriteSaveData(CardType type, u32 offset, void* data, u32 size)
                 cmd[3]  = (u8)pos;
                 break;
             case FLASH_8MB:
-                return 0xC8E13404; // writing is unsupported (so is reading? need to test)
+                // 8MB flash chips do not
+                // support the auto-erasing page-write command. They must be erased one sector at a time
+                // and then written with the plain page-program command. The restore loop writes the save
+                // sequentially from offset 0, so each 64KB sector gets erased the first time it is reached.
+                if ((pos % 0x10000) == 0) {
+                    if ((res = SPIEraseSector(type, pos)))
+                        return res;
+                }
+                cmdSize = 4;
+                cmd[0]  = SPI_CMD_PP;
+                cmd[1]  = (u8)(pos >> 16);
+                cmd[2]  = (u8)(pos >> 8);
+                cmd[3]  = (u8)pos;
+                break;
             default:
                 return 0; // never happens
         }
@@ -311,7 +339,7 @@ Result SPIReadSaveData(CardType type, u32 offset, void* data, u32 size)
 Result SPIEraseSector(CardType type, u32 offset)
 {
     u8 cmd[4] = {SPI_FLASH_CMD_SE, (u8)(offset >> 16), (u8)(offset >> 8), (u8)offset};
-    if (type == NO_CHIP || type == FLASH_8MB)
+    if (type == NO_CHIP)
         return 0xC8E13404;
 
     if (type < FLASH_256KB_1 && fill_buf == NULL) {
@@ -335,6 +363,63 @@ Result SPIEraseSector(CardType type, u32 offset)
         res    = SPIWriteSaveData(type, 0, fill_buf, (sz < 0x10000) ? sz : 0x10000);
         return res;
     }
+    return 0;
+}
+
+// Send a single raw SPI command frame at 512KHz (one chip-select assertion).
+static Result SPISendCommand8MB(const u8* cmd, u32 cmdSize)
+{
+    u8 transferOp = pxiDevMakeTransferOption(BAUDRATE_512KHZ, BUSMODE_1BIT);
+    u64 waitOp    = pxiDevMakeWaitOperation(WAIT_NONE, DEASSERT_NONE, 0LL);
+    u64 dummy     = 0;
+
+    PXIDEV_SPIBuffer headerBuffer = {&dummy, 0U, transferOp, waitOp};
+    PXIDEV_SPIBuffer cmdBuffer    = {(void*)cmd, cmdSize, transferOp, waitOp};
+    PXIDEV_SPIBuffer nullBuffer   = {NULL, 0U, transferOp, waitOp};
+    PXIDEV_SPIBuffer footerBuffer = {&dummy, 0U, transferOp, waitOp};
+
+    return PXIDEV_SPIMultiWriteRead(&headerBuffer, &cmdBuffer, &nullBuffer, &nullBuffer, &nullBuffer, &footerBuffer);
+}
+
+// The 8MB flash cart ships write-protected: its status register has block-protect
+// and SRWD bits set (observed sr = 0x84, then 0x86 once the write-enable latch is armed). READS work
+// regardless — the data area returns real bytes — so backup needs no unlock. Only WRITES/erases are
+// gated. The vendor "big protection" frames below (from ndsi-savedumper's auxspi_disable_big_protection)
+// free the array for writing; the leftover block-protect bit in the status register is cosmetic on this
+// chip (verified on hardware: writes/erases land while sr stays 0x86), and SPIEnableWriting is relaxed
+// for FLASH_8MB to only require the write-enable latch rather than a fully-clear register. Attempting to
+// clear those bits with WREN + WRSR(0x00) was verified to be a no-op (SRWD + the cart's WP# pin
+// hardware-lock the register), so it is intentionally omitted.
+Result SPIUnlock(CardType type)
+{
+    if (type != FLASH_8MB)
+        return 0;
+
+    // Each sequence below is one chip-select transaction. In the DS reference these frames are
+    // built with auxspi_open()/auxspi_close[_lite](). auxspi_close() (used after the 0xfa, 0xf8 and
+    // 0x0e commands) clocks one extra 0x00 byte while CS is still asserted, then deasserts it;
+    // auxspi_close_lite() (used after 0xf1, WREN and 0x14) deasserts without that extra byte. The
+    // trailing byte is part of the command frame on the wire, so it must be replicated here.
+    static const u8 seq0[] = {0xf1};                   // close_lite: no trailing byte
+    static const u8 seq1[] = {SPI_CMD_WREN};           // close_lite
+    static const u8 seq2[] = {0xfa, 0x01, 0x31, 0x00}; // close: trailing 0x00
+    static const u8 seq3[] = {0x14};                   // close_lite
+    static const u8 seq4[] = {SPI_CMD_WREN};           // close_lite
+    static const u8 seq5[] = {0xf8, 0x01, 0x00, 0x00}; // close: trailing 0x00
+    static const u8 seq6[] = {0x0e, 0x00};             // close: trailing 0x00
+
+    const u8* seqs[]  = {seq0, seq1, seq2, seq3, seq4, seq5, seq6};
+    const u32 sizes[] = {sizeof(seq0), sizeof(seq1), sizeof(seq2), sizeof(seq3), sizeof(seq4), sizeof(seq5), sizeof(seq6)};
+
+    for (u32 i = 0; i < sizeof(seqs) / sizeof(seqs[0]); ++i) {
+        Result res = SPISendCommand8MB(seqs[i], sizes[i]);
+        if (res) {
+            Logging::warning("8MB flash unlock step {} failed with result 0x{:016X}.", i, res);
+            return res;
+        }
+    }
+
+    Logging::info("8MB flash protection unlocked.");
     return 0;
 }
 
@@ -407,21 +492,33 @@ Result SPIGetCardType(CardType* type, int infrared)
     while (tries < maxTries) {
         res = SPIReadJEDECIDAndStatusReg(t, &jedec, &sr); // dummy
         if (R_SUCCEEDED(res)) {
-            Logger::getInstance().log(Logger::INFO, "Found JEDEC: 0x%016lX", jedec);
-            Logger::getInstance().log(Logger::INFO, "CardType (While inside maxTries loop): %016lX", t);
-            if (std::find(knownJEDECs.begin(), knownJEDECs.end(), jedec) != knownJEDECs.end()) {
-                Logger::getInstance().log(Logger::INFO, "Found a jedec equal to one in the ordered list. Type: %016lX", *type);
+            Logging::info("Found JEDEC: 0x{:016X} (status register 0x{:02X})", jedec, sr);
+            Logging::info("CardType (While inside maxTries loop): {}", (int)t);
+            if (std::find(std::begin(knownJEDECS), std::end(knownJEDECS), jedec) != std::end(knownJEDECS)) {
+                Logging::info("Found a jedec equal to one in the ordered list. Type: {}", (int)*type);
             }
             else {
-                Logger::getInstance().log(Logger::INFO, "JEDEC ID not documented yet!");
+                Logging::info("JEDEC ID not documented yet!");
             }
         }
         else {
-            Logger::getInstance().log(Logger::WARN, "Unable to retrieve JEDEC id with result 0x%08lX.", res);
+            Logging::warning("Unable to retrieve JEDEC id with result 0x{:016X}.", res);
         }
 
         if (res)
             return res;
+
+        // 8MB flash cart: identify it purely by JEDEC id here, BEFORE the
+        // status-register disambiguation below. Its data area ships write-protected, so RDSR
+        // returns a nonzero value (e.g. 0x84 = SRWD | block-protect) instead of 0x00. That makes the
+        // `(sr & 0xfd) == 0x00` break checks all fail, so `t` falls through to FLASH_INFRARED_DUMMY
+        // and — because FLASH_INFRARED_DUMMY and FLASH_8MB are BOTH 9 in the CardType enum — the
+        // post-loop chain misroutes the cart into the infrared branch and reports it as a 512KB save.
+        if (jedec == 0x204017 || jedec == 0x202017) {
+            *type = FLASH_8MB;
+            Logging::info("Detected 8MB flash cart (BBDX) by JEDEC 0x{:06X}; unlocking write protection.", jedec);
+            return SPIUnlock(FLASH_8MB);
+        }
 
         if ((sr & 0xfd) == 0x00 && (jedec != 0x00ffffff)) {
             break;
@@ -439,10 +536,10 @@ Result SPIGetCardType(CardType* type, int infrared)
         t = FLASH_INFRARED_DUMMY;
     }
 
-    Logger::getInstance().log(Logger::INFO, "CardType (after the maxTries loop): %016lX", t);
+    Logging::info("CardType (after the maxTries loop): {}", (int)t);
 
     if (t == EEPROM_512B) {
-        Logger::getInstance().log(Logger::INFO, "Type is EEPROM_512B: %d", t);
+        Logging::info("Type is EEPROM_512B: {}", (int)t);
         *type = t;
         return 0;
     }
@@ -464,7 +561,7 @@ Result SPIGetCardType(CardType* type, int infrared)
         }
 
         *type = t;
-        Logger::getInstance().log(Logger::INFO, "Type: %d", t);
+        Logging::info("Type: {}", (int)t);
         return 0;
     }
     else if (t == FLASH_INFRARED_DUMMY) {
@@ -479,12 +576,10 @@ Result SPIGetCardType(CardType* type, int infrared)
     else {
         if (infrared == 1) {
             *type = NO_CHIP; // did anything go wrong?
-            Logger::getInstance().log(Logger::INFO, "infrared is 1, *type = NO_CHIP");
+            Logging::info("infrared is 1, *type = NO_CHIP");
         }
-        if (jedec == 0x204017) {
-            *type = FLASH_8MB;
-            return 0;
-        } // 8MB. savegame-manager: which one? (more work is required to unlock this save chip!)
+        // Note: the 8MB flash cart (JEDEC 0x204017 / 0x202017) is handled by the early short-circuit
+        // inside the detection loop above, before the status-register disambiguation can misroute it.
         if (jedec == 0x208013) {
             *type = FLASH_512KB_1;
             return 0;
@@ -497,7 +592,7 @@ Result SPIGetCardType(CardType* type, int infrared)
             }
         }
 
-        Logger::getInstance().log(Logger::INFO, "*type = NO_CHIP");
+        Logging::info("*type = NO_CHIP");
         *type = NO_CHIP;
         return 0;
     }

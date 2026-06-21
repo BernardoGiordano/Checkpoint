@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ public:
         : IClickable(x, y, w, h, colorBg, colorText, message, centered)
     {
     }
-    virtual ~Clickable(void){};
+    virtual ~Clickable() = default;
 
     void draw(float font, SDL_Color overlay) override;
     bool held(void) override;

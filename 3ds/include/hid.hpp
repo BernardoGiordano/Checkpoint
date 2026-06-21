@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -33,8 +33,7 @@
 #define DELAY_TICKS 50000000
 
 template <HidDirection ListDirection, HidDirection PageDirection>
-class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS>
-{
+class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS> {
 public:
     Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns) {}
 

@@ -1,6 +1,6 @@
 /*
- *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   This file is part of PKSM
+ *   Copyright (C) 2016-2025 Bernardo Giordano
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,30 +24,28 @@
  *         reasonable ways as different from the original version.
  */
 
-#include "colors.hpp"
+#ifndef SERVER_HPP
+#define SERVER_HPP
 
-static const struct Theme defaultTheme = {
-    COLOR_BLACK,       // c0
-    COLOR_GREY_BG,     // c1
-    COLOR_GREY_DARKER, // c2
-    COLOR_GREY_DARK,   // c3
-    COLOR_GREY_MEDIUM, // c4
-    COLOR_GREY_LIGHT,  // c5
-    COLOR_WHITE        // c6
-};
+#include <functional>
+#include <string>
 
-static struct Theme currentTheme = defaultTheme;
+namespace Server {
+    struct HttpResponse {
+        int statusCode;
+        std::string contentType;
+        std::string body;
+    };
 
-void theme(int t)
-{
-    switch (t) {
-        default:
-            currentTheme = defaultTheme;
-            break;
-    }
+    using HttpHandler = std::function<HttpResponse(const std::string& path, const std::string& requestData)>;
+
+    void init(void);
+    void exit(void);
+    bool isRunning(void);
+    std::string getAddress(void);
+
+    void registerHandler(const std::string& path, HttpHandler handler);
+    void unregisterHandler(const std::string& path);
 }
 
-struct Theme theme(void)
-{
-    return currentTheme;
-}
+#endif

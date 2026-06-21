@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -50,13 +50,13 @@ public:
     bool areCheatsAvailable(const std::string& key);
     void save(const std::string& key, const std::vector<std::string>& s);
 
-    std::shared_ptr<nlohmann::json> cheats(void) { return mCheats; }
+    std::shared_ptr<nlohmann::json> cheats() { return mCheats; }
 
 private:
-    CheatManager(void);
-    ~CheatManager(void){};
+    CheatManager();
+    ~CheatManager() = default;
 
-    CheatManager(CheatManager const&) = delete;
+    CheatManager(CheatManager const&)   = delete;
     void operator=(CheatManager const&) = delete;
 
     std::shared_ptr<nlohmann::json> mCheats;

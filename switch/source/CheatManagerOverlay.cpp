@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -63,7 +63,7 @@ CheatManagerOverlay::CheatManagerOverlay(Screen& screen, const std::string& mkey
             if (existingCheat.find(value) != std::string::npos) {
                 value = SELECTED_MAGIC + value;
             }
-            scrollable->push_back(COLOR_GREY_DARKER, COLOR_WHITE, value, i == 0);
+            scrollable->push_back(COLOR_BLACK_DARKER, COLOR_WHITE, value, i == 0);
             i++;
         }
     }
@@ -76,16 +76,17 @@ void CheatManagerOverlay::draw(void) const
     u32 width, height;
     SDLH_GetTextDimensions(20, page.c_str(), &width, &height);
 
-    SDLH_DrawRect(86, 16, 1108, 680, COLOR_GREY_DARK);
+    SDLH_DrawRect(86, 16, 1108, 680, COLOR_BLACK_DARK);
     scrollable->draw(true);
     SDLH_DrawText(20, ceilf(1190 - width), ceilf(664 + (32 - height) / 2), COLOR_WHITE, page.c_str());
     SDLH_DrawText(
         20, 94, ceilf(664 + (32 - height) / 2), COLOR_WHITE, multiSelected ? "\ue003 to deselect all cheats" : "\ue003 to select all cheats");
 }
 
-void CheatManagerOverlay::update(touchPosition* touch)
+void CheatManagerOverlay::update(const InputState& input)
 {
-    if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_A) {
+    u64 kDown = input.kDown;
+    if (kDown & HidNpadButton_A) {
         std::string cellName = scrollable->cellName(scrollable->index());
         if (cellName.compare(0, MAGIC_LEN, SELECTED_MAGIC) == 0) {
             // cheat was already selected
@@ -97,7 +98,7 @@ void CheatManagerOverlay::update(touchPosition* touch)
         scrollable->text(scrollable->index(), cellName);
     }
 
-    if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_Y) {
+    if (kDown & HidNpadButton_Y) {
         if (multiSelected) {
             for (size_t j = 0; j < scrollable->size(); j++) {
                 std::string cellName = scrollable->cellName(j);
@@ -125,7 +126,7 @@ void CheatManagerOverlay::update(touchPosition* touch)
     scrollable->selectRow(scrollable->index(), true);
     currentIndex = scrollable->index();
 
-    if (hidKeysDown(CONTROLLER_P1_AUTO) & KEY_B) {
+    if (kDown & HidNpadButton_B) {
         g_selectedCheatKey = key;
         g_selectedCheatCodes.clear();
         for (size_t i = 0; i < scrollable->size(); i++) {

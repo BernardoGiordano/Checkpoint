@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -39,9 +39,9 @@ class Clickable;
 class InfoOverlay : public Overlay {
 public:
     InfoOverlay(Screen& screen, const std::string& mtext);
-    ~InfoOverlay(void) {}
+    ~InfoOverlay() = default;
     void draw(void) const override;
-    void update(touchPosition* touch) override;
+    void update(const InputState&) override;
 
 private:
     u32 textw, texth;

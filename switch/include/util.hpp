@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -50,6 +50,7 @@ namespace StringUtils {
     std::string removeAccents(std::string str);
     std::string removeNotAscii(std::string str);
     std::u16string UTF8toUTF16(const char* src);
+    std::string UTF16toUTF8(const std::u16string& src);
 }
 
 #endif

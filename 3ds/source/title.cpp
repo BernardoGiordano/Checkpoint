@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,18 +25,35 @@
  */
 
 #include "title.hpp"
-
-static bool validId(u64 id);
-static C2D_Image loadTextureIcon(smdh_s* smdh);
-
-static std::vector<Title> titleSaves;
-static std::vector<Title> titleExtdatas;
-
-static void exportTitleListCache(std::vector<Title>& list, const std::u16string& path);
-static void importTitleListCache(void);
+#include "loader.hpp"
+#include "main.hpp"
+#include <chrono>
 
 static constexpr Tex3DS_SubTexture dsIconSubt3x = {32, 32, 0.0f, 1.0f, 1.0f, 0.0f};
 static C2D_Image dsIcon                         = {nullptr, &dsIconSubt3x};
+
+C2D_Image loadTextureFromBytes(u16* bigIconData)
+{
+    C3D_Tex* tex                          = (C3D_Tex*)malloc(sizeof(C3D_Tex));
+    static const Tex3DS_SubTexture subt3x = {48, 48, 0.0f, 48 / 64.0f, 48 / 64.0f, 0.0f};
+    C2D_Image image                       = (C2D_Image){tex, &subt3x};
+    C3D_TexInit(image.tex, 64, 64, GPU_RGB565);
+
+    u16* dest = (u16*)image.tex->data + (64 - 48) * 64;
+    u16* src  = bigIconData;
+    for (int j = 0; j < 48; j += 8) {
+        memcpy(dest, src, 48 * 8 * sizeof(u16));
+        src += 48 * 8;
+        dest += 64 * 8;
+    }
+
+    return image;
+}
+
+static C2D_Image loadTextureIcon(smdh_s* smdh)
+{
+    return loadTextureFromBytes(smdh->bigIconData);
+}
 
 static void loadDSIcon(u8* banner)
 {
@@ -129,7 +146,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
             smdh = loadSMDH(lowId(), highId(), mMedia);
         }
         if (smdh == NULL) {
-            Logger::getInstance().log(Logger::ERROR, "Failed to load title 0x%lX due to smdh == NULL", mId);
+            Logging::error("Failed to load title {:X} due to smdh == NULL", mId);
             return false;
         }
 
@@ -144,7 +161,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 
         mAccessibleSave    = Archive::accessible(mediaType(), lowId(), highId());
         mGBA               = (!mAccessibleSave) && Archive::accessibleRaw(mediaType(), lowId(), highId());
-        mAccessibleExtdata = mMedia == MEDIATYPE_NAND ? false : Archive::accessible(extdataId());
+        mAccessibleExtdata = Archive::accessible(extdataId());
 
         if (mAccessibleSave || mGBA) {
             loadTitle = true;
@@ -152,7 +169,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
                 Result res = io::createDirectory(Archive::sdmc(), mSavePath);
                 if (R_FAILED(res)) {
                     loadTitle = false;
-                    Logger::getInstance().log(Logger::ERROR, "Failed to create backup directory with result 0x%08lX.", res);
+                    Logging::error("Failed to create backup directory with result 0x{:08X}.", res);
                 }
             }
         }
@@ -163,7 +180,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
                 Result res = io::createDirectory(Archive::sdmc(), mExtdataPath);
                 if (R_FAILED(res)) {
                     loadTitle = false;
-                    Logger::getInstance().log(Logger::ERROR, "Failed to create backup directory with result 0x%08lX.", res);
+                    Logging::error("Failed to create backup directory with result 0x{:08X}.", res);
                 }
             }
         }
@@ -179,7 +196,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         Result res     = FSUSER_GetLegacyRomHeader(mMedia, 0LL, headerData);
         if (R_FAILED(res)) {
             delete[] headerData;
-            Logger::getInstance().log(Logger::ERROR, "Failed get legacy rom header with result 0x%08lX.", res);
+            Logging::error("Failed get legacy rom header with result 0x{:08X}.", res);
             return false;
         }
 
@@ -200,7 +217,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 
         res = SPIGetCardType(&mCardType, (_gameCode[0] == 'I') ? 1 : 0);
         if (R_FAILED(res)) {
-            Logger::getInstance().log(Logger::ERROR, "Failed get SPI Card Type with result 0x%08lX.", res);
+            Logging::error("Failed get SPI Card Type with result 0x{:08X}.", res);
             return false;
         }
 
@@ -220,7 +237,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
             res = io::createDirectory(Archive::sdmc(), mSavePath);
             if (R_FAILED(res)) {
                 loadTitle = false;
-                Logger::getInstance().log(Logger::ERROR, "Failed to create backup directory with result 0x%08lX.", res);
+                Logging::error("Failed to create backup directory with result 0x{:08X}.", res);
             }
         }
     }
@@ -236,14 +253,14 @@ bool Title::accessibleSave(void)
     return mAccessibleSave;
 }
 
-bool Title::isGBAVC(void)
-{
-    return mGBA;
-}
-
 bool Title::accessibleExtdata(void)
 {
     return mAccessibleExtdata;
+}
+
+bool Title::isGBAVC(void)
+{
+    return mGBA;
 }
 
 std::string Title::mediaTypeString(void)
@@ -262,7 +279,7 @@ std::string Title::mediaTypeString(void)
     return " ";
 }
 
-std::string Title::shortDescription(void)
+std::string Title::shortDescription(void) const
 {
     return StringUtils::UTF16toUTF8(mShortDescription);
 }
@@ -336,22 +353,46 @@ void Title::refreshDirectories(void)
             mFullSavePaths.insert(mFullSavePaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
         else {
-            Logger::getInstance().log(Logger::ERROR, "Couldn't retrieve the save directory list for the title " + shortDescription());
+            Logging::error("Couldn't retrieve the save directory list for the title {}", shortDescription());
         }
 
         // save backups from configuration
-        std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
-        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-            // we have other folders to parse
-            Directory list(Archive::sdmc(), *it);
-            if (list.good()) {
-                for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                    if (list.folder(i)) {
-                        mSaves.push_back(list.entry(i));
-                        mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+        try {
+            std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
+            if (!additionalFolders.empty()) {
+                Logging::debug("Found {} additional save folders for title {:X}", additionalFolders.size(), mId);
+                for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
+                    Logging::debug("Processing additional save folder: {}", StringUtils::UTF16toUTF8(*it));
+                    if (io::directoryExists(Archive::sdmc(), *it)) {
+                        Logging::debug("Additional save folder exists: {}", StringUtils::UTF16toUTF8(*it));
+                        // we have other folders to parse
+                        Directory list(Archive::sdmc(), *it);
+                        if (list.good()) {
+                            Logging::debug("Additional save folder is good: {}", StringUtils::UTF16toUTF8(*it));
+                            for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                                if (list.folder(i)) {
+                                    Logging::debug("Found save folder: {}", StringUtils::UTF16toUTF8(list.entry(i)));
+                                    mSaves.push_back(list.entry(i));
+                                    mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                                }
+                            }
+                        }
+                        else {
+                            Logging::error("Additional save folder is not good: {}", StringUtils::UTF16toUTF8(*it));
+                        }
+                    }
+                    else {
+                        Logging::error("Additional save folder does not exist: {}", StringUtils::UTF16toUTF8(*it));
                     }
                 }
+                Logging::debug("Finished processing additional save folders for title {:X}", mId);
             }
+        }
+        catch (const std::exception& e) {
+            Logging::error("Exception when processing additional save folders: {}", e.what());
+        }
+        catch (...) {
+            Logging::error("Unknown exception when processing additional save folders for title {:X}", mId);
         }
     }
 
@@ -372,22 +413,46 @@ void Title::refreshDirectories(void)
             mFullExtdataPaths.insert(mFullExtdataPaths.begin(), StringUtils::UTF8toUTF16("New..."));
         }
         else {
-            Logger::getInstance().log(Logger::ERROR, "Couldn't retrieve the extdata directory list for the title " + shortDescription());
+            Logging::error("Couldn't retrieve the extdata directory list for the title {}", shortDescription());
         }
 
         // extdata backups from configuration
-        std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
-        for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-            // we have other folders to parse
-            Directory list(Archive::sdmc(), *it);
-            if (list.good()) {
-                for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                    if (list.folder(i)) {
-                        mExtdata.push_back(list.entry(i));
-                        mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+        try {
+            std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
+            if (!additionalFolders.empty()) {
+                Logging::debug("Found {} additional extdata folders for title {:X}", additionalFolders.size(), mId);
+                for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
+                    Logging::debug("Processing additional extdata folder: {}", StringUtils::UTF16toUTF8(*it));
+                    if (io::directoryExists(Archive::sdmc(), *it)) {
+                        Logging::debug("Additional extdata folder exists: {}", StringUtils::UTF16toUTF8(*it));
+                        // we have other folders to parse
+                        Directory list(Archive::sdmc(), *it);
+                        if (list.good()) {
+                            Logging::debug("Additional extdata folder is good: {}", StringUtils::UTF16toUTF8(*it));
+                            for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                                if (list.folder(i)) {
+                                    Logging::debug("Found extdata folder: {}", StringUtils::UTF16toUTF8(list.entry(i)));
+                                    mExtdata.push_back(list.entry(i));
+                                    mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                                }
+                            }
+                        }
+                        else {
+                            Logging::error("Additional extdata folder is not good: {}", StringUtils::UTF16toUTF8(*it));
+                        }
+                    }
+                    else {
+                        Logging::error("Additional extdata folder does not exist: {}", StringUtils::UTF16toUTF8(*it));
                     }
                 }
+                Logging::debug("Finished processing additional extdata folders for title {:X}", mId);
             }
+        }
+        catch (const std::exception& e) {
+            Logging::error("Exception when processing additional extdata folders: {}", e.what());
+        }
+        catch (...) {
+            Logging::error("Unknown exception when processing additional extdata folders for title {:X}", mId);
         }
     }
 }
@@ -407,7 +472,7 @@ u32 Title::uniqueId(void)
     return (lowId() >> 8);
 }
 
-u64 Title::id(void)
+u64 Title::id(void) const
 {
     return mId;
 }
@@ -462,581 +527,9 @@ C2D_Image Title::icon(void)
     return mIcon;
 }
 
-static bool validId(u64 id)
-{
-    // check for invalid titles
-    switch ((u32)id) {
-        // Instruction Manual
-        case 0x00008602:
-        case 0x00009202:
-        case 0x00009B02:
-        case 0x0000A402:
-        case 0x0000AC02:
-        case 0x0000B402:
-        // Internet Browser
-        case 0x00008802:
-        case 0x00009402:
-        case 0x00009D02:
-        case 0x0000A602:
-        case 0x0000AE02:
-        case 0x0000B602:
-        case 0x20008802:
-        case 0x20009402:
-        case 0x20009D02:
-        case 0x2000AE02:
-        // Garbage
-        case 0x00021A00:
-            return false;
-    }
-
-    // check for updates
-    u32 high = id >> 32;
-    if (high == 0x0004000E) {
-        return false;
-    }
-
-    return !Configuration::getInstance().filter(id);
-}
-
-void loadTitles(bool forceRefresh)
-{
-    static const std::u16string savecachePath    = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache");
-    static const std::u16string extdatacachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache");
-
-    // on refreshing
-    titleSaves.clear();
-    titleExtdatas.clear();
-
-    bool optimizedLoad = false;
-
-    u8 hash[SHA256_BLOCK_SIZE];
-    calculateTitleDBHash(hash);
-
-    std::u16string titlesHashPath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/titles.sha");
-    if (!io::fileExists(Archive::sdmc(), titlesHashPath) || !io::fileExists(Archive::sdmc(), savecachePath) ||
-        !io::fileExists(Archive::sdmc(), extdatacachePath)) {
-        // create title list sha256 hash file if it doesn't exist in the working directory
-        FSStream output(Archive::sdmc(), titlesHashPath, FS_OPEN_WRITE, SHA256_BLOCK_SIZE);
-        output.write(hash, SHA256_BLOCK_SIZE);
-        output.close();
-    }
-    else {
-        // compare current hash with the previous hash
-        FSStream input(Archive::sdmc(), titlesHashPath, FS_OPEN_READ);
-        if (input.good() && input.size() == SHA256_BLOCK_SIZE) {
-            u8* buf = new u8[input.size()];
-            input.read(buf, input.size());
-            input.close();
-
-            if (memcmp(hash, buf, SHA256_BLOCK_SIZE) == 0) {
-                // hash matches
-                optimizedLoad = true;
-            }
-            else {
-                FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, titlesHashPath.data()));
-                FSStream output(Archive::sdmc(), titlesHashPath, FS_OPEN_WRITE, SHA256_BLOCK_SIZE);
-                output.write(hash, SHA256_BLOCK_SIZE);
-                output.close();
-            }
-
-            delete[] buf;
-        }
-    }
-
-    if (optimizedLoad && !forceRefresh) {
-        // deserialize data
-        importTitleListCache();
-        for (auto& title : titleSaves) {
-            title.refreshDirectories();
-        }
-        for (auto& title : titleExtdatas) {
-            title.refreshDirectories();
-        }
-    }
-    else {
-        u32 count = 0;
-
-        if (Configuration::getInstance().nandSaves()) {
-            AM_GetTitleCount(MEDIATYPE_NAND, &count);
-            auto ids_nand = std::make_unique<u64[]>(count);
-            AM_GetTitleList(NULL, MEDIATYPE_NAND, count, ids_nand.get());
-
-            for (u32 i = 0; i < count; i++) {
-                if (validId(ids_nand[i])) {
-                    Title title;
-                    if (title.load(ids_nand[i], MEDIATYPE_NAND, CARD_CTR)) {
-                        if (title.accessibleSave()) {
-                            titleSaves.push_back(title);
-                        }
-                        // TODO: extdata?
-                    }
-                }
-            }
-        }
-
-        count = 0;
-        AM_GetTitleCount(MEDIATYPE_SD, &count);
-        auto ids = std::make_unique<u64[]>(count);
-        AM_GetTitleList(NULL, MEDIATYPE_SD, count, ids.get());
-
-        for (u32 i = 0; i < count; i++) {
-            if (validId(ids[i])) {
-                Title title;
-                if (title.load(ids[i], MEDIATYPE_SD, CARD_CTR)) {
-                    if (title.accessibleSave()) {
-                        titleSaves.push_back(title);
-                    }
-                    else if(title.isGBAVC()) {
-                        titleSaves.push_back(title);
-                    }
-
-                    if (title.accessibleExtdata()) {
-                        titleExtdatas.push_back(title);
-                    }
-                }
-            }
-        }
-
-        // always check for PKSM's extdata archive
-        bool isPKSMIdAlreadyHere = false;
-        for (u32 i = 0; i < count; i++) {
-            if (ids[i] == TID_PKSM) {
-                isPKSMIdAlreadyHere = true;
-                break;
-            }
-        }
-        if (!isPKSMIdAlreadyHere) {
-            Title title;
-            if (title.load(TID_PKSM, MEDIATYPE_SD, CARD_CTR)) {
-                if (title.accessibleExtdata()) {
-                    titleExtdatas.push_back(title);
-                }
-            }
-        }
-    }
-
-    std::sort(titleSaves.begin(), titleSaves.end(), [](Title& l, Title& r) {
-        if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
-            return Configuration::getInstance().favorite(l.id());
-        }
-        else {
-            return l.shortDescription() < r.shortDescription();
-        }
-    });
-
-    std::sort(titleExtdatas.begin(), titleExtdatas.end(), [](Title& l, Title& r) {
-        if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
-            return Configuration::getInstance().favorite(l.id());
-        }
-        else {
-            return l.shortDescription() < r.shortDescription();
-        }
-    });
-
-    // serialize data
-    exportTitleListCache(titleSaves, savecachePath);
-    exportTitleListCache(titleExtdatas, extdatacachePath);
-
-    FS_CardType cardType;
-    Result res = FSUSER_GetCardType(&cardType);
-    if (R_SUCCEEDED(res)) {
-        if (cardType == CARD_CTR) {
-            u32 count = 0;
-            AM_GetTitleCount(MEDIATYPE_GAME_CARD, &count);
-            if (count > 0) {
-                u64 ids[count];
-                AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, ids);
-                if (validId(ids[0])) {
-                    Title title;
-                    if (title.load(ids[0], MEDIATYPE_GAME_CARD, cardType)) {
-                        if (title.accessibleSave()) {
-                            titleSaves.insert(titleSaves.begin(), title);
-                        }
-
-                        if (title.accessibleExtdata()) {
-                            titleExtdatas.insert(titleExtdatas.begin(), title);
-                        }
-                    }
-                }
-            }
-        }
-        else {
-            Title title;
-            if (title.load(0, MEDIATYPE_GAME_CARD, cardType)) {
-                titleSaves.insert(titleSaves.begin(), title);
-            }
-        }
-    }
-}
-
-void getTitle(Title& dst, int i)
-{
-    const Mode_t mode = Archive::mode();
-    if (i < getTitleCount()) {
-        dst = mode == MODE_SAVE ? titleSaves.at(i) : titleExtdatas.at(i);
-    }
-}
-
-int getTitleCount(void)
-{
-    const Mode_t mode = Archive::mode();
-    return mode == MODE_SAVE ? titleSaves.size() : titleExtdatas.size();
-}
-
 void Title::setIcon(C2D_Image icon)
 {
     mIcon = icon;
-}
-
-C2D_Image icon(int i)
-{
-    const Mode_t mode = Archive::mode();
-    return mode == MODE_SAVE ? titleSaves.at(i).icon() : titleExtdatas.at(i).icon();
-}
-
-bool favorite(int i)
-{
-    const Mode_t mode = Archive::mode();
-    u64 id            = mode == MODE_SAVE ? titleSaves.at(i).id() : titleExtdatas.at(i).id();
-    return Configuration::getInstance().favorite(id);
-}
-
-static C2D_Image loadTextureFromBytes(u16* bigIconData)
-{
-    C3D_Tex* tex                          = (C3D_Tex*)malloc(sizeof(C3D_Tex));
-    static const Tex3DS_SubTexture subt3x = {48, 48, 0.0f, 48 / 64.0f, 48 / 64.0f, 0.0f};
-    C2D_Image image                       = (C2D_Image){tex, &subt3x};
-    C3D_TexInit(image.tex, 64, 64, GPU_RGB565);
-
-    u16* dest = (u16*)image.tex->data + (64 - 48) * 64;
-    u16* src  = bigIconData;
-    for (int j = 0; j < 48; j += 8) {
-        memcpy(dest, src, 48 * 8 * sizeof(u16));
-        src += 48 * 8;
-        dest += 64 * 8;
-    }
-
-    return image;
-}
-
-static C2D_Image loadTextureIcon(smdh_s* smdh)
-{
-    return loadTextureFromBytes(smdh->bigIconData);
-}
-
-void refreshDirectories(u64 id)
-{
-    const Mode_t mode = Archive::mode();
-    if (mode == MODE_SAVE) {
-        for (size_t i = 0; i < titleSaves.size(); i++) {
-            if (titleSaves.at(i).id() == id) {
-                titleSaves.at(i).refreshDirectories();
-            }
-        }
-    }
-    else {
-        for (size_t i = 0; i < titleExtdatas.size(); i++) {
-            if (titleExtdatas.at(i).id() == id) {
-                titleExtdatas.at(i).refreshDirectories();
-            }
-        }
-    }
-}
-
-static const size_t ENTRYSIZE = 5341;
-
-/**
- * CACHE STRUCTURE
- * start, len
- * id (0, 8)
- * productCode (8, 16)
- * accessibleSave (24, 1)
- * accessibleExtdata (25, 1)
- * shortDescription (26, 64)
- * longDescription (90, 128)
- * savePath (218, 256)
- * extdataPath (474, 256)
- * mediaType (730, 1)
- * fs cardtype (731, 1)
- * cardtype (732, 1)
- * bigIconData (733, 4608)
- */
-
-static void exportTitleListCache(std::vector<Title>& list, const std::u16string& path)
-{
-    u8* cache = new u8[list.size() * ENTRYSIZE]();
-    for (size_t i = 0; i < list.size(); i++) {
-        u64 id                       = list.at(i).id();
-        u8 accessibleSaveRaw         = list.at(i).accessibleSave() ? 1 : (list.at(i).isGBAVC() ? 2 : 0);
-        bool accessibleExtdata       = list.at(i).accessibleExtdata();
-        std::string shortDescription = StringUtils::UTF16toUTF8(list.at(i).getShortDescription());
-        std::string longDescription  = StringUtils::UTF16toUTF8(list.at(i).getLongDescription());
-        std::string savePath         = StringUtils::UTF16toUTF8(list.at(i).savePath());
-        std::string extdataPath      = StringUtils::UTF16toUTF8(list.at(i).extdataPath());
-        FS_MediaType media           = list.at(i).mediaType();
-        FS_CardType cardType         = list.at(i).cardType();
-        CardType card                = list.at(i).SPICardType();
-
-        if (cardType == CARD_CTR) {
-            smdh_s* smdh = loadSMDH(list.at(i).lowId(), list.at(i).highId(), media);
-            if (smdh != NULL) {
-                memcpy(cache + i * ENTRYSIZE + 733, smdh->bigIconData, 0x900 * 2);
-            }
-            delete smdh;
-        }
-
-        memcpy(cache + i * ENTRYSIZE + 0, &id, sizeof(u64));
-        memcpy(cache + i * ENTRYSIZE + 8, list.at(i).productCode, 16);
-        memcpy(cache + i * ENTRYSIZE + 24, &accessibleSaveRaw, sizeof(u8));
-        memcpy(cache + i * ENTRYSIZE + 25, &accessibleExtdata, sizeof(u8));
-        memcpy(cache + i * ENTRYSIZE + 26, shortDescription.c_str(), shortDescription.length());
-        memcpy(cache + i * ENTRYSIZE + 90, longDescription.c_str(), longDescription.length());
-        memcpy(cache + i * ENTRYSIZE + 218, savePath.c_str(), savePath.length());
-        memcpy(cache + i * ENTRYSIZE + 474, extdataPath.c_str(), extdataPath.length());
-        memcpy(cache + i * ENTRYSIZE + 730, &media, sizeof(u8));
-        memcpy(cache + i * ENTRYSIZE + 731, &cardType, sizeof(u8));
-        memcpy(cache + i * ENTRYSIZE + 732, &card, sizeof(u8));
-    }
-
-    FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, path.data()));
-    FSStream output(Archive::sdmc(), path, FS_OPEN_WRITE, list.size() * ENTRYSIZE);
-    output.write(cache, list.size() * ENTRYSIZE);
-    output.close();
-    delete[] cache;
-}
-
-static void importTitleListCache(void)
-{
-    FSStream inputsaves(Archive::sdmc(), StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache"), FS_OPEN_READ);
-    u32 sizesaves  = inputsaves.size() / ENTRYSIZE;
-    u8* cachesaves = new u8[inputsaves.size()];
-    inputsaves.read(cachesaves, inputsaves.size());
-    inputsaves.close();
-
-    FSStream inputextdatas(Archive::sdmc(), StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache"), FS_OPEN_READ);
-    u32 sizeextdatas  = inputextdatas.size() / ENTRYSIZE;
-    u8* cacheextdatas = new u8[inputextdatas.size()];
-    inputextdatas.read(cacheextdatas, inputextdatas.size());
-    inputextdatas.close();
-
-    // fill the lists with blank titles firsts
-    for (size_t i = 0, sz = std::max(sizesaves, sizeextdatas); i < sz; i++) {
-        Title title;
-        title.load();
-        if (i < sizesaves) {
-            titleSaves.push_back(title);
-        }
-        if (i < sizeextdatas) {
-            titleExtdatas.push_back(title);
-        }
-    }
-
-    // store already loaded ids
-    std::vector<u64> alreadystored;
-
-    for (size_t i = 0; i < sizesaves; i++) {
-        u64 id;
-        u8 productCode[16];
-        u8 accessibleSaveRaw;
-        bool accessibleSave;
-        bool saveIsGBA;
-        bool accessibleExtdata;
-        char shortDescription[0x40];
-        char longDescription[0x80];
-        char savePath[256];
-        char extdataPath[256];
-        FS_MediaType media;
-        FS_CardType cardType;
-        CardType card;
-
-        memcpy(&id, cachesaves + i * ENTRYSIZE, sizeof(u64));
-        memcpy(productCode, cachesaves + i * ENTRYSIZE + 8, 16);
-        memcpy(&accessibleSaveRaw, cachesaves + i * ENTRYSIZE + 24, sizeof(u8));
-        memcpy(&accessibleExtdata, cachesaves + i * ENTRYSIZE + 25, sizeof(u8));
-        memcpy(shortDescription, cachesaves + i * ENTRYSIZE + 26, 0x40);
-        memcpy(longDescription, cachesaves + i * ENTRYSIZE + 90, 0x80);
-        memcpy(savePath, cachesaves + i * ENTRYSIZE + 218, 256);
-        memcpy(extdataPath, cachesaves + i * ENTRYSIZE + 474, 256);
-        memcpy(&media, cachesaves + i * ENTRYSIZE + 730, sizeof(u8));
-        memcpy(&cardType, cachesaves + i * ENTRYSIZE + 731, sizeof(u8));
-        memcpy(&card, cachesaves + i * ENTRYSIZE + 732, sizeof(u8));
-
-        accessibleSave = accessibleSaveRaw & 1;
-        saveIsGBA = accessibleSaveRaw & 2;
-
-        Title title;
-        title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
-            StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType,
-            card);
-
-        if (cardType == CARD_CTR) {
-            u16 bigIconData[0x900];
-            memcpy(bigIconData, cachesaves + i * ENTRYSIZE + 733, 0x900 * 2);
-            C2D_Image smallIcon = loadTextureFromBytes(bigIconData);
-            title.setIcon(smallIcon);
-        }
-        else {
-            // this cannot happen
-            title.setIcon(Gui::noIcon());
-        }
-
-        titleSaves.at(i) = title;
-        alreadystored.push_back(id);
-    }
-
-    for (size_t i = 0; i < sizeextdatas; i++) {
-        u64 id;
-        memcpy(&id, cacheextdatas + i * ENTRYSIZE, sizeof(u64));
-        std::vector<u64>::iterator it = find(alreadystored.begin(), alreadystored.end(), id);
-        if (it == alreadystored.end()) {
-            u8 productCode[16];
-            u8 accessibleSaveRaw;
-            bool accessibleSave;
-            bool saveIsGBA;
-            bool accessibleExtdata;
-            char shortDescription[0x40];
-            char longDescription[0x80];
-            char savePath[256];
-            char extdataPath[256];
-            FS_MediaType media;
-            FS_CardType cardType;
-            CardType card;
-
-            memcpy(productCode, cacheextdatas + i * ENTRYSIZE + 8, 16);
-            memcpy(&accessibleSaveRaw, cacheextdatas + i * ENTRYSIZE + 24, sizeof(u8));
-            memcpy(&accessibleExtdata, cacheextdatas + i * ENTRYSIZE + 25, sizeof(u8));
-            memcpy(shortDescription, cacheextdatas + i * ENTRYSIZE + 26, 0x40);
-            memcpy(longDescription, cacheextdatas + i * ENTRYSIZE + 90, 0x80);
-            memcpy(savePath, cacheextdatas + i * ENTRYSIZE + 218, 256);
-            memcpy(extdataPath, cacheextdatas + i * ENTRYSIZE + 474, 256);
-            memcpy(&media, cacheextdatas + i * ENTRYSIZE + 730, sizeof(u8));
-            memcpy(&cardType, cacheextdatas + i * ENTRYSIZE + 731, sizeof(u8));
-            memcpy(&card, cacheextdatas + i * ENTRYSIZE + 732, sizeof(u8));
-
-
-            accessibleSave = accessibleSaveRaw & 1;
-            saveIsGBA = accessibleSaveRaw & 2;
-
-            Title title;
-            title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
-                StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType,
-                card);
-
-            if (cardType == CARD_CTR) {
-                u16 bigIconData[0x900];
-                memcpy(bigIconData, cacheextdatas + i * ENTRYSIZE + 733, 0x900 * 2);
-                C2D_Image smallIcon = loadTextureFromBytes(bigIconData);
-                title.setIcon(smallIcon);
-            }
-            else {
-                // this cannot happen
-                title.setIcon(Gui::noIcon());
-            }
-
-            titleExtdatas.at(i) = title;
-        }
-        else {
-            auto pos = it - alreadystored.begin();
-
-            // avoid to copy a cartridge title into the extdata list twice
-            if (i != 0 && pos == 0) {
-                auto newpos         = find(alreadystored.rbegin(), alreadystored.rend(), id);
-                titleExtdatas.at(i) = titleSaves.at(alreadystored.rend() - newpos - 1);
-            }
-            else {
-                titleExtdatas.at(i) = titleSaves.at(pos);
-            }
-        }
-    }
-
-    delete[] cachesaves;
-    delete[] cacheextdatas;
-}
-
-static bool scanCard(void)
-{
-    static bool isScanning = false;
-    if (isScanning) {
-        return false;
-    }
-    else {
-        isScanning = true;
-    }
-
-    bool ret   = false;
-    Result res = 0;
-    u32 count  = 0;
-    FS_CardType cardType;
-    res = FSUSER_GetCardType(&cardType);
-    if (R_SUCCEEDED(res)) {
-        if (cardType == CARD_CTR) {
-            res = AM_GetTitleCount(MEDIATYPE_GAME_CARD, &count);
-            if (R_SUCCEEDED(res) && count > 0) {
-                u64 id;
-                res = AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, &id);
-                if (validId(id)) {
-                    Title title;
-                    if (title.load(id, MEDIATYPE_GAME_CARD, cardType)) {
-                        ret = true;
-                        if (title.accessibleSave()) {
-                            if (titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
-                                titleSaves.insert(titleSaves.begin(), title);
-                            }
-                        }
-                        if (title.accessibleExtdata()) {
-                            if (titleExtdatas.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
-                                titleExtdatas.insert(titleExtdatas.begin(), title);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        else {
-            Title title;
-            if (title.load(0, MEDIATYPE_GAME_CARD, cardType)) {
-                ret = true;
-                if (titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
-                    titleSaves.insert(titleSaves.begin(), title);
-                }
-            }
-        }
-    }
-    isScanning = false;
-    return ret;
-}
-
-void updateCard(void)
-{
-    static bool first     = true;
-    static bool oldCardIn = false;
-    if (first) {
-        FSUSER_CardSlotIsInserted(&oldCardIn);
-        first = false;
-        return;
-    }
-    bool cardIn = false;
-
-    FSUSER_CardSlotIsInserted(&cardIn);
-    if (cardIn != oldCardIn) {
-        if (cardIn) {
-            bool power;
-            FSUSER_CardSlotPowerOn(&power);
-            while (!power) {
-                FSUSER_CardSlotGetCardIFPowerStatus(&power);
-            }
-            oldCardIn = scanCard();
-        }
-        else {
-            if (titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
-                titleSaves.erase(titleSaves.begin());
-            }
-            if (titleExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
-                titleExtdatas.erase(titleExtdatas.begin());
-            }
-            oldCardIn = false;
-        }
-    }
 }
 
 bool Title::isActivityLog(void)

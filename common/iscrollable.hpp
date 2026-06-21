@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #ifndef ISCROLLABLE_HPP
 #define ISCROLLABLE_HPP
 
+#include "InputState.hpp"
 #include "iclickable.hpp"
 #include <vector>
 
@@ -39,7 +40,7 @@ public:
         mPage  = 0;
     }
 
-    virtual ~IScrollable(void) { flush(); }
+    virtual ~IScrollable() { flush(); }
 
     virtual void draw(bool condition = false)                                                  = 0;
     virtual void push_back(T color, T colorMessage, const std::string& message, bool selected) = 0;

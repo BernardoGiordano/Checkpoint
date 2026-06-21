@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ static const char* s_http_port = "8000";
 
 static void handle_populate(struct mg_connection* nc, struct http_message* hm)
 {
+    (void)hm;
     // populate gets called at startup, assume a new connection has been started
     blinkLed(2);
 
@@ -41,7 +42,7 @@ static void handle_populate(struct mg_connection* nc, struct http_message* hm)
     json["title_list"] = map;
     std::string body   = json.dump();
     mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%.*s", (unsigned long)body.length(), (int)body.length(), body.c_str());
-    Logger::getInstance().log(Logger::INFO, "A new Configuration connection has been handled.");
+    Logging::info("A new Configuration connection has been handled.");
 }
 
 static void handle_save(struct mg_connection* nc, struct http_message* hm)
@@ -50,10 +51,10 @@ static void handle_save(struct mg_connection* nc, struct http_message* hm)
     if (f != NULL) {
         fwrite(hm->body.p, 1, hm->body.len, f);
         fclose(f);
-        Logger::getInstance().log(Logger::INFO, "Configurations have been updated.");
+        Logging::info("Configurations have been updated.");
     }
     else {
-        Logger::getInstance().log(Logger::ERROR, "Failed to write to configuration file with errno %d.", errno);
+        Logging::error("Failed to write to configuration file with errno {}.", errno);
     }
     Configuration::getInstance().load();
     Configuration::getInstance().parse();
@@ -165,9 +166,17 @@ Configuration::Configuration(void)
     s_http_server_opts.auth_domain   = "flagbrew.org";
 }
 
+void Configuration::cleanup(void)
+{
+    if (!mCleanedUp) {
+        mCleanedUp = true;
+        mg_mgr_free(&mgr);
+    }
+}
+
 Configuration::~Configuration(void)
 {
-    mg_mgr_free(&mgr);
+    cleanup();
 }
 
 void Configuration::store(void)

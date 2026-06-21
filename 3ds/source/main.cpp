@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,43 +28,60 @@
 #include "MainScreen.hpp"
 #include "thread.hpp"
 #include "util.hpp"
+#include <chrono>
 
 int main()
 {
-    if (R_FAILED(servicesInit())) {
-        Logger::getInstance().flush();
-        exit(-1);
+    auto start = std::chrono::high_resolution_clock::now();
+
+    Result res;
+    try {
+        res = servicesInit();
+    }
+    catch (const std::exception& e) {
+        res = consoleDisplayError(std::string("Error during services init. ") + e.what(), -1);
+        exit(res);
+    }
+    catch (...) {
+        res = consoleDisplayError("Unknown error during startup", -2);
+        exit(res);
     }
 
-    g_screen = std::make_unique<MainScreen>();
+    if (R_FAILED(res)) {
+        // at this point we already had an error message displayed
+        exit(res);
+    }
 
-    Threads::create((ThreadFunc)Threads::titles);
-    ATEXIT(Threads::destroy);
+    try {
+        g_screen       = std::make_unique<MainScreen>();
+        auto uiIsReady = std::chrono::high_resolution_clock::now();
+        Logging::info("Loading took {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(uiIsReady - start).count());
 
-    while (aptMainLoop()) {
-        touchPosition touch;
-        hidScanInput();
-        hidTouchRead(&touch);
+        while (aptMainLoop()) {
+            touchPosition touch;
+            hidScanInput();
+            hidTouchRead(&touch);
 
-        if (hidKeysDown() & KEY_START) {
-            if (!g_isLoadingTitles) {
-                break;
+            if (hidKeysDown() & KEY_START) {
+                if (!g_isLoadingTitles) {
+                    break;
+                }
             }
+
+            C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+            g_screen->doDrawTop();
+            C2D_SceneBegin(g_bottom);
+            g_screen->doDrawBottom();
+            Gui::frameEnd();
+            g_screen->doUpdate(InputState{touch});
         }
-
-        // if (Configuration::getInstance().shouldScanCard()) {
-        //     updateCard();
-        // }
-
-        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        g_screen->doDrawTop();
-        C2D_SceneBegin(g_bottom);
-        g_screen->doDrawBottom();
-        Gui::frameEnd();
-        g_screen->doUpdate(&touch);
     }
-
-    Logger::getInstance().flush();
+    catch (const std::exception& e) {
+        consoleDisplayError(std::string("Error during main. ") + e.what(), -5);
+    }
+    catch (...) {
+        res = consoleDisplayError("Unknown error during main", -6);
+    }
 
     exit(0);
 }

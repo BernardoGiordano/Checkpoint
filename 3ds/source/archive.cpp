@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,8 +25,8 @@
  */
 
 #include "archive.hpp"
-#include "fsstream.hpp"
 #include "csvc.hpp"
+#include "fsstream.hpp"
 
 static FS_Archive mSdmc;
 static Mode_t mMode = MODE_SAVE;
@@ -44,7 +44,11 @@ void Archive::mode(Mode_t v)
 Result Archive::init(void)
 {
     Result res = FSUSER_OpenArchive(&mSdmc, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
-    if(R_FAILED(res)) return res;
+    if (R_FAILED(res)) {
+        return res;
+    }
+    // Steal a session to the PxiFS0 service so we can talk to FSPXI directly,
+    // which lets us read/write the decrypted raw GBA VC save files.
     return svcControlService(SERVICEOP_STEAL_CLIENT_SESSION, &FsPxiHandle, "PxiFS0");
 }
 
@@ -100,12 +104,10 @@ bool Archive::accessibleRaw(FS_MediaType mediatype, u32 lowid, u32 highid)
     Result res = rawSave(&archive, mediatype, lowid, highid);
     if (R_SUCCEEDED(res)) {
         FSStream file(archive, FS_OPEN_READ);
-        if(file.good())
-        {
-            file.close();
-            FSPXI_CloseArchive(FsPxiHandle, archive);
-            return true;
-        }
+        bool good = file.good();
+        file.close();
+        FSPXI_CloseArchive(FsPxiHandle, archive);
+        return good;
     }
     return false;
 }

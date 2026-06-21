@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #ifndef MAIN_HPP
 #define MAIN_HPP
 
+#include "InputState.hpp"
 #include "Screen.hpp"
 #include "account.hpp"
 #include "title.hpp"
@@ -46,9 +47,17 @@ inline bool g_shouldExitNetworkLoop     = false;
 inline std::string g_selectedCheatKey;
 inline std::vector<std::string> g_selectedCheatCodes;
 inline u32 g_username_dotsize;
-inline sort_t g_sortMode = SORT_ALPHA;
-
+inline sort_t g_sortMode         = SORT_ALPHA;
+inline const InputState* g_input = nullptr;
 inline std::string g_currentFile = "";
 inline bool g_isTransferringFile = false;
+inline size_t g_copyCount        = 0;
+inline size_t g_copyTotal        = 0;
+inline std::string g_transferMode;
+inline u64 g_currentFileOffset = 0;
+inline u64 g_currentFileSize   = 0;
+
+inline size_t g_multiSelectCount = 0;
+inline size_t g_multiSelectTotal = 0;
 
 #endif

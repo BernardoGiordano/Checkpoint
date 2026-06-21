@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,30 +27,36 @@
 #ifndef HID_HPP
 #define HID_HPP
 
+#include "InputState.hpp"
 #include "ihid.hpp"
 #include <switch.h>
 
-#define DELAY_TICKS 2500000
+#define DELAY_TICKS 3000000
 
 template <HidDirection ListDirection, HidDirection PageDirection>
-class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS>
-{
+class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS> {
 public:
-    Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns) {}
+    Hid(size_t entries, size_t columns) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns), input(g_input) {}
+    Hid(size_t entries, size_t columns, const InputState& _input) : IHid<ListDirection, PageDirection, DELAY_TICKS>(entries, columns), input(&_input)
+    {
+    }
 
 private:
-    bool downDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_DOWN; }
-    bool upDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_UP; }
-    bool leftDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_LEFT; }
-    bool rightDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_RIGHT; }
-    bool leftTriggerDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_L; }
-    bool rightTriggerDown() const override { return hidKeysDown(CONTROLLER_P1_AUTO) & KEY_R; }
-    bool downHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_DOWN; }
-    bool upHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_UP; }
-    bool leftHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_LEFT; }
-    bool rightHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_RIGHT; }
-    bool leftTriggerHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_L; }
-    bool rightTriggerHeld() const override { return hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_R; }
+    const InputState* input;
+
+    bool downDown() const override { return input && input->kDown & HidNpadButton_AnyDown; }
+    bool upDown() const override { return input && input->kDown & HidNpadButton_AnyUp; }
+    bool leftDown() const override { return input && input->kDown & HidNpadButton_AnyLeft; }
+    bool rightDown() const override { return input && input->kDown & HidNpadButton_AnyRight; }
+    bool leftTriggerDown() const override { return input && input->kDown & HidNpadButton_L; }
+    bool rightTriggerDown() const override { return input && input->kDown & HidNpadButton_R; }
+
+    bool downHeld() const override { return input && input->kHeld & HidNpadButton_AnyDown; }
+    bool upHeld() const override { return input && input->kHeld & HidNpadButton_AnyUp; }
+    bool leftHeld() const override { return input && input->kHeld & HidNpadButton_AnyLeft; }
+    bool rightHeld() const override { return input && input->kHeld & HidNpadButton_AnyRight; }
+    bool leftTriggerHeld() const override { return input && input->kHeld & HidNpadButton_L; }
+    bool rightTriggerHeld() const override { return input && input->kHeld & HidNpadButton_R; }
     u64 tick() const override { return armGetSystemTick(); }
 };
 

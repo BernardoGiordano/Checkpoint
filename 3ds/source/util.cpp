@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,12 +25,17 @@
  */
 
 #include "util.hpp"
+#include "loader.hpp"
+#include "server.hpp"
+#include "thread.hpp"
+#include "title.hpp"
+#include <malloc.h>
 
-static Result consoleDisplayError(const std::string& message, Result res)
+#define SOC_ALIGN 0x1000
+#define SOC_BUFFERSIZE 0x100000
+
+Result consoleDisplayError(const std::string& message, Result res)
 {
-    gfxInitDefault();
-    ATEXIT(gfxExit);
-
     consoleInit(GFX_TOP, nullptr);
     printf("\x1b[2;13HCheckpoint v%d.%d.%d-%s", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO, GIT_REV);
     printf("\x1b[5;1HError during startup: \x1b[31m0x%08lX\x1b[0m", res);
@@ -48,6 +53,25 @@ static Result consoleDisplayError(const std::string& message, Result res)
 Result servicesInit(void)
 {
     Result res = 0;
+    hidInit();
+    ATEXIT(hidExit);
+
+    Threads::init(0, 2);
+    ATEXIT(Threads::exit);
+
+    gfxInitDefault();
+    ATEXIT(gfxExit);
+
+    Logging::init();
+    ATEXIT(Logging::exit);
+
+    Logging::info("Checkpoint loading started...");
+
+    Handle hbldrHandle;
+    if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
+        return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
+    }
+    svcCloseHandle(hbldrHandle);
 
     if (R_FAILED(res = Archive::init())) {
         return consoleDisplayError("Archive::init failed.", res);
@@ -58,15 +82,10 @@ Result servicesInit(void)
     mkdir("sdmc:/3ds/Checkpoint", 777);
     mkdir("sdmc:/3ds/Checkpoint/saves", 777);
     mkdir("sdmc:/3ds/Checkpoint/extdata", 777);
+    mkdir("sdmc:/3ds/Checkpoint/logs", 777);
     mkdir("sdmc:/cheats", 777);
 
-    Logger::getInstance().log(Logger::INFO, "Checkpoint loading started...");
-
-    Handle hbldrHandle;
-    if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
-        Logger::getInstance().log(Logger::ERROR, "Error during startup with result 0x%08lX. Rosalina not found on this system.", res);
-        return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
-    }
+    Logging::initFileLogging();
 
     romfsInit();
     ATEXIT(romfsExit);
@@ -83,10 +102,33 @@ Result servicesInit(void)
     Gui::init();
     ATEXIT(Gui::exit);
 
+    u32* socketBuffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
+    if (socketBuffer != NULL) {
+        if (!socInit(socketBuffer, SOC_BUFFERSIZE)) {
+            ATEXIT(socExit);
+            Server::init();
+            ATEXIT(Server::exit);
+        }
+        else {
+            Logging::warning("socInit failed");
+        }
+    }
+    else {
+        Logging::warning("Failed to create socket buffer.");
+    }
+
+    Threads::executeTask(TitleLoader::loadTitlesThread);
+
+    if (Configuration::getInstance().shouldScanCard()) {
+        TitleLoader::cartScanFlagTestAndSet();
+        Threads::create(TitleLoader::cartScan);
+        ATEXIT(TitleLoader::clearCartScanFlag);
+    }
+
     // consoleDebugInit(debugDevice_SVC);
     // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }
 
-    Logger::getInstance().log(Logger::INFO, "Checkpoint loading finished!");
+    Logging::info("Checkpoint loading finished!");
 
     return 0;
 }
@@ -97,16 +139,14 @@ void calculateTitleDBHash(u8* hash)
     AM_GetTitleCount(MEDIATYPE_SD, &titleCount);
     if (Configuration::getInstance().nandSaves()) {
         AM_GetTitleCount(MEDIATYPE_NAND, &nandCount);
-        std::vector<u64> ordered;
-        ordered.reserve(titleCount + nandCount);
+        std::vector<u64> ordered(titleCount + nandCount);
         AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
-        AM_GetTitleList(&nandTitlesRead, MEDIATYPE_NAND, nandCount, ordered.data() + titlesRead * sizeof(u64));
+        AM_GetTitleList(&nandTitlesRead, MEDIATYPE_NAND, nandCount, ordered.data() + titlesRead);
         sort(ordered.begin(), ordered.end());
         sha256(hash, (u8*)ordered.data(), (titleCount + nandCount) * sizeof(u64));
     }
     else {
-        std::vector<u64> ordered;
-        ordered.reserve(titleCount);
+        std::vector<u64> ordered(titleCount);
         AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
         sort(ordered.begin(), ordered.end());
         sha256(hash, (u8*)ordered.data(), titleCount * sizeof(u64));
@@ -115,9 +155,26 @@ void calculateTitleDBHash(u8* hash)
 
 std::u16string StringUtils::UTF8toUTF16(const char* src)
 {
-    char16_t tmp[256] = {0};
-    utf8_to_utf16((uint16_t*)tmp, (uint8_t*)src, 256);
-    return std::u16string(tmp);
+    const uint8_t* in = (const uint8_t*)src;
+    ssize_t units     = utf8_to_utf16(nullptr, in, 0);
+    if (units < 0) {
+        return u"";
+    }
+    std::u16string dst(units, u'\0');
+    utf8_to_utf16((uint16_t*)dst.data(), in, units + 1);
+    return dst;
+}
+
+std::string StringUtils::UTF16toUTF8(const std::u16string& src)
+{
+    const uint16_t* in = (const uint16_t*)src.c_str();
+    ssize_t units      = utf16_to_utf8(nullptr, in, 0);
+    if (units < 0) {
+        return "";
+    }
+    std::string dst(units, '\0');
+    utf16_to_utf8((uint8_t*)dst.data(), in, units + 1);
+    return dst;
 }
 
 std::u16string StringUtils::removeForbiddenCharacters(std::u16string src)

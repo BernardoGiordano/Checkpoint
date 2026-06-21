@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
  */
 
 #include "scrollable.hpp"
+#include "main.hpp"
 
 void Scrollable::c2dText(size_t i, const std::string& v)
 {
@@ -69,20 +70,23 @@ void Scrollable::updateSelection(void)
 
 void Scrollable::draw(bool condition)
 {
-    const size_t baseIndex = mVisibleEntries * mPage;
+    if (size() == 0 || mVisibleEntries * (size_t)mPage >= size()) {
+        setIndex(0);
+    }
+    const size_t baseIndex = mVisibleEntries * (size_t)mPage;
     const size_t sz        = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
-        mCells.at(i)->draw(0.5f, 0);
+        mCells.at(i)->draw(0.5f, g_bottomScrollEnabled && mCells.at(i)->selected() ? COLOR_PURPLE_LIGHT : 0);
     }
 
     size_t blankRows = mVisibleEntries - sz;
     size_t rowHeight = mh / mVisibleEntries;
-    C2D_DrawRectSolid(mx, my + sz * rowHeight, 0.5f, mw, rowHeight * blankRows, COLOR_GREY_DARKER);
+    C2D_DrawRectSolid(mx, my + sz * rowHeight, 0.5f, mw, rowHeight * blankRows, COLOR_BLACK_DARKERR);
 
     // draw selector
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
         if (mCells.at(i)->selected()) {
-            mCells.at(i)->drawOutline(condition ? COLOR_BLUE : COLOR_GREY_LIGHT);
+            mCells.at(i)->drawOutline(condition ? COLOR_PURPLE_DARK : COLOR_BLACK_MEDIUM);
             break;
         }
     }

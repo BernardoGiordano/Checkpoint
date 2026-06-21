@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ class Scrollable : public IScrollable<u32> {
 public:
     Scrollable(int x, int y, u32 w, u32 h, size_t visibleEntries) : IScrollable(x, y, w, h, visibleEntries), mHid(visibleEntries, 1) {}
 
-    virtual ~Scrollable(void) {}
+    virtual ~Scrollable() = default;
 
     void c2dText(size_t i, const std::string& v);
     void draw(bool condition = false) override;

@@ -52,22 +52,24 @@ CHEATS			:=	cheats
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
-CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections -flto \
+CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections \
 			-Wno-write-strings -Wno-unused-value -fomit-frame-pointer \
+			-Wno-unused-parameter \
 			$(ARCH) $(DEFINES) \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
 			-DVERSION_MINOR=${VERSION_MINOR} \
 			-DVERSION_MICRO=${VERSION_MICRO} \
 			-DGIT_REV=\"${GIT_REV}\" \
 			-DCS_PLATFORM=CS_P_CUSTOM \
-			`freetype-config --cflags` \
 			`sdl2-config --cflags` \
 			-DMG_ENABLE_FILESYSTEM \
+			-DJSON_HAS_FILESYSTEM=0 \
+			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
 			-DCHEAT_SIZE_DECOMPRESSED=${CHEAT_SIZE_DECOMPRESSED}
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D_GNU_SOURCE=1
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++23
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-no-as-needed,-Map,$(notdir $*.map)
@@ -190,7 +192,7 @@ endif
 	@cd $(SHARKIVE)/$(BUILD) && mv switch.json.bz2 ../../switch/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
 #---------------------------------------------------------------------------------
 format:
-	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))
+	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp) $(wildcard $(dir)/*.tcc)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))
 #---------------------------------------------------------------------------------
 else
 

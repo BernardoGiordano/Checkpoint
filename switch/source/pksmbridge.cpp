@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -134,7 +134,7 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUi
     int fd;
     struct sockaddr_in servaddr;
     if ((fd = socket(AF_INET, SOCK_STREAM, IPPROTO_IP)) < 0) {
-        Logger::getInstance().log(Logger::ERROR, "Socket creation failed: %d.", fd);
+        Logging::error("Socket creation failed: {}.", fd);
         return std::make_tuple(false, errno, "Socket creation failed.");
     }
 
@@ -145,12 +145,12 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUi
 
     if (bind(fd, (struct sockaddr*)&servaddr, sizeof(servaddr)) < 0) {
         close(fd);
-        Logger::getInstance().log(Logger::ERROR, "Socket bind failed with errno %d.", errno);
+        Logging::error("Socket bind failed with errno {}.", errno);
         return std::make_tuple(false, errno, "Socket bind failed.");
     }
     if (listen(fd, 5) < 0) {
         close(fd);
-        Logger::getInstance().log(Logger::ERROR, "Socket listen failed with errno %d.", errno);
+        Logging::error("Socket listen failed with errno {}.", errno);
         return std::make_tuple(false, errno, "Socket listen failed.");
     }
 
@@ -158,29 +158,34 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUi
     int addrlen = sizeof(servaddr);
     if ((fdconn = accept(fd, (struct sockaddr*)&servaddr, (socklen_t*)&addrlen)) < 0) {
         close(fd);
-        Logger::getInstance().log(Logger::ERROR, "Socket accept failed: %d.", fdconn);
+        Logging::error("Socket accept failed: {}.", fdconn);
         return std::make_tuple(false, errno, "Socket accept failed.");
     }
 
-    size_t size = 0x100000;
+    size_t size = 0;
     Title title;
     getTitle(title, uid, index);
     std::string filename;
     if (isLGPE(title.id())) {
         filename = "/savedata.bin";
+        size     = 0x100000;
     }
     else if (isSWSH(title.id())) {
         filename = "/backup";
+        size     = 0x180B19;
     }
     else {
-        filename = "DEFAULT";
+        close(fd);
+        close(fdconn);
+        Logging::error("Unsupported title for pksmbridge: {:016X}.", title.id());
+        return std::make_tuple(false, errno, "Unsupported title for pksmbridge.");
     }
     std::string srcPath = title.fullPath(cellIndex) + filename;
     FILE* save          = fopen(srcPath.c_str(), "wb");
     if (save == NULL) {
         close(fd);
         close(fdconn);
-        Logger::getInstance().log(Logger::ERROR, "Failed to open destination file with errno %d.", errno);
+        Logging::error("Failed to open destination file with errno {}.", errno);
         return std::make_tuple(false, errno, "Failed to open destination file.");
     }
 
@@ -205,13 +210,13 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUi
         fwrite(data, 1, size, save);
         fclose(save);
         delete[] data;
-        Logger::getInstance().log(Logger::INFO, "pksmbridge data received correctly.");
+        Logging::info("pksmbridge data received correctly.");
         return std::make_tuple(true, 0, "Data received correctly.");
     }
     else {
         fclose(save);
         delete[] data;
-        Logger::getInstance().log(Logger::ERROR, "Failed to receive pksmbridge data.");
+        Logging::error("Failed to receive pksmbridge data.");
         return std::make_tuple(false, errno, "Failed to receive data.");
     }
 }

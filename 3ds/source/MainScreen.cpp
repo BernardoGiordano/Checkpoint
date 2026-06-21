@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,26 +25,56 @@
  */
 
 #include "MainScreen.hpp"
+#include "configuration.hpp"
+#include "loader.hpp"
+#include "server.hpp"
+#include "transfer.hpp"
+#include <3ds.h>
+#include <cctype>
 
 static constexpr size_t rowlen = 4, collen = 8;
+
+namespace {
+    std::string rawKeyboard(const std::string& suggestion, const std::string& hint, size_t maxLen)
+    {
+        SwkbdState swkbd;
+        const size_t kBufSize = 64;
+        size_t limit          = std::min(maxLen, kBufSize);
+        if (limit < 2) {
+            limit = 2;
+        }
+        swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, limit - 1);
+        swkbdSetValidation(&swkbd, SWKBD_NOTBLANK_NOTEMPTY, 0, 0);
+        swkbdSetInitialText(&swkbd, suggestion.c_str());
+        swkbdSetHintText(&swkbd, hint.c_str());
+        char buf[kBufSize]   = {0};
+        SwkbdButton button   = swkbdInputText(&swkbd, buf, sizeof(buf));
+        buf[sizeof(buf) - 1] = '\0';
+        return button == SWKBD_BUTTON_CONFIRM ? std::string(buf) : std::string();
+    }
+}
 
 MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
 {
     selectionTimer = 0;
     refreshTimer   = 0;
+    // Wi-Fi backup transfer is gated behind a config flag, disabled by default.
+    transferEnabled = Configuration::getInstance().transferEnabled();
 
-    staticBuf  = C2D_TextBufNew(256);
-    dynamicBuf = C2D_TextBufNew(256);
+    staticBuf  = C2D_TextBufNew(280);
+    dynamicBuf = C2D_TextBufNew(512);
 
-    buttonBackup    = std::make_unique<Clickable>(204, 102, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Backup \uE004", true);
-    buttonRestore   = std::make_unique<Clickable>(204, 139, 110, 35, COLOR_GREY_DARKER, COLOR_WHITE, "Restore \uE005", true);
-    buttonCheats    = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "Cheats", true);
-    buttonPlayCoins = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_GREY_DARKER, COLOR_WHITE, "\uE075 Coins", true);
+    buttonBackup    = std::make_unique<Clickable>(204, 102, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Backup \uE004", true);
+    buttonRestore   = std::make_unique<Clickable>(204, 139, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Restore \uE005", true);
+    buttonCheats    = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Cheats", true);
+    buttonPlayCoins = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "\uE075 Coins", true);
+    buttonTransfer  = std::make_unique<Clickable>(4, 223, 110, 16, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Transfer", true);
     directoryList   = std::make_unique<Scrollable>(6, 102, 196, 110, 5);
     buttonBackup->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
     buttonCheats->canChangeColorWhenSelected(true);
     buttonPlayCoins->canChangeColorWhenSelected(true);
+    buttonTransfer->canChangeColorWhenSelected(true);
 
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 
@@ -59,10 +89,11 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
 
     C2D_TextParse(&top_move, staticBuf, "\uE006 to move between titles");
     C2D_TextParse(&top_a, staticBuf, "\uE000 to enter target");
-    C2D_TextParse(&top_y, staticBuf, "\uE003 to multiselect a title");
-    C2D_TextParse(&top_my, staticBuf, "\uE003 hold to multiselect all titles");
+    C2D_TextParse(&top_y, staticBuf, "\uE003 to select multiple titles");
+    C2D_TextParse(&top_my, staticBuf, "\uE003 hold to select all titles");
     C2D_TextParse(&top_b, staticBuf, "\uE001 to exit target or deselect all titles");
-    C2D_TextParse(&bot_ts, staticBuf, "\uE01D \uE006 to move\nbetween backups");
+    C2D_TextParse(&top_hb, staticBuf, "\uE001 hold to refresh titles");
+    C2D_TextParse(&bot_ts, staticBuf, "\uE01D \uE006 to move between backups");
     C2D_TextParse(&bot_x, staticBuf, "\uE002 to delete backups");
     C2D_TextParse(&coins, staticBuf, "\uE075");
 
@@ -80,11 +111,13 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     C2D_TextOptimize(&top_y);
     C2D_TextOptimize(&top_my);
     C2D_TextOptimize(&top_b);
+    C2D_TextOptimize(&top_hb);
     C2D_TextOptimize(&bot_ts);
     C2D_TextOptimize(&bot_x);
     C2D_TextOptimize(&coins);
 
-    C2D_PlainImageTint(&checkboxTint, COLOR_GREY_DARKER, 1.0f);
+    C2D_PlainImageTint(&checkboxTint, COLOR_BLACK_DARKERR, 1.0f);
+    C2D_PlainImageTint(&flagTint, COLOR_PURPLE_LIGHT, 1.0f);
 }
 
 MainScreen::~MainScreen(void)
@@ -97,83 +130,142 @@ void MainScreen::drawTop(void) const
 {
     auto selEnt          = MS::selectedEntries();
     const size_t entries = hid.maxVisibleEntries();
-    const size_t max     = hid.maxEntries(getTitleCount()) + 1;
+    const size_t max     = hid.maxEntries(TitleLoader::getTitleCount()) + 1;
 
-    C2D_TargetClear(g_top, COLOR_BG);
-    C2D_TargetClear(g_bottom, COLOR_BG);
+    C2D_TargetClear(g_top, COLOR_BLACK_DARKERR);
+    C2D_TargetClear(g_bottom, COLOR_BLACK_DARKERR);
 
     C2D_SceneBegin(g_top);
-    C2D_DrawRectSolid(0, 0, 0.5f, 400, 19, COLOR_GREY_DARK);
-    C2D_DrawRectSolid(0, 221, 0.5f, 400, 19, COLOR_GREY_DARK);
+    C2D_DrawRectSolid(0, 0, 0.5f, 400, 19, COLOR_BLACK_DARKER);
+    C2D_DrawRectSolid(0, 221, 0.5f, 400, 19, COLOR_BLACK_DARKER);
 
     C2D_Text timeText;
     C2D_TextParse(&timeText, dynamicBuf, DateTime::timeStr().c_str());
     C2D_TextOptimize(&timeText);
     C2D_DrawText(&timeText, C2D_WithColor, 4.0f, 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
 
-    for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-        C2D_Image titleIcon = icon(k);
-        if (titleIcon.subtex->width == 48) {
-            C2D_DrawImageAt(titleIcon, selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
-        }
-        else {
-            C2D_DrawImageAt(titleIcon, selectorX(k) + 9, selectorY(k) + 9, 0.5f, NULL, 1.0f, 1.0f);
-        }
-    }
-
-    if (getTitleCount() > 0) {
-        drawSelector();
-    }
-
-    for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-        if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end()) {
-            C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 31, 0.5f, 16, 16, COLOR_WHITE);
-            C2D_SpriteSetPos(&checkbox, selectorX(k) + 27, selectorY(k) + 27);
-            C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
-        }
-
-        if (favorite(k)) {
-            C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 3, 0.5f, 16, 16, COLOR_GOLD);
-            C2D_SpriteSetPos(&star, selectorX(k) + 27, selectorY(k) - 1);
-            C2D_DrawSpriteTinted(&star, &checkboxTint);
-        }
-    }
-
-    static const float border = ceilf((400 - (ins1.width + ins2.width + ins3.width) * 0.47f) / 2);
-    C2D_DrawText(&ins1, C2D_WithColor, border, 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
-    C2D_DrawText(
-        &ins2, C2D_WithColor, border + ceilf(ins1.width * 0.47f), 223, 0.5f, 0.47f, 0.47f, Archive::mode() == MODE_SAVE ? COLOR_WHITE : COLOR_RED);
-    C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
-
-    if (hidKeysHeld() & KEY_SELECT) {
-        const u32 inst_lh = scaleInst * fontGetInfo(NULL)->lineFeed;
-        const u32 inst_h  = ceilf((240 - scaleInst * inst_lh * 6) / 2);
-        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
-        C2D_DrawText(&top_move, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_move, scaleInst)) / 2), inst_h, 0.9f, scaleInst, scaleInst,
-            COLOR_WHITE);
-        C2D_DrawText(&top_a, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_a, scaleInst)) / 2), inst_h + inst_lh * 1, 0.9f, scaleInst,
-            scaleInst, COLOR_WHITE);
-        C2D_DrawText(&top_b, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_b, scaleInst)) / 2), inst_h + inst_lh * 2, 0.9f, scaleInst,
-            scaleInst, COLOR_WHITE);
-        C2D_DrawText(&top_y, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_y, scaleInst)) / 2), inst_h + inst_lh * 3, 0.9f, scaleInst,
-            scaleInst, COLOR_WHITE);
-        C2D_DrawText(&top_my, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_my, scaleInst)) / 2), inst_h + inst_lh * 4, 0.9f, scaleInst,
-            scaleInst, COLOR_WHITE);
-    }
-
     C2D_DrawText(&version, C2D_WithColor, 400 - 4 - ceilf(0.45f * version.width), 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
-    C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, NULL, 1.0f, 1.0f);
+    C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, &flagTint, 1.0f, 1.0f);
     C2D_DrawText(&checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
 
-    if (g_isTransferringFile) {
-        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
+    if (g_isLoadingTitles) {
+        // Show a loading message
+        int percentage = g_loadingTitlesLimit == 0 ? 0 : (g_loadingTitlesCounter * 100) / g_loadingTitlesLimit;
+        if (percentage >= 100) {
+            percentage = 99;
+        }
 
-        float size = 0.7f;
-        C2D_Text text;
-        C2D_TextParse(&text, dynamicBuf, StringUtils::UTF16toUTF8(g_currentFile).c_str());
-        C2D_TextOptimize(&text);
-        C2D_DrawText(&text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(text, size)) / 2),
-            ceilf((240 - size * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, size, size, COLOR_WHITE);
+        char loadingMessage[32] = {0};
+        snprintf(loadingMessage, sizeof(loadingMessage), "Loading titles... %d%%", percentage);
+
+        C2D_Text loadingText;
+        C2D_TextParse(&loadingText, dynamicBuf, loadingMessage);
+        C2D_TextOptimize(&loadingText);
+        C2D_DrawText(&loadingText, C2D_WithColor, ceilf((400 - StringUtils::textWidth(loadingText, 0.6f)) / 2),
+            ceilf((240 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, 0.6f, 0.6f, COLOR_WHITE);
+    }
+    else {
+        for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
+            C2D_Image titleIcon = TitleLoader::icon(k);
+            if (titleIcon.subtex->width == 48) {
+                C2D_DrawImageAt(titleIcon, selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
+            }
+            else {
+                C2D_DrawImageAt(titleIcon, selectorX(k) + 9, selectorY(k) + 9, 0.5f, NULL, 1.0f, 1.0f);
+            }
+        }
+
+        if (TitleLoader::getTitleCount() > 0) {
+            drawSelector();
+        }
+
+        for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
+            if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end()) {
+                C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 31, 0.5f, 16, 16, COLOR_WHITE);
+                C2D_SpriteSetPos(&checkbox, selectorX(k) + 27, selectorY(k) + 27);
+                C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
+            }
+
+            if (TitleLoader::favorite(k)) {
+                C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 3, 0.5f, 16, 16, COLOR_GOLD);
+                C2D_SpriteSetPos(&star, selectorX(k) + 27, selectorY(k) - 1);
+                C2D_DrawSpriteTinted(&star, &checkboxTint);
+            }
+        }
+
+        if (hidKeysHeld() & KEY_SELECT) {
+            const u32 inst_lh      = scaleInst * fontGetInfo(NULL)->lineFeed;
+            const u32 total_height = inst_lh * 6;
+            const u32 inst_h       = (240 - total_height) / 2;
+
+            C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
+            C2D_DrawText(&top_move, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_move, scaleInst)) / 2), inst_h, 0.9f, scaleInst, scaleInst,
+                COLOR_WHITE);
+            C2D_DrawText(&top_a, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_a, scaleInst)) / 2), inst_h + inst_lh * 1, 0.9f, scaleInst,
+                scaleInst, COLOR_WHITE);
+            C2D_DrawText(&top_b, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_b, scaleInst)) / 2), inst_h + inst_lh * 2, 0.9f, scaleInst,
+                scaleInst, COLOR_WHITE);
+            C2D_DrawText(&top_y, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_y, scaleInst)) / 2), inst_h + inst_lh * 3, 0.9f, scaleInst,
+                scaleInst, COLOR_WHITE);
+            C2D_DrawText(&top_my, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_my, scaleInst)) / 2), inst_h + inst_lh * 4, 0.9f, scaleInst,
+                scaleInst, COLOR_WHITE);
+            C2D_DrawText(&top_hb, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_hb, scaleInst)) / 2), inst_h + inst_lh * 5, 0.9f, scaleInst,
+                scaleInst, COLOR_WHITE);
+        }
+
+        if (hidKeysHeld() & KEY_SELECT && Server::isRunning() && Server::getAddress().length() > 0) {
+            C2D_Text logsText;
+            C2D_TextParse(&logsText, dynamicBuf, ("Logs available at " + Server::getAddress() + "/logs/memory").c_str());
+            C2D_TextOptimize(&logsText);
+            C2D_DrawText(&logsText, C2D_WithColor, ceilf((400 - logsText.width * 0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
+        }
+        else {
+            static const float border = ceilf((400 - (ins1.width + ins2.width + ins3.width) * 0.47f) / 2);
+            C2D_DrawText(&ins1, C2D_WithColor, border, 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
+            C2D_DrawText(&ins2, C2D_WithColor, border + ceilf(ins1.width * 0.47f), 223, 0.5f, 0.47f, 0.47f,
+                Archive::mode() == MODE_SAVE ? COLOR_WHITE : COLOR_RED);
+            C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
+        }
+
+        if (g_isTransferringFile) {
+            C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
+
+            const float size     = 0.7f;
+            const float lineFeed = size * fontGetInfo(NULL)->lineFeed;
+            std::string mode     = transferGetMode();
+            if (g_transferIsNetwork) {
+                // Two centered lines keep the (potentially long) mode label and the
+                // size readout on screen, matching the bottom progress modal.
+                u64 total = 0, done = 0;
+                transferGetProgress(done, total);
+                int pct            = total > 0 ? (int)((done * 100) / total) : 0;
+                std::string prefix = mode.empty() ? "Transferring backup" : mode;
+                std::string line1  = StringUtils::format("%s... %d%%", prefix.c_str(), pct);
+                std::string line2  = transferBytesToMB(done, total);
+
+                float startY = ceilf((240 - 2 * lineFeed) / 2);
+
+                C2D_Text line1Text;
+                C2D_TextParse(&line1Text, dynamicBuf, line1.c_str());
+                C2D_TextOptimize(&line1Text);
+                C2D_DrawText(
+                    &line1Text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(line1Text, size)) / 2), startY, 0.9f, size, size, COLOR_WHITE);
+
+                C2D_Text line2Text;
+                C2D_TextParse(&line2Text, dynamicBuf, line2.c_str());
+                C2D_TextOptimize(&line2Text);
+                C2D_DrawText(&line2Text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(line2Text, size)) / 2), startY + lineFeed, 0.9f, size,
+                    size, COLOR_GREY_LIGHT);
+            }
+            else {
+                std::string modeStr = (mode.empty() ? "Copying files" : mode) + " in progress...";
+                C2D_Text modeText;
+                C2D_TextParse(&modeText, dynamicBuf, modeStr.c_str());
+                C2D_TextOptimize(&modeText);
+                C2D_DrawText(&modeText, C2D_WithColor, ceilf((400 - StringUtils::textWidth(modeText, size)) / 2), ceilf((240 - lineFeed) / 2), 0.9f,
+                    size, size, COLOR_WHITE);
+            }
+        }
     }
 }
 
@@ -183,53 +275,40 @@ void MainScreen::drawBottom(void) const
 
     const Mode_t mode = Archive::mode();
 
-    C2D_DrawRectSolid(0, 0, 0.5f, 320, 19, COLOR_GREY_DARK);
-    C2D_DrawRectSolid(0, 221, 0.5f, 320, 19, COLOR_GREY_DARK);
-    if (getTitleCount() > 0) {
+    C2D_DrawRectSolid(0, 0, 0.5f, 320, 19, COLOR_BLACK_DARKER);
+    C2D_DrawRectSolid(0, 221, 0.5f, 320, 19, COLOR_BLACK_DARKER);
+
+    if (g_isLoadingTitles) {}
+
+    else if (TitleLoader::getTitleCount() > 0) {
         Title title;
-        getTitle(title, hid.fullIndex());
+        TitleLoader::getTitle(title, hid.fullIndex());
 
         directoryList->flush();
         std::vector<std::u16string> dirs = mode == MODE_SAVE ? title.saves() : title.extdata();
-        static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
 
         for (size_t i = 0; i < dirs.size(); i++) {
-            directoryList->push_back(COLOR_GREY_DARKER, COLOR_WHITE, convert.to_bytes(dirs.at(i)), i == directoryList->index());
+            directoryList->push_back(COLOR_BLACK_DARKERR, COLOR_WHITE, StringUtils::UTF16toUTF8(dirs.at(i)), i == directoryList->index());
         }
 
-        C2D_Text shortDesc, longDesc, id, prodCode, media;
+        C2D_Text longDesc, c2dTitleInfo;
+        std::string desc = title.longDescription();
+        std::replace(desc.begin(), desc.end(), '\n', ' ');
 
-        char lowid[18];
-        snprintf(lowid, 9, "%08X", (int)title.lowId());
+        std::string titleInfo = title.lowId() != 0 ? StringUtils::format("ID: %08X (%s)\nMedia type: %s", (int)title.lowId(), title.productCode,
+                                                         title.mediaTypeString().c_str())
+                                                   : StringUtils::format("Media type: %s", title.mediaTypeString().c_str());
 
-        C2D_TextParse(&shortDesc, dynamicBuf, title.shortDescription().c_str());
-        C2D_TextParse(&longDesc, dynamicBuf, title.longDescription().c_str());
-        C2D_TextParse(&id, dynamicBuf, lowid);
-        C2D_TextParse(&media, dynamicBuf, title.mediaTypeString().c_str());
+        C2D_TextParse(&longDesc, dynamicBuf, desc.c_str());
+        C2D_TextParse(&c2dTitleInfo, dynamicBuf, titleInfo.c_str());
 
-        C2D_TextOptimize(&shortDesc);
         C2D_TextOptimize(&longDesc);
-        C2D_TextOptimize(&id);
-        C2D_TextOptimize(&media);
+        C2D_TextOptimize(&c2dTitleInfo);
 
-        float longDescHeight, lowidWidth;
-        C2D_TextGetDimensions(&longDesc, 0.55f, 0.55f, NULL, &longDescHeight);
-        C2D_TextGetDimensions(&id, 0.5f, 0.5f, &lowidWidth, NULL);
+        C2D_DrawText(&longDesc, C2D_WithColor, 4, 1, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
+        C2D_DrawText(&c2dTitleInfo, C2D_WithColor, 4, 29, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
 
-        C2D_DrawText(&shortDesc, C2D_WithColor, 4, 1, 0.5f, 0.6f, 0.6f, COLOR_WHITE);
-        C2D_DrawText(&longDesc, C2D_WithColor, 4, 27, 0.5f, 0.55f, 0.55f, COLOR_GREY_LIGHT);
-
-        C2D_DrawText(&c2dId, C2D_WithColor, 4, 31 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
-        C2D_DrawText(&id, C2D_WithColor, 25, 31 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
-
-        snprintf(lowid, 18, "(%s)", title.productCode);
-        C2D_TextParse(&prodCode, dynamicBuf, lowid);
-        C2D_TextOptimize(&prodCode);
-        C2D_DrawText(&prodCode, C2D_WithColor, 30 + lowidWidth, 32 + longDescHeight, 0.5f, 0.42f, 0.42f, COLOR_GREY_LIGHT);
-        C2D_DrawText(&c2dMediatype, C2D_WithColor, 4, 47 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
-        C2D_DrawText(&media, C2D_WithColor, 75, 47 + longDescHeight, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
-
-        C2D_DrawRectSolid(260, 27, 0.5f, 52, 52, COLOR_BLACK);
+        C2D_DrawRectSolid(260, 27, 0.5f, 52, 52, COLOR_PURPLE_DARK);
         if (title.icon().subtex->width == 48) {
             C2D_DrawImageAt(title.icon(), 262, 29, 0.5f, NULL, 1.0f, 1.0f);
         }
@@ -237,44 +316,186 @@ void MainScreen::drawBottom(void) const
             C2D_DrawImageAt(title.icon(), 262 + 8, 29 + 8, 0.5f, NULL, 1.0f, 1.0f);
         }
 
-        C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_GREY_DARK);
+        C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_BLACK_DARK);
+
         directoryList->draw(g_bottomScrollEnabled);
-        buttonBackup->draw(0.7, 0);
-        buttonRestore->draw(0.7, 0);
+        buttonBackup->draw(0.7, COLOR_PURPLE_LIGHT);
+        buttonRestore->draw(0.7, COLOR_PURPLE_LIGHT);
         if (title.isActivityLog()) {
-            buttonPlayCoins->draw(0.7, 0);
+            buttonPlayCoins->draw(0.7, COLOR_PURPLE_LIGHT);
         }
         else {
-            buttonCheats->draw(0.7, 0);
+            buttonCheats->draw(0.7, COLOR_PURPLE_LIGHT);
         }
     }
 
-    C2D_DrawText(&ins4, C2D_WithColor, ceilf((320 - ins4.width * 0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_WHITE);
+    if (transferEnabled) {
+        buttonTransfer->draw(0.55f, COLOR_PURPLE_LIGHT);
+    }
+    float ins4X = transferEnabled ? ceilf(320 - StringUtils::textWidth(ins4, 0.47f) - 4) : ceilf((320 - StringUtils::textWidth(ins4, 0.47f)) / 2);
+    C2D_DrawText(&ins4, C2D_WithColor, ins4X, 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
 
     if (hidKeysHeld() & KEY_SELECT) {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-        C2D_DrawText(&bot_ts, C2D_WithColor, 16, 124, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
-        C2D_DrawText(&bot_x, C2D_WithColor, 16, 168, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+        C2D_DrawText(&bot_ts, C2D_WithColor, (320 - bot_ts.width * scaleInst) / 2, 102, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+        C2D_DrawText(&bot_x, C2D_WithColor, (320 - bot_x.width * scaleInst) / 2, 132, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
         // play coins
-        C2D_DrawText(&coins, C2D_WithColor, ceilf(318 - StringUtils::textWidth(coins, scaleInst)), -1, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
+        C2D_DrawText(&coins, C2D_WithColor, ceilf(318 - StringUtils::textWidth(coins, scaleInst)), -1, 0.5f, scaleInst, scaleInst, COLOR_GOLD);
     }
 
     if (g_isTransferringFile) {
-        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
+        C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
+
+        if (g_transferIsNetwork) {
+            const int mx = 30, my = 65, mw = 260, mh = 110;
+            C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
+            Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
+
+            u64 total = 0, done = 0;
+            transferGetProgress(done, total);
+            int pct              = total > 0 ? (int)((done * 100) / total) : 0;
+            std::string mode     = transferGetMode();
+            std::string prefix   = mode.empty() ? "Transferring backup" : mode;
+            std::string titleStr = StringUtils::format("%s... %d%%", prefix.c_str(), pct);
+
+            C2D_Text titleText;
+            C2D_TextParse(&titleText, dynamicBuf, titleStr.c_str());
+            C2D_TextOptimize(&titleText);
+            C2D_DrawText(
+                &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
+
+            std::string bytesStr = transferBytesToMB(done, total);
+            C2D_Text bytesText;
+            C2D_TextParse(&bytesText, dynamicBuf, bytesStr.c_str());
+            C2D_TextOptimize(&bytesText);
+            C2D_DrawText(&bytesText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(bytesText, 0.5f)) / 2), my + 38, 0.5f, 0.5f, 0.5f,
+                COLOR_GREY_LIGHT);
+
+            const int barX = mx + 12, barW = mw - 24, barH = 10;
+            const int barY = my + 65;
+            C2D_DrawRectSolid(barX, barY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+            float progress = (total > 0) ? (float)done / (float)total : 0.0f;
+            if (progress > 1.0f) {
+                progress = 1.0f;
+            }
+            int fillW = (int)(barW * progress);
+            if (fillW > 0) {
+                C2D_DrawRectSolid(barX, barY, 0.5f, fillW, barH, COLOR_PURPLE_LIGHT);
+            }
+            Gui::drawOutline(barX, barY, barW, barH, 1, COLOR_GREY_LIGHT);
+        }
+        else {
+            // An extra bar is shown to track the overall progress when backing up multiple saves at once
+            const bool multiSelect = g_multiSelectTotal > 1;
+
+            // Modal box
+            const int mx = 30, mw = 260;
+            const int mh = multiSelect ? 162 : 130;
+            const int my = multiSelect ? 40 : 65;
+            C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
+            Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
+
+            // Title
+            std::string titleStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
+            C2D_Text titleText;
+            C2D_TextParse(&titleText, dynamicBuf, titleStr.c_str());
+            C2D_TextOptimize(&titleText);
+            C2D_DrawText(
+                &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
+
+            // Current filename
+            std::string fname = StringUtils::UTF16toUTF8(g_currentFile);
+            C2D_Text fileText;
+            C2D_TextParse(&fileText, dynamicBuf, fname.c_str());
+            C2D_TextOptimize(&fileText);
+            C2D_DrawText(
+                &fileText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(fileText, 0.5f)) / 2), my + 30, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
+
+            const int barX = mx + 12, barW = mw - 24, barH = 10;
+
+            auto drawProgressBar = [&](int y, float frac, const char* leftLabel, const char* rightLabel) {
+                if (frac > 1.0f)
+                    frac = 1.0f;
+                C2D_DrawRectSolid(barX, y, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+                int fillW = (int)(barW * frac);
+                if (fillW > 0) {
+                    C2D_DrawRectSolid(barX, y, 0.5f, fillW, barH, COLOR_PURPLE_LIGHT);
+                }
+                Gui::drawOutline(barX, y, barW, barH, 1, COLOR_GREY_LIGHT);
+
+                C2D_Text leftText;
+                C2D_TextParse(&leftText, dynamicBuf, leftLabel);
+                C2D_TextOptimize(&leftText);
+                C2D_DrawText(&leftText, C2D_WithColor, barX, y + barH + 3, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+
+                C2D_Text rightText;
+                C2D_TextParse(&rightText, dynamicBuf, rightLabel);
+                C2D_TextOptimize(&rightText);
+                C2D_DrawText(&rightText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(rightText, 0.45f)), y + barH + 3, 0.5f, 0.45f,
+                    0.45f, COLOR_WHITE);
+            };
+
+            int barY = my + 52;
+
+            // Overall progress bar across the selected saves (multi-selection only)
+            if (multiSelect) {
+                float overallProgress = (float)g_multiSelectCount / (float)g_multiSelectTotal;
+                char overallCountStr[24];
+                snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", g_multiSelectCount + 1, g_multiSelectTotal);
+                char overallPctStr[8];
+                snprintf(overallPctStr, sizeof(overallPctStr), "%d%%", (int)(overallProgress * 100));
+                drawProgressBar(barY, overallProgress, overallCountStr, overallPctStr);
+                barY += 30;
+            }
+
+            // Per-save progress bar
+            float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
+            char countStr[24];
+            snprintf(countStr, sizeof(countStr), "File %zu / %zu", g_copyCount, g_copyTotal);
+            char pctStr[8];
+            snprintf(pctStr, sizeof(pctStr), "%d%%", (int)((progress > 1.0f ? 1.0f : progress) * 100));
+            drawProgressBar(barY, progress, countStr, pctStr);
+            barY += 30;
+
+            // Per-file progress bar
+            float fileProgress = (g_currentFileSize > 0) ? (float)g_currentFileOffset / (float)g_currentFileSize : 0.0f;
+            char kbStr[32];
+            snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", g_currentFileOffset / 1024.0f, g_currentFileSize / 1024.0f);
+            char filePctStr[8];
+            snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
+            drawProgressBar(barY, fileProgress, kbStr, filePctStr);
+        }
     }
 }
 
-void MainScreen::update(touchPosition* touch)
+void MainScreen::update(const InputState& input)
 {
+    if (Transfer::consumePendingRefresh()) {
+        refreshTitlesFull();
+    }
     updateSelector();
-    handleEvents(touch);
+    handleEvents(input);
+}
+
+void MainScreen::refreshTitlesFull(void)
+{
+    hid.reset();
+    MS::clearSelectedEntries();
+    directoryList->resetIndex();
+    Threads::executeTask(TitleLoader::loadTitlesThread);
+    refreshTimer = 0;
 }
 
 void MainScreen::updateSelector(void)
 {
+    if (g_isLoadingTitles) {
+        // Don't update selection while loading
+        return;
+    }
+
     if (!g_bottomScrollEnabled) {
-        if (getTitleCount() > 0) {
-            size_t count = getTitleCount();
+        size_t count = TitleLoader::getTitleCount();
+        if (count > 0) {
             hid.update(count);
             directoryList->resetIndex();
         }
@@ -284,7 +505,7 @@ void MainScreen::updateSelector(void)
     }
 }
 
-void MainScreen::handleEvents(touchPosition* touch)
+void MainScreen::handleEvents(const InputState& input)
 {
     u32 kDown = hidKeysDown();
     u32 kHeld = hidKeysHeld();
@@ -304,8 +525,11 @@ void MainScreen::handleEvents(touchPosition* touch)
                         if (std::get<0>(result)) {
                             currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                         }
-                        else {
+                        else if (std::get<1>(result) != 0) {
                             currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                        }
+                        else {
+                            this->removeOverlay();
                         }
                     },
                     [this]() { this->removeOverlay(); });
@@ -352,10 +576,10 @@ void MainScreen::handleEvents(touchPosition* touch)
                     *this, "Delete selected backup?",
                     [this, isSaveMode, index]() {
                         Title title;
-                        getTitle(title, hid.fullIndex());
+                        TitleLoader::getTitle(title, hid.fullIndex());
                         std::u16string path = isSaveMode ? title.fullSavePath(index) : title.fullExtdataPath(index);
                         io::deleteBackupFolder(path);
-                        refreshDirectories(title.id());
+                        TitleLoader::refreshDirectories(title.id());
                         directoryList->setIndex(index - 1);
                         this->removeOverlay();
                     },
@@ -388,7 +612,7 @@ void MainScreen::handleEvents(touchPosition* touch)
 
     if (selectionTimer > 90) {
         MS::clearSelectedEntries();
-        for (size_t i = 0, sz = getTitleCount(); i < sz; i++) {
+        for (size_t i = 0, sz = TitleLoader::getTitleCount(); i < sz; i++) {
             MS::addSelectedEntry(i);
         }
         selectionTimer = 0;
@@ -402,19 +626,34 @@ void MainScreen::handleEvents(touchPosition* touch)
     }
 
     if (refreshTimer > 90) {
-        hid.reset();
-        MS::clearSelectedEntries();
-        directoryList->resetIndex();
-        Threads::create((ThreadFunc)Threads::titles);
-        refreshTimer = 0;
+        refreshTitlesFull();
+    }
+
+    if (transferEnabled && buttonTransfer->released()) {
+        currentOverlay = std::make_shared<TransferMenuOverlay>(
+            *this,
+            [this]() {
+                this->removeOverlay();
+                this->startTransferSend();
+            },
+            [this]() {
+                std::string error;
+                if (!Transfer::startReceiver(error)) {
+                    this->currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, error.empty() ? "Failed to start receiver." : error);
+                    return;
+                }
+                this->currentOverlay = std::make_shared<ReceiveOverlay>(*this);
+            });
     }
 
     if (buttonBackup->released() || (kDown & KEY_L)) {
         if (MS::multipleSelectionEnabled()) {
             directoryList->resetIndex();
             std::vector<size_t> list = MS::selectedEntries();
+            g_multiSelectTotal       = list.size();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                auto result = io::backup(list.at(i), directoryList->index());
+                g_multiSelectCount = i;
+                auto result        = io::backup(list.at(i), directoryList->index());
                 if (std::get<0>(result)) {
                     currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                 }
@@ -422,6 +661,8 @@ void MainScreen::handleEvents(touchPosition* touch)
                     currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
                 }
             }
+            g_multiSelectTotal = 0;
+            g_multiSelectCount = 0;
             MS::clearSelectedEntries();
             updateButtons();
         }
@@ -433,8 +674,11 @@ void MainScreen::handleEvents(touchPosition* touch)
                     if (std::get<0>(result)) {
                         currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                     }
-                    else {
+                    else if (std::get<1>(result) != 0) {
                         currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                    }
+                    else {
+                        this->removeOverlay();
                     }
                 },
                 [this]() { this->removeOverlay(); });
@@ -463,10 +707,10 @@ void MainScreen::handleEvents(touchPosition* touch)
         }
     }
 
-    if (getTitleCount() > 0) {
+    if (TitleLoader::getTitleCount() > 0) {
         Title title;
-        getTitle(title, hid.fullIndex());
-        if ((title.isActivityLog() && buttonPlayCoins->released()) || ((hidKeysDown() & KEY_TOUCH) && touch->py < 20 && touch->px > 294)) {
+        TitleLoader::getTitle(title, hid.fullIndex());
+        if ((title.isActivityLog() && buttonPlayCoins->released()) || ((hidKeysDown() & KEY_TOUCH) && input.py < 20 && input.px > 294)) {
             if (!Archive::setPlayCoins()) {
                 currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");
             }
@@ -507,9 +751,9 @@ void MainScreen::drawSelector(void) const
     const int x                = selectorX(hid.index());
     const int y                = selectorY(hid.index());
     float highlight_multiplier = fmax(0.0, fabs(fmod(g_timer, 1.0) - 0.5) / 0.5);
-    u8 r                       = COLOR_SELECTOR & 0xFF;
-    u8 g                       = (COLOR_SELECTOR >> 8) & 0xFF;
-    u8 b                       = (COLOR_SELECTOR >> 16) & 0xFF;
+    u8 r                       = COLOR_PURPLE_LIGHT & 0xFF;
+    u8 g                       = (COLOR_PURPLE_LIGHT >> 8) & 0xFF;
+    u8 b                       = (COLOR_PURPLE_LIGHT >> 16) & 0xFF;
     u32 color = C2D_Color32(r + (255 - r) * highlight_multiplier, g + (255 - g) * highlight_multiplier, b + (255 - b) * highlight_multiplier, 255);
 
     C2D_DrawRectSolid(x, y, 0.5f, 50, 50, COLOR_WHITEMASK);
@@ -526,30 +770,94 @@ void MainScreen::updateButtons(void)
         buttonRestore->canChangeColorWhenSelected(false);
         buttonCheats->canChangeColorWhenSelected(false);
         buttonPlayCoins->canChangeColorWhenSelected(false);
-        buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
-        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
-        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_GREY_LIGHT);
+        buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
+        buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonCheats->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
     }
     else if (g_bottomScrollEnabled) {
         buttonBackup->canChangeColorWhenSelected(true);
         buttonRestore->canChangeColorWhenSelected(true);
         buttonCheats->canChangeColorWhenSelected(true);
         buttonPlayCoins->canChangeColorWhenSelected(true);
-        buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
+        buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
+        buttonCheats->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
+        buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
     }
     else {
-        buttonBackup->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonRestore->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonCheats->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
-        buttonPlayCoins->setColors(COLOR_GREY_DARKER, COLOR_WHITE);
+        buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonCheats->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
     }
 }
 
 std::string MainScreen::nameFromCell(size_t index) const
 {
     return directoryList->cellName(index);
+}
+
+void MainScreen::startTransferSend(void)
+{
+    if (TitleLoader::getTitleCount() <= 0) {
+        currentOverlay = std::make_shared<InfoOverlay>(*this, "No titles available.");
+        return;
+    }
+
+    size_t cellIndex = directoryList->index();
+    if (!g_bottomScrollEnabled || cellIndex == 0) {
+        currentOverlay = std::make_shared<InfoOverlay>(*this, "Select a backup to send.");
+        return;
+    }
+
+    Title title;
+    TitleLoader::getTitle(title, hid.fullIndex());
+
+    std::string backupName    = nameFromCell(cellIndex);
+    std::u16string backupPath = Archive::mode() == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
+
+    std::string ipPort = rawKeyboard("192.168.1.10:8000", "Receiver IP:PORT", 32);
+    if (ipPort.empty()) {
+        return;
+    }
+
+    size_t colon = ipPort.find(':');
+    if (colon == std::string::npos) {
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Invalid IP:PORT.");
+        return;
+    }
+    std::string ip = ipPort.substr(0, colon);
+    int port       = atoi(ipPort.substr(colon + 1).c_str());
+    if (ip.empty() || port <= 0 || port > 65535) {
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Invalid IP:PORT.");
+        return;
+    }
+
+    std::string pin = rawKeyboard("1234", "PIN (4 digits)", 5);
+    if (pin.empty()) {
+        return;
+    }
+    // The receiver always generates a 4-digit PIN, so require exactly 4 here;
+    // a longer PIN could never match.
+    bool pinOk = pin.size() == 4 && std::all_of(pin.begin(), pin.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
+    if (!pinOk) {
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "PIN must be 4 digits.");
+        return;
+    }
+
+    std::string error;
+    std::string dataType = Archive::mode() == MODE_SAVE ? "save" : "extdata";
+    bool ok              = Transfer::sendBackup(title, backupPath, backupName, dataType, ip, (u16)port, pin, error);
+    if (ok) {
+        currentOverlay = std::make_shared<InfoOverlay>(*this, "Transfer completed.");
+    }
+    else {
+        if (error == "Selected backup is empty.") {
+            currentOverlay = std::make_shared<InfoOverlay>(*this, error);
+        }
+        else {
+            currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, error.empty() ? "Transfer failed." : error);
+        }
+    }
 }

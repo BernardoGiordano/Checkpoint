@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ CheatManager::CheatManager(void)
             fclose(in);
         }
         else {
-            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d.", errno);
+            Logging::warning("Failed to open {} with errno {}.", path, errno);
         }
     }
     else {
@@ -49,7 +49,7 @@ CheatManager::CheatManager(void)
             u32 size             = ftell(f);
             unsigned int destLen = CHEAT_SIZE_DECOMPRESSED;
             char* s              = new char[size];
-            char* d              = new char[destLen]();
+            char* d              = new char[destLen + 1]();
             rewind(f);
             fread(s, 1, size, f);
 
@@ -63,7 +63,7 @@ CheatManager::CheatManager(void)
             fclose(f);
         }
         else {
-            Logger::getInstance().log(Logger::WARN, "Failed to open " + path + " with errno %d.", errno);
+            Logging::warning("Failed to open {} with errno %d.", path, errno);
         }
     }
 }
@@ -107,7 +107,7 @@ void CheatManager::save(const std::string& key, const std::vector<std::string>& 
             fclose(f);
         }
         else {
-            Logger::getInstance().log(Logger::ERROR, "Failed to write " + outPath + " with errno %d.", errno);
+            Logging::error("Failed to write {} with errno {}.", outPath, errno);
         }
     }
 }

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -40,17 +40,17 @@ public:
     }
 
     KeyboardManager(KeyboardManager const&) = delete;
-    void operator=(KeyboardManager const&) = delete;
+    void operator=(KeyboardManager const&)  = delete;
 
     std::pair<bool, std::string> keyboard(const std::string& suggestion);
 
-    std::pair<bool, Result> isSystemKeyboardAvailable(void) { return std::make_pair(systemKeyboardAvailable, res); }
+    std::pair<bool, Result> isSystemKeyboardAvailable() { return std::make_pair(systemKeyboardAvailable, res); }
 
     static const size_t CUSTOM_PATH_LEN = 49;
 
 private:
     KeyboardManager(void);
-    virtual ~KeyboardManager(void){};
+    virtual ~KeyboardManager() = default;
 
     Result res;
     bool systemKeyboardAvailable;

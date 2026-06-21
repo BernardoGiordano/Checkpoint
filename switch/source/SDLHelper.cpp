@@ -1,3 +1,29 @@
+/*
+ *   This file is part of Checkpoint
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+ *       * Requiring preservation of specified reasonable legal notices or
+ *         author attributions in that material or in the Appropriate Legal
+ *         Notices displayed by works containing it.
+ *       * Prohibiting misrepresentation of the origin of that material,
+ *         or requiring that modified versions of such material be marked in
+ *         reasonable ways as different from the original version.
+ */
+
 #include "SDLHelper.hpp"
 
 static SDL_Window* s_window;
@@ -6,6 +32,13 @@ static SDL_Texture* s_star;
 static SDL_Texture* s_checkbox;
 
 static PlFontData fontData, fontExtData;
+
+struct FallbackFontData {
+    void* address;
+    size_t size;
+};
+static FallbackFontData s_fallbackData[4];
+static int s_numFallbacks = 0;
 static std::unordered_map<int, FC_Font*> s_fonts;
 
 static FC_Font* getFontFromMap(int size)
@@ -15,6 +48,13 @@ static FC_Font* getFontFromMap(int size)
         FC_Font* f = FC_CreateFont();
         FC_LoadFont_RW(f, s_renderer, SDL_RWFromMem((void*)fontData.address, fontData.size),
             SDL_RWFromMem((void*)fontExtData.address, fontExtData.size), 1, size, COLOR_BLACK, TTF_STYLE_NORMAL);
+        // Register CJK/Korean fallback fonts for this size
+        for (int i = 0; i < s_numFallbacks; i++) {
+            TTF_Font* fallback = TTF_OpenFontRW(SDL_RWFromMem(s_fallbackData[i].address, s_fallbackData[i].size), 1, size);
+            if (fallback != NULL) {
+                FC_AddFallbackFont(f, fallback);
+            }
+        }
         s_fonts.insert({size, f});
         return f;
     }
@@ -24,17 +64,17 @@ static FC_Font* getFontFromMap(int size)
 bool SDLH_Init(void)
 {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) < 0) {
-        Logger::getInstance().log(Logger::ERROR, "SDL_Init: %s.", SDL_GetError());
+        Logging::error("SDL_Init: {}.", SDL_GetError());
         return false;
     }
     s_window = SDL_CreateWindow("Checkpoint", 0, 0, 1280, 720, SDL_WINDOW_FULLSCREEN);
     if (!s_window) {
-        Logger::getInstance().log(Logger::ERROR, "SDL_CreateWindow: %s.", SDL_GetError());
+        Logging::error("SDL_CreateWindow: {}.", SDL_GetError());
         return false;
     }
     s_renderer = SDL_CreateRenderer(s_window, 0, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!s_renderer) {
-        Logger::getInstance().log(Logger::ERROR, "SDL_CreateRenderer: %s.", SDL_GetError());
+        Logging::error("SDL_CreateRenderer: {}.", SDL_GetError());
         return false;
     }
     SDL_SetRenderDrawBlendMode(s_renderer, SDL_BLENDMODE_BLEND);
@@ -42,15 +82,32 @@ bool SDLH_Init(void)
 
     const int img_flags = IMG_INIT_PNG | IMG_INIT_JPG;
     if ((IMG_Init(img_flags) & img_flags) != img_flags) {
-        Logger::getInstance().log(Logger::ERROR, "IMG_Init: %s.", IMG_GetError());
+        Logging::error("IMG_Init: {}.", IMG_GetError());
         return false;
     }
     SDLH_LoadImage(&s_star, "romfs:/star.png");
     SDLH_LoadImage(&s_checkbox, "romfs:/checkbox.png");
-    SDL_SetTextureColorMod(s_checkbox, theme().c1.r, theme().c1.g, theme().c1.b);
+    SDL_SetTextureColorMod(s_checkbox, COLOR_BLACK_DARKERR.r, COLOR_BLACK_DARKERR.g, COLOR_BLACK_DARKERR.b);
 
     plGetSharedFontByType(&fontData, PlSharedFontType_Standard);
     plGetSharedFontByType(&fontExtData, PlSharedFontType_NintendoExt);
+
+    // Load CJK/Korean fallback fonts
+    static const PlSharedFontType fallbackTypes[] = {
+        PlSharedFontType_KO,
+        PlSharedFontType_ChineseSimplified,
+        PlSharedFontType_ExtChineseSimplified,
+        PlSharedFontType_ChineseTraditional,
+    };
+    s_numFallbacks = 0;
+    for (size_t i = 0; i < sizeof(fallbackTypes) / sizeof(fallbackTypes[0]); i++) {
+        PlFontData fd;
+        if (R_SUCCEEDED(plGetSharedFontByType(&fd, fallbackTypes[i])) && fd.address != NULL) {
+            s_fallbackData[s_numFallbacks].address = fd.address;
+            s_fallbackData[s_numFallbacks].size    = fd.size;
+            s_numFallbacks++;
+        }
+    }
 
     // utils
     SDLH_GetTextDimensions(13, "...", &g_username_dotsize, NULL);
@@ -171,7 +228,7 @@ void SDLH_DrawIcon(std::string icon, int x, int y)
     SDL_Texture* t = nullptr;
     if (icon.compare("checkbox") == 0) {
         t = s_checkbox;
-        SDLH_DrawRect(x + 8, y + 8, 24, 24, theme().c6);
+        SDLH_DrawRect(x + 8, y + 8, 24, 24, COLOR_WHITE);
     }
     else if (icon.compare("star") == 0) {
         t = s_star;
@@ -194,7 +251,7 @@ void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
 {
     float highlight_multiplier = fmax(0.0, fabs(fmod(g_currentTime, 1.0) - 0.5) / 0.5);
     color                      = FC_MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier,
-        color.b + (255 - color.b) * highlight_multiplier, 255);
+                             color.b + (255 - color.b) * highlight_multiplier, 255);
     drawOutline(x, y, w, h, size, color);
 }
 
@@ -202,15 +259,29 @@ std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize)
 {
     u32 width;
     std::string newtext = "";
-    for (size_t i = 0, len = text.length(); i < len; i++) {
-        SDLH_GetTextDimensions(textsize, newtext.c_str(), &width, NULL);
-        if (width < maxsize) {
-            newtext += text[i];
-        }
-        else {
+    const char* src     = text.c_str();
+    while (*src != '\0') {
+        int charsize = U8_charsize(src);
+        if (charsize < 1)
+            break;
+        std::string candidate = newtext + std::string(src, charsize);
+        SDLH_GetTextDimensions(textsize, candidate.c_str(), &width, NULL);
+        if (width >= maxsize) {
             newtext += "...";
             break;
         }
+        newtext = candidate;
+        src += charsize;
     }
     return newtext;
+}
+
+void SDLH_CreateColorTexture(SDL_Texture** texture, int w, int h, SDL_Color color)
+{
+    SDL_Surface* surface = SDL_CreateRGBSurface(0, w, h, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
+    if (surface) {
+        SDL_FillRect(surface, NULL, SDL_MapRGBA(surface->format, color.r, color.g, color.b, color.a));
+        *texture = SDL_CreateTextureFromSurface(s_renderer, surface);
+        SDL_FreeSurface(surface);
+    }
 }

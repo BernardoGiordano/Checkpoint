@@ -24,5 +24,6 @@ int KeyboardManager::numericPad(void)
 KeyboardManager::KeyboardManager(void)
 {
     swkbdInit(&mSwkbd, SWKBD_TYPE_NORMAL, 2, CUSTOM_PATH_LEN - 1);
+    swkbdSetValidation(&mSwkbd, SWKBD_NOTBLANK_NOTEMPTY, 0, 0);
     swkbdSetHintText(&mSwkbd, "Choose a name for your backup.");
 }

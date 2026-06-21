@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -29,19 +29,13 @@
 
 #include "Screen.hpp"
 #include <memory>
-#include <string>
-#if defined(_3DS)
-#include <3ds.h>
-#elif defined(__SWITCH__)
-#include <switch.h>
-#endif
 
 class Overlay {
 public:
     Overlay(Screen& screen) : screen(screen), me(screen.currentOverlay) {}
-    virtual ~Overlay() {}
-    virtual void update(touchPosition* touch) = 0;
-#if defined(_3DS)
+    virtual ~Overlay()                     = default;
+    virtual void update(const InputState&) = 0;
+#if defined(__3DS__)
     virtual void drawTop() const    = 0;
     virtual void drawBottom() const = 0;
 #elif defined(__SWITCH__)

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -45,9 +45,9 @@ namespace Archive {
     Result save(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);
     Result rawSave(FSPXI_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);
     Result extdata(FS_Archive* archive, u32 extdata);
-    bool accessible(FS_MediaType mediatype, u32 lowid, u32 highid); // save
-    bool accessibleRaw(FS_MediaType mediatype, u32 lowid, u32 highid); // raw save
-    bool accessible(u32 extdata);                                   // extdata
+    bool accessible(FS_MediaType mediatype, u32 lowid, u32 highid);    // save
+    bool accessibleRaw(FS_MediaType mediatype, u32 lowid, u32 highid); // raw save (GBA VC)
+    bool accessible(u32 extdata);                                      // extdata
     bool setPlayCoins(void);
 }
 

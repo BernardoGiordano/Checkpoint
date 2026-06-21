@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -31,12 +31,14 @@
 #include "ErrorOverlay.hpp"
 #include "InfoOverlay.hpp"
 #include "Screen.hpp"
+#include "TransferOverlay.hpp"
 #include "YesNoOverlay.hpp"
 #include "clickable.hpp"
 #include "gui.hpp"
 #include "multiselection.hpp"
 #include "scrollable.hpp"
 #include "thread.hpp"
+#include <algorithm>
 #include <memory>
 #include <tuple>
 
@@ -46,33 +48,37 @@ public:
     ~MainScreen(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
-    void update(touchPosition* touch) override;
+    void update(const InputState& input) override;
 
 protected:
     int selectorX(size_t i) const;
     int selectorY(size_t i) const;
     void drawSelector(void) const;
-    void handleEvents(touchPosition* touch);
+    void handleEvents(const InputState& input);
     void updateSelector(void);
     void updateButtons(void);
+    void refreshTitlesFull(void);
     std::string nameFromCell(size_t index) const;
+    void startTransferSend(void);
 
 private:
     Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
-    std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonCheats, buttonPlayCoins;
+    std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonCheats, buttonPlayCoins, buttonTransfer;
     std::unique_ptr<Scrollable> directoryList;
     char ver[10];
 
     C2D_Text ins1, ins2, ins3, ins4, c2dId, c2dMediatype;
     C2D_Text checkpoint, version;
     // instructions text
-    C2D_Text top_move, top_a, top_y, top_my, top_b, bot_ts, bot_x, coins;
+    C2D_Text top_move, top_a, top_y, top_my, top_b, top_hb, bot_ts, bot_x, coins;
     C2D_TextBuf dynamicBuf, staticBuf;
 
     const float scaleInst = 0.7f;
     C2D_ImageTint checkboxTint;
+    C2D_ImageTint flagTint;
     int selectionTimer;
     int refreshTimer;
+    bool transferEnabled;
 };
 
 #endif

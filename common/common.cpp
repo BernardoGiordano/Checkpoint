@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -53,13 +53,6 @@ std::string DateTime::logDateTime(void)
     localtime_r(&unixTime, &timeStruct);
     return StringUtils::format("%04i-%02i-%02i %02i:%02i:%02i", timeStruct.tm_year + 1900, timeStruct.tm_mon + 1, timeStruct.tm_mday,
         timeStruct.tm_hour, timeStruct.tm_min, timeStruct.tm_sec);
-}
-
-std::string StringUtils::UTF16toUTF8(const std::u16string& src)
-{
-    static std::wstring_convert<std::codecvt_utf8_utf16<char16_t>, char16_t> convert;
-    std::string dst = convert.to_bytes(src);
-    return dst;
 }
 
 std::string StringUtils::removeForbiddenCharacters(std::string src)

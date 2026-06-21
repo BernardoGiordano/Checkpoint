@@ -32,7 +32,7 @@ include $(DEVKITARM)/3ds_rules
 #     - <libctru folder>/default_icon.png
 #---------------------------------------------------------------------------------
 APP_TITLE		:= 	Checkpoint
-APP_DESCRIPTION	:=	Fast and simple save manager
+APP_DESCRIPTION	:=	Checkpoint: save manager
 APP_AUTHOR		:=	Bernardo Giordano, FlagBrew
 
 TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
@@ -72,26 +72,32 @@ ICON_FLAGS          :=	nosavebackups,visible
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
 
-CFLAGS	:=	-g -Wall -Wextra -Wno-psabi -O3 -mword-relocations -flto \
+CFLAGS	:=	-g -gdwarf-4 -Wall -Wextra -Wno-psabi -O3 -mword-relocations -flto=auto \
 			-fomit-frame-pointer -ffunction-sections \
+			-Wno-unused-parameter \
 			$(ARCH) \
 			-DVERSION_MAJOR=${VERSION_MAJOR} \
 			-DVERSION_MINOR=${VERSION_MINOR} \
 			-DVERSION_MICRO=${VERSION_MICRO} \
 			-DGIT_REV=\"${GIT_REV}\" \
+			-DJSON_HAS_FILESYSTEM=0 \
+			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
 			-DCHEAT_SIZE_DECOMPRESSED=${CHEAT_SIZE_DECOMPRESSED}
 
-CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -D_GNU_SOURCE=1
+CFLAGS	+=	$(INCLUDE) -DARM11 -D__3DS__ -D_GNU_SOURCE=1
 
-CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
+CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++23
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS	:= -lbz2 -lcitro2d -lcitro3d -lctru -lm
 
-CXX		:= `which ccache` $(CXX)
-CC		:= `which ccache` $(CC)
+CCACHE	:=	$(shell command -v ccache 2>/dev/null)
+ifneq ($(strip $(CCACHE)),)
+CXX		:=	$(CCACHE) $(CXX)
+CC		:=	$(CCACHE) $(CC)
+endif
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
@@ -183,7 +189,7 @@ endif
 .PHONY: all clean format cheats
 
 #---------------------------------------------------------------------------------
-all: cheats
+all: cheats sprites
 	@mkdir -p $(BUILD) $(GFXBUILD) $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $(OUTPUT).3dsx
 	@bannertool makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o $(BUILD)/banner.bnr
@@ -192,7 +198,7 @@ all: cheats
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTDIR)
+	@rm -fr $(BUILD) $(GFXBUILD) $(OUTDIR) $(ROMFS)/$(CHEATS)
 #---------------------------------------------------------------------------------
 cheats:
 	@mkdir -p $(BUILD) $(ROMFS)/$(CHEATS)
@@ -203,8 +209,13 @@ else
 endif
 	@cd $(SHARKIVE)/$(BUILD) && mv 3ds.json.bz2 ../../3ds/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
 #---------------------------------------------------------------------------------
+sprites:
+	@mkdir -p $(BUILD) $(GFXBUILD)
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile sprites.t3x
+	@cp $(BUILD)/sprites.t3x $(GFXBUILD)/sprites.t3x
+#---------------------------------------------------------------------------------
 format:
-	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))
+	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp) $(wildcard $(dir)/*.tcc)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))
 #---------------------------------------------------------------------------------
 else
 
@@ -255,12 +266,6 @@ endef
 %.shbin.o %_shbin.h : %.shlist
 	@echo $(notdir $<)
 	@$(call shader-as,$(foreach file,$(shell cat $<),$(dir $<)$(file)))
-
-#---------------------------------------------------------------------------------
-%.t3x	%.h	:	%.t3s
-#---------------------------------------------------------------------------------
-	@echo $(notdir $<)
-	@tex3ds -i $< -H $*.h -d $*.d -o $(TOPDIR)/$(GFXBUILD)/$*.t3x
 
 -include $(DEPSDIR)/*.d
 

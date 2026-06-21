@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -54,13 +54,11 @@ void Scrollable::push_back(SDL_Color color, SDL_Color colorMessage, const std::s
 
 void Scrollable::updateSelection(void)
 {
-    touchPosition touch;
-    hidTouchRead(&touch, 0);
-
     const int hu = (mHid.maxEntries(size()) + 1) * mh / mVisibleEntries;
-    if (hidKeysHeld(CONTROLLER_P1_AUTO) & KEY_TOUCH && touch.py > (float)my && touch.py < (float)(my + hu) && touch.px > (float)mx &&
-        touch.px < (float)(mx + mw)) {
-        mHid.index(ceilf((touch.py - my) * mVisibleEntries / mh));
+
+    if (g_input->touch.count > 0 && g_input->touch.touches[0].y > (float)my && g_input->touch.touches[0].y < (float)(my + hu) &&
+        g_input->touch.touches[0].x > (float)mx && g_input->touch.touches[0].x < (float)(mx + mw)) {
+        mHid.index(ceilf((g_input->touch.touches[0].y - my) * mVisibleEntries / mh));
     }
 
     mHid.update(size());
@@ -73,17 +71,17 @@ void Scrollable::draw(bool condition)
     const size_t baseIndex = mVisibleEntries * mPage;
     const size_t sz        = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
-        mCells.at(i)->draw(20, g_backupScrollEnabled ? COLOR_BLUE : theme().c0);
+        mCells.at(i)->draw(20, g_backupScrollEnabled && mCells.at(i)->selected() ? COLOR_PURPLE_LIGHT : COLOR_BLACK);
     }
 
     size_t blankRows = mVisibleEntries - sz;
     size_t rowHeight = mh / mVisibleEntries;
-    SDLH_DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, theme().c2);
+    SDLH_DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, COLOR_BLACK_DARKER);
 
     // draw selector
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
         if (mCells.at(i)->selected()) {
-            mCells.at(i)->drawOutline(condition ? COLOR_BLUE : theme().c5);
+            mCells.at(i)->drawOutline(condition ? COLOR_PURPLE_DARK : COLOR_GREY_LIGHT);
             break;
         }
     }

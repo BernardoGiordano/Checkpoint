@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@
 #ifndef SPI_HPP
 #define SPI_HPP
 
-#include "logger.hpp"
+#include "logging.hpp"
 #include <3ds.h>
 #include <stdio.h>
 #include <string.h>
@@ -88,7 +88,7 @@ typedef enum {
     FLASH_512KB_1   = 6,
     FLASH_512KB_2   = 7,
     FLASH_1MB       = 8,
-    FLASH_8MB       = 9, // <- can't restore savegames, and maybe not read them atm
+    FLASH_8MB       = 9, // <- must be unlocked (SPIUnlock) then erase-sector + page-program to restore
     FLASH_STD_DUMMY = 4,
 
     FLASH_512KB_INFRARED = 10,
@@ -108,6 +108,7 @@ u32 SPIGetCapacity(CardType type);
 Result SPIWriteSaveData(CardType type, u32 offset, void* data, u32 size);
 Result SPIReadSaveData(CardType type, u32 offset, void* data, u32 size);
 Result SPIEraseSector(CardType type, u32 offset);
+Result SPIUnlock(CardType type);
 
 } // extern "C"
 

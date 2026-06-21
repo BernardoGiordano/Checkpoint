@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -43,8 +43,10 @@ namespace io {
     std::tuple<bool, Result, std::string> backup(size_t index, size_t cellIndex);
     std::tuple<bool, Result, std::string> restore(size_t index, size_t cellIndex, const std::string& nameFromCell);
 
+    size_t countFiles(FS_Archive arch, const std::u16string& path);
     Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
     void copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
+    // Copies a GBA VC raw save between the FSPXI archive and an SD-card file (fromPxi selects the direction).
     Result copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const std::u16string& path, bool fromPxi);
     Result createDirectory(FS_Archive archive, const std::u16string& path);
     void deleteBackupFolder(const std::u16string& path);

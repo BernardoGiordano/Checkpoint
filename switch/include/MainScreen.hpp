@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@
 #include "multiselection.hpp"
 #include "pksmbridge.hpp"
 #include "scrollable.hpp"
+#include "title.hpp"
 #include <tuple>
 
 typedef enum { TITLES, CELLS } entryType_t;
@@ -48,15 +49,15 @@ class Scrollable;
 
 class MainScreen : public Screen {
 public:
-    MainScreen(void);
+    MainScreen(const InputState&);
     void draw(void) const override;
-    void update(touchPosition* touch) override;
+    void update(const InputState& input) override;
 
 protected:
     int selectorX(size_t i) const;
     int selectorY(size_t i) const;
-    void updateSelector(touchPosition* touch);
-    void handleEvents(touchPosition* touch);
+    void updateSelector(const InputState& input);
+    void handleEvents(const InputState& input);
     std::string nameFromCell(size_t index) const;
     void entryType(entryType_t type);
     size_t index(entryType_t type) const;
@@ -66,14 +67,22 @@ protected:
     void setPKSMBridgeFlag(bool f);
     void updateButtons(void);
     std::string sortMode(void) const;
+    void setSaveTypeFilter(saveTypeFilter_t filter);
+    size_t rawIndex(void) const;
 
 private:
     entryType_t type;
     int selectionTimer;
     bool pksmBridge;
+    bool wantInstructions;
+    bool sidebarFocused              = false;
+    bool sidebarExitFrame            = false;
+    int sidebarCursor                = 0;
+    saveTypeFilter_t mSaveTypeFilter = FILTER_SAVES;
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::unique_ptr<Scrollable> backupList;
     std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;
+    std::unique_ptr<Clickable> buttonSaves, buttonBCAT, buttonDevice, buttonSystem;
     char ver[8];
 };
 

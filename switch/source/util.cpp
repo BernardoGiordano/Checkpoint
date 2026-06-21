@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,10 +28,9 @@
 
 void servicesExit(void)
 {
-    Logger::getInstance().flush();
-
     if (g_ftpAvailable)
         ftp_exit();
+    Configuration::getInstance().cleanup();
     if (g_notificationLedAvailable)
         hidsysExit();
     pdmqryExit();
@@ -49,11 +48,15 @@ Result servicesInit(void)
     io::createDirectory("sdmc:/switch");
     io::createDirectory("sdmc:/switch/Checkpoint");
     io::createDirectory("sdmc:/switch/Checkpoint/saves");
+    io::createDirectory("sdmc:/switch/Checkpoint/bcat");
+    io::createDirectory("sdmc:/switch/Checkpoint/device");
+    io::createDirectory("sdmc:/switch/Checkpoint/system");
+    io::createDirectory("sdmc:/switch/Checkpoint/logs");
 
-    Logger::getInstance().log(Logger::INFO, "Starting Checkpoint loading...");
+    Logging::info("Starting Checkpoint loading...");
 
     if (appletGetAppletType() != AppletType_Application) {
-        Logger::getInstance().log(Logger::WARN, "Please do not run Checkpoint in applet mode.");
+        Logging::warning("Please do not run Checkpoint in applet mode.");
     }
 
     Result socinit = 0;
@@ -61,7 +64,7 @@ Result servicesInit(void)
         // nxlinkStdio();
     }
     else {
-        Logger::getInstance().log(Logger::INFO, "Unable to initialize socket. Result code 0x%08lX.", socinit);
+        Logging::info("Unable to initialize socket. Result code 0x{:08X}.", socinit);
     }
 
     g_shouldExitNetworkLoop = R_FAILED(socinit);
@@ -70,23 +73,26 @@ Result servicesInit(void)
 
     romfsInit();
 
-    if (R_FAILED(res = plInitialize())) {
-        Logger::getInstance().log(Logger::ERROR, "plInitialize failed. Result code 0x%08lX.", res);
+    padConfigureInput(1, HidNpadStyleSet_NpadStandard);
+    hidInitializeTouchScreen();
+
+    if (R_FAILED(res = plInitialize(PlServiceType_User))) {
+        Logging::error("plInitialize failed. Result code 0x{:08X}.", res);
         return res;
     }
 
     if (R_FAILED(res = Account::init())) {
-        Logger::getInstance().log(Logger::ERROR, "Account::init failed. Result code 0x%08lX.", res);
+        Logging::error("Account::init failed. Result code 0x{:08X}.", res);
         return res;
     }
 
     if (R_FAILED(res = nsInitialize())) {
-        Logger::getInstance().log(Logger::ERROR, "nsInitialize failed. Result code 0x%08lX.", res);
+        Logging::error("nsInitialize failed. Result code 0x{:08X}.", res);
         return res;
     }
 
     if (!SDLH_Init()) {
-        Logger::getInstance().log(Logger::ERROR, "SDLH_Init failed. Result code 0x%08lX.", res);
+        Logging::error("SDLH_Init failed. Result code 0x{:08X}.", res);
         return -1;
     }
 
@@ -94,7 +100,7 @@ Result servicesInit(void)
         g_notificationLedAvailable = true;
     }
     else {
-        Logger::getInstance().log(Logger::INFO, "Notification led not available. Result code 0x%08lX.", res);
+        Logging::info("Notification led not available. Result code 0x{:08X}.", res);
     }
 
     Configuration::getInstance();
@@ -102,28 +108,45 @@ Result servicesInit(void)
     if (R_SUCCEEDED(socinit)) {
         if (R_SUCCEEDED(res = ftp_init())) {
             g_ftpAvailable = true;
-            Logger::getInstance().log(Logger::INFO, "FTP Server successfully loaded.");
+            Logging::info("FTP Server successfully loaded.");
         }
         else {
-            Logger::getInstance().log(Logger::INFO, "FTP Server failed to load. Result code 0x%08lX.", res);
+            Logging::info("FTP Server failed to load. Result code 0x{:08X}.", res);
         }
     }
 
     if (R_SUCCEEDED(res = pdmqryInitialize())) {}
     else {
-        Logger::getInstance().log(Logger::WARN, "pdmqryInitialize failed with result 0x%08lX.", res);
+        Logging::warning("pdmqryInitialize failed with result 0x{:08X}.", res);
     }
 
-    Logger::getInstance().log(Logger::INFO, "Checkpoint loading completed!");
+    Logging::info("Checkpoint loading completed!");
 
     return 0;
 }
 
 std::u16string StringUtils::UTF8toUTF16(const char* src)
 {
-    char16_t tmp[256] = {0};
-    utf8_to_utf16((uint16_t*)tmp, (uint8_t*)src, 256);
-    return std::u16string(tmp);
+    const uint8_t* in = (const uint8_t*)src;
+    ssize_t units     = utf8_to_utf16(nullptr, in, 0);
+    if (units < 0) {
+        return u"";
+    }
+    std::u16string dst(units, u'\0');
+    utf8_to_utf16((uint16_t*)dst.data(), in, units + 1);
+    return dst;
+}
+
+std::string StringUtils::UTF16toUTF8(const std::u16string& src)
+{
+    const uint16_t* in = (const uint16_t*)src.c_str();
+    ssize_t units      = utf16_to_utf8(nullptr, in, 0);
+    if (units < 0) {
+        return "";
+    }
+    std::string dst(units, '\0');
+    utf16_to_utf8((uint8_t*)dst.data(), in, units + 1);
+    return dst;
 }
 
 // https://stackoverflow.com/questions/14094621/change-all-accented-letters-to-normal-letters-in-c
@@ -176,11 +199,13 @@ HidsysNotificationLedPattern blinkLedPattern(u8 times)
 void blinkLed(u8 times)
 {
     if (g_notificationLedAvailable) {
+        PadState pad;
+        padInitializeDefault(&pad);
         s32 n;
-        u64 uniquePadIds[2];
+        HidsysUniquePadId uniquePadIds[2]    = {0};
         HidsysNotificationLedPattern pattern = blinkLedPattern(times);
         memset(uniquePadIds, 0, sizeof(uniquePadIds));
-        Result res = hidsysGetUniquePadsFromNpad(hidGetHandheldMode() ? CONTROLLER_HANDHELD : CONTROLLER_PLAYER_1, uniquePadIds, 2, &n);
+        Result res = hidsysGetUniquePadsFromNpad(padIsHandheld(&pad) ? HidNpadIdType_Handheld : HidNpadIdType_No1, uniquePadIds, 2, &n);
         if (R_SUCCEEDED(res)) {
             for (s32 i = 0; i < n; i++) {
                 hidsysSetNotificationLedPattern(&pattern, uniquePadIds[i]);

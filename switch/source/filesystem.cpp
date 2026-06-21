@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -26,17 +26,36 @@
 
 #include "filesystem.hpp"
 
-Result FileSystem::mount(FsFileSystem* fileSystem, u64 titleID, AccountUid userID)
+Result FileSystem::mountSave(FsFileSystem* fileSystem, u64 titleID, AccountUid userID)
 {
     return fsOpen_SaveData(fileSystem, titleID, userID);
 }
 
-int FileSystem::mount(FsFileSystem fs)
+Result FileSystem::mountBcatSave(FsFileSystem* fileSystem, u64 titleID)
+{
+    return fsOpen_BcatSaveData(fileSystem, titleID);
+}
+
+Result FileSystem::mountDeviceSave(FsFileSystem* fileSystem, u64 titleID)
+{
+    return fsOpen_DeviceSaveData(fileSystem, titleID);
+}
+
+Result FileSystem::mountSystemSave(FsFileSystem* fileSystem, u64 systemSaveDataId, u8 spaceId)
+{
+    FsSaveDataAttribute attr = {};
+    attr.system_save_data_id = systemSaveDataId;
+    attr.save_data_type      = FsSaveDataType_System;
+    attr.save_data_rank      = FsSaveDataRank_Primary;
+    return fsOpenSaveDataFileSystemBySystemSaveDataId(fileSystem, (FsSaveDataSpaceId)spaceId, &attr);
+}
+
+int FileSystem::mountDevice(FsFileSystem fs)
 {
     return fsdevMountDevice("save", fs);
 }
 
-void FileSystem::unmount(void)
+void FileSystem::unmountDevice(void)
 {
     fsdevUnmountDevice("save");
 }

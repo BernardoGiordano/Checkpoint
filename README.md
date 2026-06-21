@@ -2,8 +2,8 @@
 
 A fast and simple homebrew save manager for 3DS and Switch written in C++.
 
-<p align="center"><img src="https://i.imgur.com/GmXss73.jpg" />
-<img src="https://i.imgur.com/Y4xJiHs.png" /></p>
+<p align="center"><img src="https://i.imgur.com/adEdJWO.jpeg" />
+<img src="https://i.imgur.com/7Z2S0gG.png" /></p>
 
 ## Why use Checkpoint?
 
@@ -33,12 +33,14 @@ Checkpoint relies on the following folders to store the files it generates. Note
 
 * **`sdmc:/3ds/Checkpoint`**: root path
 * **`sdmc:/3ds/Checkpoint/config.json`**: custom configuration file
+* **`sdmc:/3ds/Checkpoint/logs`**: log files
 * **`sdmc:/3ds/Checkpoint/saves/<unique id> <game title>`**: root path for all the save backups for a generic game
 * **`sdmc:/3ds/Checkpoint/extdata/<unique id> <game title>`**: root path for all the extdata backups for a generic game
 
 ### Switch
 
 * **`sdmc:/switch/Checkpoint`**: root path
+* **`sdmc:/switch/Checkpoint/logs`**: log files
 * **`sdmc:/switch/Checkpoint/config.json`**: custom configuration file
 * **`sdmc:/switch/Checkpoint/saves/<title id> <game title>`**: root path for all the save backups for a generic game
 
@@ -74,7 +76,7 @@ You can add and toggle features to Checkpoint for 3DS by editing the **`config.j
 
   },
   "nand_saves": true,
-  "version": 2
+  "version": 3
 }
 ```
 
@@ -90,11 +92,11 @@ devkitARM and devkitA64 are required to compile Checkpoint for 3DS and Switch, r
 
 ### 3DS version
 
-`dkp-pacman -S libctru citro3d citro2d`
+`dkp-pacman -S libctru citro3d citro2d tex3ds 3ds-bzip2`
 
 ### Switch version
 
-`dkp-pacman -S libnx switch-freetype switch-libpng switch-libjpeg-turbo switch-sdl2 switch-sdl2_image switch-sdl2_ttf`
+`dkp-pacman -S libnx switch-pkg-config switch-freetype switch-libpng switch-libjpeg-turbo switch-sdl2 switch-sdl2_image switch-sdl2_ttf`
 
 ## License
 
@@ -102,20 +104,17 @@ This project is licensed under the GNU GPLv3. Additional Terms 7.b and 7.c of GP
 
 ## Credits
 
-Even though this is the result of independent research and work, Checkpoint for 3DS couldn't be possible without J-D-K's original [JKSM](https://github.com/J-D-K/JKSM) version.
+* [Bernardo](https://github.com/BernardoGiordano/) for creating Checkpoint.
+* [J-D-K](https://github.com/J-D-K) for the original [JKSM](https://github.com/J-D-K/JKSM) version.
+* [TuxSH](https://github.com/tuxsh) for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which SPI code has been taken.
+* [piepie62](https://github.com/piepie62) and all other [PKSM](https://github.com/FlagBrew/PKSM) contributors for some code that has been ported to Checkpoint.
+* WinterMute, fincs and [devkitPro](https://devkitpro.org/) contributors for devkitARM, devkitA64 and [dkp-pacman](https://github.com/devkitPro/pacman/releases).
+* Yellows8 and all the mantainers for [switch-examples](https://github.com/switchbrew/switch-examples).
+* [rakujira](https://twitter.com/rakujira) for the awesome Checkpoint logo.
+* achinech for helping to debug the infamous 3.8.x crash issue.
+* Fellow testers and troubleshooters for their help.
+* The huge amount of supporters that this project has gained over the years.
 
-TuxSH for [TWLSaveTool](https://github.com/TuxSH/TWLSaveTool), from which SPI code has been taken.
-
-WinterMute, fincs and [devkitPro](https://devkitpro.org/) contributors for devkitARM, devkitA64 and [dkp-pacman](https://github.com/devkitPro/pacman/releases).
-
-Yellows8 and all the mantainers for [switch-examples](https://github.com/switchbrew/switch-examples).
-
-[rakujira](https://twitter.com/rakujira) for the awesome Checkpoint logo.
-
-Fellow testers and troubleshooters for their help.
-
----
-
-If you like the work FlagBrew puts into this project and more others, **support FlagBrew on [Patreon](https://www.patreon.com/FlagBrew)**!
+Without you, this project wouldn't have existed. Thank you.
 
 [![Discord](https://discordapp.com/api/guilds/278222834633801728/widget.png?style=banner3&time-)](https://discord.gg/bGKEyfY)

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -31,6 +31,8 @@
 #include <string>
 #include <variant>
 
+// A stream backed by either a regular FS file handle or an FSPXI file handle
+// (the latter is used for decrypted raw GBA VC saves accessed through PxiFS0).
 using MultiHandle = std::variant<FSPXI_File, Handle>;
 
 class FSStream {
@@ -39,7 +41,7 @@ public:
     FSStream(FS_Archive archive, const std::u16string& path, u32 flags, u32 size);
     FSStream(FSPXI_Archive archive, u32 flags);
     FSStream(FSPXI_Archive archive, u32 flags, u32 size);
-    ~FSStream(){};
+    ~FSStream() = default;
 
     Result close(void);
     bool eof(void);
@@ -52,6 +54,8 @@ public:
     u32 write(const void* buf, u32 size);
 
 private:
+    bool isPxi(void) const { return std::holds_alternative<FSPXI_File>(mHandle); }
+
     MultiHandle mHandle;
     u32 mSize;
     u32 mOffset;

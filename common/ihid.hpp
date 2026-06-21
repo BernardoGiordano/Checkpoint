@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2019 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -33,11 +33,7 @@
 
 typedef uint64_t u64;
 
-enum class HidDirection
-{
-    VERTICAL,
-    HORIZONTAL
-};
+enum class HidDirection { VERTICAL, HORIZONTAL };
 
 template <HidDirection ListDirection, HidDirection PageDirection, u64 Delay>
 class IHid {
@@ -63,27 +59,28 @@ public:
     void page(int v) { mPage = v; }
     size_t maxEntries(size_t count) const
     {
-        return (count - mPage * mMaxVisibleEntries) > mMaxVisibleEntries ? mMaxVisibleEntries - 1 : count - mPage * mMaxVisibleEntries - 1;
+        const size_t pageStart = (size_t)mPage * mMaxVisibleEntries;
+        if (count <= pageStart) {
+            return 0;
+        }
+        const size_t remaining = count - pageStart;
+        return remaining > mMaxVisibleEntries ? mMaxVisibleEntries - 1 : remaining - 1;
     }
     void pageBack()
     {
-        if (mPage > 0)
-        {
+        if (mPage > 0) {
             mPage--;
         }
-        else if (mPage == 0)
-        {
+        else if (mPage == 0) {
             mPage = mMaxPages - 1;
         }
     }
     void pageForward()
     {
-        if (mPage < (int)mMaxPages - 1)
-        {
+        if (mPage < (int)mMaxPages - 1) {
             mPage++;
         }
-        else if (mPage == (int)mMaxPages - 1)
-        {
+        else if (mPage == (int)mMaxPages - 1) {
             mPage = 0;
         }
     }
@@ -94,19 +91,15 @@ public:
     }
     void correctIndex(size_t count)
     {
-        if (mIndex > maxEntries(count))
-        {
-            if constexpr (ListDirection == HidDirection::HORIZONTAL)
-            {
+        if (mIndex > maxEntries(count)) {
+            if constexpr (ListDirection == HidDirection::HORIZONTAL) {
                 mIndex = mIndex % mColumns;
             }
-            else
-            {
+            else {
                 mIndex = mIndex % mRows;
             }
             // If the above doesn't fix, then forcibly fix
-            if (mIndex > maxEntries(count))
-            {
+            if (mIndex > maxEntries(count)) {
                 mIndex = maxEntries(count);
             }
         }
