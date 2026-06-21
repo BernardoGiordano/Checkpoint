@@ -49,20 +49,16 @@ const char* BackupTarget::dataTypeName(void) const
 
 ArchiveHandle BackupTarget::open(Result& res) const
 {
-    if (mKind == BackupKind::Save) {
-        if (mTitle.isGBAVC()) {
-            FSPXI_Archive archive;
-            res = Archive::rawSave(&archive, mTitle.mediaType(), mTitle.lowId(), mTitle.highId());
-            return R_SUCCEEDED(res) ? ArchiveHandle::fromPxi(archive) : ArchiveHandle();
-        }
-        FS_Archive archive;
-        res = Archive::save(&archive, mTitle.mediaType(), mTitle.lowId(), mTitle.highId());
-        return R_SUCCEEDED(res) ? ArchiveHandle::fromFs(archive) : ArchiveHandle();
-    }
+    return source().open(res);
+}
 
-    FS_Archive archive;
-    res = Archive::extdata(&archive, mTitle.extdataId());
-    return R_SUCCEEDED(res) ? ArchiveHandle::fromFs(archive) : ArchiveHandle();
+SaveDataSource BackupTarget::source(void) const
+{
+    if (mKind == BackupKind::Save) {
+        return mTitle.isGBAVC() ? SaveDataSource::rawGba(mTitle.mediaType(), mTitle.lowId(), mTitle.highId())
+                                : SaveDataSource::ctrSave(mTitle.mediaType(), mTitle.lowId(), mTitle.highId());
+    }
+    return SaveDataSource::extdata(mTitle.extdataId());
 }
 
 BackupTarget Title::backup(BackupKind kind)

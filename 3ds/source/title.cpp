@@ -159,9 +159,9 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         mExtdataPath      = StringUtils::UTF8toUTF16("/3ds/Checkpoint/extdata/") + StringUtils::UTF8toUTF16(unique) + mShortDescription;
         AM_GetTitleProductCode(mMedia, mId, productCode);
 
-        mAccessibleSave    = Archive::accessible(mediaType(), lowId(), highId());
-        mGBA               = (!mAccessibleSave) && Archive::accessibleRaw(mediaType(), lowId(), highId());
-        mAccessibleExtdata = Archive::accessible(extdataId());
+        mAccessibleSave    = SaveDataSource::ctrSave(mediaType(), lowId(), highId()).accessible();
+        mGBA               = (!mAccessibleSave) && SaveDataSource::rawGba(mediaType(), lowId(), highId()).accessible();
+        mAccessibleExtdata = SaveDataSource::extdata(extdataId()).accessible();
 
         if (mAccessibleSave || mGBA) {
             loadTitle = true;
