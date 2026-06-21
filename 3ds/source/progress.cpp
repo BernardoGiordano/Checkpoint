@@ -27,6 +27,7 @@
 #include "progress.hpp"
 #include "gui.hpp"
 #include "main.hpp"
+#include "transferstatus.hpp"
 #include "util.hpp"
 
 // Renders a single frame so the transfer progress modal keeps refreshing while a
@@ -42,26 +43,20 @@ static void renderTransferFrame()
 
 void UiProgressSink::begin(const std::string& mode, size_t totalFiles)
 {
-    transferSetMode(mode);
-    g_transferMode       = mode;
-    g_copyCount          = 0;
-    g_copyTotal          = totalFiles;
-    g_isTransferringFile = true;
+    TransferStatus::beginLocal(mode, totalFiles);
 }
 
 void UiProgressSink::startFile(const std::u16string& name, u32 size)
 {
-    g_currentFile       = name;
-    g_currentFileSize   = size;
-    g_currentFileOffset = 0;
-    mFileSize           = size;
-    mLastRendered       = -1;
+    TransferStatus::startFile(name, size);
+    mFileSize     = size;
+    mLastRendered = -1;
     renderTransferFrame();
 }
 
 void UiProgressSink::advanceBytes(u32 offset)
 {
-    g_currentFileOffset = offset;
+    TransferStatus::setFileOffset(offset);
 
     // Throttle to ~64 frames per file: only render when the offset crosses into a
     // new 1/64 bucket. Tiny files (size 0) just render once.
@@ -74,10 +69,10 @@ void UiProgressSink::advanceBytes(u32 offset)
 
 void UiProgressSink::finishFile()
 {
-    g_copyCount++;
+    TransferStatus::finishFile();
 }
 
 void UiProgressSink::end()
 {
-    g_isTransferringFile = false;
+    TransferStatus::end();
 }

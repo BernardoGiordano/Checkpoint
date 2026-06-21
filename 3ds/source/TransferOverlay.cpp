@@ -28,6 +28,7 @@
 #include "common.hpp"
 #include "main.hpp"
 #include "transfer.hpp"
+#include "transferstatus.hpp"
 
 TransferMenuOverlay::TransferMenuOverlay(Screen& screen, const std::function<void()>& callbackSend, const std::function<void()>& callbackReceive)
     : Overlay(screen), hid(2, 2)
@@ -116,8 +117,11 @@ void ReceiveOverlay::drawBottom(void) const
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
     C2D_DrawRectSolid(30, 40, 0.5f, 260, 160, COLOR_BLACK_DARKERR);
 
+    TransferSnapshot ts      = TransferStatus::snapshot();
+    const bool networkActive = ts.active && ts.kind == TransferKind::Network;
+
     bool completed = Transfer::receiverHasCompleted();
-    if (completed && !(g_transferIsNetwork && g_isTransferringFile)) {
+    if (completed && !networkActive) {
         std::string backupName = Transfer::receiverCompletedName();
         if (backupName.empty()) {
             backupName = "(unnamed backup)";
@@ -163,13 +167,11 @@ void ReceiveOverlay::drawBottom(void) const
     C2D_DrawText(&infoText, C2D_WithColor, 40, 60, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
 
     int noticeY = 120;
-    if (g_transferIsNetwork && g_isTransferringFile) {
-        u64 total = 0, done = 0;
-        transferGetProgress(done, total);
+    if (networkActive) {
+        u64 total = ts.bytesTotal, done = ts.bytesDone;
         int pct            = total > 0 ? (int)((done * 100) / total) : 0;
-        std::string mode   = transferGetMode();
-        std::string prefix = mode.empty() ? "Downloading backup" : mode;
-        std::string status = StringUtils::format("%s... %d%% (%s)", prefix.c_str(), pct, transferBytesToMB(done, total).c_str());
+        std::string prefix = ts.mode.empty() ? "Downloading backup" : ts.mode;
+        std::string status = StringUtils::format("%s... %d%% (%s)", prefix.c_str(), pct, TransferStatus::bytesToMB(done, total).c_str());
         C2D_Text statusText;
         C2D_TextParse(&statusText, textBuf, status.c_str());
         C2D_TextOptimize(&statusText);

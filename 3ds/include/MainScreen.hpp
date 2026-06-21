@@ -88,6 +88,13 @@ private:
     // selection (there is no global mode flag); toggled by the user and passed
     // down to the loader and io layers explicitly.
     BackupKind backupKind = BackupKind::Save;
+
+    // Multi-select batch progress: how many of the selected saves have been
+    // processed (multiSelectCount) out of the total (multiSelectTotal). Owned
+    // here because the batch loop and the progress modal both live on this
+    // screen and run single-threaded on the main thread.
+    size_t multiSelectCount = 0;
+    size_t multiSelectTotal = 0;
 };
 
 #endif

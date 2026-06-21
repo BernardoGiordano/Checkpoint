@@ -35,6 +35,7 @@
 #include "logging.hpp"
 #include "main.hpp"
 #include "server.hpp"
+#include "transferstatus.hpp"
 #include "util.hpp"
 #include <3ds.h>
 #include <arpa/inet.h>
@@ -288,7 +289,7 @@ namespace {
                 }
                 crc = updateCrc(crc, buf.get(), rd);
                 output.write(buf.get(), rd);
-                transferAddDone(rd);
+                TransferStatus::addBytesDone(rd);
                 renderTransferFrame();
             }
             input.close();
@@ -502,7 +503,7 @@ namespace {
                 output.write(buf.get(), rd);
                 remaining -= rd;
 
-                transferAddDone(rd);
+                TransferStatus::addBytesDone(rd);
             }
             if (remaining != 0) {
                 outError = "Corrupted ZIP payload.";
@@ -649,10 +650,7 @@ namespace {
 
     Server::HttpResponse handleUpload(const std::string&, const std::string& requestData)
     {
-        auto cleanup = []() {
-            g_isTransferringFile = false;
-            g_transferIsNetwork  = false;
-        };
+        auto cleanup        = []() { TransferStatus::end(); };
         size_t headerEnd    = requestData.find("\r\n\r\n");
         std::string headers = headerEnd == std::string::npos ? requestData : requestData.substr(0, headerEnd);
         std::string token   = headerValue(headers, "X-CP-Token");
@@ -770,9 +768,7 @@ namespace {
         output.close();
 
         if (isZip) {
-            transferSetMode("Extracting package");
-            g_transferIsNetwork = true;
-            transferSetProgress(0, (u64)fileLen);
+            TransferStatus::beginNetwork("Extracting package", (u64)fileLen);
 
             std::string extractError;
             bool extracted = extractZip(outputPath, backupRoot, extractError);
@@ -784,7 +780,7 @@ namespace {
                 return {500, "application/json", "{\"ok\":false,\"error\":\"" + message + "\"}"};
             }
 
-            transferSetDone((u64)fileLen);
+            TransferStatus::setBytesDone((u64)fileLen);
         }
 
         cleanup();
@@ -928,16 +924,10 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
     std::string payloadName;
     u32 payloadSize = 0;
 
-    auto clearTransferState = []() {
-        g_isTransferringFile = false;
-        g_transferIsNetwork  = false;
-    };
+    auto clearTransferState = []() { TransferStatus::end(); };
 
     if (isZip) {
-        transferSetMode("Preparing backup package");
-        g_transferIsNetwork  = true;
-        g_isTransferringFile = true;
-        transferSetProgress(0, totalFileBytes(files));
+        TransferStatus::beginNetwork("Preparing backup package", totalFileBytes(files));
 
         std::vector<FileEntry> zipEntries;
         u32 zipSize            = 0;
@@ -967,10 +957,7 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
         payloadSize            = entry.size;
     }
 
-    transferSetProgress(0, payloadSize);
-    transferSetMode("Sending backup");
-    g_transferIsNetwork  = true;
-    g_isTransferringFile = true;
+    TransferStatus::beginNetwork("Sending backup", payloadSize);
 
     nlohmann::json meta;
     meta["titleId"]        = StringUtils::format("%016llX", title.id());
@@ -1068,7 +1055,7 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
                     ok = false;
                     break;
                 }
-                transferAddDone(rd);
+                TransferStatus::addBytesDone(rd);
                 renderTransferFrame();
             }
             input.close();

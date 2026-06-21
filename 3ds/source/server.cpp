@@ -28,6 +28,7 @@
 #include "logging.hpp"
 #include "main.hpp"
 #include "thread.hpp"
+#include "transferstatus.hpp"
 #include <3ds.h>
 #include <cstring>
 #include <map>
@@ -140,11 +141,8 @@ namespace {
                         break;
                     }
                     if (path == "/transfer/upload") {
-                        trackTransfer       = true;
-                        g_transferIsNetwork = true;
-                        transferSetMode("Downloading backup");
-                        transferSetProgress(0, contentLength);
-                        g_isTransferringFile = true;
+                        trackTransfer = true;
+                        TransferStatus::beginNetwork("Downloading backup", contentLength);
                     }
                     if (contentLength == 0) {
                         break;
@@ -157,7 +155,7 @@ namespace {
                 // is bounded too: we stop as soon as the declared body has arrived.
                 size_t totalNeeded = headerEnd + 4 + contentLength;
                 if (trackTransfer && data.size() > headerEnd + 4) {
-                    transferSetDone(data.size() - (headerEnd + 4));
+                    TransferStatus::setBytesDone(data.size() - (headerEnd + 4));
                 }
                 if (data.size() >= totalNeeded) {
                     break;
@@ -174,9 +172,8 @@ namespace {
         std::string request = readRequest(clientSocket, tooLarge);
         if (tooLarge) {
             // Reset any transfer UI state we may have set while reading headers.
-            g_isTransferringFile = false;
-            g_transferIsNetwork  = false;
-            std::string body     = "{\"ok\":false,\"error\":\"Payload too large\"}";
+            TransferStatus::end();
+            std::string body = "{\"ok\":false,\"error\":\"Payload too large\"}";
             std::string header =
                 "HTTP/1.1 413 Payload Too Large\r\nContent-Type: application/json\r\nContent-Length: " + std::to_string(body.length()) + "\r\n\r\n";
             send(clientSocket, header.c_str(), header.length(), 0);

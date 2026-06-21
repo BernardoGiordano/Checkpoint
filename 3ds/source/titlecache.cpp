@@ -118,8 +118,8 @@ Title TitleCache::decode(const u8* src)
     bool saveIsGBA      = accessibleSaveRaw & 2;
 
     Title title;
-    title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, shortDescription, longDescription,
-        StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType, card);
+    title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, shortDescription, longDescription, StringUtils::UTF8toUTF16(savePath),
+        StringUtils::UTF8toUTF16(extdataPath), media, cardType, card);
 
     if (cardType == CARD_CTR) {
         u16 bigIconData[0x900];
