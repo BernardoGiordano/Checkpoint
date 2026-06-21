@@ -25,6 +25,8 @@
  */
 
 #include "MainScreen.hpp"
+#include "savedatasource.hpp"
+#include <optional>
 
 static constexpr size_t rowlen = 5, collen = 4, rows = 10, TOPBAR_h = 48;
 static constexpr size_t LEFT_SIDEBAR_w  = 72;
@@ -33,6 +35,79 @@ static constexpr int FILTER_BTN_SIZE    = 56;
 static constexpr int FILTER_BTN_X       = 8;
 static constexpr int FILTER_BTN_SPACING = 64;
 static constexpr int ACCT_ICON_SIZE     = 56;
+
+namespace {
+    // The date-stamped folder name suggested for a new backup. Account saves also
+    // append the (ASCII-folded) user name; the special save kinds use the bare date.
+    std::string backupSuggestion(Title& title)
+    {
+        if (!SaveDataSource(title.saveDataType()).isUserAccount()) {
+            return DateTime::dateTimeStr();
+        }
+        return DateTime::dateTimeStr() + " " +
+               (StringUtils::containsInvalidChar(Account::username(title.userId()))
+                       ? ""
+                       : StringUtils::removeNotAscii(StringUtils::removeAccents(Account::username(title.userId()))));
+    }
+
+    // Picks the destination folder for a backup. cellIndex 0 = a new folder (named
+    // by the keyboard, or the date-time stamp during a multi-selection); cellIndex
+    // > 0 = overwrite the chosen existing backup. Returns nullopt if the keyboard
+    // prompt was cancelled. Sets usedKeyboardFallback when the system keyboard was
+    // unavailable and the suggested name was used instead.
+    std::optional<std::string> chooseBackupDst(Title& title, size_t cellIndex, bool& usedKeyboardFallback)
+    {
+        usedKeyboardFallback = false;
+        if (cellIndex != 0) {
+            return title.fullPath(cellIndex);
+        }
+        std::string suggestion = backupSuggestion(title);
+        std::string name;
+        if (MS::multipleSelectionEnabled()) {
+            name = suggestion;
+        }
+        else if (KeyboardManager::get().isSystemKeyboardAvailable().first) {
+            std::pair<bool, std::string> response = KeyboardManager::get().keyboard(suggestion);
+            if (!response.first) {
+                return std::nullopt;
+            }
+            name = StringUtils::removeForbiddenCharacters(response.second);
+        }
+        else {
+            name                 = suggestion;
+            usedKeyboardFallback = true;
+        }
+        return title.path() + "/" + name;
+    }
+
+    std::string backupErrorMessage(io::BackupStage stage)
+    {
+        switch (stage) {
+            case io::BackupStage::OpenArchive:
+                return "Failed to mount save.";
+            case io::BackupStage::DeleteDst:
+                return "Failed to delete the existing backup\ndirectory recursively.";
+            case io::BackupStage::CreateDst:
+                return "Failed to create destination directory.";
+            default:
+                return "Failed to backup save.";
+        }
+    }
+
+    std::string restoreErrorMessage(io::BackupStage stage)
+    {
+        switch (stage) {
+            case io::BackupStage::OpenArchive:
+                return "Failed to mount save.";
+            case io::BackupStage::DeleteDst:
+                return "Failed to delete save.";
+            case io::BackupStage::Commit:
+                return "Failed to commit to save device.";
+            default:
+                return "Failed to restore save.";
+        }
+    }
+}
 
 MainScreen::MainScreen(const InputState& input) : hid(rowlen * collen, collen, input)
 {
@@ -403,6 +478,51 @@ size_t MainScreen::rawIndex() const
     return filteredToRawIndex(g_currentUId, mSaveTypeFilter, this->index(TITLES));
 }
 
+void MainScreen::doBackup(size_t rawIdx, size_t cellIndex)
+{
+    Title title;
+    getTitle(title, g_currentUId, rawIdx);
+
+    bool usedKeyboardFallback      = false;
+    std::optional<std::string> dst = chooseBackupDst(title, cellIndex, usedKeyboardFallback);
+    if (!dst) { // keyboard prompt cancelled
+        removeOverlay();
+        return;
+    }
+
+    UiProgressSink sink;
+    io::IoOutcome out = io::backup(title, *dst, sink);
+    if (!out.ok) {
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, out.res, backupErrorMessage(out.stage));
+        return;
+    }
+
+    if (!MS::multipleSelectionEnabled()) {
+        blinkLed(4);
+    }
+    currentOverlay = std::make_shared<InfoOverlay>(
+        *this, usedKeyboardFallback ? "Progress correctly saved to disk.\nSystem keyboard applet was not\naccessible. The suggested "
+                                      "destination\nfolder was used instead."
+                                    : "Progress correctly saved to disk.");
+}
+
+void MainScreen::doRestore(size_t rawIdx, size_t cellIndex)
+{
+    Title title;
+    getTitle(title, g_currentUId, rawIdx);
+    std::string name = nameFromCell(cellIndex);
+
+    UiProgressSink sink;
+    io::IoOutcome out = io::restore(title, title.fullPath(cellIndex) + "/", sink);
+    if (!out.ok) {
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, out.res, restoreErrorMessage(out.stage));
+        return;
+    }
+
+    blinkLed(4);
+    currentOverlay = std::make_shared<InfoOverlay>(*this, name + "\nhas been restored successfully.");
+}
+
 void MainScreen::handleEvents(const InputState& input)
 {
     const u64 kheld = input.kHeld;
@@ -514,13 +634,7 @@ void MainScreen::handleEvents(const InputState& input)
             // If the "New..." entry is selected...
             if (0 == this->index(CELLS)) {
                 if (!getPKSMBridgeFlag()) {
-                    auto result = io::backup(rawIndex(), g_currentUId, this->index(CELLS));
-                    if (std::get<0>(result)) {
-                        currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
-                    }
-                    else {
-                        currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
-                    }
+                    doBackup(rawIndex(), this->index(CELLS));
                 }
             }
             else {
@@ -535,16 +649,7 @@ void MainScreen::handleEvents(const InputState& input)
                 }
                 else {
                     currentOverlay = std::make_shared<YesNoOverlay>(
-                        *this, "Restore selected save?",
-                        [this]() {
-                            auto result = io::restore(rawIndex(), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
-                            if (std::get<0>(result)) {
-                                currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
-                            }
-                            else {
-                                currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
-                            }
-                        },
+                        *this, "Restore selected save?", [this]() { doRestore(rawIndex(), this->index(CELLS)); },
                         [this]() { this->removeOverlay(); });
                 }
             }
@@ -634,14 +739,8 @@ void MainScreen::handleEvents(const InputState& input)
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
                 multiSelectCount = i;
                 // translate filtered index to raw index for multi-selection
-                size_t raw  = filteredToRawIndex(g_currentUId, mSaveTypeFilter, list.at(i));
-                auto result = io::backup(raw, g_currentUId, this->index(CELLS));
-                if (std::get<0>(result)) {
-                    currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
-                }
-                else {
-                    currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
-                }
+                size_t raw = filteredToRawIndex(g_currentUId, mSaveTypeFilter, list.at(i));
+                doBackup(raw, this->index(CELLS));
             }
             multiSelectTotal = 0;
             multiSelectCount = 0;
@@ -669,17 +768,7 @@ void MainScreen::handleEvents(const InputState& input)
             }
             else {
                 currentOverlay = std::make_shared<YesNoOverlay>(
-                    *this, "Backup selected save?",
-                    [this]() {
-                        auto result = io::backup(rawIndex(), g_currentUId, this->index(CELLS));
-                        if (std::get<0>(result)) {
-                            currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
-                        }
-                        else {
-                            currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
-                        }
-                    },
-                    [this]() { this->removeOverlay(); });
+                    *this, "Backup selected save?", [this]() { doBackup(rawIndex(), this->index(CELLS)); }, [this]() { this->removeOverlay(); });
             }
         }
     }
@@ -704,16 +793,7 @@ void MainScreen::handleEvents(const InputState& input)
             else {
                 if (this->index(CELLS) != 0) {
                     currentOverlay = std::make_shared<YesNoOverlay>(
-                        *this, "Restore selected save?",
-                        [this]() {
-                            auto result = io::restore(rawIndex(), g_currentUId, this->index(CELLS), nameFromCell(this->index(CELLS)));
-                            if (std::get<0>(result)) {
-                                currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
-                            }
-                            else {
-                                currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
-                            }
-                        },
+                        *this, "Restore selected save?", [this]() { doRestore(rawIndex(), this->index(CELLS)); },
                         [this]() { this->removeOverlay(); });
                 }
             }

@@ -43,9 +43,24 @@
 
 #define BUFFER_SIZE 0x80000
 
+class Title;
+
 namespace io {
-    std::tuple<bool, Result, std::string> backup(size_t index, AccountUid uid, size_t cellIndex);
-    std::tuple<bool, Result, std::string> restore(size_t index, AccountUid uid, size_t cellIndex, const std::string& nameFromCell);
+    // The stage at which a backup/restore failed. The UI maps it to a human
+    // message; io itself carries no UI text.
+    enum class BackupStage { OpenArchive, DeleteDst, CreateDst, Copy, Commit };
+
+    struct IoOutcome {
+        bool ok;
+        Result res;
+        BackupStage stage; // meaningful only when !ok
+    };
+
+    // Backs up `title` into the already-resolved `dstPath` (the caller picks the
+    // folder name and decides new-vs-overwrite). Reports progress through `sink`.
+    IoOutcome backup(Title& title, const std::string& dstPath, ProgressSink& sink);
+    // Restores `title` from the already-resolved backup folder `srcPath`.
+    IoOutcome restore(Title& title, const std::string& srcPath, ProgressSink& sink);
 
     size_t countFiles(const std::string& path);
     Result copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
