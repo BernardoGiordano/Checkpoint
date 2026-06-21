@@ -221,9 +221,10 @@ void TitleLoader::exportTitleListCache(std::vector<Title>& list, const std::u16s
 {
     std::unique_ptr<u8[]> cache = std::unique_ptr<u8[]>(new u8[list.size() * ENTRYSIZE]());
     for (size_t i = 0; i < list.size(); i++) {
-        u8* entryStart               = cache.get() + i * ENTRYSIZE;
-        u64 id                       = list.at(i).id();
-        bool accessibleSave          = list.at(i).accessibleSave();
+        u8* entryStart = cache.get() + i * ENTRYSIZE;
+        u64 id         = list.at(i).id();
+        // bit 0: regular save accessible, bit 1: GBA VC raw save accessible
+        u8 accessibleSaveRaw         = list.at(i).accessibleSave() ? 1 : (list.at(i).isGBAVC() ? 2 : 0);
         bool accessibleExtdata       = list.at(i).accessibleExtdata();
         std::string shortDescription = StringUtils::UTF16toUTF8(list.at(i).getShortDescription());
         std::string longDescription  = StringUtils::UTF16toUTF8(list.at(i).getLongDescription());
@@ -243,7 +244,7 @@ void TitleLoader::exportTitleListCache(std::vector<Title>& list, const std::u16s
 
         memcpy(entryStart + 0, &id, sizeof(u64));
         memcpy(entryStart + 8, list.at(i).productCode, 16);
-        memcpy(entryStart + 24, &accessibleSave, sizeof(u8));
+        memcpy(entryStart + 24, &accessibleSaveRaw, sizeof(u8));
         memcpy(entryStart + 25, &accessibleExtdata, sizeof(u8));
         memcpy(entryStart + 26, shortDescription.c_str(), shortDescription.length());
         memcpy(entryStart + 90, longDescription.c_str(), longDescription.length());
@@ -302,7 +303,9 @@ void TitleLoader::importTitleListCache(void)
 
         u64 id;
         u8 productCode[16];
+        u8 accessibleSaveRaw;
         bool accessibleSave;
+        bool saveIsGBA;
         bool accessibleExtdata;
         char shortDescription[0x40];
         char longDescription[0x80];
@@ -314,7 +317,9 @@ void TitleLoader::importTitleListCache(void)
 
         memcpy(&id, titleData, sizeof(u64));
         memcpy(productCode, titleData + 8, 16);
-        memcpy(&accessibleSave, titleData + 24, sizeof(u8));
+        memcpy(&accessibleSaveRaw, titleData + 24, sizeof(u8));
+        accessibleSave = accessibleSaveRaw & 1;
+        saveIsGBA      = accessibleSaveRaw & 2;
         memcpy(&accessibleExtdata, titleData + 25, sizeof(u8));
         memcpy(shortDescription, titleData + 26, 0x40);
         memcpy(longDescription, titleData + 90, 0x80);
@@ -325,7 +330,7 @@ void TitleLoader::importTitleListCache(void)
         memcpy(&card, titleData + 732, sizeof(u8));
 
         Title title;
-        title.load(id, productCode, accessibleSave, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
+        title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
             StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType,
             card);
 
@@ -354,7 +359,9 @@ void TitleLoader::importTitleListCache(void)
         std::vector<u64>::iterator it = find(alreadystored.begin(), alreadystored.end(), id);
         if (it == alreadystored.end()) {
             u8 productCode[16];
+            u8 accessibleSaveRaw;
             bool accessibleSave;
+            bool saveIsGBA;
             bool accessibleExtdata;
             char shortDescription[0x40];
             char longDescription[0x80];
@@ -365,7 +372,9 @@ void TitleLoader::importTitleListCache(void)
             CardType card;
 
             memcpy(productCode, titleData + 8, 16);
-            memcpy(&accessibleSave, titleData + 24, sizeof(u8));
+            memcpy(&accessibleSaveRaw, titleData + 24, sizeof(u8));
+            accessibleSave = accessibleSaveRaw & 1;
+            saveIsGBA      = accessibleSaveRaw & 2;
             memcpy(&accessibleExtdata, titleData + 25, sizeof(u8));
             memcpy(shortDescription, titleData + 26, 0x40);
             memcpy(longDescription, titleData + 90, 0x80);
@@ -376,7 +385,7 @@ void TitleLoader::importTitleListCache(void)
             memcpy(&card, titleData + 732, sizeof(u8));
 
             Title title;
-            title.load(id, productCode, accessibleSave, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
+            title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
                 StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType,
                 card);
 
@@ -636,7 +645,7 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
                 if (validId(ids[i])) {
                     Title title;
                     if (title.load(ids[i], MEDIATYPE_SD, CARD_CTR)) {
-                        if (title.accessibleSave()) {
+                        if (title.accessibleSave() || title.isGBAVC()) {
                             titleSaves.push_back(title);
                         }
 

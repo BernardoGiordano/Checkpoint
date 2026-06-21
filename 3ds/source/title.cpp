@@ -107,15 +107,17 @@ void Title::load(void)
     mExtdataPath       = StringUtils::UTF8toUTF16("");
     mAccessibleSave    = false;
     mAccessibleExtdata = false;
+    mGBA               = false;
     mSaves.clear();
     mExtdata.clear();
 }
 
-void Title::load(u64 id, u8* _productCode, bool accessibleSave, bool accessibleExtdata, std::u16string shortDescription,
+void Title::load(u64 id, u8* _productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::u16string shortDescription,
     std::u16string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card)
 {
     mId                = id;
     mAccessibleSave    = accessibleSave;
+    mGBA               = saveIsGBA;
     mAccessibleExtdata = accessibleExtdata;
     mShortDescription  = shortDescription;
     mLongDescription   = longDescription;
@@ -158,9 +160,10 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
         AM_GetTitleProductCode(mMedia, mId, productCode);
 
         mAccessibleSave    = Archive::accessible(mediaType(), lowId(), highId());
+        mGBA               = (!mAccessibleSave) && Archive::accessibleRaw(mediaType(), lowId(), highId());
         mAccessibleExtdata = Archive::accessible(extdataId());
 
-        if (mAccessibleSave) {
+        if (mAccessibleSave || mGBA) {
             loadTitle = true;
             if (!io::directoryExists(Archive::sdmc(), mSavePath)) {
                 Result res = io::createDirectory(Archive::sdmc(), mSavePath);
@@ -227,6 +230,7 @@ bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
 
         mAccessibleSave    = true;
         mAccessibleExtdata = false;
+        mGBA               = false;
 
         loadTitle = true;
         if (!io::directoryExists(Archive::sdmc(), mSavePath)) {
@@ -252,6 +256,11 @@ bool Title::accessibleSave(void)
 bool Title::accessibleExtdata(void)
 {
     return mAccessibleExtdata;
+}
+
+bool Title::isGBAVC(void)
+{
+    return mGBA;
 }
 
 std::string Title::mediaTypeString(void)
@@ -327,7 +336,7 @@ void Title::refreshDirectories(void)
     mFullSavePaths.clear();
     mFullExtdataPaths.clear();
 
-    if (accessibleSave()) {
+    if (accessibleSave() || isGBAVC()) {
         // standard save backups
         Directory savelist(Archive::sdmc(), mSavePath);
         if (savelist.good()) {

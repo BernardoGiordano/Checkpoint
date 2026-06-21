@@ -25,19 +25,25 @@
  */
 
 #include "fsstream.hpp"
+#include "csvc.hpp"
+
+// GBA VC saves are always exposed by FSPXI under this fixed binary path.
+static const u32 pxi_path[5] = {1, 1, 3, 0, 0};
 
 FSStream::FSStream(FS_Archive archive, const std::u16string& path, u32 flags)
 {
     mGood   = false;
     mSize   = 0;
     mOffset = 0;
+    Handle hnd;
 
-    mResult = FSUSER_OpenFile(&mHandle, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
+    mResult = FSUSER_OpenFile(&hnd, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
     if (R_SUCCEEDED(mResult)) {
         u64 size64 = 0;
-        FSFILE_GetSize(mHandle, &size64);
-        mSize = (u32)size64;
-        mGood = true;
+        FSFILE_GetSize(hnd, &size64);
+        mSize   = (u32)size64;
+        mHandle = hnd;
+        mGood   = true;
     }
 }
 
@@ -46,12 +52,13 @@ FSStream::FSStream(FS_Archive archive, const std::u16string& path, u32 flags, u3
     mGood   = false;
     mSize   = size;
     mOffset = 0;
+    Handle hnd;
 
-    mResult = FSUSER_OpenFile(&mHandle, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
+    mResult = FSUSER_OpenFile(&hnd, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
     if (R_FAILED(mResult)) {
         mResult = FSUSER_CreateFile(archive, fsMakePath(PATH_UTF16, path.data()), 0, mSize);
         if (R_SUCCEEDED(mResult)) {
-            mResult = FSUSER_OpenFile(&mHandle, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
+            mResult = FSUSER_OpenFile(&hnd, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
             if (R_SUCCEEDED(mResult)) {
                 mGood = true;
             }
@@ -60,11 +67,49 @@ FSStream::FSStream(FS_Archive archive, const std::u16string& path, u32 flags, u3
     else {
         mGood = true;
     }
+
+    mHandle = hnd;
+}
+
+FSStream::FSStream(FSPXI_Archive archive, u32 flags)
+{
+    mGood   = false;
+    mSize   = 0;
+    mOffset = 0;
+    FSPXI_File hnd;
+
+    mResult = FSPXI_OpenFile(FsPxiHandle, &hnd, archive, {PATH_BINARY, 20, pxi_path}, flags, 0);
+    if (R_SUCCEEDED(mResult)) {
+        u64 size64 = 0;
+        FSPXI_GetFileSize(FsPxiHandle, hnd, &size64);
+        mSize   = (u32)size64;
+        mHandle = hnd;
+        mGood   = true;
+    }
+}
+
+FSStream::FSStream(FSPXI_Archive archive, u32 flags, u32 size)
+{
+    mGood   = false;
+    mSize   = size;
+    mOffset = 0;
+    FSPXI_File hnd;
+
+    mResult = FSPXI_OpenFile(FsPxiHandle, &hnd, archive, {PATH_BINARY, 20, pxi_path}, flags, 0);
+    if (R_SUCCEEDED(mResult)) {
+        mHandle = hnd;
+        mGood   = true;
+    }
 }
 
 Result FSStream::close(void)
 {
-    mResult = FSFILE_Close(mHandle);
+    if (isPxi()) {
+        mResult = FSPXI_CloseFile(FsPxiHandle, std::get<FSPXI_File>(mHandle));
+    }
+    else {
+        mResult = FSFILE_Close(std::get<Handle>(mHandle));
+    }
     return mResult;
 }
 
@@ -85,8 +130,13 @@ u32 FSStream::size(void)
 
 u32 FSStream::read(void* buf, u32 sz)
 {
-    u32 rd  = 0;
-    mResult = FSFILE_Read(mHandle, &rd, mOffset, buf, sz);
+    u32 rd = 0;
+    if (isPxi()) {
+        mResult = FSPXI_ReadFile(FsPxiHandle, std::get<FSPXI_File>(mHandle), &rd, mOffset, buf, sz);
+    }
+    else {
+        mResult = FSFILE_Read(std::get<Handle>(mHandle), &rd, mOffset, buf, sz);
+    }
     if (R_FAILED(mResult)) {
         if (rd > sz) {
             rd = sz;
@@ -98,8 +148,13 @@ u32 FSStream::read(void* buf, u32 sz)
 
 u32 FSStream::write(const void* buf, u32 sz)
 {
-    u32 wt  = 0;
-    mResult = FSFILE_Write(mHandle, &wt, mOffset, buf, sz, FS_WRITE_FLUSH);
+    u32 wt = 0;
+    if (isPxi()) {
+        mResult = FSPXI_WriteFile(FsPxiHandle, std::get<FSPXI_File>(mHandle), &wt, mOffset, buf, sz, FS_WRITE_FLUSH);
+    }
+    else {
+        mResult = FSFILE_Write(std::get<Handle>(mHandle), &wt, mOffset, buf, sz, FS_WRITE_FLUSH);
+    }
     mOffset += wt;
     return wt;
 }
