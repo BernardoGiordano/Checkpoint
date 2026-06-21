@@ -25,17 +25,69 @@
  */
 
 #include "MainScreen.hpp"
+#include "KeyboardManager.hpp"
 #include "backuptarget.hpp"
 #include "configuration.hpp"
+#include "io.hpp"
 #include "loader.hpp"
+#include "progress.hpp"
 #include "server.hpp"
 #include "transfer.hpp"
 #include <3ds.h>
 #include <cctype>
+#include <optional>
 
 static constexpr size_t rowlen = 4, collen = 8;
 
 namespace {
+    // Picks the destination folder for a backup. cellIndex 0 = a new folder (named
+    // by the keyboard, or the date-time stamp during a multi-selection); cellIndex
+    // > 0 = overwrite the chosen existing backup. Returns nullopt if the keyboard
+    // prompt was cancelled.
+    std::optional<std::u16string> chooseBackupDst(const BackupTarget& target, size_t cellIndex)
+    {
+        if (cellIndex != 0) {
+            return target.fullPath(cellIndex);
+        }
+        std::string suggestion = DateTime::dateTimeStr();
+        std::u16string name    = MS::multipleSelectionEnabled() ? StringUtils::UTF8toUTF16(suggestion.c_str())
+                                                                : KeyboardManager::get().keyboard(suggestion);
+        if (name.empty()) {
+            return std::nullopt;
+        }
+        return target.rootPath() + StringUtils::UTF8toUTF16("/") + name;
+    }
+
+    std::string backupErrorMessage(io::BackupStage stage, const char* dataType)
+    {
+        switch (stage) {
+            case io::BackupStage::OpenArchive:
+                return "Failed to open save archive.";
+            case io::BackupStage::DeleteDst:
+                return "Failed to delete the existing backup\ndirectory recursively.";
+            case io::BackupStage::CreateDst:
+                return "Failed to create destination directory.";
+            default:
+                return std::string("Failed to backup ") + dataType + ".";
+        }
+    }
+
+    std::string restoreErrorMessage(io::BackupStage stage, const char* dataType)
+    {
+        switch (stage) {
+            case io::BackupStage::OpenArchive:
+                return "Failed to open save archive.";
+            case io::BackupStage::ReadFile:
+                return "Failed to read save file backup.";
+            case io::BackupStage::Commit:
+                return "Failed to commit save data.";
+            case io::BackupStage::SecureValue:
+                return "Failed to fix secure value.";
+            default:
+                return std::string("Failed to restore ") + dataType + ".";
+        }
+    }
+
     std::string rawKeyboard(const std::string& suggestion, const std::string& hint, size_t maxLen)
     {
         SwkbdState swkbd;
@@ -505,6 +557,44 @@ void MainScreen::updateSelector(void)
     }
 }
 
+void MainScreen::doBackup(size_t fullIndex, size_t cellIndex)
+{
+    Title title;
+    TitleCatalog::get().getTitle(title, fullIndex, backupKind);
+    BackupTarget target = title.backup(backupKind);
+
+    auto dst = chooseBackupDst(target, cellIndex);
+    if (!dst) { // keyboard prompt cancelled
+        removeOverlay();
+        return;
+    }
+
+    UiProgressSink sink;
+    io::IoOutcome out = io::backup(target, *dst, sink);
+    if (out.ok) {
+        currentOverlay = std::make_shared<InfoOverlay>(*this, "Progress correctly saved to disk.");
+    }
+    else {
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, out.res, backupErrorMessage(out.stage, target.dataTypeName()));
+    }
+}
+
+void MainScreen::doRestore(size_t fullIndex, size_t cellIndex)
+{
+    Title title;
+    TitleCatalog::get().getTitle(title, fullIndex, backupKind);
+    BackupTarget target = title.backup(backupKind);
+
+    UiProgressSink sink;
+    io::IoOutcome out = io::restore(target, target.fullPath(cellIndex), sink);
+    if (out.ok) {
+        currentOverlay = std::make_shared<InfoOverlay>(*this, nameFromCell(cellIndex) + "\nhas been restored successfully.");
+    }
+    else {
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, out.res, restoreErrorMessage(out.stage, target.dataTypeName()));
+    }
+}
+
 void MainScreen::handleEvents(const InputState& input)
 {
     u32 kDown = hidKeysDown();
@@ -519,34 +609,11 @@ void MainScreen::handleEvents(const InputState& input)
             // If the "New..." entry is selected...
             if (0 == directoryList->index()) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
-                    *this, "Backup selected title?",
-                    [this]() {
-                        auto result = io::backup(hid.fullIndex(), 0, backupKind);
-                        if (std::get<0>(result)) {
-                            currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
-                        }
-                        else if (std::get<1>(result) != 0) {
-                            currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
-                        }
-                        else {
-                            this->removeOverlay();
-                        }
-                    },
-                    [this]() { this->removeOverlay(); });
+                    *this, "Backup selected title?", [this]() { this->doBackup(hid.fullIndex(), 0); }, [this]() { this->removeOverlay(); });
             }
             else {
                 currentOverlay = std::make_shared<YesNoOverlay>(
-                    *this, "Restore selected title?",
-                    [this]() {
-                        size_t cellIndex = directoryList->index();
-                        auto result      = io::restore(hid.fullIndex(), cellIndex, backupKind, nameFromCell(cellIndex));
-                        if (std::get<0>(result)) {
-                            currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
-                        }
-                        else {
-                            currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
-                        }
-                    },
+                    *this, "Restore selected title?", [this]() { this->doRestore(hid.fullIndex(), directoryList->index()); },
                     [this]() { this->removeOverlay(); });
             }
         }
@@ -652,13 +719,7 @@ void MainScreen::handleEvents(const InputState& input)
             g_multiSelectTotal       = list.size();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
                 g_multiSelectCount = i;
-                auto result        = io::backup(list.at(i), directoryList->index(), backupKind);
-                if (std::get<0>(result)) {
-                    currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
-                }
-                else {
-                    currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
-                }
+                doBackup(list.at(i), directoryList->index());
             }
             g_multiSelectTotal = 0;
             g_multiSelectCount = 0;
@@ -667,19 +728,7 @@ void MainScreen::handleEvents(const InputState& input)
         }
         else if (g_bottomScrollEnabled) {
             currentOverlay = std::make_shared<YesNoOverlay>(
-                *this, "Backup selected save?",
-                [this]() {
-                    auto result = io::backup(hid.fullIndex(), directoryList->index(), backupKind);
-                    if (std::get<0>(result)) {
-                        currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
-                    }
-                    else if (std::get<1>(result) != 0) {
-                        currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
-                    }
-                    else {
-                        this->removeOverlay();
-                    }
-                },
+                *this, "Backup selected save?", [this]() { this->doBackup(hid.fullIndex(), directoryList->index()); },
                 [this]() { this->removeOverlay(); });
         }
     }
@@ -692,16 +741,7 @@ void MainScreen::handleEvents(const InputState& input)
         }
         else if (g_bottomScrollEnabled && cellIndex > 0) {
             currentOverlay = std::make_shared<YesNoOverlay>(
-                *this, "Restore selected save?",
-                [this, cellIndex]() {
-                    auto result = io::restore(hid.fullIndex(), cellIndex, backupKind, nameFromCell(cellIndex));
-                    if (std::get<0>(result)) {
-                        currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
-                    }
-                    else {
-                        currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
-                    }
-                },
+                *this, "Restore selected save?", [this, cellIndex]() { this->doRestore(hid.fullIndex(), cellIndex); },
                 [this]() { this->removeOverlay(); });
         }
     }

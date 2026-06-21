@@ -27,27 +27,40 @@
 #ifndef IO_HPP
 #define IO_HPP
 
-#include "KeyboardManager.hpp"
 #include "directory.hpp"
 #include "fsstream.hpp"
-#include "multiselection.hpp"
+#include "progress.hpp"
 #include "spi.hpp"
 #include "title.hpp"
 #include "util.hpp"
 #include <3ds.h>
-#include <tuple>
 
 #define BUFFER_SIZE 0x50000
 
+class BackupTarget;
+
 namespace io {
-    std::tuple<bool, Result, std::string> backup(size_t index, size_t cellIndex, BackupKind kind);
-    std::tuple<bool, Result, std::string> restore(size_t index, size_t cellIndex, BackupKind kind, const std::string& nameFromCell);
+    // The stage at which a backup/restore failed. The UI maps it (together with
+    // the target's data-type name) to a human message; io itself carries no UI text.
+    enum class BackupStage { OpenArchive, DeleteDst, CreateDst, Copy, ReadSpi, ReadFile, WriteFile, Commit, SecureValue };
+
+    struct IoOutcome {
+        bool ok;
+        Result res;
+        BackupStage stage; // meaningful only when !ok
+    };
+
+    // Backs up `target` into the already-resolved `dstPath` (the caller picks the
+    // folder name and decides new-vs-overwrite). Reports progress through `sink`.
+    IoOutcome backup(const BackupTarget& target, const std::u16string& dstPath, ProgressSink& sink);
+    // Restores `target` from the already-resolved backup folder `srcPath`.
+    IoOutcome restore(const BackupTarget& target, const std::u16string& srcPath, ProgressSink& sink);
 
     size_t countFiles(FS_Archive arch, const std::u16string& path);
-    Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
-    void copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);
+    Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink);
+    void copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink);
     // Copies a GBA VC raw save between the FSPXI archive and an SD-card file (fromPxi selects the direction).
-    Result copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const std::u16string& path, bool fromPxi);
+    Result copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const std::u16string& path, bool fromPxi, ProgressSink& sink);
     Result createDirectory(FS_Archive archive, const std::u16string& path);
     void deleteBackupFolder(const std::u16string& path);
     Result deleteFolderRecursively(FS_Archive arch, const std::u16string& path);

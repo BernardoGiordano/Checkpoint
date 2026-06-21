@@ -61,6 +61,10 @@ protected:
     void refreshTitlesFull(void);
     std::string nameFromCell(size_t index) const;
     void startTransferSend(void);
+    // Resolve the title, pick the destination/source path (prompting the keyboard
+    // for a new backup folder), run the io operation and raise the result overlay.
+    void doBackup(size_t fullIndex, size_t cellIndex);
+    void doRestore(size_t fullIndex, size_t cellIndex);
 
 private:
     Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
