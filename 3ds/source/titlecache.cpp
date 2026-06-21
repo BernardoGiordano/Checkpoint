@@ -59,8 +59,8 @@ void TitleCache::encode(u8* dst, Title& title)
     // bit 0: regular save accessible, bit 1: GBA VC raw save accessible
     u8 accessibleSaveRaw         = title.accessibleSave() ? 1 : (title.isGBAVC() ? 2 : 0);
     bool accessibleExtdata       = title.accessibleExtdata();
-    std::string shortDescription = StringUtils::UTF16toUTF8(title.getShortDescription());
-    std::string longDescription  = StringUtils::UTF16toUTF8(title.getLongDescription());
+    std::string shortDescription = title.shortDescription();
+    std::string longDescription  = title.longDescription();
     std::string savePath         = StringUtils::UTF16toUTF8(title.savePath());
     std::string extdataPath      = StringUtils::UTF16toUTF8(title.extdataPath());
     FS_MediaType media           = title.mediaType();
@@ -118,8 +118,8 @@ Title TitleCache::decode(const u8* src)
     bool saveIsGBA      = accessibleSaveRaw & 2;
 
     Title title;
-    title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
-        StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType, card);
+    title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, shortDescription, longDescription,
+        StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType, card);
 
     if (cardType == CARD_CTR) {
         u16 bigIconData[0x900];

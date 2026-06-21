@@ -54,8 +54,8 @@ void Title::load(void)
     mMedia = MEDIATYPE_SD;
     mCard  = CARD_CTR;
     memset(productCode, 0, 16);
-    mShortDescription  = StringUtils::UTF8toUTF16("");
-    mLongDescription   = StringUtils::UTF8toUTF16("");
+    mShortDescription  = "";
+    mLongDescription   = "";
     mSavePath          = StringUtils::UTF8toUTF16("");
     mExtdataPath       = StringUtils::UTF8toUTF16("");
     mAccessibleSave    = false;
@@ -65,8 +65,8 @@ void Title::load(void)
     mExtdata.clear();
 }
 
-void Title::load(u64 id, u8* _productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::u16string shortDescription,
-    std::u16string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card)
+void Title::load(u64 id, u8* _productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::string shortDescription,
+    std::string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card)
 {
     mId                = id;
     mAccessibleSave    = accessibleSave;
@@ -118,20 +118,10 @@ std::string Title::mediaTypeString(void)
 
 std::string Title::shortDescription(void) const
 {
-    return StringUtils::UTF16toUTF8(mShortDescription);
-}
-
-std::u16string Title::getShortDescription(void)
-{
     return mShortDescription;
 }
 
-std::string Title::longDescription(void)
-{
-    return StringUtils::UTF16toUTF8(mLongDescription);
-}
-
-std::u16string Title::getLongDescription(void)
+std::string Title::longDescription(void) const
 {
     return mLongDescription;
 }
