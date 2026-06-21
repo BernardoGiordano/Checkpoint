@@ -2077,12 +2077,10 @@ FC_Rect FC_GetCharacterOffset(FC_Font* font, Uint16 position_index, int column_w
     ls = FC_GetBufferFitToColumn(font, column_width, FC_MakeScale(1, 1), 1);
     for (iter = ls; iter != NULL;) {
         char* line;
-        int i                    = 0;
         FC_StringList* next_iter = iter->next;
 
         ++num_lines;
         for (line = iter->value; line != NULL && *line != '\0'; line = (char*)U8_next(line)) {
-            ++i;
             --position_index;
             if (position_index == 0) {
                 // FIXME: Doesn't handle box-wrapped newlines correctly

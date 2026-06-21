@@ -332,7 +332,8 @@ void MainScreen::drawBottom(void) const
     if (transferEnabled) {
         buttonTransfer->draw(0.55f, COLOR_PURPLE_LIGHT);
     }
-    C2D_DrawText(&ins4, C2D_WithColor, ceilf(320 - StringUtils::textWidth(ins4, 0.47f) - 4), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
+    float ins4X = transferEnabled ? ceilf(320 - StringUtils::textWidth(ins4, 0.47f) - 4) : ceilf((320 - StringUtils::textWidth(ins4, 0.47f)) / 2);
+    C2D_DrawText(&ins4, C2D_WithColor, ins4X, 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
 
     if (hidKeysHeld() & KEY_SELECT) {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
