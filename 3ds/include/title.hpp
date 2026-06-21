@@ -70,10 +70,9 @@ public:
     u64 id(void) const;
     bool isActivityLog(void);
     void load(void);
-    void load(u64 id, u8* productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::u16string shortDescription,
-        std::u16string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card);
-    std::string longDescription(void);
-    std::u16string getLongDescription(void);
+    void load(u64 id, u8* productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::string shortDescription,
+        std::string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card);
+    std::string longDescription(void) const;
     u32 lowId(void);
     FS_MediaType mediaType(void);
     std::string mediaTypeString(void);
@@ -83,7 +82,6 @@ public:
     std::vector<std::u16string> saves(void);
     void setIcon(C2D_Image icon);
     std::string shortDescription(void) const;
-    std::u16string getShortDescription(void);
     CardType SPICardType(void);
     u32 uniqueId(void);
 
@@ -99,8 +97,8 @@ private:
     bool mAccessibleSave;
     bool mAccessibleExtdata;
     bool mGBA;
-    std::u16string mShortDescription;
-    std::u16string mLongDescription;
+    std::string mShortDescription;
+    std::string mLongDescription;
     std::u16string mSavePath;
     std::u16string mExtdataPath;
 

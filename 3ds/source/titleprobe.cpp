@@ -218,8 +218,8 @@ bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType car
     // On a hard failure (smdh == NULL, header/SPI error) probeCtr/probeCard
     // return false with every facet inaccessible; we still publish the Title but
     // the caller discards it on a false return, exactly as the old load() did.
-    title.load(
-        id, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, media, card, spiCard);
+    title.load(id, productCode, accessibleSave, gba, accessibleExtdata, StringUtils::UTF16toUTF8(shortDescription),
+        StringUtils::UTF16toUTF8(longDescription), savePath, extdataPath, media, card, spiCard);
     if (hasIcon) {
         title.setIcon(icon);
     }
