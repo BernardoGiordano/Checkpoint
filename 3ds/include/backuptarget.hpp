@@ -46,10 +46,10 @@ public:
 
     BackupKind kind(void) const { return mKind; }
 
-    std::u16string rootPath(void) const;            // savePath() | extdataPath()
-    std::u16string fullPath(size_t cellIndex) const;  // fullSavePath() | fullExtdataPath()
-    std::vector<std::u16string> backups(void) const;  // saves() | extdata()
-    const char* dataTypeName(void) const;             // "save" | "extdata"
+    std::u16string rootPath(void) const;             // savePath() | extdataPath()
+    std::u16string fullPath(size_t cellIndex) const; // fullSavePath() | fullExtdataPath()
+    std::vector<std::u16string> backups(void) const; // saves() | extdata()
+    const char* dataTypeName(void) const;            // "save" | "extdata"
 
     // Opens the underlying archive. `res` receives the FS result. The returned
     // handle closes itself correctly (FSUSER/FSPXI) on scope exit; on failure the

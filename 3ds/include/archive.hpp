@@ -81,16 +81,16 @@ public:
     ArchiveHandle& operator=(const ArchiveHandle&) = delete;
 
     explicit operator bool(void) const { return mValid; }
-    bool isRaw(void) const { return mRaw; }            // FSPXI-backed (raw GBA VC)
-    FS_Archive fs(void) const { return mFs; }          // valid when !isRaw()
-    FSPXI_Archive pxi(void) const { return mPxi; }     // valid when isRaw()
+    bool isRaw(void) const { return mRaw; }        // FSPXI-backed (raw GBA VC)
+    FS_Archive fs(void) const { return mFs; }      // valid when !isRaw()
+    FSPXI_Archive pxi(void) const { return mPxi; } // valid when isRaw()
     void close(void);
 
 private:
-    bool mValid          = false;
-    bool mRaw            = false;
-    FS_Archive mFs       = 0;
-    FSPXI_Archive mPxi   = 0;
+    bool mValid        = false;
+    bool mRaw          = false;
+    FS_Archive mFs     = 0;
+    FSPXI_Archive mPxi = 0;
 };
 
 // An openable save-data archive of one kind: a regular CTR save, a raw GBA VC

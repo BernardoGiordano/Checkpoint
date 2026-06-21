@@ -130,7 +130,7 @@ ArchiveHandle SaveDataSource::open(Result& res) const
 
 bool SaveDataSource::accessible(void) const
 {
-    Result res         = 0;
+    Result res           = 0;
     ArchiveHandle handle = open(res);
     if (!handle) {
         return false;
