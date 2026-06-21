@@ -40,8 +40,8 @@
 #define BUFFER_SIZE 0x50000
 
 namespace io {
-    std::tuple<bool, Result, std::string> backup(size_t index, size_t cellIndex);
-    std::tuple<bool, Result, std::string> restore(size_t index, size_t cellIndex, const std::string& nameFromCell);
+    std::tuple<bool, Result, std::string> backup(size_t index, size_t cellIndex, BackupKind kind);
+    std::tuple<bool, Result, std::string> restore(size_t index, size_t cellIndex, BackupKind kind, const std::string& nameFromCell);
 
     size_t countFiles(FS_Archive arch, const std::u16string& path);
     Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath);

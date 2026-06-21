@@ -31,8 +31,75 @@
 #include "fsstream.hpp"
 #include "util.hpp"
 #include <3ds.h>
+#include <utility>
 
 typedef enum { MODE_SAVE, MODE_EXTDATA } Mode_t;
+
+// Which backup facet of a Title we are acting on. Replaces reading the global
+// Archive::mode() flag deep in the call stack: the kind is selected once by the
+// UI and handed to the code that needs it.
+enum class BackupKind { Save, Extdata };
+
+inline BackupKind toBackupKind(Mode_t m)
+{
+    return m == MODE_SAVE ? BackupKind::Save : BackupKind::Extdata;
+}
+
+// RAII owner of an opened archive that hides whether it is backed by FSUSER
+// (FS_Archive) or FSPXI (FSPXI_Archive, used for raw GBA VC saves). Closes itself
+// the correct way on scope exit, so callers never write a close-lambda again.
+class ArchiveHandle {
+public:
+    ArchiveHandle() = default;
+    ~ArchiveHandle() { close(); }
+
+    // FS_Archive and FSPXI_Archive are the same underlying handle type, so these
+    // are named factories rather than overloaded constructors.
+    static ArchiveHandle fromFs(FS_Archive a)
+    {
+        ArchiveHandle h;
+        h.mValid = true;
+        h.mRaw   = false;
+        h.mFs    = a;
+        return h;
+    }
+    static ArchiveHandle fromPxi(FSPXI_Archive a)
+    {
+        ArchiveHandle h;
+        h.mValid = true;
+        h.mRaw   = true;
+        h.mPxi   = a;
+        return h;
+    }
+
+    ArchiveHandle(ArchiveHandle&& o) noexcept { *this = std::move(o); }
+    ArchiveHandle& operator=(ArchiveHandle&& o) noexcept
+    {
+        if (this != &o) {
+            close();
+            mValid   = o.mValid;
+            mRaw     = o.mRaw;
+            mFs      = o.mFs;
+            mPxi     = o.mPxi;
+            o.mValid = false;
+        }
+        return *this;
+    }
+    ArchiveHandle(const ArchiveHandle&)            = delete;
+    ArchiveHandle& operator=(const ArchiveHandle&) = delete;
+
+    explicit operator bool(void) const { return mValid; }
+    bool isRaw(void) const { return mRaw; }            // FSPXI-backed (raw GBA VC)
+    FS_Archive fs(void) const { return mFs; }          // valid when !isRaw()
+    FSPXI_Archive pxi(void) const { return mPxi; }     // valid when isRaw()
+    void close(void);
+
+private:
+    bool mValid          = false;
+    bool mRaw            = false;
+    FS_Archive mFs       = 0;
+    FSPXI_Archive mPxi   = 0;
+};
 
 namespace Archive {
     Result init(void);

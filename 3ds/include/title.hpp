@@ -47,9 +47,15 @@ extern "C" {
 
 #define TID_PKSM 0x000400000EC10000
 
+class BackupTarget;
+
 class Title {
 public:
     ~Title(void);
+
+    // Vend a backup facet (Save or Extdata) of this Title. The returned target
+    // holds a reference back to this Title, so keep it shorter-lived.
+    BackupTarget backup(BackupKind kind);
 
     bool accessibleSave(void);
     bool accessibleExtdata(void);
