@@ -29,6 +29,7 @@
 
 #include "CheatManagerOverlay.hpp"
 #include "ErrorOverlay.hpp"
+#include "archive.hpp"
 #include "InfoOverlay.hpp"
 #include "Screen.hpp"
 #include "TransferOverlay.hpp"
@@ -79,6 +80,10 @@ private:
     int selectionTimer;
     int refreshTimer;
     bool transferEnabled;
+    // Which backup facet the UI is currently showing. The single owner of this
+    // selection (there is no global mode flag); toggled by the user and passed
+    // down to the loader and io layers explicitly.
+    BackupKind backupKind = BackupKind::Save;
 };
 
 #endif

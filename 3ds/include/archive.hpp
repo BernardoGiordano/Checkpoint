@@ -33,17 +33,9 @@
 #include <3ds.h>
 #include <utility>
 
-typedef enum { MODE_SAVE, MODE_EXTDATA } Mode_t;
-
-// Which backup facet of a Title we are acting on. Replaces reading the global
-// Archive::mode() flag deep in the call stack: the kind is selected once by the
-// UI and handed to the code that needs it.
+// Which backup facet of a Title we are acting on. The UI selects the kind once
+// and hands it to the code that needs it; there is no global mode flag.
 enum class BackupKind { Save, Extdata };
-
-inline BackupKind toBackupKind(Mode_t m)
-{
-    return m == MODE_SAVE ? BackupKind::Save : BackupKind::Extdata;
-}
 
 // RAII owner of an opened archive that hides whether it is backed by FSUSER
 // (FS_Archive) or FSPXI (FSPXI_Archive, used for raw GBA VC saves). Closes itself
@@ -105,8 +97,6 @@ namespace Archive {
     Result init(void);
     void exit(void);
 
-    Mode_t mode(void);
-    void mode(Mode_t v);
     FS_Archive sdmc(void);
 
     Result save(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);

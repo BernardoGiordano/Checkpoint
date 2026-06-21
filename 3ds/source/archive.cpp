@@ -43,17 +43,6 @@ void ArchiveHandle::close(void)
 }
 
 static FS_Archive mSdmc;
-static Mode_t mMode = MODE_SAVE;
-
-Mode_t Archive::mode(void)
-{
-    return mMode;
-}
-
-void Archive::mode(Mode_t v)
-{
-    mMode = v;
-}
 
 Result Archive::init(void)
 {
