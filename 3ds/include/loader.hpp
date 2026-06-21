@@ -32,13 +32,13 @@
 #include <vector>
 
 namespace TitleLoader {
-    void getTitle(Title& dst, int i);
+    void getTitle(Title& dst, int i, BackupKind kind);
     bool getTitleById(Title& dst, u64 id);
     bool getTitleByName(Title& dst, const std::string& name);
     void refreshAllDirectories(void);
-    int getTitleCount(void);
-    C2D_Image icon(int i);
-    bool favorite(int i);
+    int getTitleCount(BackupKind kind);
+    C2D_Image icon(int i, BackupKind kind);
+    bool favorite(int i, BackupKind kind);
 
     void loadTitles(bool forceRefreshParam);
     void refreshDirectories(u64 id);

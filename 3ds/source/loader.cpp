@@ -86,11 +86,10 @@ bool TitleLoader::validId(u64 id)
     return !Configuration::getInstance().filter(id);
 }
 
-void TitleLoader::getTitle(Title& dst, int i)
+void TitleLoader::getTitle(Title& dst, int i, BackupKind kind)
 {
-    const Mode_t mode = Archive::mode();
     std::lock_guard<std::mutex> lock(titlesMutex);
-    const auto& vec = mode == MODE_SAVE ? titleSaves : titleExtdatas;
+    const auto& vec = kind == BackupKind::Save ? titleSaves : titleExtdatas;
     if (i >= 0 && i < (int)vec.size()) {
         dst = vec.at(i);
     }
@@ -141,31 +140,28 @@ bool TitleLoader::getTitleByName(Title& dst, const std::string& name)
     return false;
 }
 
-int TitleLoader::getTitleCount(void)
+int TitleLoader::getTitleCount(BackupKind kind)
 {
-    const Mode_t mode = Archive::mode();
     std::lock_guard<std::mutex> lock(titlesMutex);
-    return mode == MODE_SAVE ? titleSaves.size() : titleExtdatas.size();
+    return kind == BackupKind::Save ? titleSaves.size() : titleExtdatas.size();
 }
 
-C2D_Image TitleLoader::icon(int i)
+C2D_Image TitleLoader::icon(int i, BackupKind kind)
 {
-    const Mode_t mode = Archive::mode();
     std::lock_guard<std::mutex> lock(titlesMutex);
-    auto& vec = mode == MODE_SAVE ? titleSaves : titleExtdatas;
+    auto& vec = kind == BackupKind::Save ? titleSaves : titleExtdatas;
     if (i >= 0 && i < (int)vec.size()) {
         return vec.at(i).icon();
     }
     return Gui::noIcon();
 }
 
-bool TitleLoader::favorite(int i)
+bool TitleLoader::favorite(int i, BackupKind kind)
 {
-    const Mode_t mode = Archive::mode();
     u64 id;
     {
         std::lock_guard<std::mutex> lock(titlesMutex);
-        auto& vec = mode == MODE_SAVE ? titleSaves : titleExtdatas;
+        auto& vec = kind == BackupKind::Save ? titleSaves : titleExtdatas;
         if (i < 0 || i >= (int)vec.size()) {
             return false;
         }

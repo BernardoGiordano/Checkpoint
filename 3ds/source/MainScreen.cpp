@@ -25,6 +25,7 @@
  */
 
 #include "MainScreen.hpp"
+#include "backuptarget.hpp"
 #include "configuration.hpp"
 #include "loader.hpp"
 #include "server.hpp"
@@ -130,7 +131,7 @@ void MainScreen::drawTop(void) const
 {
     auto selEnt          = MS::selectedEntries();
     const size_t entries = hid.maxVisibleEntries();
-    const size_t max     = hid.maxEntries(TitleLoader::getTitleCount()) + 1;
+    const size_t max     = hid.maxEntries(TitleLoader::getTitleCount(backupKind)) + 1;
 
     C2D_TargetClear(g_top, COLOR_BLACK_DARKERR);
     C2D_TargetClear(g_bottom, COLOR_BLACK_DARKERR);
@@ -166,7 +167,7 @@ void MainScreen::drawTop(void) const
     }
     else {
         for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-            C2D_Image titleIcon = TitleLoader::icon(k);
+            C2D_Image titleIcon = TitleLoader::icon(k, backupKind);
             if (titleIcon.subtex->width == 48) {
                 C2D_DrawImageAt(titleIcon, selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
             }
@@ -175,7 +176,7 @@ void MainScreen::drawTop(void) const
             }
         }
 
-        if (TitleLoader::getTitleCount() > 0) {
+        if (TitleLoader::getTitleCount(backupKind) > 0) {
             drawSelector();
         }
 
@@ -186,7 +187,7 @@ void MainScreen::drawTop(void) const
                 C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
             }
 
-            if (TitleLoader::favorite(k)) {
+            if (TitleLoader::favorite(k, backupKind)) {
                 C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 3, 0.5f, 16, 16, COLOR_GOLD);
                 C2D_SpriteSetPos(&star, selectorX(k) + 27, selectorY(k) - 1);
                 C2D_DrawSpriteTinted(&star, &checkboxTint);
@@ -223,7 +224,7 @@ void MainScreen::drawTop(void) const
             static const float border = ceilf((400 - (ins1.width + ins2.width + ins3.width) * 0.47f) / 2);
             C2D_DrawText(&ins1, C2D_WithColor, border, 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
             C2D_DrawText(&ins2, C2D_WithColor, border + ceilf(ins1.width * 0.47f), 223, 0.5f, 0.47f, 0.47f,
-                Archive::mode() == MODE_SAVE ? COLOR_WHITE : COLOR_RED);
+                backupKind == BackupKind::Save ? COLOR_WHITE : COLOR_RED);
             C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
         }
 
@@ -273,19 +274,17 @@ void MainScreen::drawBottom(void) const
 {
     C2D_TextBufClear(dynamicBuf);
 
-    const Mode_t mode = Archive::mode();
-
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 19, COLOR_BLACK_DARKER);
     C2D_DrawRectSolid(0, 221, 0.5f, 320, 19, COLOR_BLACK_DARKER);
 
     if (g_isLoadingTitles) {}
 
-    else if (TitleLoader::getTitleCount() > 0) {
+    else if (TitleLoader::getTitleCount(backupKind) > 0) {
         Title title;
-        TitleLoader::getTitle(title, hid.fullIndex());
+        TitleLoader::getTitle(title, hid.fullIndex(), backupKind);
 
         directoryList->flush();
-        std::vector<std::u16string> dirs = mode == MODE_SAVE ? title.saves() : title.extdata();
+        std::vector<std::u16string> dirs = title.backup(backupKind).backups();
 
         for (size_t i = 0; i < dirs.size(); i++) {
             directoryList->push_back(COLOR_BLACK_DARKERR, COLOR_WHITE, StringUtils::UTF16toUTF8(dirs.at(i)), i == directoryList->index());
@@ -494,7 +493,7 @@ void MainScreen::updateSelector(void)
     }
 
     if (!g_bottomScrollEnabled) {
-        size_t count = TitleLoader::getTitleCount();
+        size_t count = TitleLoader::getTitleCount(backupKind);
         if (count > 0) {
             hid.update(count);
             directoryList->resetIndex();
@@ -521,7 +520,7 @@ void MainScreen::handleEvents(const InputState& input)
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Backup selected title?",
                     [this]() {
-                        auto result = io::backup(hid.fullIndex(), 0, toBackupKind(Archive::mode()));
+                        auto result = io::backup(hid.fullIndex(), 0, backupKind);
                         if (std::get<0>(result)) {
                             currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                         }
@@ -539,7 +538,7 @@ void MainScreen::handleEvents(const InputState& input)
                     *this, "Restore selected title?",
                     [this]() {
                         size_t cellIndex = directoryList->index();
-                        auto result      = io::restore(hid.fullIndex(), cellIndex, toBackupKind(Archive::mode()), nameFromCell(cellIndex));
+                        auto result      = io::restore(hid.fullIndex(), cellIndex, backupKind, nameFromCell(cellIndex));
                         if (std::get<0>(result)) {
                             currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                         }
@@ -568,16 +567,15 @@ void MainScreen::handleEvents(const InputState& input)
 
     if (kDown & KEY_X) {
         if (g_bottomScrollEnabled) {
-            bool isSaveMode = Archive::mode() == MODE_SAVE;
-            size_t index    = directoryList->index();
+            size_t index = directoryList->index();
             // avoid actions if X is pressed on "New..."
             if (index > 0) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Delete selected backup?",
-                    [this, isSaveMode, index]() {
+                    [this, index]() {
                         Title title;
-                        TitleLoader::getTitle(title, hid.fullIndex());
-                        std::u16string path = isSaveMode ? title.fullSavePath(index) : title.fullExtdataPath(index);
+                        TitleLoader::getTitle(title, hid.fullIndex(), backupKind);
+                        std::u16string path = title.backup(backupKind).fullPath(index);
                         io::deleteBackupFolder(path);
                         TitleLoader::refreshDirectories(title.id());
                         directoryList->setIndex(index - 1);
@@ -588,7 +586,7 @@ void MainScreen::handleEvents(const InputState& input)
         }
         else {
             hid.reset();
-            Archive::mode(Archive::mode() == MODE_SAVE ? MODE_EXTDATA : MODE_SAVE);
+            backupKind = backupKind == BackupKind::Save ? BackupKind::Extdata : BackupKind::Save;
             MS::clearSelectedEntries();
             directoryList->resetIndex();
         }
@@ -612,7 +610,7 @@ void MainScreen::handleEvents(const InputState& input)
 
     if (selectionTimer > 90) {
         MS::clearSelectedEntries();
-        for (size_t i = 0, sz = TitleLoader::getTitleCount(); i < sz; i++) {
+        for (size_t i = 0, sz = TitleLoader::getTitleCount(backupKind); i < sz; i++) {
             MS::addSelectedEntry(i);
         }
         selectionTimer = 0;
@@ -653,7 +651,7 @@ void MainScreen::handleEvents(const InputState& input)
             g_multiSelectTotal       = list.size();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
                 g_multiSelectCount = i;
-                auto result        = io::backup(list.at(i), directoryList->index(), toBackupKind(Archive::mode()));
+                auto result        = io::backup(list.at(i), directoryList->index(), backupKind);
                 if (std::get<0>(result)) {
                     currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                 }
@@ -670,7 +668,7 @@ void MainScreen::handleEvents(const InputState& input)
             currentOverlay = std::make_shared<YesNoOverlay>(
                 *this, "Backup selected save?",
                 [this]() {
-                    auto result = io::backup(hid.fullIndex(), directoryList->index(), toBackupKind(Archive::mode()));
+                    auto result = io::backup(hid.fullIndex(), directoryList->index(), backupKind);
                     if (std::get<0>(result)) {
                         currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                     }
@@ -695,7 +693,7 @@ void MainScreen::handleEvents(const InputState& input)
             currentOverlay = std::make_shared<YesNoOverlay>(
                 *this, "Restore selected save?",
                 [this, cellIndex]() {
-                    auto result = io::restore(hid.fullIndex(), cellIndex, toBackupKind(Archive::mode()), nameFromCell(cellIndex));
+                    auto result = io::restore(hid.fullIndex(), cellIndex, backupKind, nameFromCell(cellIndex));
                     if (std::get<0>(result)) {
                         currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                     }
@@ -707,9 +705,9 @@ void MainScreen::handleEvents(const InputState& input)
         }
     }
 
-    if (TitleLoader::getTitleCount() > 0) {
+    if (TitleLoader::getTitleCount(backupKind) > 0) {
         Title title;
-        TitleLoader::getTitle(title, hid.fullIndex());
+        TitleLoader::getTitle(title, hid.fullIndex(), backupKind);
         if ((title.isActivityLog() && buttonPlayCoins->released()) || ((hidKeysDown() & KEY_TOUCH) && input.py < 20 && input.px > 294)) {
             if (!Archive::setPlayCoins()) {
                 currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");
@@ -800,7 +798,7 @@ std::string MainScreen::nameFromCell(size_t index) const
 
 void MainScreen::startTransferSend(void)
 {
-    if (TitleLoader::getTitleCount() <= 0) {
+    if (TitleLoader::getTitleCount(backupKind) <= 0) {
         currentOverlay = std::make_shared<InfoOverlay>(*this, "No titles available.");
         return;
     }
@@ -812,10 +810,11 @@ void MainScreen::startTransferSend(void)
     }
 
     Title title;
-    TitleLoader::getTitle(title, hid.fullIndex());
+    TitleLoader::getTitle(title, hid.fullIndex(), backupKind);
+    BackupTarget target = title.backup(backupKind);
 
     std::string backupName    = nameFromCell(cellIndex);
-    std::u16string backupPath = Archive::mode() == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
+    std::u16string backupPath = target.fullPath(cellIndex);
 
     std::string ipPort = rawKeyboard("192.168.1.10:8000", "Receiver IP:PORT", 32);
     if (ipPort.empty()) {
@@ -847,7 +846,7 @@ void MainScreen::startTransferSend(void)
     }
 
     std::string error;
-    std::string dataType = Archive::mode() == MODE_SAVE ? "save" : "extdata";
+    std::string dataType = target.dataTypeName();
     bool ok              = Transfer::sendBackup(title, backupPath, backupName, dataType, ip, (u16)port, pin, error);
     if (ok) {
         currentOverlay = std::make_shared<InfoOverlay>(*this, "Transfer completed.");
