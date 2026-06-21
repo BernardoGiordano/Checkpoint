@@ -87,7 +87,16 @@ private:
 
     bool validId(u64 id);
     bool scanCard(void);
+
+    // loadTitles orchestrates these steps; each owns one phase.
     void loadTitles(bool forceRefreshParam);
+    bool isCacheFresh(void);          // hash check; (re)writes the hash file as a side effect
+    void loadFromCache(void);         // fast path: deserialize the cache + refresh dirs
+    void scanInstalledTitles(void);   // slow path: enumerate NAND / SD / PKSM
+    void appendCartTitle(void);       // prepend the inserted game-card title, if any
+    void sortLists(void);             // favorites-first, then by name
+    void exportCaches(void);          // serialize both lists to the SD cache
+
     void exportTitleListCache(std::vector<Title>& list, const std::u16string& path);
     void importTitleListCache(void);
 

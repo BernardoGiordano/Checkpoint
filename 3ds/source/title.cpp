@@ -30,9 +30,6 @@
 #include "titlequirks.hpp"
 #include <chrono>
 
-static constexpr Tex3DS_SubTexture dsIconSubt3x = {32, 32, 0.0f, 1.0f, 1.0f, 0.0f};
-static C2D_Image dsIcon                         = {nullptr, &dsIconSubt3x};
-
 C2D_Image loadTextureFromBytes(u16* bigIconData)
 {
     C3D_Tex* tex                          = (C3D_Tex*)malloc(sizeof(C3D_Tex));
@@ -49,51 +46,6 @@ C2D_Image loadTextureFromBytes(u16* bigIconData)
     }
 
     return image;
-}
-
-static C2D_Image loadTextureIcon(smdh_s* smdh)
-{
-    return loadTextureFromBytes(smdh->bigIconData);
-}
-
-static void loadDSIcon(u8* banner)
-{
-    static constexpr int WIDTH_POW2  = 32;
-    static constexpr int HEIGHT_POW2 = 32;
-    if (!dsIcon.tex) {
-        dsIcon.tex = new C3D_Tex;
-        C3D_TexInit(dsIcon.tex, WIDTH_POW2, HEIGHT_POW2, GPU_RGB565);
-    }
-
-    struct bannerData {
-        u16 version;
-        u16 crc;
-        u8 reserved[28];
-        u8 data[512];
-        u16 palette[16];
-    };
-    bannerData* iconData = (bannerData*)banner;
-
-    u16* output = (u16*)dsIcon.tex->data;
-    for (size_t x = 0; x < 32; x++) {
-        for (size_t y = 0; y < 32; y++) {
-            u32 srcOff   = (((y >> 3) * 4 + (x >> 3)) * 8 + (y & 7)) * 4 + ((x & 7) >> 1);
-            u32 srcShift = (x & 1) * 4;
-
-            u16 pIndex = (iconData->data[srcOff] >> srcShift) & 0xF;
-            u16 color  = 0xFFFF;
-            if (pIndex != 0) {
-                u16 r = iconData->palette[pIndex] & 0x1F;
-                u16 g = (iconData->palette[pIndex] >> 5) & 0x1F;
-                u16 b = (iconData->palette[pIndex] >> 10) & 0x1F;
-                color = (r << 11) | (g << 6) | (g >> 4) | (b);
-            }
-
-            u32 dst     = ((((y >> 3) * (32 >> 3) + (x >> 3)) << 6) +
-                       ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3)));
-            output[dst] = color;
-        }
-    }
 }
 
 void Title::load(void)
@@ -129,122 +81,6 @@ void Title::load(u64 id, u8* _productCode, bool accessibleSave, bool saveIsGBA, 
     mCardType          = card;
 
     memcpy(productCode, _productCode, 16);
-}
-
-bool Title::load(u64 _id, FS_MediaType _media, FS_CardType _card)
-{
-    bool loadTitle = false;
-    mId            = _id;
-    mMedia         = _media;
-    mCard          = _card;
-
-    if (mCard == CARD_CTR) {
-        smdh_s* smdh;
-        if (mId == TID_PKSM) {
-            smdh = loadSMDH("romfs:/PKSM.smdh");
-        }
-        else {
-            smdh = loadSMDH(lowId(), highId(), mMedia);
-        }
-        if (smdh == NULL) {
-            Logging::error("Failed to load title {:X} due to smdh == NULL", mId);
-            return false;
-        }
-
-        char unique[12] = {0};
-        sprintf(unique, "0x%05X ", (unsigned int)uniqueId());
-
-        mShortDescription = StringUtils::removeForbiddenCharacters((char16_t*)smdh->applicationTitles[1].shortDescription);
-        mLongDescription  = (char16_t*)smdh->applicationTitles[1].longDescription;
-        mSavePath         = StringUtils::UTF8toUTF16("/3ds/Checkpoint/saves/") + StringUtils::UTF8toUTF16(unique) + mShortDescription;
-        mExtdataPath      = StringUtils::UTF8toUTF16("/3ds/Checkpoint/extdata/") + StringUtils::UTF8toUTF16(unique) + mShortDescription;
-        AM_GetTitleProductCode(mMedia, mId, productCode);
-
-        mAccessibleSave    = SaveDataSource::ctrSave(mediaType(), lowId(), highId()).accessible();
-        mGBA               = (!mAccessibleSave) && SaveDataSource::rawGba(mediaType(), lowId(), highId()).accessible();
-        mAccessibleExtdata = SaveDataSource::extdata(extdataId()).accessible();
-
-        if (mAccessibleSave || mGBA) {
-            loadTitle = true;
-            if (!io::directoryExists(Archive::sdmc(), mSavePath)) {
-                Result res = io::createDirectory(Archive::sdmc(), mSavePath);
-                if (R_FAILED(res)) {
-                    loadTitle = false;
-                    Logging::error("Failed to create backup directory with result 0x{:08X}.", res);
-                }
-            }
-        }
-
-        if (mAccessibleExtdata) {
-            loadTitle = true;
-            if (!io::directoryExists(Archive::sdmc(), mExtdataPath)) {
-                Result res = io::createDirectory(Archive::sdmc(), mExtdataPath);
-                if (R_FAILED(res)) {
-                    loadTitle = false;
-                    Logging::error("Failed to create backup directory with result 0x{:08X}.", res);
-                }
-            }
-        }
-
-        if (loadTitle) {
-            mIcon = loadTextureIcon(smdh);
-        }
-
-        delete smdh;
-    }
-    else {
-        u8* headerData = new u8[0x3B4];
-        Result res     = FSUSER_GetLegacyRomHeader(mMedia, 0LL, headerData);
-        if (R_FAILED(res)) {
-            delete[] headerData;
-            Logging::error("Failed get legacy rom header with result 0x{:08X}.", res);
-            return false;
-        }
-
-        char _cardTitle[14] = {0};
-        char _gameCode[6]   = {0};
-
-        std::copy(headerData, headerData + 12, _cardTitle);
-        std::copy(headerData + 12, headerData + 16, _gameCode);
-        _cardTitle[13] = '\0';
-        _gameCode[5]   = '\0';
-
-        delete[] headerData;
-        headerData = new u8[0x23C0];
-        FSUSER_GetLegacyBannerData(mMedia, 0LL, headerData);
-        loadDSIcon(headerData);
-        mIcon = dsIcon;
-        delete[] headerData;
-
-        res = SPIGetCardType(&mCardType, (_gameCode[0] == 'I') ? 1 : 0);
-        if (R_FAILED(res)) {
-            Logging::error("Failed get SPI Card Type with result 0x{:08X}.", res);
-            return false;
-        }
-
-        mShortDescription = StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(_cardTitle));
-        mLongDescription  = mShortDescription;
-        mSavePath         = StringUtils::UTF8toUTF16("/3ds/Checkpoint/saves/") + StringUtils::UTF8toUTF16(_gameCode) + StringUtils::UTF8toUTF16(" ") +
-                    mShortDescription;
-        mExtdataPath = mSavePath;
-        memset(productCode, 0, 16);
-
-        mAccessibleSave    = true;
-        mAccessibleExtdata = false;
-        mGBA               = false;
-
-        loadTitle = true;
-        if (!io::directoryExists(Archive::sdmc(), mSavePath)) {
-            res = io::createDirectory(Archive::sdmc(), mSavePath);
-            if (R_FAILED(res)) {
-                loadTitle = false;
-                Logging::error("Failed to create backup directory with result 0x{:08X}.", res);
-            }
-        }
-    }
-
-    refreshDirectories();
-    return loadTitle;
 }
 
 Title::~Title(void) {}
@@ -330,6 +166,61 @@ std::vector<std::u16string> Title::extdata(void)
     return mExtdata;
 }
 
+void Title::loadBackupList(const std::u16string& basePath, const std::vector<std::u16string>& additionalFolders, bool descending,
+    std::vector<std::u16string>& names, std::vector<std::u16string>& fullPaths)
+{
+    Directory baselist(Archive::sdmc(), basePath);
+    if (baselist.good()) {
+        for (size_t i = 0, sz = baselist.size(); i < sz; i++) {
+            if (baselist.folder(i)) {
+                names.push_back(baselist.entry(i));
+                fullPaths.push_back(basePath + StringUtils::UTF8toUTF16("/") + baselist.entry(i));
+            }
+        }
+
+        if (descending) {
+            std::sort(names.rbegin(), names.rend());
+            std::sort(fullPaths.rbegin(), fullPaths.rend());
+        }
+        else {
+            std::sort(names.begin(), names.end());
+            std::sort(fullPaths.begin(), fullPaths.end());
+        }
+        names.insert(names.begin(), StringUtils::UTF8toUTF16("New..."));
+        fullPaths.insert(fullPaths.begin(), StringUtils::UTF8toUTF16("New..."));
+    }
+    else {
+        Logging::error("Couldn't retrieve the directory list for the title {}", shortDescription());
+    }
+
+    // backups from configured additional folders, appended unsorted after "New..."
+    try {
+        for (const auto& folder : additionalFolders) {
+            if (!io::directoryExists(Archive::sdmc(), folder)) {
+                Logging::error("Additional folder does not exist: {}", StringUtils::UTF16toUTF8(folder));
+                continue;
+            }
+            Directory list(Archive::sdmc(), folder);
+            if (!list.good()) {
+                Logging::error("Additional folder is not good: {}", StringUtils::UTF16toUTF8(folder));
+                continue;
+            }
+            for (size_t i = 0, sz = list.size(); i < sz; i++) {
+                if (list.folder(i)) {
+                    names.push_back(list.entry(i));
+                    fullPaths.push_back(folder + StringUtils::UTF8toUTF16("/") + list.entry(i));
+                }
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        Logging::error("Exception when processing additional folders: {}", e.what());
+    }
+    catch (...) {
+        Logging::error("Unknown exception when processing additional folders for title {:X}", mId);
+    }
+}
+
 void Title::refreshDirectories(void)
 {
     mSaves.clear();
@@ -338,123 +229,11 @@ void Title::refreshDirectories(void)
     mFullExtdataPaths.clear();
 
     if (accessibleSave() || isGBAVC()) {
-        // standard save backups
-        Directory savelist(Archive::sdmc(), mSavePath);
-        if (savelist.good()) {
-            for (size_t i = 0, sz = savelist.size(); i < sz; i++) {
-                if (savelist.folder(i)) {
-                    mSaves.push_back(savelist.entry(i));
-                    mFullSavePaths.push_back(mSavePath + StringUtils::UTF8toUTF16("/") + savelist.entry(i));
-                }
-            }
-
-            std::sort(mSaves.rbegin(), mSaves.rend());
-            std::sort(mFullSavePaths.rbegin(), mFullSavePaths.rend());
-            mSaves.insert(mSaves.begin(), StringUtils::UTF8toUTF16("New..."));
-            mFullSavePaths.insert(mFullSavePaths.begin(), StringUtils::UTF8toUTF16("New..."));
-        }
-        else {
-            Logging::error("Couldn't retrieve the save directory list for the title {}", shortDescription());
-        }
-
-        // save backups from configuration
-        try {
-            std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
-            if (!additionalFolders.empty()) {
-                Logging::debug("Found {} additional save folders for title {:X}", additionalFolders.size(), mId);
-                for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-                    Logging::debug("Processing additional save folder: {}", StringUtils::UTF16toUTF8(*it));
-                    if (io::directoryExists(Archive::sdmc(), *it)) {
-                        Logging::debug("Additional save folder exists: {}", StringUtils::UTF16toUTF8(*it));
-                        // we have other folders to parse
-                        Directory list(Archive::sdmc(), *it);
-                        if (list.good()) {
-                            Logging::debug("Additional save folder is good: {}", StringUtils::UTF16toUTF8(*it));
-                            for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                                if (list.folder(i)) {
-                                    Logging::debug("Found save folder: {}", StringUtils::UTF16toUTF8(list.entry(i)));
-                                    mSaves.push_back(list.entry(i));
-                                    mFullSavePaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
-                                }
-                            }
-                        }
-                        else {
-                            Logging::error("Additional save folder is not good: {}", StringUtils::UTF16toUTF8(*it));
-                        }
-                    }
-                    else {
-                        Logging::error("Additional save folder does not exist: {}", StringUtils::UTF16toUTF8(*it));
-                    }
-                }
-                Logging::debug("Finished processing additional save folders for title {:X}", mId);
-            }
-        }
-        catch (const std::exception& e) {
-            Logging::error("Exception when processing additional save folders: {}", e.what());
-        }
-        catch (...) {
-            Logging::error("Unknown exception when processing additional save folders for title {:X}", mId);
-        }
+        loadBackupList(mSavePath, Configuration::getInstance().additionalSaveFolders(mId), true, mSaves, mFullSavePaths);
     }
 
     if (accessibleExtdata()) {
-        // extdata backups
-        Directory extlist(Archive::sdmc(), mExtdataPath);
-        if (extlist.good()) {
-            for (size_t i = 0, sz = extlist.size(); i < sz; i++) {
-                if (extlist.folder(i)) {
-                    mExtdata.push_back(extlist.entry(i));
-                    mFullExtdataPaths.push_back(mExtdataPath + StringUtils::UTF8toUTF16("/") + extlist.entry(i));
-                }
-            }
-
-            std::sort(mExtdata.begin(), mExtdata.end());
-            std::sort(mFullExtdataPaths.begin(), mFullExtdataPaths.end());
-            mExtdata.insert(mExtdata.begin(), StringUtils::UTF8toUTF16("New..."));
-            mFullExtdataPaths.insert(mFullExtdataPaths.begin(), StringUtils::UTF8toUTF16("New..."));
-        }
-        else {
-            Logging::error("Couldn't retrieve the extdata directory list for the title {}", shortDescription());
-        }
-
-        // extdata backups from configuration
-        try {
-            std::vector<std::u16string> additionalFolders = Configuration::getInstance().additionalExtdataFolders(mId);
-            if (!additionalFolders.empty()) {
-                Logging::debug("Found {} additional extdata folders for title {:X}", additionalFolders.size(), mId);
-                for (std::vector<std::u16string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
-                    Logging::debug("Processing additional extdata folder: {}", StringUtils::UTF16toUTF8(*it));
-                    if (io::directoryExists(Archive::sdmc(), *it)) {
-                        Logging::debug("Additional extdata folder exists: {}", StringUtils::UTF16toUTF8(*it));
-                        // we have other folders to parse
-                        Directory list(Archive::sdmc(), *it);
-                        if (list.good()) {
-                            Logging::debug("Additional extdata folder is good: {}", StringUtils::UTF16toUTF8(*it));
-                            for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                                if (list.folder(i)) {
-                                    Logging::debug("Found extdata folder: {}", StringUtils::UTF16toUTF8(list.entry(i)));
-                                    mExtdata.push_back(list.entry(i));
-                                    mFullExtdataPaths.push_back(*it + StringUtils::UTF8toUTF16("/") + list.entry(i));
-                                }
-                            }
-                        }
-                        else {
-                            Logging::error("Additional extdata folder is not good: {}", StringUtils::UTF16toUTF8(*it));
-                        }
-                    }
-                    else {
-                        Logging::error("Additional extdata folder does not exist: {}", StringUtils::UTF16toUTF8(*it));
-                    }
-                }
-                Logging::debug("Finished processing additional extdata folders for title {:X}", mId);
-            }
-        }
-        catch (const std::exception& e) {
-            Logging::error("Exception when processing additional extdata folders: {}", e.what());
-        }
-        catch (...) {
-            Logging::error("Unknown exception when processing additional extdata folders for title {:X}", mId);
-        }
+        loadBackupList(mExtdataPath, Configuration::getInstance().additionalExtdataFolders(mId), false, mExtdata, mFullExtdataPaths);
     }
 }
 
