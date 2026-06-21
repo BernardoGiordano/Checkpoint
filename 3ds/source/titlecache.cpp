@@ -45,9 +45,9 @@ namespace {
     constexpr size_t OFF_CARD       = 732; // u8
     constexpr size_t OFF_ICON       = 733; // ICON_BYTES
 
-    constexpr size_t SHORT_LEN = 0x40;
-    constexpr size_t LONG_LEN  = 0x80;
-    constexpr size_t PATH_LEN  = 256;
+    constexpr size_t SHORT_LEN  = 0x40;
+    constexpr size_t LONG_LEN   = 0x80;
+    constexpr size_t PATH_LEN   = 256;
     constexpr size_t ICON_BYTES = 0x900 * 2; // bigIconData: 0x900 u16 pixels
 }
 

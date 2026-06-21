@@ -29,11 +29,11 @@
 
 #include "CheatManagerOverlay.hpp"
 #include "ErrorOverlay.hpp"
-#include "archive.hpp"
 #include "InfoOverlay.hpp"
 #include "Screen.hpp"
 #include "TransferOverlay.hpp"
 #include "YesNoOverlay.hpp"
+#include "archive.hpp"
 #include "clickable.hpp"
 #include "gui.hpp"
 #include "multiselection.hpp"
