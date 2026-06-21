@@ -25,7 +25,6 @@
  */
 
 #include "loader.hpp"
-#include "main.hpp"
 #include "title.hpp"
 #include "titlecache.hpp"
 #include "titlequirks.hpp"
@@ -34,13 +33,6 @@
 #include <mutex>
 
 namespace {
-    std::vector<Title> titleSaves;
-    std::vector<Title> titleExtdatas;
-    std::mutex titlesMutex;
-
-    bool forceRefresh           = false;
-    std::atomic_flag doCartScan = ATOMIC_FLAG_INIT;
-
     std::string toLowerAscii(const std::string& s)
     {
         std::string out = s;
@@ -51,7 +43,7 @@ namespace {
     }
 }
 
-bool TitleLoader::validId(u64 id)
+bool TitleCatalog::validId(u64 id)
 {
     if (TitleQuirks::isSystemExcluded(id)) {
         return false;
@@ -60,10 +52,10 @@ bool TitleLoader::validId(u64 id)
     return !Configuration::getInstance().filter(id);
 }
 
-void TitleLoader::getTitle(Title& dst, int i, BackupKind kind)
+void TitleCatalog::getTitle(Title& dst, int i, BackupKind kind)
 {
-    std::lock_guard<std::mutex> lock(titlesMutex);
-    const auto& vec = kind == BackupKind::Save ? titleSaves : titleExtdatas;
+    std::lock_guard<std::mutex> lock(mMutex);
+    const auto& vec = kind == BackupKind::Save ? mSaves : mExtdatas;
     if (i >= 0 && i < (int)vec.size()) {
         dst = vec.at(i);
     }
@@ -73,16 +65,16 @@ void TitleLoader::getTitle(Title& dst, int i, BackupKind kind)
     }
 }
 
-bool TitleLoader::getTitleById(Title& dst, u64 id)
+bool TitleCatalog::getTitleById(Title& dst, u64 id)
 {
-    std::lock_guard<std::mutex> lock(titlesMutex);
-    for (const auto& title : titleSaves) {
+    std::lock_guard<std::mutex> lock(mMutex);
+    for (const auto& title : mSaves) {
         if (title.id() == id) {
             dst = title;
             return true;
         }
     }
-    for (const auto& title : titleExtdatas) {
+    for (const auto& title : mExtdatas) {
         if (title.id() == id) {
             dst = title;
             return true;
@@ -91,21 +83,21 @@ bool TitleLoader::getTitleById(Title& dst, u64 id)
     return false;
 }
 
-bool TitleLoader::getTitleByName(Title& dst, const std::string& name)
+bool TitleCatalog::getTitleByName(Title& dst, const std::string& name)
 {
     if (name.empty()) {
         return false;
     }
 
     std::string needle = toLowerAscii(name);
-    std::lock_guard<std::mutex> lock(titlesMutex);
-    for (const auto& title : titleSaves) {
+    std::lock_guard<std::mutex> lock(mMutex);
+    for (const auto& title : mSaves) {
         if (toLowerAscii(title.shortDescription()) == needle) {
             dst = title;
             return true;
         }
     }
-    for (const auto& title : titleExtdatas) {
+    for (const auto& title : mExtdatas) {
         if (toLowerAscii(title.shortDescription()) == needle) {
             dst = title;
             return true;
@@ -114,28 +106,28 @@ bool TitleLoader::getTitleByName(Title& dst, const std::string& name)
     return false;
 }
 
-int TitleLoader::getTitleCount(BackupKind kind)
+int TitleCatalog::getTitleCount(BackupKind kind)
 {
-    std::lock_guard<std::mutex> lock(titlesMutex);
-    return kind == BackupKind::Save ? titleSaves.size() : titleExtdatas.size();
+    std::lock_guard<std::mutex> lock(mMutex);
+    return kind == BackupKind::Save ? mSaves.size() : mExtdatas.size();
 }
 
-C2D_Image TitleLoader::icon(int i, BackupKind kind)
+C2D_Image TitleCatalog::icon(int i, BackupKind kind)
 {
-    std::lock_guard<std::mutex> lock(titlesMutex);
-    auto& vec = kind == BackupKind::Save ? titleSaves : titleExtdatas;
+    std::lock_guard<std::mutex> lock(mMutex);
+    auto& vec = kind == BackupKind::Save ? mSaves : mExtdatas;
     if (i >= 0 && i < (int)vec.size()) {
         return vec.at(i).icon();
     }
     return Gui::noIcon();
 }
 
-bool TitleLoader::favorite(int i, BackupKind kind)
+bool TitleCatalog::favorite(int i, BackupKind kind)
 {
     u64 id;
     {
-        std::lock_guard<std::mutex> lock(titlesMutex);
-        auto& vec = kind == BackupKind::Save ? titleSaves : titleExtdatas;
+        std::lock_guard<std::mutex> lock(mMutex);
+        auto& vec = kind == BackupKind::Save ? mSaves : mExtdatas;
         if (i < 0 || i >= (int)vec.size()) {
             return false;
         }
@@ -144,33 +136,38 @@ bool TitleLoader::favorite(int i, BackupKind kind)
     return Configuration::getInstance().favorite(id);
 }
 
-void TitleLoader::refreshDirectories(u64 id)
+void TitleCatalog::refreshDirectories(u64 id)
 {
-    std::lock_guard<std::mutex> lock(titlesMutex);
-    for (size_t i = 0; i < titleSaves.size(); i++) {
-        if (titleSaves.at(i).id() == id) {
-            titleSaves.at(i).refreshDirectories();
+    std::lock_guard<std::mutex> lock(mMutex);
+    for (size_t i = 0; i < mSaves.size(); i++) {
+        if (mSaves.at(i).id() == id) {
+            mSaves.at(i).refreshDirectories();
         }
     }
-    for (size_t i = 0; i < titleExtdatas.size(); i++) {
-        if (titleExtdatas.at(i).id() == id) {
-            titleExtdatas.at(i).refreshDirectories();
+    for (size_t i = 0; i < mExtdatas.size(); i++) {
+        if (mExtdatas.at(i).id() == id) {
+            mExtdatas.at(i).refreshDirectories();
         }
     }
 }
 
-void TitleLoader::refreshAllDirectories(void)
+void TitleCatalog::refreshAllDirectories(void)
 {
-    std::lock_guard<std::mutex> lock(titlesMutex);
-    for (auto& title : titleSaves) {
+    std::lock_guard<std::mutex> lock(mMutex);
+    for (auto& title : mSaves) {
         title.refreshDirectories();
     }
-    for (auto& title : titleExtdatas) {
+    for (auto& title : mExtdatas) {
         title.refreshDirectories();
     }
 }
 
-void TitleLoader::exportTitleListCache(std::vector<Title>& list, const std::u16string& path)
+LoadProgress TitleCatalog::progress(void)
+{
+    return LoadProgress{mLoading.load(), mCounter.load(), mLimit.load()};
+}
+
+void TitleCatalog::exportTitleListCache(std::vector<Title>& list, const std::u16string& path)
 {
     const size_t bytes          = list.size() * TitleCache::ENTRY_SIZE;
     std::unique_ptr<u8[]> cache = std::unique_ptr<u8[]>(new u8[bytes]());
@@ -184,7 +181,7 @@ void TitleLoader::exportTitleListCache(std::vector<Title>& list, const std::u16s
     output.close();
 }
 
-void TitleLoader::importTitleListCache(void)
+void TitleCatalog::importTitleListCache(void)
 {
     static const std::u16string saveCachePath    = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache");
     static const std::u16string extdataCachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache");
@@ -201,20 +198,20 @@ void TitleLoader::importTitleListCache(void)
     inputextdatas.read(cacheextdatas.get(), inputextdatas.size());
     inputextdatas.close();
 
-    g_loadingTitlesLimit = sizesaves + sizeextdatas;
+    mLimit = sizesaves + sizeextdatas;
 
-    titleSaves.reserve(sizesaves);
-    titleExtdatas.reserve(sizeextdatas);
+    mSaves.reserve(sizesaves);
+    mExtdatas.reserve(sizeextdatas);
 
     // fill the lists with blank titles first
     for (size_t i = 0, sz = std::max(sizesaves, sizeextdatas); i < sz; i++) {
         Title title;
         title.load();
         if (i < sizesaves) {
-            titleSaves.push_back(title);
+            mSaves.push_back(title);
         }
         if (i < sizeextdatas) {
-            titleExtdatas.push_back(title);
+            mExtdatas.push_back(title);
         }
     }
 
@@ -223,10 +220,10 @@ void TitleLoader::importTitleListCache(void)
 
     for (size_t i = 0; i < sizesaves; i++) {
         const u8* titleData = cachesaves.get() + i * TitleCache::ENTRY_SIZE;
-        titleSaves.at(i)    = TitleCache::decode(titleData);
+        mSaves.at(i)        = TitleCache::decode(titleData);
         alreadystored.push_back(TitleCache::readId(titleData));
 
-        g_loadingTitlesCounter++;
+        mCounter++;
     }
 
     for (size_t i = 0; i < sizeextdatas; i++) {
@@ -235,28 +232,28 @@ void TitleLoader::importTitleListCache(void)
         u64 id                        = TitleCache::readId(titleData);
         std::vector<u64>::iterator it = find(alreadystored.begin(), alreadystored.end(), id);
         if (it == alreadystored.end()) {
-            titleExtdatas.at(i) = TitleCache::decode(titleData);
+            mExtdatas.at(i) = TitleCache::decode(titleData);
 
-            g_loadingTitlesCounter++;
+            mCounter++;
         }
         else {
             auto pos = it - alreadystored.begin();
 
             // avoid to copy a cartridge title into the extdata list twice
             if (i != 0 && pos == 0) {
-                auto newpos         = find(alreadystored.rbegin(), alreadystored.rend(), id);
-                titleExtdatas.at(i) = titleSaves.at(alreadystored.rend() - newpos - 1);
+                auto newpos     = find(alreadystored.rbegin(), alreadystored.rend(), id);
+                mExtdatas.at(i) = mSaves.at(alreadystored.rend() - newpos - 1);
             }
             else {
-                titleExtdatas.at(i) = titleSaves.at(pos);
+                mExtdatas.at(i) = mSaves.at(pos);
             }
         }
     }
 }
 
-bool TitleLoader::scanCard(void)
+bool TitleCatalog::scanCard(void)
 {
-    if (g_isLoadingTitles) {
+    if (mLoading) {
         return false;
     }
 
@@ -284,15 +281,15 @@ bool TitleLoader::scanCard(void)
                     if (title.load(id, MEDIATYPE_GAME_CARD, cardType)) {
                         ret = true;
                         if (title.accessibleSave()) {
-                            std::lock_guard<std::mutex> lock(titlesMutex);
-                            if (titleSaves.empty() || titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
-                                titleSaves.insert(titleSaves.begin(), title);
+                            std::lock_guard<std::mutex> lock(mMutex);
+                            if (mSaves.empty() || mSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
+                                mSaves.insert(mSaves.begin(), title);
                             }
                         }
                         if (title.accessibleExtdata()) {
-                            std::lock_guard<std::mutex> lock(titlesMutex);
-                            if (titleExtdatas.empty() || titleExtdatas.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
-                                titleExtdatas.insert(titleExtdatas.begin(), title);
+                            std::lock_guard<std::mutex> lock(mMutex);
+                            if (mExtdatas.empty() || mExtdatas.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
+                                mExtdatas.insert(mExtdatas.begin(), title);
                             }
                         }
                     }
@@ -303,9 +300,9 @@ bool TitleLoader::scanCard(void)
             Title title;
             if (title.load(0, MEDIATYPE_GAME_CARD, cardType)) {
                 ret = true;
-                std::lock_guard<std::mutex> lock(titlesMutex);
-                if (titleSaves.empty() || titleSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
-                    titleSaves.insert(titleSaves.begin(), title);
+                std::lock_guard<std::mutex> lock(mMutex);
+                if (mSaves.empty() || mSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
+                    mSaves.insert(mSaves.begin(), title);
                 }
             }
         }
@@ -314,50 +311,7 @@ bool TitleLoader::scanCard(void)
     return ret;
 }
 
-void TitleLoader::cartScan(void)
-{
-    bool oldCardIn;
-    FSUSER_CardSlotIsInserted(&oldCardIn);
-
-    while (doCartScan.test_and_set()) {
-        bool cardIn = false;
-
-        FSUSER_CardSlotIsInserted(&cardIn);
-        if (cardIn != oldCardIn) {
-            bool power;
-            FSUSER_CardSlotGetCardIFPowerStatus(&power);
-            if (cardIn) {
-                if (!power) {
-                    FSUSER_CardSlotPowerOn(&power);
-                }
-                while (!power && doCartScan.test_and_set()) {
-                    FSUSER_CardSlotGetCardIFPowerStatus(&power);
-                }
-                svcSleepThread(500'000'000);
-                for (size_t i = 0; i < 10; i++) {
-                    if ((oldCardIn = scanCard())) {
-                        break;
-                    }
-                }
-            }
-            else {
-                FSUSER_CardSlotPowerOff(&power);
-                if (!g_isLoadingTitles) {
-                    std::lock_guard<std::mutex> lock(titlesMutex);
-                    if (!titleSaves.empty() && titleSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
-                        titleSaves.erase(titleSaves.begin());
-                    }
-                    if (!titleExtdatas.empty() && titleExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
-                        titleExtdatas.erase(titleExtdatas.begin());
-                    }
-                }
-                oldCardIn = false;
-            }
-        }
-    }
-}
-
-void TitleLoader::loadTitles(bool forceRefreshParam)
+void TitleCatalog::loadTitles(bool forceRefreshParam)
 {
     auto totalStart   = std::chrono::high_resolution_clock::now();
     auto sectionStart = totalStart;
@@ -365,10 +319,10 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
         static const std::u16string savecachePath    = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache");
         static const std::u16string extdatacachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache");
 
-        titleSaves.clear();
-        titleExtdatas.clear();
-        titleSaves.reserve(128);
-        titleExtdatas.reserve(128);
+        mSaves.clear();
+        mExtdatas.clear();
+        mSaves.reserve(128);
+        mExtdatas.reserve(128);
 
         bool optimizedLoad = false;
 
@@ -407,7 +361,7 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
         }
 
         if (optimizedLoad && !forceRefreshParam) {
-            g_loadingTitlesCounter = 0;
+            mCounter = 0;
 
             sectionStart = std::chrono::high_resolution_clock::now();
             // deserialize data
@@ -417,14 +371,14 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
             auto importDuration = std::chrono::duration_cast<std::chrono::milliseconds>(importEnd - sectionStart);
             Logging::debug("Title cache import completed in {} ms", importDuration.count());
 
-            g_loadingTitlesCounter = titleSaves.size() + titleExtdatas.size();
+            mCounter = mSaves.size() + mExtdatas.size();
 
             sectionStart = std::chrono::high_resolution_clock::now();
 
-            for (auto& title : titleSaves) {
+            for (auto& title : mSaves) {
                 title.refreshDirectories();
             }
-            for (auto& title : titleExtdatas) {
+            for (auto& title : mExtdatas) {
                 title.refreshDirectories();
             }
 
@@ -445,8 +399,8 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
             AM_GetTitleCount(MEDIATYPE_SD, &sdCount);
             AM_GetTitleCount(MEDIATYPE_GAME_CARD, &cartCount);
 
-            g_loadingTitlesLimit   = nandCount + sdCount + cartCount;
-            g_loadingTitlesCounter = 0;
+            mLimit   = nandCount + sdCount + cartCount;
+            mCounter = 0;
 
             if (Configuration::getInstance().nandSaves()) {
                 AM_GetTitleCount(MEDIATYPE_NAND, &count);
@@ -458,16 +412,16 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
                         Title title;
                         if (title.load(ids_nand[i], MEDIATYPE_NAND, CARD_CTR)) {
                             if (title.accessibleSave()) {
-                                titleSaves.push_back(title);
+                                mSaves.push_back(title);
                             }
 
                             if (title.accessibleExtdata()) {
-                                titleExtdatas.push_back(title);
+                                mExtdatas.push_back(title);
                             }
                         }
                     }
 
-                    g_loadingTitlesCounter++;
+                    mCounter++;
                 }
             }
 
@@ -481,16 +435,16 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
                     Title title;
                     if (title.load(ids[i], MEDIATYPE_SD, CARD_CTR)) {
                         if (title.accessibleSave() || title.isGBAVC()) {
-                            titleSaves.push_back(title);
+                            mSaves.push_back(title);
                         }
 
                         if (title.accessibleExtdata()) {
-                            titleExtdatas.push_back(title);
+                            mExtdatas.push_back(title);
                         }
                     }
                 }
 
-                g_loadingTitlesCounter++;
+                mCounter++;
             }
 
             // always check for PKSM's extdata archive
@@ -505,15 +459,15 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
                 Title title;
                 if (title.load(TID_PKSM, MEDIATYPE_SD, CARD_CTR)) {
                     if (title.accessibleExtdata()) {
-                        titleExtdatas.push_back(title);
+                        mExtdatas.push_back(title);
                     }
                 }
 
-                g_loadingTitlesCounter++;
+                mCounter++;
             }
         }
 
-        std::sort(titleSaves.begin(), titleSaves.end(), [](Title& l, Title& r) {
+        std::sort(mSaves.begin(), mSaves.end(), [](Title& l, Title& r) {
             if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
                 return Configuration::getInstance().favorite(l.id());
             }
@@ -522,7 +476,7 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
             }
         });
 
-        std::sort(titleExtdatas.begin(), titleExtdatas.end(), [](Title& l, Title& r) {
+        std::sort(mExtdatas.begin(), mExtdatas.end(), [](Title& l, Title& r) {
             if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
                 return Configuration::getInstance().favorite(l.id());
             }
@@ -534,8 +488,8 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
         if (!optimizedLoad || forceRefreshParam) {
             auto exportStart = std::chrono::high_resolution_clock::now();
             Logging::debug("Starting title cache export");
-            exportTitleListCache(titleSaves, savecachePath);
-            exportTitleListCache(titleExtdatas, extdatacachePath);
+            exportTitleListCache(mSaves, savecachePath);
+            exportTitleListCache(mExtdatas, extdatacachePath);
             auto exportEnd      = std::chrono::high_resolution_clock::now();
             auto exportDuration = std::chrono::duration_cast<std::chrono::milliseconds>(exportEnd - exportStart);
             Logging::debug("Title cache export completed in {} ms", exportDuration.count());
@@ -554,23 +508,23 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
                         Title title;
                         if (title.load(ids[0], MEDIATYPE_GAME_CARD, cardType)) {
                             if (title.accessibleSave()) {
-                                titleSaves.insert(titleSaves.begin(), title);
+                                mSaves.insert(mSaves.begin(), title);
                             }
 
                             if (title.accessibleExtdata()) {
-                                titleExtdatas.insert(titleExtdatas.begin(), title);
+                                mExtdatas.insert(mExtdatas.begin(), title);
                             }
                         }
                     }
-                    g_loadingTitlesCounter++;
+                    mCounter++;
                 }
             }
             else {
                 Title title;
                 if (title.load(0, MEDIATYPE_GAME_CARD, cardType)) {
-                    titleSaves.insert(titleSaves.begin(), title);
+                    mSaves.insert(mSaves.begin(), title);
                 }
-                g_loadingTitlesCounter++;
+                mCounter++;
             }
         }
     }
@@ -586,28 +540,75 @@ void TitleLoader::loadTitles(bool forceRefreshParam)
     Logging::debug("Title list loaded in {} ms (total)", totalDuration.count());
 }
 
-void TitleLoader::loadTitlesThread(void)
+void TitleCatalog::loadTitlesThread(void)
 {
+    TitleCatalog& self = get();
+
     // don't load titles while they're loading
-    if (g_isLoadingTitles) {
+    if (self.mLoading) {
         return;
     }
 
-    g_isLoadingTitles      = true;
-    g_loadingTitlesCounter = 0;
-    g_loadingTitlesLimit   = 0;
+    self.mLoading = true;
+    self.mCounter = 0;
+    self.mLimit   = 0;
 
-    loadTitles(forceRefresh);
-    forceRefresh      = true;
-    g_isLoadingTitles = false;
+    self.loadTitles(self.mForceRefresh);
+    self.mForceRefresh = true;
+    self.mLoading      = false;
 }
 
-void TitleLoader::cartScanFlagTestAndSet(void)
+void TitleCatalog::cartScan(void)
 {
-    doCartScan.test_and_set();
+    TitleCatalog& self = get();
+
+    bool oldCardIn;
+    FSUSER_CardSlotIsInserted(&oldCardIn);
+
+    while (self.mDoCartScan.test_and_set()) {
+        bool cardIn = false;
+
+        FSUSER_CardSlotIsInserted(&cardIn);
+        if (cardIn != oldCardIn) {
+            bool power;
+            FSUSER_CardSlotGetCardIFPowerStatus(&power);
+            if (cardIn) {
+                if (!power) {
+                    FSUSER_CardSlotPowerOn(&power);
+                }
+                while (!power && self.mDoCartScan.test_and_set()) {
+                    FSUSER_CardSlotGetCardIFPowerStatus(&power);
+                }
+                svcSleepThread(500'000'000);
+                for (size_t i = 0; i < 10; i++) {
+                    if ((oldCardIn = self.scanCard())) {
+                        break;
+                    }
+                }
+            }
+            else {
+                FSUSER_CardSlotPowerOff(&power);
+                if (!self.mLoading) {
+                    std::lock_guard<std::mutex> lock(self.mMutex);
+                    if (!self.mSaves.empty() && self.mSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+                        self.mSaves.erase(self.mSaves.begin());
+                    }
+                    if (!self.mExtdatas.empty() && self.mExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+                        self.mExtdatas.erase(self.mExtdatas.begin());
+                    }
+                }
+                oldCardIn = false;
+            }
+        }
+    }
 }
 
-void TitleLoader::clearCartScanFlag(void)
+void TitleCatalog::cartScanFlagTestAndSet(void)
 {
-    doCartScan.clear();
+    get().mDoCartScan.test_and_set();
+}
+
+void TitleCatalog::clearCartScanFlag(void)
+{
+    get().mDoCartScan.clear();
 }

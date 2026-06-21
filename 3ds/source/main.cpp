@@ -26,6 +26,7 @@
 
 #include "main.hpp"
 #include "MainScreen.hpp"
+#include "loader.hpp"
 #include "thread.hpp"
 #include "util.hpp"
 #include <chrono>
@@ -63,7 +64,7 @@ int main()
             hidTouchRead(&touch);
 
             if (hidKeysDown() & KEY_START) {
-                if (!g_isLoadingTitles) {
+                if (!TitleCatalog::get().progress().active) {
                     break;
                 }
             }

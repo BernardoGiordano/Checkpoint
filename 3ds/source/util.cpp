@@ -117,12 +117,12 @@ Result servicesInit(void)
         Logging::warning("Failed to create socket buffer.");
     }
 
-    Threads::executeTask(TitleLoader::loadTitlesThread);
+    Threads::executeTask(TitleCatalog::loadTitlesThread);
 
     if (Configuration::getInstance().shouldScanCard()) {
-        TitleLoader::cartScanFlagTestAndSet();
-        Threads::create(TitleLoader::cartScan);
-        ATEXIT(TitleLoader::clearCartScanFlag);
+        TitleCatalog::cartScanFlagTestAndSet();
+        Threads::create(TitleCatalog::cartScan);
+        ATEXIT(TitleCatalog::clearCartScanFlag);
     }
 
     // consoleDebugInit(debugDevice_SVC);

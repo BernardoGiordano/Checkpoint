@@ -698,14 +698,14 @@ namespace {
         }
         if (tid != 0) {
             Title t;
-            if (TitleLoader::getTitleById(t, tid)) {
+            if (TitleCatalog::get().getTitleById(t, tid)) {
                 destRoot   = (dataType == "extdata") ? t.extdataPath() : t.savePath();
                 foundTitle = true;
             }
         }
         if (!foundTitle && !titleName.empty()) {
             Title t;
-            if (TitleLoader::getTitleByName(t, titleName)) {
+            if (TitleCatalog::get().getTitleByName(t, titleName)) {
                 destRoot     = (dataType == "extdata") ? t.extdataPath() : t.savePath();
                 foundTitle   = true;
                 mappedByName = true;

@@ -29,28 +29,78 @@
 
 #include "title.hpp"
 #include <atomic>
+#include <mutex>
+#include <string>
 #include <vector>
 
-namespace TitleLoader {
+// Value snapshot of the catalog's loading state. Owns the (done * 100) / total
+// math the UI used to compute inline against three raw globals.
+struct LoadProgress {
+    bool active;
+    int done;
+    int total;
+    int percent(void) const { return total == 0 ? 0 : (done * 100) / total; }
+};
+
+// The single owner of the in-process title lists (saves + extdata), their
+// guarding mutex, the on-SD cache, the cartridge-scan loop, and the loading
+// state. Meyer's singleton, matching Configuration / CheatManager.
+//
+// Reads hand back a *copy* of a Title on purpose: the background reload
+// clear()s and refills the vectors, so a caller must hold a snapshot, not a
+// dangling reference into a vector that is about to be cleared.
+class TitleCatalog {
+public:
+    static TitleCatalog& get(void)
+    {
+        static TitleCatalog instance;
+        return instance;
+    }
+
+    // Queries (each takes the mutex, copies out).
     void getTitle(Title& dst, int i, BackupKind kind);
     bool getTitleById(Title& dst, u64 id);
     bool getTitleByName(Title& dst, const std::string& name);
-    void refreshAllDirectories(void);
     int getTitleCount(BackupKind kind);
     C2D_Image icon(int i, BackupKind kind);
     bool favorite(int i, BackupKind kind);
 
-    void loadTitles(bool forceRefreshParam);
+    // Backup-directory refresh of titles already in the catalog.
     void refreshDirectories(u64 id);
-    void loadTitlesThread(void);
-    void cartScan(void);
-    void cartScanFlagTestAndSet(void);
-    void clearCartScanFlag(void);
+    void refreshAllDirectories(void);
+
+    // Loading-state snapshot for the UI.
+    LoadProgress progress(void);
+
+    // Function-pointer entry points for Threads:: / ATEXIT. Static so they stay
+    // plain void(*)() pointers; each forwards to get().
+    static void loadTitlesThread(void);
+    static void cartScan(void);
+    static void cartScanFlagTestAndSet(void);
+    static void clearCartScanFlag(void);
+
+private:
+    TitleCatalog(void)  = default;
+    ~TitleCatalog(void) = default;
+    TitleCatalog(const TitleCatalog&)            = delete;
+    TitleCatalog& operator=(const TitleCatalog&) = delete;
 
     bool validId(u64 id);
     bool scanCard(void);
+    void loadTitles(bool forceRefreshParam);
     void exportTitleListCache(std::vector<Title>& list, const std::u16string& path);
     void importTitleListCache(void);
-}
+
+    std::vector<Title> mSaves;
+    std::vector<Title> mExtdatas;
+    std::mutex mMutex;
+
+    bool mForceRefresh           = false;
+    std::atomic_flag mDoCartScan = ATOMIC_FLAG_INIT;
+
+    std::atomic<bool> mLoading{false};
+    std::atomic<int> mCounter{0};
+    std::atomic<int> mLimit{0};
+};
 
 #endif // LOADER_HPP

@@ -255,7 +255,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex,
     Result res             = 0;
 
     Title title;
-    TitleLoader::getTitle(title, index, kind);
+    TitleCatalog::get().getTitle(title, index, kind);
     BackupTarget target = title.backup(kind);
 
     Logging::info("Started backup of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
@@ -332,7 +332,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex,
                 }
             }
 
-            TitleLoader::refreshDirectories(title.id());
+            TitleCatalog::get().refreshDirectories(title.id());
         }
         else {
             Logging::error("Failed to open save archive with result 0x{:08X}.", res);
@@ -425,7 +425,7 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex,
         delete[] saveFile;
         stream.close();
         g_isTransferringFile = false;
-        TitleLoader::refreshDirectories(title.id());
+        TitleCatalog::get().refreshDirectories(title.id());
     }
 
     Logging::info("Backup succeeded.");
@@ -437,7 +437,7 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
     Result res = 0;
 
     Title title;
-    TitleLoader::getTitle(title, index, kind);
+    TitleCatalog::get().getTitle(title, index, kind);
     BackupTarget target = title.backup(kind);
 
     Logging::info("Started restore of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
