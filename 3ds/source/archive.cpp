@@ -28,6 +28,20 @@
 #include "csvc.hpp"
 #include "fsstream.hpp"
 
+void ArchiveHandle::close(void)
+{
+    if (!mValid) {
+        return;
+    }
+    if (mRaw) {
+        FSPXI_CloseArchive(FsPxiHandle, mPxi);
+    }
+    else {
+        FSUSER_CloseArchive(mFs);
+    }
+    mValid = false;
+}
+
 static FS_Archive mSdmc;
 static Mode_t mMode = MODE_SAVE;
 

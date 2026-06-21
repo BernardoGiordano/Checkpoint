@@ -521,7 +521,7 @@ void MainScreen::handleEvents(const InputState& input)
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Backup selected title?",
                     [this]() {
-                        auto result = io::backup(hid.fullIndex(), 0);
+                        auto result = io::backup(hid.fullIndex(), 0, toBackupKind(Archive::mode()));
                         if (std::get<0>(result)) {
                             currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                         }
@@ -539,7 +539,7 @@ void MainScreen::handleEvents(const InputState& input)
                     *this, "Restore selected title?",
                     [this]() {
                         size_t cellIndex = directoryList->index();
-                        auto result      = io::restore(hid.fullIndex(), cellIndex, nameFromCell(cellIndex));
+                        auto result      = io::restore(hid.fullIndex(), cellIndex, toBackupKind(Archive::mode()), nameFromCell(cellIndex));
                         if (std::get<0>(result)) {
                             currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                         }
@@ -653,7 +653,7 @@ void MainScreen::handleEvents(const InputState& input)
             g_multiSelectTotal       = list.size();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
                 g_multiSelectCount = i;
-                auto result        = io::backup(list.at(i), directoryList->index());
+                auto result        = io::backup(list.at(i), directoryList->index(), toBackupKind(Archive::mode()));
                 if (std::get<0>(result)) {
                     currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                 }
@@ -670,7 +670,7 @@ void MainScreen::handleEvents(const InputState& input)
             currentOverlay = std::make_shared<YesNoOverlay>(
                 *this, "Backup selected save?",
                 [this]() {
-                    auto result = io::backup(hid.fullIndex(), directoryList->index());
+                    auto result = io::backup(hid.fullIndex(), directoryList->index(), toBackupKind(Archive::mode()));
                     if (std::get<0>(result)) {
                         currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                     }
@@ -695,7 +695,7 @@ void MainScreen::handleEvents(const InputState& input)
             currentOverlay = std::make_shared<YesNoOverlay>(
                 *this, "Restore selected save?",
                 [this, cellIndex]() {
-                    auto result = io::restore(hid.fullIndex(), cellIndex, nameFromCell(cellIndex));
+                    auto result = io::restore(hid.fullIndex(), cellIndex, toBackupKind(Archive::mode()), nameFromCell(cellIndex));
                     if (std::get<0>(result)) {
                         currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                     }

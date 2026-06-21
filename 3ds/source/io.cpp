@@ -25,6 +25,7 @@
  */
 
 #include "io.hpp"
+#include "backuptarget.hpp"
 #include "csvc.hpp"
 #include "loader.hpp"
 
@@ -248,41 +249,19 @@ Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
     return 0;
 }
 
-std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
+std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex, BackupKind kind)
 {
-    const Mode_t mode      = Archive::mode();
     const bool isNewFolder = cellIndex == 0;
     Result res             = 0;
 
     Title title;
     TitleLoader::getTitle(title, index);
+    BackupTarget target = title.backup(kind);
 
     Logging::info("Started backup of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
 
     if (title.cardType() == CARD_CTR) {
-        const bool isGBA         = (mode == MODE_SAVE) && title.isGBAVC();
-        FS_Archive archive       = 0;
-        FSPXI_Archive pxiArchive = 0;
-        if (mode == MODE_SAVE) {
-            if (isGBA) {
-                res = Archive::rawSave(&pxiArchive, title.mediaType(), title.lowId(), title.highId());
-            }
-            else {
-                res = Archive::save(&archive, title.mediaType(), title.lowId(), title.highId());
-            }
-        }
-        else if (mode == MODE_EXTDATA) {
-            res = Archive::extdata(&archive, title.extdataId());
-        }
-
-        const auto closeArchive = [&]() {
-            if (isGBA) {
-                FSPXI_CloseArchive(FsPxiHandle, pxiArchive);
-            }
-            else {
-                FSUSER_CloseArchive(archive);
-            }
-        };
+        ArchiveHandle handle = target.open(res);
 
         if (R_SUCCEEDED(res)) {
             std::string suggestion = DateTime::dateTimeStr();
@@ -296,24 +275,22 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
             }
 
             if (isNewFolder && customPath.empty()) {
-                closeArchive();
                 return std::make_tuple(false, 0, "");
             }
 
             std::u16string dstPath;
             if (!isNewFolder) {
                 // we're overriding an existing folder
-                dstPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
+                dstPath = target.fullPath(cellIndex);
             }
             else {
-                dstPath = mode == MODE_SAVE ? title.savePath() : title.extdataPath();
+                dstPath = target.rootPath();
                 dstPath += StringUtils::UTF8toUTF16("/") + customPath;
             }
 
             if (!isNewFolder || io::directoryExists(Archive::sdmc(), dstPath)) {
                 res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
                 if (R_FAILED(res)) {
-                    closeArchive();
                     Logging::error("Failed to delete the existing backup directory recursively with result 0x{:08X}.", res);
                     return std::make_tuple(false, res, "Failed to delete the existing backup\ndirectory recursively.");
                 }
@@ -321,21 +298,19 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
 
             res = io::createDirectory(Archive::sdmc(), dstPath);
             if (R_FAILED(res)) {
-                closeArchive();
                 Logging::error("Failed to create destination directory.");
                 return std::make_tuple(false, res, "Failed to create destination directory.");
             }
 
-            if (isGBA) {
+            if (handle.isRaw()) {
                 std::u16string savePath = dstPath + StringUtils::UTF8toUTF16("/00000001.sav");
 
                 g_copyCount = 0;
                 g_copyTotal = 1;
                 transferSetMode("Backup");
 
-                res = io::copyPxiSaveFile(pxiArchive, Archive::sdmc(), savePath, true);
+                res = io::copyPxiSaveFile(handle.pxi(), Archive::sdmc(), savePath, true);
                 if (R_FAILED(res)) {
-                    closeArchive();
                     FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
                     Logging::error("Failed to backup GBA save. Result {}.", res);
                     return std::make_tuple(false, res, "Failed to backup GBA save.");
@@ -345,13 +320,12 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
                 std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/");
 
                 g_copyCount = 0;
-                g_copyTotal = io::countFiles(archive, StringUtils::UTF8toUTF16("/"));
+                g_copyTotal = io::countFiles(handle.fs(), StringUtils::UTF8toUTF16("/"));
                 transferSetMode("Backup");
 
-                res = io::copyDirectory(archive, Archive::sdmc(), StringUtils::UTF8toUTF16("/"), copyPath);
+                res = io::copyDirectory(handle.fs(), Archive::sdmc(), StringUtils::UTF8toUTF16("/"), copyPath);
                 if (R_FAILED(res)) {
-                    std::string message = mode == MODE_SAVE ? "Failed to backup save." : "Failed to backup extdata.";
-                    closeArchive();
+                    std::string message = std::string("Failed to backup ") + target.dataTypeName() + ".";
                     FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
                     Logging::error("{} Result {}.", message, res);
                     return std::make_tuple(false, res, message);
@@ -364,8 +338,6 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
             Logging::error("Failed to open save archive with result 0x{:08X}.", res);
             return std::make_tuple(false, res, "Failed to open save archive.");
         }
-
-        closeArchive();
     }
     else {
         CardType cardType = title.SPICardType();
@@ -389,10 +361,10 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
         std::u16string dstPath;
         if (!isNewFolder) {
             // we're overriding an existing folder
-            dstPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
+            dstPath = target.fullPath(cellIndex);
         }
         else {
-            dstPath = mode == MODE_SAVE ? title.savePath() : title.extdataPath();
+            dstPath = target.rootPath();
             dstPath += StringUtils::UTF8toUTF16("/") + customPath;
         }
 
@@ -460,55 +432,32 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, size_t cellIndex)
     return std::make_tuple(true, 0, "Progress correctly saved to disk.");
 }
 
-std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex, const std::string& nameFromCell)
+std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex, BackupKind kind, const std::string& nameFromCell)
 {
-    const Mode_t mode = Archive::mode();
-    Result res        = 0;
+    Result res = 0;
 
     Title title;
     TitleLoader::getTitle(title, index);
+    BackupTarget target = title.backup(kind);
 
     Logging::info("Started restore of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
 
     if (title.cardType() == CARD_CTR) {
-        const bool isGBA         = (mode == MODE_SAVE) && title.isGBAVC();
-        FS_Archive archive       = 0;
-        FSPXI_Archive pxiArchive = 0;
-        if (mode == MODE_SAVE) {
-            if (isGBA) {
-                res = Archive::rawSave(&pxiArchive, title.mediaType(), title.lowId(), title.highId());
-            }
-            else {
-                res = Archive::save(&archive, title.mediaType(), title.lowId(), title.highId());
-            }
-        }
-        else if (mode == MODE_EXTDATA) {
-            res = Archive::extdata(&archive, title.extdataId());
-        }
-
-        const auto closeArchive = [&]() {
-            if (isGBA) {
-                FSPXI_CloseArchive(FsPxiHandle, pxiArchive);
-            }
-            else {
-                FSUSER_CloseArchive(archive);
-            }
-        };
+        ArchiveHandle handle = target.open(res);
 
         if (R_SUCCEEDED(res)) {
-            std::u16string srcPath = mode == MODE_SAVE ? title.fullSavePath(cellIndex) : title.fullExtdataPath(cellIndex);
+            std::u16string srcPath = target.fullPath(cellIndex);
             srcPath += StringUtils::UTF8toUTF16("/");
 
-            if (isGBA) {
+            if (handle.isRaw()) {
                 srcPath += StringUtils::UTF8toUTF16("00000001.sav");
 
                 g_copyCount = 0;
                 g_copyTotal = 1;
                 transferSetMode("Restore");
 
-                res = io::copyPxiSaveFile(pxiArchive, Archive::sdmc(), srcPath, false);
+                res = io::copyPxiSaveFile(handle.pxi(), Archive::sdmc(), srcPath, false);
                 if (R_FAILED(res)) {
-                    closeArchive();
                     Logging::error("Failed to restore GBA save. Result {}.", res);
                     return std::make_tuple(false, res, "Failed to restore GBA save.");
                 }
@@ -516,29 +465,27 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
             else {
                 std::u16string dstPath = StringUtils::UTF8toUTF16("/");
 
-                if (mode != MODE_EXTDATA) {
-                    FSUSER_DeleteDirectoryRecursively(archive, fsMakePath(PATH_UTF16, dstPath.data()));
+                if (target.kind() != BackupKind::Extdata) {
+                    FSUSER_DeleteDirectoryRecursively(handle.fs(), fsMakePath(PATH_UTF16, dstPath.data()));
                 }
                 else {
-                    deleteFolderRecursively(archive, dstPath);
+                    deleteFolderRecursively(handle.fs(), dstPath);
                 }
 
                 g_copyCount = 0;
                 g_copyTotal = io::countFiles(Archive::sdmc(), srcPath);
                 transferSetMode("Restore");
 
-                res = io::copyDirectory(Archive::sdmc(), archive, srcPath, dstPath);
+                res = io::copyDirectory(Archive::sdmc(), handle.fs(), srcPath, dstPath);
                 if (R_FAILED(res)) {
-                    std::string message = mode == MODE_SAVE ? "Failed to restore save." : "Failed to restore extdata.";
-                    FSUSER_CloseArchive(archive);
+                    std::string message = std::string("Failed to restore ") + target.dataTypeName() + ".";
                     Logging::error("{}. Result {}.", message, res);
                     return std::make_tuple(false, res, message);
                 }
 
-                if (mode == MODE_SAVE) {
-                    res = FSUSER_ControlArchive(archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+                if (target.kind() == BackupKind::Save) {
+                    res = FSUSER_ControlArchive(handle.fs(), ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
                     if (R_FAILED(res)) {
-                        FSUSER_CloseArchive(archive);
                         Logging::error("Failed to commit save data with result 0x{:08X}.", res);
                         return std::make_tuple(false, res, "Failed to commit save data.");
                     }
@@ -547,7 +494,6 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
                     u64 secureValue = ((u64)SECUREVALUE_SLOT_SD << 32) | (title.uniqueId() << 8);
                     res             = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &secureValue, 8, &out, 1);
                     if (R_FAILED(res)) {
-                        FSUSER_CloseArchive(archive);
                         Logging::error("Failed to fix secure value with result 0x{:08X}.", res);
                         return std::make_tuple(false, res, "Failed to fix secure value.");
                     }
@@ -558,8 +504,6 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, size_t cellIndex
             Logging::error("Failed to open save archive with result 0x{:08X}.", res);
             return std::make_tuple(false, res, "Failed to open save archive.");
         }
-
-        closeArchive();
     }
     else {
         CardType cardType = title.SPICardType();
