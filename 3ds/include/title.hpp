@@ -70,7 +70,6 @@ public:
     u64 id(void) const;
     bool isActivityLog(void);
     void load(void);
-    bool load(u64 id, FS_MediaType mediaType, FS_CardType cardType);
     void load(u64 id, u8* productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::u16string shortDescription,
         std::u16string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card);
     std::string longDescription(void);
@@ -91,6 +90,12 @@ public:
     char productCode[16];
 
 private:
+    // Fill `names`/`fullPaths` with the "New..." entry, the sorted backup folders
+    // under `basePath`, then any configured additional folders. Shared by the
+    // save and extdata halves of refreshDirectories (descending = save order).
+    void loadBackupList(const std::u16string& basePath, const std::vector<std::u16string>& additionalFolders, bool descending,
+        std::vector<std::u16string>& names, std::vector<std::u16string>& fullPaths);
+
     bool mAccessibleSave;
     bool mAccessibleExtdata;
     bool mGBA;
