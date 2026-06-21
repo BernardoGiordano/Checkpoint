@@ -24,36 +24,56 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef IO_HPP
-#define IO_HPP
+#include "transferstatus.hpp"
+#include <mutex>
 
-#include "KeyboardManager.hpp"
-#include "account.hpp"
-#include "directory.hpp"
-#include "multiselection.hpp"
-#include "progress.hpp"
-#include "title.hpp"
-#include "util.hpp"
-#include <dirent.h>
-#include <switch.h>
-#include <sys/stat.h>
-#include <tuple>
-#include <unistd.h>
-#include <utility>
-
-#define BUFFER_SIZE 0x80000
-
-namespace io {
-    std::tuple<bool, Result, std::string> backup(size_t index, AccountUid uid, size_t cellIndex);
-    std::tuple<bool, Result, std::string> restore(size_t index, AccountUid uid, size_t cellIndex, const std::string& nameFromCell);
-
-    size_t countFiles(const std::string& path);
-    Result copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
-    void copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
-    Result createDirectory(const std::string& path);
-    Result deleteFolderRecursively(const std::string& path);
-    bool directoryExists(const std::string& path);
-    bool fileExists(const std::string& path);
+namespace {
+    std::mutex sMutex;
+    TransferSnapshot sState;
 }
 
-#endif
+namespace TransferStatus {
+    void beginLocal(const std::string& mode, size_t totalFiles)
+    {
+        std::lock_guard<std::mutex> lock(sMutex);
+        sState.active    = true;
+        sState.mode      = mode;
+        sState.copyCount = 0;
+        sState.copyTotal = totalFiles;
+        sState.currentFile.clear();
+        sState.currentFileSize   = 0;
+        sState.currentFileOffset = 0;
+    }
+
+    void startFile(const std::string& name, u64 size)
+    {
+        std::lock_guard<std::mutex> lock(sMutex);
+        sState.currentFile       = name;
+        sState.currentFileSize   = size;
+        sState.currentFileOffset = 0;
+    }
+
+    void setFileOffset(u64 offset)
+    {
+        std::lock_guard<std::mutex> lock(sMutex);
+        sState.currentFileOffset = offset;
+    }
+
+    void finishFile()
+    {
+        std::lock_guard<std::mutex> lock(sMutex);
+        sState.copyCount++;
+    }
+
+    void end()
+    {
+        std::lock_guard<std::mutex> lock(sMutex);
+        sState.active = false;
+    }
+
+    TransferSnapshot snapshot()
+    {
+        std::lock_guard<std::mutex> lock(sMutex);
+        return sState;
+    }
+}

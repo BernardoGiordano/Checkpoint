@@ -40,6 +40,7 @@
 #include "pksmbridge.hpp"
 #include "scrollable.hpp"
 #include "title.hpp"
+#include "transferstatus.hpp"
 #include <tuple>
 
 typedef enum { TITLES, CELLS } entryType_t;
@@ -79,6 +80,10 @@ private:
     bool sidebarExitFrame            = false;
     int sidebarCursor                = 0;
     saveTypeFilter_t mSaveTypeFilter = FILTER_SAVES;
+    // Overall progress across a multi-selection backup run, read by the transfer
+    // modal. Owned here because only MainScreen drives the multi-select loop.
+    size_t multiSelectCount = 0;
+    size_t multiSelectTotal = 0;
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::unique_ptr<Scrollable> backupList;
     std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;

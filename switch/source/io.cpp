@@ -50,10 +50,8 @@ size_t io::countFiles(const std::string& path)
     return count;
 }
 
-void io::copyFile(const std::string& srcPath, const std::string& dstPath)
+void io::copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink)
 {
-    g_isTransferringFile = true;
-
     FILE* src = fopen(srcPath.c_str(), "rb");
     if (src == NULL) {
         Logging::error("Failed to open source file {} during copy with errno {}. Skipping...", srcPath, errno);
@@ -73,10 +71,8 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
     u8* buf    = new u8[BUFFER_SIZE];
     u64 offset = 0;
 
-    size_t slashpos     = srcPath.rfind("/");
-    g_currentFile       = srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1);
-    g_currentFileSize   = sz;
-    g_currentFileOffset = 0;
+    size_t slashpos = srcPath.rfind("/");
+    sink.startFile(srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1), sz);
 
     while (offset < sz) {
         u32 count = fread((char*)buf, 1, BUFFER_SIZE, src);
@@ -86,29 +82,22 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath)
         }
         fwrite((char*)buf, 1, count, dst);
         offset += count;
-        g_currentFileOffset = offset;
-
-        // avoid freezing the UI
-        // this will be made less horrible next time...
-        g_screen->draw();
-        SDLH_Render();
+        sink.advanceBytes(offset);
     }
 
     delete[] buf;
     fclose(src);
     fclose(dst);
-    g_copyCount++;
+    sink.finishFile();
 
     // commit each file to the save
     if (dstPath.rfind("save:/", 0) == 0) {
         Logging::error("Committing file {} to the save archive.", dstPath);
         fsdevCommitDevice("save");
     }
-
-    g_isTransferringFile = false;
 }
 
-Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath)
+Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink)
 {
     Result res = 0;
     bool quit  = false;
@@ -127,14 +116,14 @@ Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath)
             if (R_SUCCEEDED(res)) {
                 newsrc += "/";
                 newdst += "/";
-                res = io::copyDirectory(newsrc, newdst);
+                res = io::copyDirectory(newsrc, newdst, sink);
             }
             else {
                 quit = true;
             }
         }
         else {
-            io::copyFile(newsrc, newdst);
+            io::copyFile(newsrc, newdst, sink);
         }
     }
 
@@ -271,10 +260,10 @@ std::tuple<bool, Result, std::string> io::backup(size_t index, AccountUid uid, s
     }
 
     io::createDirectory(dstPath);
-    g_copyCount    = 0;
-    g_copyTotal    = io::countFiles("save:/");
-    g_transferMode = "Backup";
-    res            = io::copyDirectory("save:/", dstPath + "/");
+    UiProgressSink sink;
+    sink.begin("Backup", io::countFiles("save:/"));
+    res = io::copyDirectory("save:/", dstPath + "/", sink);
+    sink.end();
     if (R_FAILED(res)) {
         FileSystem::unmountDevice();
         io::deleteFolderRecursively((dstPath + "/").c_str());
@@ -347,10 +336,10 @@ std::tuple<bool, Result, std::string> io::restore(size_t index, AccountUid uid, 
         return std::make_tuple(false, res, "Failed to delete save.");
     }
 
-    g_copyCount    = 0;
-    g_copyTotal    = io::countFiles(srcPath);
-    g_transferMode = "Restore";
-    res            = io::copyDirectory(srcPath, dstPath);
+    UiProgressSink sink;
+    sink.begin("Restore", io::countFiles(srcPath));
+    res = io::copyDirectory(srcPath, dstPath, sink);
+    sink.end();
     if (R_FAILED(res)) {
         FileSystem::unmountDevice();
         Logging::error("Failed to copy directory {} to {} with result 0x{:08X}. Skipping...", srcPath, dstPath, res);
