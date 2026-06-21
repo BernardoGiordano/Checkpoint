@@ -90,40 +90,60 @@ Result Archive::extdata(FS_Archive* archive, u32 ext)
     return FSUSER_OpenArchive(archive, ARCHIVE_EXTDATA, {PATH_BINARY, 12, path});
 }
 
-bool Archive::accessible(FS_MediaType mediatype, u32 lowid, u32 highid)
+SaveDataSource SaveDataSource::ctrSave(FS_MediaType media, u32 lowid, u32 highid)
 {
-    FS_Archive archive;
-    Result res = save(&archive, mediatype, lowid, highid);
-    if (R_SUCCEEDED(res)) {
-        FSUSER_CloseArchive(archive);
-        return true;
-    }
-    return false;
+    return SaveDataSource(Kind::CtrSave, media, lowid, highid);
 }
 
-bool Archive::accessibleRaw(FS_MediaType mediatype, u32 lowid, u32 highid)
+SaveDataSource SaveDataSource::rawGba(FS_MediaType media, u32 lowid, u32 highid)
 {
-    FSPXI_Archive archive;
-    Result res = rawSave(&archive, mediatype, lowid, highid);
-    if (R_SUCCEEDED(res)) {
-        FSStream file(archive, FS_OPEN_READ);
+    return SaveDataSource(Kind::RawGbaSave, media, lowid, highid);
+}
+
+SaveDataSource SaveDataSource::extdata(u32 extdataId)
+{
+    return SaveDataSource(Kind::Extdata, MEDIATYPE_SD, extdataId, 0);
+}
+
+ArchiveHandle SaveDataSource::open(Result& res) const
+{
+    switch (mKind) {
+        case Kind::CtrSave: {
+            FS_Archive archive;
+            res = Archive::save(&archive, mMedia, mA, mB);
+            return R_SUCCEEDED(res) ? ArchiveHandle::fromFs(archive) : ArchiveHandle();
+        }
+        case Kind::RawGbaSave: {
+            FSPXI_Archive archive;
+            res = Archive::rawSave(&archive, mMedia, mA, mB);
+            return R_SUCCEEDED(res) ? ArchiveHandle::fromPxi(archive) : ArchiveHandle();
+        }
+        case Kind::Extdata: {
+            FS_Archive archive;
+            res = Archive::extdata(&archive, mA);
+            return R_SUCCEEDED(res) ? ArchiveHandle::fromFs(archive) : ArchiveHandle();
+        }
+    }
+    res = -1;
+    return ArchiveHandle();
+}
+
+bool SaveDataSource::accessible(void) const
+{
+    Result res         = 0;
+    ArchiveHandle handle = open(res);
+    if (!handle) {
+        return false;
+    }
+    // A raw GBA VC archive opens even when no save is present; it is only really
+    // accessible if the embedded save file opens cleanly.
+    if (mKind == Kind::RawGbaSave) {
+        FSStream file(handle.pxi(), FS_OPEN_READ);
         bool good = file.good();
         file.close();
-        FSPXI_CloseArchive(FsPxiHandle, archive);
         return good;
     }
-    return false;
-}
-
-bool Archive::accessible(u32 ext)
-{
-    FS_Archive archive;
-    Result res = extdata(&archive, ext);
-    if (R_SUCCEEDED(res)) {
-        FSUSER_CloseArchive(archive);
-        return true;
-    }
-    return false;
+    return true;
 }
 
 bool Archive::setPlayCoins(void)

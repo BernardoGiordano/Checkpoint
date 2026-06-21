@@ -58,6 +58,10 @@ public:
     ArchiveHandle open(Result& res) const;
 
 private:
+    // The save-data source backing this facet: a raw GBA VC save when the Title
+    // is GBA VC, otherwise a regular CTR save; extdata for the Extdata kind.
+    SaveDataSource source(void) const;
+
     Title& mTitle;
     BackupKind mKind;
 };
