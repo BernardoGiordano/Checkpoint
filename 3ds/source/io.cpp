@@ -125,7 +125,7 @@ Result io::copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const 
 {
     g_isTransferringFile = true;
 
-    u32 size = 0;
+    u32 size       = 0;
     FSStream input = fromPxi ? FSStream(pxiArch, FS_OPEN_READ) : FSStream(regularArch, path, FS_OPEN_READ);
     if (input.good()) {
         size = input.size() > BUFFER_SIZE ? BUFFER_SIZE : input.size();

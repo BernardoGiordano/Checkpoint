@@ -221,8 +221,8 @@ void TitleLoader::exportTitleListCache(std::vector<Title>& list, const std::u16s
 {
     std::unique_ptr<u8[]> cache = std::unique_ptr<u8[]>(new u8[list.size() * ENTRYSIZE]());
     for (size_t i = 0; i < list.size(); i++) {
-        u8* entryStart               = cache.get() + i * ENTRYSIZE;
-        u64 id                       = list.at(i).id();
+        u8* entryStart = cache.get() + i * ENTRYSIZE;
+        u64 id         = list.at(i).id();
         // bit 0: regular save accessible, bit 1: GBA VC raw save accessible
         u8 accessibleSaveRaw         = list.at(i).accessibleSave() ? 1 : (list.at(i).isGBAVC() ? 2 : 0);
         bool accessibleExtdata       = list.at(i).accessibleExtdata();
