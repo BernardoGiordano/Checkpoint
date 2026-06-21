@@ -33,6 +33,7 @@
 #include "progress.hpp"
 #include "server.hpp"
 #include "transfer.hpp"
+#include "transferstatus.hpp"
 #include <3ds.h>
 #include <cctype>
 #include <optional>
@@ -50,8 +51,8 @@ namespace {
             return target.fullPath(cellIndex);
         }
         std::string suggestion = DateTime::dateTimeStr();
-        std::u16string name    = MS::multipleSelectionEnabled() ? StringUtils::UTF8toUTF16(suggestion.c_str())
-                                                                : KeyboardManager::get().keyboard(suggestion);
+        std::u16string name =
+            MS::multipleSelectionEnabled() ? StringUtils::UTF8toUTF16(suggestion.c_str()) : KeyboardManager::get().keyboard(suggestion);
         if (name.empty()) {
             return std::nullopt;
         }
@@ -281,21 +282,20 @@ void MainScreen::drawTop(void) const
             C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
         }
 
-        if (g_isTransferringFile) {
+        TransferSnapshot ts = TransferStatus::snapshot();
+        if (ts.active) {
             C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
 
             const float size     = 0.7f;
             const float lineFeed = size * fontGetInfo(NULL)->lineFeed;
-            std::string mode     = transferGetMode();
-            if (g_transferIsNetwork) {
+            if (ts.kind == TransferKind::Network) {
                 // Two centered lines keep the (potentially long) mode label and the
                 // size readout on screen, matching the bottom progress modal.
-                u64 total = 0, done = 0;
-                transferGetProgress(done, total);
+                u64 total = ts.bytesTotal, done = ts.bytesDone;
                 int pct            = total > 0 ? (int)((done * 100) / total) : 0;
-                std::string prefix = mode.empty() ? "Transferring backup" : mode;
+                std::string prefix = ts.mode.empty() ? "Transferring backup" : ts.mode;
                 std::string line1  = StringUtils::format("%s... %d%%", prefix.c_str(), pct);
-                std::string line2  = transferBytesToMB(done, total);
+                std::string line2  = TransferStatus::bytesToMB(done, total);
 
                 float startY = ceilf((240 - 2 * lineFeed) / 2);
 
@@ -312,7 +312,7 @@ void MainScreen::drawTop(void) const
                     size, COLOR_GREY_LIGHT);
             }
             else {
-                std::string modeStr = (mode.empty() ? "Copying files" : mode) + " in progress...";
+                std::string modeStr = (ts.mode.empty() ? "Copying files" : ts.mode) + " in progress...";
                 C2D_Text modeText;
                 C2D_TextParse(&modeText, dynamicBuf, modeStr.c_str());
                 C2D_TextOptimize(&modeText);
@@ -395,19 +395,18 @@ void MainScreen::drawBottom(void) const
         C2D_DrawText(&coins, C2D_WithColor, ceilf(318 - StringUtils::textWidth(coins, scaleInst)), -1, 0.5f, scaleInst, scaleInst, COLOR_GOLD);
     }
 
-    if (g_isTransferringFile) {
+    TransferSnapshot ts = TransferStatus::snapshot();
+    if (ts.active) {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
 
-        if (g_transferIsNetwork) {
+        if (ts.kind == TransferKind::Network) {
             const int mx = 30, my = 65, mw = 260, mh = 110;
             C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
             Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
 
-            u64 total = 0, done = 0;
-            transferGetProgress(done, total);
+            u64 total = ts.bytesTotal, done = ts.bytesDone;
             int pct              = total > 0 ? (int)((done * 100) / total) : 0;
-            std::string mode     = transferGetMode();
-            std::string prefix   = mode.empty() ? "Transferring backup" : mode;
+            std::string prefix   = ts.mode.empty() ? "Transferring backup" : ts.mode;
             std::string titleStr = StringUtils::format("%s... %d%%", prefix.c_str(), pct);
 
             C2D_Text titleText;
@@ -416,7 +415,7 @@ void MainScreen::drawBottom(void) const
             C2D_DrawText(
                 &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
 
-            std::string bytesStr = transferBytesToMB(done, total);
+            std::string bytesStr = TransferStatus::bytesToMB(done, total);
             C2D_Text bytesText;
             C2D_TextParse(&bytesText, dynamicBuf, bytesStr.c_str());
             C2D_TextOptimize(&bytesText);
@@ -438,7 +437,7 @@ void MainScreen::drawBottom(void) const
         }
         else {
             // An extra bar is shown to track the overall progress when backing up multiple saves at once
-            const bool multiSelect = g_multiSelectTotal > 1;
+            const bool multiSelect = multiSelectTotal > 1;
 
             // Modal box
             const int mx = 30, mw = 260;
@@ -448,7 +447,7 @@ void MainScreen::drawBottom(void) const
             Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
 
             // Title
-            std::string titleStr = (g_transferMode.empty() ? "Copying files" : g_transferMode) + " in progress...";
+            std::string titleStr = (ts.mode.empty() ? "Copying files" : ts.mode) + " in progress...";
             C2D_Text titleText;
             C2D_TextParse(&titleText, dynamicBuf, titleStr.c_str());
             C2D_TextOptimize(&titleText);
@@ -456,7 +455,7 @@ void MainScreen::drawBottom(void) const
                 &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
 
             // Current filename
-            std::string fname = StringUtils::UTF16toUTF8(g_currentFile);
+            std::string fname = StringUtils::UTF16toUTF8(ts.currentFile);
             C2D_Text fileText;
             C2D_TextParse(&fileText, dynamicBuf, fname.c_str());
             C2D_TextOptimize(&fileText);
@@ -491,9 +490,9 @@ void MainScreen::drawBottom(void) const
 
             // Overall progress bar across the selected saves (multi-selection only)
             if (multiSelect) {
-                float overallProgress = (float)g_multiSelectCount / (float)g_multiSelectTotal;
+                float overallProgress = (float)multiSelectCount / (float)multiSelectTotal;
                 char overallCountStr[24];
-                snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", g_multiSelectCount + 1, g_multiSelectTotal);
+                snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", multiSelectCount + 1, multiSelectTotal);
                 char overallPctStr[8];
                 snprintf(overallPctStr, sizeof(overallPctStr), "%d%%", (int)(overallProgress * 100));
                 drawProgressBar(barY, overallProgress, overallCountStr, overallPctStr);
@@ -501,18 +500,18 @@ void MainScreen::drawBottom(void) const
             }
 
             // Per-save progress bar
-            float progress = (g_copyTotal > 0) ? (float)g_copyCount / (float)g_copyTotal : 0.0f;
+            float progress = (ts.copyTotal > 0) ? (float)ts.copyCount / (float)ts.copyTotal : 0.0f;
             char countStr[24];
-            snprintf(countStr, sizeof(countStr), "File %zu / %zu", g_copyCount, g_copyTotal);
+            snprintf(countStr, sizeof(countStr), "File %zu / %zu", ts.copyCount, ts.copyTotal);
             char pctStr[8];
             snprintf(pctStr, sizeof(pctStr), "%d%%", (int)((progress > 1.0f ? 1.0f : progress) * 100));
             drawProgressBar(barY, progress, countStr, pctStr);
             barY += 30;
 
             // Per-file progress bar
-            float fileProgress = (g_currentFileSize > 0) ? (float)g_currentFileOffset / (float)g_currentFileSize : 0.0f;
+            float fileProgress = (ts.currentFileSize > 0) ? (float)ts.currentFileOffset / (float)ts.currentFileSize : 0.0f;
             char kbStr[32];
-            snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", g_currentFileOffset / 1024.0f, g_currentFileSize / 1024.0f);
+            snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", ts.currentFileOffset / 1024.0f, ts.currentFileSize / 1024.0f);
             char filePctStr[8];
             snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
             drawProgressBar(barY, fileProgress, kbStr, filePctStr);
@@ -716,13 +715,13 @@ void MainScreen::handleEvents(const InputState& input)
         if (MS::multipleSelectionEnabled()) {
             directoryList->resetIndex();
             std::vector<size_t> list = MS::selectedEntries();
-            g_multiSelectTotal       = list.size();
+            multiSelectTotal         = list.size();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                g_multiSelectCount = i;
+                multiSelectCount = i;
                 doBackup(list.at(i), directoryList->index());
             }
-            g_multiSelectTotal = 0;
-            g_multiSelectCount = 0;
+            multiSelectTotal = 0;
+            multiSelectCount = 0;
             MS::clearSelectedEntries();
             updateButtons();
         }
