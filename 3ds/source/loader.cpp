@@ -27,6 +27,8 @@
 #include "loader.hpp"
 #include "main.hpp"
 #include "title.hpp"
+#include "titlecache.hpp"
+#include "titlequirks.hpp"
 #include <cctype>
 #include <chrono>
 #include <mutex>
@@ -38,7 +40,6 @@ namespace {
 
     bool forceRefresh           = false;
     std::atomic_flag doCartScan = ATOMIC_FLAG_INIT;
-    const size_t ENTRYSIZE      = 5341;
 
     std::string toLowerAscii(const std::string& s)
     {
@@ -52,34 +53,7 @@ namespace {
 
 bool TitleLoader::validId(u64 id)
 {
-    // check for invalid titles
-    switch ((u32)id) {
-        // Instruction Manual
-        case 0x00008602:
-        case 0x00009202:
-        case 0x00009B02:
-        case 0x0000A402:
-        case 0x0000AC02:
-        case 0x0000B402:
-        // Internet Browser
-        case 0x00008802:
-        case 0x00009402:
-        case 0x00009D02:
-        case 0x0000A602:
-        case 0x0000AE02:
-        case 0x0000B602:
-        case 0x20008802:
-        case 0x20009402:
-        case 0x20009D02:
-        case 0x2000AE02:
-        // Garbage
-        case 0x00021A00:
-            return false;
-    }
-
-    // check for updates
-    u32 high = id >> 32;
-    if (high == 0x0004000E) {
+    if (TitleQuirks::isSystemExcluded(id)) {
         return false;
     }
 
@@ -196,64 +170,17 @@ void TitleLoader::refreshAllDirectories(void)
     }
 }
 
-/**
- * CACHE STRUCTURE
- * start, len
- * id (0, 8)
- * productCode (8, 16)
- * accessibleSave (24, 1)
- * accessibleExtdata (25, 1)
- * shortDescription (26, 64)
- * longDescription (90, 128)
- * savePath (218, 256)
- * extdataPath (474, 256)
- * mediaType (730, 1)
- * fs cardtype (731, 1)
- * cardtype (732, 1)
- * bigIconData (733, 4608)
- */
-
 void TitleLoader::exportTitleListCache(std::vector<Title>& list, const std::u16string& path)
 {
-    std::unique_ptr<u8[]> cache = std::unique_ptr<u8[]>(new u8[list.size() * ENTRYSIZE]());
+    const size_t bytes          = list.size() * TitleCache::ENTRY_SIZE;
+    std::unique_ptr<u8[]> cache = std::unique_ptr<u8[]>(new u8[bytes]());
     for (size_t i = 0; i < list.size(); i++) {
-        u8* entryStart = cache.get() + i * ENTRYSIZE;
-        u64 id         = list.at(i).id();
-        // bit 0: regular save accessible, bit 1: GBA VC raw save accessible
-        u8 accessibleSaveRaw         = list.at(i).accessibleSave() ? 1 : (list.at(i).isGBAVC() ? 2 : 0);
-        bool accessibleExtdata       = list.at(i).accessibleExtdata();
-        std::string shortDescription = StringUtils::UTF16toUTF8(list.at(i).getShortDescription());
-        std::string longDescription  = StringUtils::UTF16toUTF8(list.at(i).getLongDescription());
-        std::string savePath         = StringUtils::UTF16toUTF8(list.at(i).savePath());
-        std::string extdataPath      = StringUtils::UTF16toUTF8(list.at(i).extdataPath());
-        FS_MediaType media           = list.at(i).mediaType();
-        FS_CardType cardType         = list.at(i).cardType();
-        CardType card                = list.at(i).SPICardType();
-
-        if (cardType == CARD_CTR) {
-            smdh_s* smdh = loadSMDH(list.at(i).lowId(), list.at(i).highId(), media);
-            if (smdh != NULL) {
-                memcpy(entryStart + 733, smdh->bigIconData, 0x900 * 2);
-            }
-            delete smdh;
-        }
-
-        memcpy(entryStart + 0, &id, sizeof(u64));
-        memcpy(entryStart + 8, list.at(i).productCode, 16);
-        memcpy(entryStart + 24, &accessibleSaveRaw, sizeof(u8));
-        memcpy(entryStart + 25, &accessibleExtdata, sizeof(u8));
-        memcpy(entryStart + 26, shortDescription.c_str(), shortDescription.length());
-        memcpy(entryStart + 90, longDescription.c_str(), longDescription.length());
-        memcpy(entryStart + 218, savePath.c_str(), savePath.length());
-        memcpy(entryStart + 474, extdataPath.c_str(), extdataPath.length());
-        memcpy(entryStart + 730, &media, sizeof(u8));
-        memcpy(entryStart + 731, &cardType, sizeof(u8));
-        memcpy(entryStart + 732, &card, sizeof(u8));
+        TitleCache::encode(cache.get() + i * TitleCache::ENTRY_SIZE, list.at(i));
     }
 
     FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, path.data()));
-    FSStream output(Archive::sdmc(), path, FS_OPEN_WRITE, list.size() * ENTRYSIZE);
-    output.write(cache.get(), list.size() * ENTRYSIZE);
+    FSStream output(Archive::sdmc(), path, FS_OPEN_WRITE, bytes);
+    output.write(cache.get(), bytes);
     output.close();
 }
 
@@ -263,13 +190,13 @@ void TitleLoader::importTitleListCache(void)
     static const std::u16string extdataCachePath = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullextdatacache");
 
     FSStream inputsaves(Archive::sdmc(), saveCachePath, FS_OPEN_READ);
-    u32 sizesaves = inputsaves.size() / ENTRYSIZE;
+    u32 sizesaves = inputsaves.size() / TitleCache::ENTRY_SIZE;
     std::unique_ptr<u8[]> cachesaves(new u8[inputsaves.size()]);
     inputsaves.read(cachesaves.get(), inputsaves.size());
     inputsaves.close();
 
     FSStream inputextdatas(Archive::sdmc(), extdataCachePath, FS_OPEN_READ);
-    u32 sizeextdatas = inputextdatas.size() / ENTRYSIZE;
+    u32 sizeextdatas = inputextdatas.size() / TitleCache::ENTRY_SIZE;
     std::unique_ptr<u8[]> cacheextdatas(new u8[inputextdatas.size()]);
     inputextdatas.read(cacheextdatas.get(), inputextdatas.size());
     inputextdatas.close();
@@ -295,108 +222,20 @@ void TitleLoader::importTitleListCache(void)
     std::vector<u64> alreadystored;
 
     for (size_t i = 0; i < sizesaves; i++) {
-        const u8* titleData = cachesaves.get() + i * ENTRYSIZE;
-
-        u64 id;
-        u8 productCode[16];
-        u8 accessibleSaveRaw;
-        bool accessibleSave;
-        bool saveIsGBA;
-        bool accessibleExtdata;
-        char shortDescription[0x40];
-        char longDescription[0x80];
-        char savePath[256];
-        char extdataPath[256];
-        FS_MediaType media;
-        FS_CardType cardType;
-        CardType card;
-
-        memcpy(&id, titleData, sizeof(u64));
-        memcpy(productCode, titleData + 8, 16);
-        memcpy(&accessibleSaveRaw, titleData + 24, sizeof(u8));
-        accessibleSave = accessibleSaveRaw & 1;
-        saveIsGBA      = accessibleSaveRaw & 2;
-        memcpy(&accessibleExtdata, titleData + 25, sizeof(u8));
-        memcpy(shortDescription, titleData + 26, 0x40);
-        memcpy(longDescription, titleData + 90, 0x80);
-        memcpy(savePath, titleData + 218, 256);
-        memcpy(extdataPath, titleData + 474, 256);
-        memcpy(&media, titleData + 730, sizeof(u8));
-        memcpy(&cardType, titleData + 731, sizeof(u8));
-        memcpy(&card, titleData + 732, sizeof(u8));
-
-        Title title;
-        title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
-            StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType,
-            card);
-
-        if (cardType == CARD_CTR) {
-            u16 bigIconData[0x900];
-            memcpy(bigIconData, titleData + 733, 0x900 * 2);
-            C2D_Image smallIcon = loadTextureFromBytes(bigIconData);
-            title.setIcon(smallIcon);
-        }
-        else {
-            // this cannot happen
-            title.setIcon(Gui::noIcon());
-        }
-
-        titleSaves.at(i) = title;
-        alreadystored.push_back(id);
+        const u8* titleData = cachesaves.get() + i * TitleCache::ENTRY_SIZE;
+        titleSaves.at(i)    = TitleCache::decode(titleData);
+        alreadystored.push_back(TitleCache::readId(titleData));
 
         g_loadingTitlesCounter++;
     }
 
     for (size_t i = 0; i < sizeextdatas; i++) {
-        const u8* titleData = cacheextdatas.get() + i * ENTRYSIZE;
+        const u8* titleData = cacheextdatas.get() + i * TitleCache::ENTRY_SIZE;
 
-        u64 id;
-        memcpy(&id, titleData, sizeof(u64));
+        u64 id                        = TitleCache::readId(titleData);
         std::vector<u64>::iterator it = find(alreadystored.begin(), alreadystored.end(), id);
         if (it == alreadystored.end()) {
-            u8 productCode[16];
-            u8 accessibleSaveRaw;
-            bool accessibleSave;
-            bool saveIsGBA;
-            bool accessibleExtdata;
-            char shortDescription[0x40];
-            char longDescription[0x80];
-            char savePath[256];
-            char extdataPath[256];
-            FS_MediaType media;
-            FS_CardType cardType;
-            CardType card;
-
-            memcpy(productCode, titleData + 8, 16);
-            memcpy(&accessibleSaveRaw, titleData + 24, sizeof(u8));
-            accessibleSave = accessibleSaveRaw & 1;
-            saveIsGBA      = accessibleSaveRaw & 2;
-            memcpy(&accessibleExtdata, titleData + 25, sizeof(u8));
-            memcpy(shortDescription, titleData + 26, 0x40);
-            memcpy(longDescription, titleData + 90, 0x80);
-            memcpy(savePath, titleData + 218, 256);
-            memcpy(extdataPath, titleData + 474, 256);
-            memcpy(&media, titleData + 730, sizeof(u8));
-            memcpy(&cardType, titleData + 731, sizeof(u8));
-            memcpy(&card, titleData + 732, sizeof(u8));
-
-            Title title;
-            title.load(id, productCode, accessibleSave, saveIsGBA, accessibleExtdata, StringUtils::UTF8toUTF16(shortDescription),
-                StringUtils::UTF8toUTF16(longDescription), StringUtils::UTF8toUTF16(savePath), StringUtils::UTF8toUTF16(extdataPath), media, cardType,
-                card);
-
-            if (cardType == CARD_CTR) {
-                u16 bigIconData[0x900];
-                memcpy(bigIconData, titleData + 733, 0x900 * 2);
-                C2D_Image smallIcon = loadTextureFromBytes(bigIconData);
-                title.setIcon(smallIcon);
-            }
-            else {
-                // this cannot happen
-                title.setIcon(Gui::noIcon());
-            }
-
-            titleExtdatas.at(i) = title;
+            titleExtdatas.at(i) = TitleCache::decode(titleData);
 
             g_loadingTitlesCounter++;
         }
