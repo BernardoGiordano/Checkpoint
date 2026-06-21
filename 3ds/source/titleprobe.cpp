@@ -82,8 +82,8 @@ namespace {
     // Probe a CTR (3DS) title: SMDH metadata, save/extdata accessibility, and
     // backup-directory creation. Fills the out-params; returns true when usable.
     bool probeCtr(u64 id, FS_MediaType media, u8* productCode, bool& accessibleSave, bool& gba, bool& accessibleExtdata,
-        std::u16string& shortDescription, std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath,
-        C2D_Image& icon, bool& hasIcon)
+        std::u16string& shortDescription, std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, C2D_Image& icon,
+        bool& hasIcon)
     {
         const u32 low    = (u32)id;
         const u32 high   = (u32)(id >> 32);
@@ -142,8 +142,7 @@ namespace {
 
     // Probe a legacy DS card title: rom header, banner icon, SPI card type.
     bool probeCard(FS_MediaType media, bool& accessibleSave, bool& gba, bool& accessibleExtdata, std::u16string& shortDescription,
-        std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, CardType& spiCard, C2D_Image& icon,
-        bool& hasIcon)
+        std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, CardType& spiCard, C2D_Image& icon, bool& hasIcon)
     {
         u8* headerData = new u8[0x3B4];
         Result res     = FSUSER_GetLegacyRomHeader(media, 0LL, headerData);
@@ -177,8 +176,8 @@ namespace {
 
         shortDescription = StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(cardTitle));
         longDescription  = shortDescription;
-        savePath =
-            StringUtils::UTF8toUTF16("/3ds/Checkpoint/saves/") + StringUtils::UTF8toUTF16(gameCode) + StringUtils::UTF8toUTF16(" ") + shortDescription;
+        savePath         = StringUtils::UTF8toUTF16("/3ds/Checkpoint/saves/") + StringUtils::UTF8toUTF16(gameCode) + StringUtils::UTF8toUTF16(" ") +
+                   shortDescription;
         extdataPath = savePath;
 
         accessibleSave    = true;
@@ -199,7 +198,7 @@ namespace {
 
 bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType card)
 {
-    u8 productCode[16] = {0};
+    u8 productCode[16]  = {0};
     bool accessibleSave = false, gba = false, accessibleExtdata = false;
     std::u16string shortDescription, longDescription, savePath, extdataPath;
     CardType spiCard = NO_CHIP;
@@ -208,18 +207,19 @@ bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType car
 
     bool loadTitle;
     if (card == CARD_CTR) {
-        loadTitle = probeCtr(id, media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath,
-            extdataPath, icon, hasIcon);
+        loadTitle = probeCtr(
+            id, media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, icon, hasIcon);
     }
     else {
-        loadTitle = probeCard(media, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, spiCard,
-            icon, hasIcon);
+        loadTitle = probeCard(
+            media, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, spiCard, icon, hasIcon);
     }
 
     // On a hard failure (smdh == NULL, header/SPI error) probeCtr/probeCard
     // return false with every facet inaccessible; we still publish the Title but
     // the caller discards it on a false return, exactly as the old load() did.
-    title.load(id, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, media, card, spiCard);
+    title.load(
+        id, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, media, card, spiCard);
     if (hasIcon) {
         title.setIcon(icon);
     }
