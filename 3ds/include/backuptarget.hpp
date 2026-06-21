@@ -46,6 +46,11 @@ public:
 
     BackupKind kind(void) const { return mKind; }
 
+    // The Title this facet was vended from. backup/restore read identity,
+    // presentation and SPI-card details through it. Non-const because the Title
+    // getters are not const-qualified (matching the rest of the codebase).
+    Title& title(void) const { return mTitle; }
+
     std::u16string rootPath(void) const;             // savePath() | extdataPath()
     std::u16string fullPath(size_t cellIndex) const; // fullSavePath() | fullExtdataPath()
     std::vector<std::u16string> backups(void) const; // saves() | extdata()
