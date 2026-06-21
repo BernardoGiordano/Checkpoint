@@ -131,7 +131,7 @@ void MainScreen::drawTop(void) const
 {
     auto selEnt          = MS::selectedEntries();
     const size_t entries = hid.maxVisibleEntries();
-    const size_t max     = hid.maxEntries(TitleLoader::getTitleCount(backupKind)) + 1;
+    const size_t max     = hid.maxEntries(TitleCatalog::get().getTitleCount(backupKind)) + 1;
 
     C2D_TargetClear(g_top, COLOR_BLACK_DARKERR);
     C2D_TargetClear(g_bottom, COLOR_BLACK_DARKERR);
@@ -149,9 +149,10 @@ void MainScreen::drawTop(void) const
     C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, &flagTint, 1.0f, 1.0f);
     C2D_DrawText(&checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
 
-    if (g_isLoadingTitles) {
+    LoadProgress loadProgress = TitleCatalog::get().progress();
+    if (loadProgress.active) {
         // Show a loading message
-        int percentage = g_loadingTitlesLimit == 0 ? 0 : (g_loadingTitlesCounter * 100) / g_loadingTitlesLimit;
+        int percentage = loadProgress.percent();
         if (percentage >= 100) {
             percentage = 99;
         }
@@ -167,7 +168,7 @@ void MainScreen::drawTop(void) const
     }
     else {
         for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-            C2D_Image titleIcon = TitleLoader::icon(k, backupKind);
+            C2D_Image titleIcon = TitleCatalog::get().icon(k, backupKind);
             if (titleIcon.subtex->width == 48) {
                 C2D_DrawImageAt(titleIcon, selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
             }
@@ -176,7 +177,7 @@ void MainScreen::drawTop(void) const
             }
         }
 
-        if (TitleLoader::getTitleCount(backupKind) > 0) {
+        if (TitleCatalog::get().getTitleCount(backupKind) > 0) {
             drawSelector();
         }
 
@@ -187,7 +188,7 @@ void MainScreen::drawTop(void) const
                 C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
             }
 
-            if (TitleLoader::favorite(k, backupKind)) {
+            if (TitleCatalog::get().favorite(k, backupKind)) {
                 C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 3, 0.5f, 16, 16, COLOR_GOLD);
                 C2D_SpriteSetPos(&star, selectorX(k) + 27, selectorY(k) - 1);
                 C2D_DrawSpriteTinted(&star, &checkboxTint);
@@ -277,11 +278,11 @@ void MainScreen::drawBottom(void) const
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 19, COLOR_BLACK_DARKER);
     C2D_DrawRectSolid(0, 221, 0.5f, 320, 19, COLOR_BLACK_DARKER);
 
-    if (g_isLoadingTitles) {}
+    if (TitleCatalog::get().progress().active) {}
 
-    else if (TitleLoader::getTitleCount(backupKind) > 0) {
+    else if (TitleCatalog::get().getTitleCount(backupKind) > 0) {
         Title title;
-        TitleLoader::getTitle(title, hid.fullIndex(), backupKind);
+        TitleCatalog::get().getTitle(title, hid.fullIndex(), backupKind);
 
         directoryList->flush();
         std::vector<std::u16string> dirs = title.backup(backupKind).backups();
@@ -481,19 +482,19 @@ void MainScreen::refreshTitlesFull(void)
     hid.reset();
     MS::clearSelectedEntries();
     directoryList->resetIndex();
-    Threads::executeTask(TitleLoader::loadTitlesThread);
+    Threads::executeTask(TitleCatalog::loadTitlesThread);
     refreshTimer = 0;
 }
 
 void MainScreen::updateSelector(void)
 {
-    if (g_isLoadingTitles) {
+    if (TitleCatalog::get().progress().active) {
         // Don't update selection while loading
         return;
     }
 
     if (!g_bottomScrollEnabled) {
-        size_t count = TitleLoader::getTitleCount(backupKind);
+        size_t count = TitleCatalog::get().getTitleCount(backupKind);
         if (count > 0) {
             hid.update(count);
             directoryList->resetIndex();
@@ -574,10 +575,10 @@ void MainScreen::handleEvents(const InputState& input)
                     *this, "Delete selected backup?",
                     [this, index]() {
                         Title title;
-                        TitleLoader::getTitle(title, hid.fullIndex(), backupKind);
+                        TitleCatalog::get().getTitle(title, hid.fullIndex(), backupKind);
                         std::u16string path = title.backup(backupKind).fullPath(index);
                         io::deleteBackupFolder(path);
-                        TitleLoader::refreshDirectories(title.id());
+                        TitleCatalog::get().refreshDirectories(title.id());
                         directoryList->setIndex(index - 1);
                         this->removeOverlay();
                     },
@@ -610,7 +611,7 @@ void MainScreen::handleEvents(const InputState& input)
 
     if (selectionTimer > 90) {
         MS::clearSelectedEntries();
-        for (size_t i = 0, sz = TitleLoader::getTitleCount(backupKind); i < sz; i++) {
+        for (size_t i = 0, sz = TitleCatalog::get().getTitleCount(backupKind); i < sz; i++) {
             MS::addSelectedEntry(i);
         }
         selectionTimer = 0;
@@ -705,9 +706,9 @@ void MainScreen::handleEvents(const InputState& input)
         }
     }
 
-    if (TitleLoader::getTitleCount(backupKind) > 0) {
+    if (TitleCatalog::get().getTitleCount(backupKind) > 0) {
         Title title;
-        TitleLoader::getTitle(title, hid.fullIndex(), backupKind);
+        TitleCatalog::get().getTitle(title, hid.fullIndex(), backupKind);
         if ((title.isActivityLog() && buttonPlayCoins->released()) || ((hidKeysDown() & KEY_TOUCH) && input.py < 20 && input.px > 294)) {
             if (!Archive::setPlayCoins()) {
                 currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");
@@ -798,7 +799,7 @@ std::string MainScreen::nameFromCell(size_t index) const
 
 void MainScreen::startTransferSend(void)
 {
-    if (TitleLoader::getTitleCount(backupKind) <= 0) {
+    if (TitleCatalog::get().getTitleCount(backupKind) <= 0) {
         currentOverlay = std::make_shared<InfoOverlay>(*this, "No titles available.");
         return;
     }
@@ -810,7 +811,7 @@ void MainScreen::startTransferSend(void)
     }
 
     Title title;
-    TitleLoader::getTitle(title, hid.fullIndex(), backupKind);
+    TitleCatalog::get().getTitle(title, hid.fullIndex(), backupKind);
     BackupTarget target = title.backup(backupKind);
 
     std::string backupName    = nameFromCell(cellIndex);
