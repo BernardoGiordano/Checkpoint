@@ -24,27 +24,28 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef MAIN_HPP
-#define MAIN_HPP
+#ifndef TITLEPROBE_HPP
+#define TITLEPROBE_HPP
 
-#include "InputState.hpp"
-#include "Screen.hpp"
-#include "account.hpp"
+#include "iconstore.hpp"
 #include "title.hpp"
-#include "util.hpp"
-#include <memory>
 #include <switch.h>
 
-inline float g_currentTime = 0;
-inline AccountUid g_currentUId;
-inline bool g_backupScrollEnabled       = 0;
-inline bool g_notificationLedAvailable  = false;
-inline std::shared_ptr<Screen> g_screen = nullptr;
-inline bool g_ftpAvailable              = false;
-inline bool g_shouldExitNetworkLoop     = false;
-inline std::string g_selectedCheatKey;
-inline std::vector<std::string> g_selectedCheatCodes;
-inline u32 g_username_dotsize;
-inline const InputState* g_input = nullptr;
+// The live-IO producer of a Title value. From one FsSaveDataInfo it resolves the
+// title's name/author (or, for system saves, mounts-tests and labels it), stores
+// its icon through the injected IconStore, ensures the on-SD backup directory
+// exists, and populates the given Title via its no-IO init.
+//
+// This is the single place that knows how a Title comes into existence from a
+// live save entry: the four Account/BCAT/Device/System paths that loadTitles
+// used to spell out as three near-identical copy-paste blocks plus a fourth in
+// the system loop now share one body. Symmetric with the 3DS TitleProbe.
+namespace TitleProbe {
+    // Populate `dst` from `info`. `nsacd` is a caller-owned scratch buffer reused
+    // across the scan (the control-data struct is large; allocating it per entry
+    // would be wasteful). Returns true when the entry yields a usable Title:
+    // false when it is filtered out, has no control data, or (system) won't mount.
+    bool probe(Title& dst, const FsSaveDataInfo& info, IconStore& icons, NsApplicationControlData* nsacd);
+}
 
-#endif
+#endif // TITLEPROBE_HPP

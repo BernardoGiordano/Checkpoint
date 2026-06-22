@@ -25,6 +25,7 @@
  */
 
 #include "util.hpp"
+#include "titlecatalog.hpp"
 
 void servicesExit(void)
 {
@@ -36,7 +37,7 @@ void servicesExit(void)
     pdmqryExit();
     socketExit();
     Account::exit();
-    freeIcons();
+    TitleCatalog::get().freeIcons();
     SDLH_Exit();
     nsExit();
     plExit();

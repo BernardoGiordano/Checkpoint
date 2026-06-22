@@ -39,15 +39,21 @@
 #include <unordered_map>
 #include <vector>
 
+// Sort order applied to a user's title list. Owned by TitleCatalog (mSortMode);
+// the UI reads it back through TitleCatalog::sortMode() to label the sort button.
+typedef enum { SORT_ALPHA, SORT_LAST_PLAYED, SORT_PLAY_TIME, SORT_MODES_COUNT } sort_t;
+
 class Title {
 public:
-    void init(
-        u8 saveDataType, u64 titleid, AccountUid userID, const std::string& name, const std::string& author, u8 spaceId = FsSaveDataSpaceId_User);
+    // No-IO populate from values TitleProbe has already resolved (name/author from
+    // the control data, userName + on-SD path from the SaveDataSource). Computes
+    // the display name and scans the backup folders, but creates nothing.
+    void init(u8 saveDataType, u64 titleid, AccountUid userID, u8 spaceId, const std::string& name, const std::string& author,
+        const std::string& userName, const std::string& path);
     ~Title() = default;
 
     std::string author(void);
     std::string displayName(void);
-    SDL_Texture* icon(void);
     u64 id(void);
     std::string name(void);
     std::string path(void);
@@ -72,7 +78,6 @@ private:
     AccountUid mUserId;
     std::string mUserName;
     std::string mName;
-    std::string mSafeName;
     std::string mAuthor;
     std::string mPath;
     std::vector<std::string> mSaves;
@@ -85,20 +90,5 @@ private:
 };
 
 typedef enum { FILTER_SAVES, FILTER_BCAT, FILTER_DEVICE, FILTER_SYSTEM } saveTypeFilter_t;
-
-void getTitle(Title& dst, AccountUid uid, size_t i);
-size_t getTitleCount(AccountUid uid);
-void loadTitles(void);
-void sortTitles(void);
-void rotateSortMode(void);
-void refreshDirectories(u64 id);
-void freeIcons(void);
-std::unordered_map<std::string, std::string> getCompleteTitleList(void);
-
-size_t getFilteredTitleCount(AccountUid uid, saveTypeFilter_t filter);
-void getFilteredTitle(Title& dst, AccountUid uid, saveTypeFilter_t filter, size_t i);
-size_t filteredToRawIndex(AccountUid uid, saveTypeFilter_t filter, size_t filteredIdx);
-bool filteredFavorite(AccountUid uid, saveTypeFilter_t filter, int i);
-SDL_Texture* filteredSmallIcon(AccountUid uid, saveTypeFilter_t filter, size_t i);
 
 #endif
