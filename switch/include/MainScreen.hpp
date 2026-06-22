@@ -38,9 +38,11 @@
 #include "main.hpp"
 #include "multiselection.hpp"
 #include "pksmbridge.hpp"
+#include "savekind.hpp"
 #include "scrollable.hpp"
 #include "title.hpp"
 #include "transferstatus.hpp"
+#include <array>
 #include <tuple>
 
 typedef enum { TITLES, CELLS } entryType_t;
@@ -69,6 +71,7 @@ protected:
     void updateButtons(void);
     std::string sortMode(void) const;
     void setSaveTypeFilter(saveTypeFilter_t filter);
+    void colorFilterButtons(void);
     size_t rawIndex(void) const;
     void doBackup(size_t rawIdx, size_t cellIndex);
     void doRestore(size_t rawIdx, size_t cellIndex);
@@ -89,7 +92,8 @@ private:
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::unique_ptr<Scrollable> backupList;
     std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;
-    std::unique_ptr<Clickable> buttonSaves, buttonBCAT, buttonDevice, buttonSystem;
+    // Filter buttons in UI order, indexed by saveTypeFilter_t.
+    std::array<std::unique_ptr<Clickable>, 4> filterButtons;
     char ver[8];
 };
 
