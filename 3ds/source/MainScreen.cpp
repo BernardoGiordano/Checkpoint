@@ -33,6 +33,7 @@
 #include "progress.hpp"
 #include "server.hpp"
 #include "transfer.hpp"
+#include "transferjob.hpp"
 #include "transferstatus.hpp"
 #include <3ds.h>
 #include <cctype>
@@ -437,7 +438,7 @@ void MainScreen::drawBottom(void) const
         }
         else {
             // An extra bar is shown to track the overall progress when backing up multiple saves at once
-            const bool multiSelect = multiSelectTotal > 1;
+            const bool multiSelect = ts.saveTotal > 1;
 
             // Modal box
             const int mx = 30, mw = 260;
@@ -490,9 +491,9 @@ void MainScreen::drawBottom(void) const
 
             // Overall progress bar across the selected saves (multi-selection only)
             if (multiSelect) {
-                float overallProgress = (float)multiSelectCount / (float)multiSelectTotal;
+                float overallProgress = (float)ts.saveCount / (float)ts.saveTotal;
                 char overallCountStr[24];
-                snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", multiSelectCount + 1, multiSelectTotal);
+                snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", ts.saveCount + 1, ts.saveTotal);
                 char overallPctStr[8];
                 snprintf(overallPctStr, sizeof(overallPctStr), "%d%%", (int)(overallProgress * 100));
                 drawProgressBar(barY, overallProgress, overallCountStr, overallPctStr);
@@ -521,6 +522,27 @@ void MainScreen::drawBottom(void) const
 
 void MainScreen::update(const InputState& input)
 {
+    // Deliver a finished backup/restore: the worker thread ran the copy off the
+    // main loop, so the result comes back here rather than inline. Raise the
+    // result overlay and skip input this frame (next frame routes to it).
+    if (auto result = TransferJob::get().takeResult()) {
+        if (result->ok) {
+            currentOverlay = std::make_shared<InfoOverlay>(*this, result->successMsg);
+        }
+        else {
+            std::string message = result->isRestore ? restoreErrorMessage(result->stage, result->dataType.c_str())
+                                                    : backupErrorMessage(result->stage, result->dataType.c_str());
+            currentOverlay      = std::make_shared<ErrorOverlay>(*this, result->res, message);
+        }
+        return;
+    }
+
+    // While a transfer runs on the worker, the loop keeps drawing the modal from
+    // TransferStatus; ignore input so nothing mutates underneath the copy.
+    if (TransferJob::get().active()) {
+        return;
+    }
+
     if (Transfer::consumePendingRefresh()) {
         refreshTitlesFull();
     }
@@ -562,20 +584,17 @@ void MainScreen::doBackup(size_t fullIndex, size_t cellIndex)
     TitleCatalog::get().getTitle(title, fullIndex, backupKind);
     BackupTarget target = title.backup(backupKind);
 
+    // Resolve everything that needs the UI thread (keyboard prompt, data-type
+    // name) up front, then hand the owned Title to the worker via the job. The
+    // caller calls TransferJob::start() once all saves are enqueued.
     auto dst = chooseBackupDst(target, cellIndex);
+    removeOverlay();
     if (!dst) { // keyboard prompt cancelled
-        removeOverlay();
         return;
     }
 
-    UiProgressSink sink;
-    io::IoOutcome out = io::backup(target, *dst, sink);
-    if (out.ok) {
-        currentOverlay = std::make_shared<InfoOverlay>(*this, "Progress correctly saved to disk.");
-    }
-    else {
-        currentOverlay = std::make_shared<ErrorOverlay>(*this, out.res, backupErrorMessage(out.stage, target.dataTypeName()));
-    }
+    std::string dataType = target.dataTypeName();
+    TransferJob::get().enqueueBackup(std::move(title), backupKind, *dst, std::move(dataType));
 }
 
 void MainScreen::doRestore(size_t fullIndex, size_t cellIndex)
@@ -584,14 +603,12 @@ void MainScreen::doRestore(size_t fullIndex, size_t cellIndex)
     TitleCatalog::get().getTitle(title, fullIndex, backupKind);
     BackupTarget target = title.backup(backupKind);
 
-    UiProgressSink sink;
-    io::IoOutcome out = io::restore(target, target.fullPath(cellIndex), sink);
-    if (out.ok) {
-        currentOverlay = std::make_shared<InfoOverlay>(*this, nameFromCell(cellIndex) + "\nhas been restored successfully.");
-    }
-    else {
-        currentOverlay = std::make_shared<ErrorOverlay>(*this, out.res, restoreErrorMessage(out.stage, target.dataTypeName()));
-    }
+    std::u16string src     = target.fullPath(cellIndex);
+    std::string dataType   = target.dataTypeName();
+    std::string successMsg = nameFromCell(cellIndex) + "\nhas been restored successfully.";
+    removeOverlay();
+
+    TransferJob::get().enqueueRestore(std::move(title), backupKind, std::move(src), std::move(dataType), std::move(successMsg));
 }
 
 void MainScreen::handleEvents(const InputState& input)
@@ -608,11 +625,20 @@ void MainScreen::handleEvents(const InputState& input)
             // If the "New..." entry is selected...
             if (0 == directoryList->index()) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
-                    *this, "Backup selected title?", [this]() { this->doBackup(hid.fullIndex(), 0); }, [this]() { this->removeOverlay(); });
+                    *this, "Backup selected title?",
+                    [this]() {
+                        this->doBackup(hid.fullIndex(), 0);
+                        TransferJob::get().start();
+                    },
+                    [this]() { this->removeOverlay(); });
             }
             else {
                 currentOverlay = std::make_shared<YesNoOverlay>(
-                    *this, "Restore selected title?", [this]() { this->doRestore(hid.fullIndex(), directoryList->index()); },
+                    *this, "Restore selected title?",
+                    [this]() {
+                        this->doRestore(hid.fullIndex(), directoryList->index());
+                        TransferJob::get().start();
+                    },
                     [this]() { this->removeOverlay(); });
             }
         }
@@ -715,19 +741,22 @@ void MainScreen::handleEvents(const InputState& input)
         if (MS::multipleSelectionEnabled()) {
             directoryList->resetIndex();
             std::vector<size_t> list = MS::selectedEntries();
-            multiSelectTotal         = list.size();
+            // Enqueue every selected save, then start the worker once. The job
+            // drains them in order and the modal's overall bar tracks the batch.
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                multiSelectCount = i;
                 doBackup(list.at(i), directoryList->index());
             }
-            multiSelectTotal = 0;
-            multiSelectCount = 0;
+            TransferJob::get().start();
             MS::clearSelectedEntries();
             updateButtons();
         }
         else if (g_bottomScrollEnabled) {
             currentOverlay = std::make_shared<YesNoOverlay>(
-                *this, "Backup selected save?", [this]() { this->doBackup(hid.fullIndex(), directoryList->index()); },
+                *this, "Backup selected save?",
+                [this]() {
+                    this->doBackup(hid.fullIndex(), directoryList->index());
+                    TransferJob::get().start();
+                },
                 [this]() { this->removeOverlay(); });
         }
     }
@@ -740,7 +769,11 @@ void MainScreen::handleEvents(const InputState& input)
         }
         else if (g_bottomScrollEnabled && cellIndex > 0) {
             currentOverlay = std::make_shared<YesNoOverlay>(
-                *this, "Restore selected save?", [this, cellIndex]() { this->doRestore(hid.fullIndex(), cellIndex); },
+                *this, "Restore selected save?",
+                [this, cellIndex]() {
+                    this->doRestore(hid.fullIndex(), cellIndex);
+                    TransferJob::get().start();
+                },
                 [this]() { this->removeOverlay(); });
         }
     }

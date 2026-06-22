@@ -27,6 +27,7 @@
 #include "MainScreen.hpp"
 #include "savedatasource.hpp"
 #include "titlecatalog.hpp"
+#include "transferjob.hpp"
 #include <optional>
 
 static constexpr size_t rowlen = 5, collen = 4, rows = 10, TOPBAR_h = 48;
@@ -340,7 +341,7 @@ void MainScreen::draw() const
         SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
 
         // An extra bar is shown to track the overall progress when backing up multiple saves at once
-        const bool multiSelect = multiSelectTotal > 1;
+        const bool multiSelect = transfer.saveTotal > 1;
 
         // Modal box centered on screen
         const int mx = 370, mw = 540;
@@ -383,9 +384,9 @@ void MainScreen::draw() const
 
         // Overall progress bar across the selected saves (multi-selection only)
         if (multiSelect) {
-            float overallProgress = (float)multiSelectCount / (float)multiSelectTotal;
+            float overallProgress = (float)transfer.saveCount / (float)transfer.saveTotal;
             char overallCountStr[24];
-            snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", multiSelectCount + 1, multiSelectTotal);
+            snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", transfer.saveCount + 1, transfer.saveTotal);
             char overallPctStr[8];
             snprintf(overallPctStr, sizeof(overallPctStr), "%d%%%%", (int)(overallProgress * 100));
             drawProgressBar(barY, overallProgress, overallCountStr, overallPctStr);
@@ -413,6 +414,31 @@ void MainScreen::draw() const
 
 void MainScreen::update(const InputState& input)
 {
+    // Deliver a finished backup/restore: the worker ran the copy off the main
+    // loop, so the result comes back here. Refresh the backup lists the worker
+    // touched (it cannot, having no catalog mutex), raise the result overlay, and
+    // skip input this frame (next frame routes to the overlay).
+    if (auto result = TransferJob::get().takeResult()) {
+        for (u64 id : result->refreshIds) {
+            TitleCatalog::get().refreshDirectories(id);
+        }
+        if (result->ok) {
+            blinkLed(4);
+            currentOverlay = std::make_shared<InfoOverlay>(*this, result->successMsg);
+        }
+        else {
+            std::string message = result->isRestore ? restoreErrorMessage(result->stage) : backupErrorMessage(result->stage);
+            currentOverlay      = std::make_shared<ErrorOverlay>(*this, result->res, message);
+        }
+        return;
+    }
+
+    // While a transfer runs on the worker, the loop keeps drawing the modal from
+    // TransferStatus; ignore input so nothing mutates underneath the copy.
+    if (TransferJob::get().active()) {
+        return;
+    }
+
     updateSelector(input);
     handleEvents(input);
 }
@@ -479,27 +505,21 @@ void MainScreen::doBackup(size_t rawIdx, size_t cellIndex)
     Title title;
     TitleCatalog::get().getTitle(title, g_currentUId, rawIdx);
 
+    // Resolve the destination (keyboard prompt and all) on the UI thread, then
+    // hand the owned Title to the worker. The caller calls TransferJob::start()
+    // once all saves are enqueued. blinkLed and the result overlay are raised by
+    // update() when the batch finishes.
     bool usedKeyboardFallback      = false;
     std::optional<std::string> dst = chooseBackupDst(title, cellIndex, usedKeyboardFallback);
+    removeOverlay();
     if (!dst) { // keyboard prompt cancelled
-        removeOverlay();
         return;
     }
 
-    UiProgressSink sink;
-    io::IoOutcome out = io::backup(title, *dst, sink);
-    if (!out.ok) {
-        currentOverlay = std::make_shared<ErrorOverlay>(*this, out.res, backupErrorMessage(out.stage));
-        return;
-    }
-
-    if (!MS::multipleSelectionEnabled()) {
-        blinkLed(4);
-    }
-    currentOverlay = std::make_shared<InfoOverlay>(
-        *this, usedKeyboardFallback ? "Progress correctly saved to disk.\nSystem keyboard applet was not\naccessible. The suggested "
-                                      "destination\nfolder was used instead."
-                                    : "Progress correctly saved to disk.");
+    std::string successMsg = usedKeyboardFallback ? "Progress correctly saved to disk.\nSystem keyboard applet was not\naccessible. The suggested "
+                                                    "destination\nfolder was used instead."
+                                                  : "Progress correctly saved to disk.";
+    TransferJob::get().enqueueBackup(std::move(title), *dst, std::move(successMsg));
 }
 
 void MainScreen::doRestore(size_t rawIdx, size_t cellIndex)
@@ -507,16 +527,10 @@ void MainScreen::doRestore(size_t rawIdx, size_t cellIndex)
     Title title;
     TitleCatalog::get().getTitle(title, g_currentUId, rawIdx);
     std::string name = nameFromCell(cellIndex);
+    std::string src  = title.fullPath(cellIndex) + "/";
+    removeOverlay();
 
-    UiProgressSink sink;
-    io::IoOutcome out = io::restore(title, title.fullPath(cellIndex) + "/", sink);
-    if (!out.ok) {
-        currentOverlay = std::make_shared<ErrorOverlay>(*this, out.res, restoreErrorMessage(out.stage));
-        return;
-    }
-
-    blinkLed(4);
-    currentOverlay = std::make_shared<InfoOverlay>(*this, name + "\nhas been restored successfully.");
+    TransferJob::get().enqueueRestore(std::move(title), std::move(src), name + "\nhas been restored successfully.");
 }
 
 void MainScreen::handleEvents(const InputState& input)
@@ -614,6 +628,7 @@ void MainScreen::handleEvents(const InputState& input)
             if (0 == this->index(CELLS)) {
                 if (!getPKSMBridgeFlag()) {
                     doBackup(rawIndex(), this->index(CELLS));
+                    TransferJob::get().start();
                 }
             }
             else {
@@ -628,7 +643,11 @@ void MainScreen::handleEvents(const InputState& input)
                 }
                 else {
                     currentOverlay = std::make_shared<YesNoOverlay>(
-                        *this, "Restore selected save?", [this]() { doRestore(rawIndex(), this->index(CELLS)); },
+                        *this, "Restore selected save?",
+                        [this]() {
+                            doRestore(rawIndex(), this->index(CELLS));
+                            TransferJob::get().start();
+                        },
                         [this]() { this->removeOverlay(); });
                 }
             }
@@ -714,19 +733,17 @@ void MainScreen::handleEvents(const InputState& input)
         if (MS::multipleSelectionEnabled()) {
             resetIndex(CELLS);
             std::vector<size_t> list = MS::selectedEntries();
-            multiSelectTotal         = list.size();
+            // Enqueue every selected save, then start the worker once. The job
+            // drains them in order; the modal's overall bar tracks the batch and
+            // update() raises the result overlay when it finishes.
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
-                multiSelectCount = i;
                 // translate filtered index to raw index for multi-selection
                 size_t raw = TitleCatalog::get().filteredToRawIndex(g_currentUId, mSaveTypeFilter, list.at(i));
                 doBackup(raw, this->index(CELLS));
             }
-            multiSelectTotal = 0;
-            multiSelectCount = 0;
+            TransferJob::get().start();
             MS::clearSelectedEntries();
             updateButtons();
-            blinkLed(4);
-            currentOverlay = std::make_shared<InfoOverlay>(*this, "Progress correctly saved to disk.");
         }
         else if (g_backupScrollEnabled) {
             if (getPKSMBridgeFlag()) {
@@ -747,7 +764,12 @@ void MainScreen::handleEvents(const InputState& input)
             }
             else {
                 currentOverlay = std::make_shared<YesNoOverlay>(
-                    *this, "Backup selected save?", [this]() { doBackup(rawIndex(), this->index(CELLS)); }, [this]() { this->removeOverlay(); });
+                    *this, "Backup selected save?",
+                    [this]() {
+                        doBackup(rawIndex(), this->index(CELLS));
+                        TransferJob::get().start();
+                    },
+                    [this]() { this->removeOverlay(); });
             }
         }
     }
@@ -772,7 +794,11 @@ void MainScreen::handleEvents(const InputState& input)
             else {
                 if (this->index(CELLS) != 0) {
                     currentOverlay = std::make_shared<YesNoOverlay>(
-                        *this, "Restore selected save?", [this]() { doRestore(rawIndex(), this->index(CELLS)); },
+                        *this, "Restore selected save?",
+                        [this]() {
+                            doRestore(rawIndex(), this->index(CELLS));
+                            TransferJob::get().start();
+                        },
                         [this]() { this->removeOverlay(); });
                 }
             }

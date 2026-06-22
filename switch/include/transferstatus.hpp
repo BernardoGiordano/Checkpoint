@@ -40,17 +40,25 @@ struct TransferSnapshot {
     std::string currentFile;
     u64 currentFileSize   = 0;
     u64 currentFileOffset = 0;
-    size_t copyCount      = 0;
-    size_t copyTotal      = 0;
+    size_t copyCount      = 0; // files done within the current save
+    size_t copyTotal      = 0; // files in the current save
+    size_t saveCount      = 0; // saves done within the batch
+    size_t saveTotal      = 0; // saves in the batch (1 for a single backup/restore)
 };
 
 // The single owner of "a save transfer is in progress" state, replacing the loose
-// globals that used to live in main.hpp. All access is mutex-guarded so the UI
-// always renders from a consistent snapshot rather than reading half-written
-// counters directly.
+// globals that used to live in main.hpp. All access is mutex-guarded: the figures
+// are written by the TransferJob worker thread while the UI thread reads them, so
+// it always renders from a consistent snapshot rather than half-written counters.
 namespace TransferStatus {
-    // Starts a run of `totalFiles` files labelled `mode` ("Backup"/"Restore").
-    void beginLocal(const std::string& mode, size_t totalFiles);
+    // Local copy lifecycle. The batch (one or more saves) is framed by the
+    // TransferJob: beginLocalBatch raises the modal and owns the active flag;
+    // setSaveCount advances the per-save bar before each save. Within a save,
+    // UiProgressSink drives beginLocalRun (per-save file run) and the file
+    // figures. end() lowers the modal once the whole batch is done.
+    void beginLocalBatch(size_t totalSaves);
+    void setSaveCount(size_t count);
+    void beginLocalRun(const std::string& mode, size_t totalFiles);
     void startFile(const std::string& name, u64 size);
     void setFileOffset(u64 offset);
     void finishFile();

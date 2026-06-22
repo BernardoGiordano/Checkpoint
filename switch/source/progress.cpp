@@ -25,42 +25,27 @@
  */
 
 #include "progress.hpp"
-#include "SDLHelper.hpp"
-#include "main.hpp"
 #include "transferstatus.hpp"
 
-// Renders a single frame so the transfer progress modal keeps refreshing while a
-// long, blocking copy is running on the main thread.
-static void renderTransferFrame()
-{
-    g_screen->draw();
-    SDLH_Render();
-}
-
+// UiProgressSink runs on the TransferJob worker thread: every call only mirrors
+// figures into TransferStatus. It does not render — the main loop draws the
+// transfer modal from TransferStatus::snapshot() every frame, so the UI keeps
+// animating while the copy runs on the worker. The batch active flag is owned by
+// TransferStatus::beginLocalBatch / end, raised and lowered by the TransferJob
+// around the whole batch.
 void UiProgressSink::begin(const std::string& mode, size_t totalFiles)
 {
-    TransferStatus::beginLocal(mode, totalFiles);
+    TransferStatus::beginLocalRun(mode, totalFiles);
 }
 
 void UiProgressSink::startFile(const std::string& name, u64 size)
 {
     TransferStatus::startFile(name, size);
-    mFileSize     = size;
-    mLastRendered = -1;
-    renderTransferFrame();
 }
 
 void UiProgressSink::advanceBytes(u64 offset)
 {
     TransferStatus::setFileOffset(offset);
-
-    // Throttle to ~64 frames per file: only render when the offset crosses into a
-    // new 1/64 bucket. Tiny files (size 0) just render once.
-    int bucket = mFileSize == 0 ? 0 : static_cast<int>((offset * 64) / mFileSize);
-    if (bucket != mLastRendered) {
-        mLastRendered = bucket;
-        renderTransferFrame();
-    }
 }
 
 void UiProgressSink::finishFile()
@@ -70,5 +55,6 @@ void UiProgressSink::finishFile()
 
 void UiProgressSink::end()
 {
-    TransferStatus::end();
+    // No-op: the batch active flag is lowered by the TransferJob once the whole
+    // batch finishes, not after each save's file run.
 }

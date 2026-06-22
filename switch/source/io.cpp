@@ -199,7 +199,9 @@ io::IoOutcome io::backup(Title& title, const std::string& dstPath, ProgressSink&
         return {false, res, io::BackupStage::Copy};
     }
 
-    TitleCatalog::get().refreshDirectories(title.id());
+    // The backup-folder list is refreshed by the caller on the main thread:
+    // io::backup runs on the TransferJob worker and the Switch TitleCatalog has no
+    // mutex, so the worker must not mutate it while the UI thread reads it.
     FileSystem::unmountDevice();
     Logging::info("Backup succeeded.");
     return {true, 0, io::BackupStage::Copy};

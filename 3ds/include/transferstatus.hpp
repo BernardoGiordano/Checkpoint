@@ -43,12 +43,14 @@ struct TransferSnapshot {
     TransferKind kind = TransferKind::Local;
     std::string mode;
 
-    // Local copy: file-by-file blocking copy.
+    // Local copy: file-by-file copy, run on the TransferJob worker thread.
     std::u16string currentFile;
     u32 currentFileSize   = 0;
     u32 currentFileOffset = 0;
-    size_t copyCount      = 0;
-    size_t copyTotal      = 0;
+    size_t copyCount      = 0; // files done within the current save
+    size_t copyTotal      = 0; // files in the current save
+    size_t saveCount      = 0; // saves done within the batch
+    size_t saveTotal      = 0; // saves in the batch (1 for a single backup/restore)
 
     // Network: HTTP send/receive byte counters.
     u64 bytesDone  = 0;
@@ -56,14 +58,20 @@ struct TransferSnapshot {
 };
 
 // The single owner of "a transfer is in progress" state, replacing the loose
-// globals that used to live in main.hpp. All access is mutex-guarded: the byte
-// counters and mode string are written by the HTTP server thread (and the
-// sender) while the UI thread reads them, so unsynchronised access would be
-// undefined behaviour and 64-bit reads tear on the 3DS's 32-bit core.
+// globals that used to live in main.hpp. All access is mutex-guarded: the local
+// copy figures are written by the TransferJob worker thread while the UI thread
+// reads them; the byte counters and mode string are written by the HTTP server
+// thread (and the sender). Unsynchronised access would be undefined behaviour,
+// and 64-bit reads tear on the 3DS's 32-bit core.
 namespace TransferStatus {
-    // Local copy lifecycle, driven by UiProgressSink on the main thread.
-    // beginLocal starts a run of `totalFiles` files labelled `mode`.
-    void beginLocal(const std::string& mode, size_t totalFiles);
+    // Local copy lifecycle. The batch (one or more saves) is framed by the
+    // TransferJob: beginLocalBatch raises the modal and owns the active flag;
+    // setSaveCount advances the per-save bar before each save. Within a save,
+    // UiProgressSink drives beginLocalRun (per-save file run) and the file
+    // figures. end() lowers the modal once the whole batch is done.
+    void beginLocalBatch(size_t totalSaves);
+    void setSaveCount(size_t count);
+    void beginLocalRun(const std::string& mode, size_t totalFiles);
     void startFile(const std::u16string& name, u32 size);
     void setFileOffset(u32 offset);
     void finishFile();

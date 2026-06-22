@@ -34,11 +34,30 @@ namespace {
 }
 
 namespace TransferStatus {
-    void beginLocal(const std::string& mode, size_t totalFiles)
+    void beginLocalBatch(size_t totalSaves)
     {
         std::lock_guard<std::mutex> lock(sMutex);
-        sState.kind      = TransferKind::Local;
-        sState.active    = true;
+        sState.kind   = TransferKind::Local;
+        sState.active = true;
+        sState.mode.clear();
+        sState.saveCount = 0;
+        sState.saveTotal = totalSaves;
+        sState.copyCount = 0;
+        sState.copyTotal = 0;
+        sState.currentFile.clear();
+        sState.currentFileSize   = 0;
+        sState.currentFileOffset = 0;
+    }
+
+    void setSaveCount(size_t count)
+    {
+        std::lock_guard<std::mutex> lock(sMutex);
+        sState.saveCount = count;
+    }
+
+    void beginLocalRun(const std::string& mode, size_t totalFiles)
+    {
+        std::lock_guard<std::mutex> lock(sMutex);
         sState.mode      = mode;
         sState.copyCount = 0;
         sState.copyTotal = totalFiles;

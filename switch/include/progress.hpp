@@ -51,9 +51,9 @@ struct ProgressSink {
 };
 
 // Real adapter: mirrors progress into the global transfer state read by the
-// transfer modal, and pumps an SDL frame so the UI does not freeze during a
-// blocking copy. Rendering is throttled to ~64 frames per file (it knows the
-// file size from startFile), instead of the old render-on-every-chunk loop.
+// transfer modal. It only writes TransferStatus and never renders — the copy
+// runs on the TransferJob worker thread while the main loop draws the modal from
+// the snapshot, so the UI keeps animating throughout.
 class UiProgressSink : public ProgressSink {
 public:
     void begin(const std::string& mode, size_t totalFiles) override;
@@ -61,10 +61,6 @@ public:
     void advanceBytes(u64 offset) override;
     void finishFile() override;
     void end() override;
-
-private:
-    u64 mFileSize     = 0;
-    int mLastRendered = -1; // last rendered 1/64 bucket of the current file
 };
 
 // Headless adapter: records the last figures reported, renders nothing. The

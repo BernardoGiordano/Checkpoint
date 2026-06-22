@@ -27,6 +27,7 @@
 #include "main.hpp"
 #include "MainScreen.hpp"
 #include "titlecatalog.hpp"
+#include "transferjob.hpp"
 extern "C" {
 #include "ftp.h"
 }
@@ -71,7 +72,9 @@ int main(void)
         padUpdate(&pad);
 
         input.kDown = padGetButtonsDown(&pad);
-        if (input.kDown & HidNpadButton_Plus)
+        // Don't exit mid-copy: the worker is touching the save filesystem, and
+        // tearing down services under it would crash.
+        if ((input.kDown & HidNpadButton_Plus) && !TransferJob::get().active())
             break;
 
         input.kHeld = padGetButtons(&pad);
@@ -82,6 +85,10 @@ int main(void)
         g_screen->doUpdate(input);
         SDLH_Render();
     }
+
+    // If the system forced the loop to end while a copy was live, let it finish
+    // and join the worker before tearing anything down.
+    TransferJob::get().join();
 
     g_shouldExitNetworkLoop = true;
     threadWaitForExit(&networkThread);
