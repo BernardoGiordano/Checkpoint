@@ -25,6 +25,7 @@
  */
 
 #include "titlecatalog.hpp"
+#include "savekind.hpp"
 #include "titleprobe.hpp"
 #include <algorithm>
 #include <cstdlib>
@@ -188,27 +189,12 @@ SDL_Texture* TitleCatalog::iconFor(u64 id)
     return mIcons.get(id);
 }
 
-u8 TitleCatalog::filterToSaveDataType(saveTypeFilter_t filter)
-{
-    switch (filter) {
-        case FILTER_BCAT:
-            return FsSaveDataType_Bcat;
-        case FILTER_DEVICE:
-            return FsSaveDataType_Device;
-        case FILTER_SYSTEM:
-            return FsSaveDataType_System;
-        case FILTER_SAVES:
-        default:
-            return FsSaveDataType_Account;
-    }
-}
-
 size_t TitleCatalog::getFilteredTitleCount(AccountUid uid, saveTypeFilter_t filter)
 {
     auto it = mTitles.find(uid);
     if (it == mTitles.end())
         return 0;
-    u8 type      = filterToSaveDataType(filter);
+    u8 type      = SaveKind::of(filter).saveDataType;
     size_t count = 0;
     for (auto& t : it->second) {
         if (t.saveDataType() == type)
@@ -222,7 +208,7 @@ void TitleCatalog::getFilteredTitle(Title& dst, AccountUid uid, saveTypeFilter_t
     auto it = mTitles.find(uid);
     if (it == mTitles.end())
         return;
-    u8 type      = filterToSaveDataType(filter);
+    u8 type      = SaveKind::of(filter).saveDataType;
     size_t count = 0;
     for (auto& t : it->second) {
         if (t.saveDataType() == type) {
@@ -240,7 +226,7 @@ size_t TitleCatalog::filteredToRawIndex(AccountUid uid, saveTypeFilter_t filter,
     auto it = mTitles.find(uid);
     if (it == mTitles.end())
         return 0;
-    u8 type      = filterToSaveDataType(filter);
+    u8 type      = SaveKind::of(filter).saveDataType;
     size_t count = 0;
     for (size_t j = 0; j < it->second.size(); j++) {
         if (it->second[j].saveDataType() == type) {

@@ -86,7 +86,6 @@ private:
     TitleCatalog(const TitleCatalog&)            = delete;
     TitleCatalog& operator=(const TitleCatalog&) = delete;
 
-    static u8 filterToSaveDataType(saveTypeFilter_t filter);
     bool favorite(AccountUid uid, int i);
 
     std::unordered_map<AccountUid, std::vector<Title>> mTitles;

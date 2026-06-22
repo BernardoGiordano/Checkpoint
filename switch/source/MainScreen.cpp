@@ -125,17 +125,21 @@ MainScreen::MainScreen(const InputState& input) : hid(rowlen * collen, collen, i
     buttonCheats->canChangeColorWhenSelected(true);
 
     int filterY = TOPBAR_h + 12;
-    buttonSaves = std::make_unique<Clickable>(FILTER_BTN_X, filterY, FILTER_BTN_SIZE, FILTER_BTN_SIZE, COLOR_PURPLE_DARK, COLOR_WHITE, "A", true);
-    buttonBCAT  = std::make_unique<Clickable>(
-        FILTER_BTN_X, filterY + FILTER_BTN_SPACING, FILTER_BTN_SIZE, FILTER_BTN_SIZE, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "B", true);
-    buttonDevice = std::make_unique<Clickable>(
-        FILTER_BTN_X, filterY + FILTER_BTN_SPACING * 2, FILTER_BTN_SIZE, FILTER_BTN_SIZE, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "D", true);
-    buttonSystem = std::make_unique<Clickable>(
-        FILTER_BTN_X, filterY + FILTER_BTN_SPACING * 3, FILTER_BTN_SIZE, FILTER_BTN_SIZE, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "S", true);
-    buttonSaves->canChangeColorWhenSelected(true);
-    buttonBCAT->canChangeColorWhenSelected(true);
-    buttonDevice->canChangeColorWhenSelected(true);
-    buttonSystem->canChangeColorWhenSelected(true);
+    for (int k = 0; k < 4; k++) {
+        const SaveKind& kind = SaveKind::all()[k];
+        filterButtons[k]     = std::make_unique<Clickable>(FILTER_BTN_X, filterY + FILTER_BTN_SPACING * k, FILTER_BTN_SIZE, FILTER_BTN_SIZE,
+                COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, kind.buttonLabel, true);
+        filterButtons[k]->canChangeColorWhenSelected(true);
+    }
+    colorFilterButtons();
+}
+
+void MainScreen::colorFilterButtons(void)
+{
+    for (int k = 0; k < 4; k++) {
+        bool on = mSaveTypeFilter == static_cast<saveTypeFilter_t>(k);
+        filterButtons[k]->setColors(on ? COLOR_PURPLE_DARK : COLOR_BLACK_DARKER, on ? COLOR_WHITE : COLOR_GREY_LIGHT);
+    }
 }
 
 int MainScreen::selectorX(size_t i) const
@@ -160,12 +164,7 @@ void MainScreen::setSaveTypeFilter(saveTypeFilter_t filter)
     MS::clearSelectedEntries();
     setPKSMBridgeFlag(false);
 
-    buttonSaves->setColors(filter == FILTER_SAVES ? COLOR_PURPLE_DARK : COLOR_BLACK_DARKER, filter == FILTER_SAVES ? COLOR_WHITE : COLOR_GREY_LIGHT);
-    buttonBCAT->setColors(filter == FILTER_BCAT ? COLOR_PURPLE_DARK : COLOR_BLACK_DARKER, filter == FILTER_BCAT ? COLOR_WHITE : COLOR_GREY_LIGHT);
-    buttonDevice->setColors(
-        filter == FILTER_DEVICE ? COLOR_PURPLE_DARK : COLOR_BLACK_DARKER, filter == FILTER_DEVICE ? COLOR_WHITE : COLOR_GREY_LIGHT);
-    buttonSystem->setColors(
-        filter == FILTER_SYSTEM ? COLOR_PURPLE_DARK : COLOR_BLACK_DARKER, filter == FILTER_SYSTEM ? COLOR_WHITE : COLOR_GREY_LIGHT);
+    colorFilterButtons();
 }
 
 void MainScreen::draw() const
@@ -187,10 +186,9 @@ void MainScreen::draw() const
     SDLH_DrawRect(0, 0, 1280, TOPBAR_h, COLOR_BLACK);
 
     // filter buttons
-    buttonSaves->draw(24, COLOR_PURPLE_LIGHT);
-    buttonBCAT->draw(24, COLOR_PURPLE_LIGHT);
-    buttonDevice->draw(24, COLOR_PURPLE_LIGHT);
-    buttonSystem->draw(24, COLOR_PURPLE_LIGHT);
+    for (auto& button : filterButtons) {
+        button->draw(24, COLOR_PURPLE_LIGHT);
+    }
 
     // sidebar focus indicator
     if (sidebarFocused) {
@@ -305,10 +303,7 @@ void MainScreen::draw() const
         buttonCheats->draw(30, COLOR_PURPLE_LIGHT);
     }
     else {
-        const char* emptyMsg = mSaveTypeFilter == FILTER_BCAT     ? "No BCAT saves"
-                               : mSaveTypeFilter == FILTER_DEVICE ? "No Device saves"
-                               : mSaveTypeFilter == FILTER_SYSTEM ? "No System saves"
-                                                                  : "No saves";
+        const char* emptyMsg = SaveKind::of(mSaveTypeFilter).emptyMsg;
         u32 emptyW;
         SDLH_GetTextDimensions(26, emptyMsg, &emptyW, NULL);
         SDLH_DrawText(26, LEFT_SIDEBAR_w + (532 - emptyW) / 2, 360, COLOR_GREY_LIGHT, emptyMsg);
@@ -442,7 +437,7 @@ void MainScreen::updateSelector(const InputState& input)
         }
         else if ((input.kDown & HidNpadButton_Left) && hid.index() % collen == 0) {
             sidebarFocused = true;
-            sidebarCursor  = mSaveTypeFilter == FILTER_SAVES ? 0 : mSaveTypeFilter == FILTER_BCAT ? 1 : mSaveTypeFilter == FILTER_DEVICE ? 2 : 3;
+            sidebarCursor  = static_cast<int>(mSaveTypeFilter);
         }
         else {
             hid.update(count);
@@ -532,21 +527,12 @@ void MainScreen::handleEvents(const InputState& input)
     wantInstructions = (kheld & HidNpadButton_Minus);
 
     // handle filter button touches
-    if (buttonSaves->released()) {
-        setSaveTypeFilter(FILTER_SAVES);
-        sidebarFocused = false;
-    }
-    else if (buttonBCAT->released()) {
-        setSaveTypeFilter(FILTER_BCAT);
-        sidebarFocused = false;
-    }
-    else if (buttonDevice->released()) {
-        setSaveTypeFilter(FILTER_DEVICE);
-        sidebarFocused = false;
-    }
-    else if (buttonSystem->released()) {
-        setSaveTypeFilter(FILTER_SYSTEM);
-        sidebarFocused = false;
+    for (int k = 0; k < 4; k++) {
+        if (filterButtons[k]->released()) {
+            setSaveTypeFilter(static_cast<saveTypeFilter_t>(k));
+            sidebarFocused = false;
+            break;
+        }
     }
 
     // handle sidebar D-pad navigation
@@ -558,8 +544,7 @@ void MainScreen::handleEvents(const InputState& input)
             sidebarCursor = sidebarCursor < 3 ? sidebarCursor + 1 : 0;
         }
         if (kdown & HidNpadButton_A) {
-            static constexpr saveTypeFilter_t filters[] = {FILTER_SAVES, FILTER_BCAT, FILTER_DEVICE, FILTER_SYSTEM};
-            setSaveTypeFilter(filters[sidebarCursor]);
+            setSaveTypeFilter(static_cast<saveTypeFilter_t>(sidebarCursor));
         }
         // Right/B exit is handled in updateSelector to prevent double cursor movement
         return;
@@ -567,14 +552,7 @@ void MainScreen::handleEvents(const InputState& input)
 
     // handle StickL press to cycle filter
     if (kdown & HidNpadButton_StickL) {
-        if (mSaveTypeFilter == FILTER_SAVES)
-            setSaveTypeFilter(FILTER_BCAT);
-        else if (mSaveTypeFilter == FILTER_BCAT)
-            setSaveTypeFilter(FILTER_DEVICE);
-        else if (mSaveTypeFilter == FILTER_DEVICE)
-            setSaveTypeFilter(FILTER_SYSTEM);
-        else
-            setSaveTypeFilter(FILTER_SAVES);
+        setSaveTypeFilter(SaveKind::next(mSaveTypeFilter));
     }
 
     if (mSaveTypeFilter == FILTER_SAVES) {
