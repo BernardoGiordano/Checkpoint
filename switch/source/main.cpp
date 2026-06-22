@@ -26,6 +26,7 @@
 
 #include "main.hpp"
 #include "MainScreen.hpp"
+#include "titlecatalog.hpp"
 extern "C" {
 #include "ftp.h"
 }
@@ -55,7 +56,7 @@ int main(void)
 
     g_screen = std::make_unique<MainScreen>(input);
 
-    loadTitles();
+    TitleCatalog::get().loadTitles();
     // get the user IDs
     std::vector<AccountUid> userIds = Account::ids();
     // set g_currentUId to a default user in case we loaded at least one user

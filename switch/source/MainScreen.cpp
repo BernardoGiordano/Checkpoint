@@ -26,6 +26,7 @@
 
 #include "MainScreen.hpp"
 #include "savedatasource.hpp"
+#include "titlecatalog.hpp"
 #include <optional>
 
 static constexpr size_t rowlen = 5, collen = 4, rows = 10, TOPBAR_h = 48;
@@ -171,7 +172,7 @@ void MainScreen::draw() const
 {
     auto selEnt              = MS::selectedEntries();
     const size_t entries     = hid.maxVisibleEntries();
-    const size_t filteredCnt = getFilteredTitleCount(g_currentUId, mSaveTypeFilter);
+    const size_t filteredCnt = TitleCatalog::get().getFilteredTitleCount(g_currentUId, mSaveTypeFilter);
     const size_t max         = filteredCnt > 0 ? hid.maxEntries(filteredCnt) + 1 : 0;
 
     SDLH_ClearScreen(COLOR_BLACK_DARKERR);
@@ -221,8 +222,8 @@ void MainScreen::draw() const
     for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
         int selectorx = selectorX(k);
         int selectory = selectorY(k);
-        if (filteredSmallIcon(g_currentUId, mSaveTypeFilter, k) != NULL) {
-            SDLH_DrawImageScale(filteredSmallIcon(g_currentUId, mSaveTypeFilter, k), selectorx, selectory, 128, 128);
+        if (TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k) != NULL) {
+            SDLH_DrawImageScale(TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k), selectorx, selectory, 128, 128);
         }
         else {
             SDLH_DrawRect(selectorx, selectory, 128, 128, COLOR_BLACK);
@@ -232,7 +233,7 @@ void MainScreen::draw() const
             SDLH_DrawIcon("checkbox", selectorx + 86, selectory + 86);
         }
 
-        if (filteredFavorite(g_currentUId, mSaveTypeFilter, k)) {
+        if (TitleCatalog::get().filteredFavorite(g_currentUId, mSaveTypeFilter, k)) {
             SDLH_DrawRect(selectorx + 94, selectory + 8, 24, 24, COLOR_GOLD);
             SDLH_DrawIcon("star", selectorx + 86, selectory);
         }
@@ -258,7 +259,7 @@ void MainScreen::draw() const
     backupList->flush();
     if (filteredCnt > 0) {
         Title title;
-        getFilteredTitle(title, g_currentUId, mSaveTypeFilter, hid.fullIndex());
+        TitleCatalog::get().getFilteredTitle(title, g_currentUId, mSaveTypeFilter, hid.fullIndex());
 
         std::vector<std::string> dirs = title.saves();
 
@@ -266,9 +267,9 @@ void MainScreen::draw() const
             backupList->push_back(COLOR_BLACK_DARKER, COLOR_WHITE, dirs.at(i), i == backupList->index());
         }
 
-        if (title.icon() != NULL) {
+        if (TitleCatalog::get().iconFor(title.id()) != NULL) {
             drawOutline(1012, 52, 256, 256, 4, COLOR_BLACK_DARK);
-            SDLH_DrawImage(title.icon(), 1012, 52);
+            SDLH_DrawImage(TitleCatalog::get().iconFor(title.id()), 1012, 52);
         }
 
         u32 h = 29, offset = 56, i = 0, title_w;
@@ -424,7 +425,7 @@ void MainScreen::update(const InputState& input)
 void MainScreen::updateSelector(const InputState& input)
 {
     if (!g_backupScrollEnabled) {
-        size_t count    = getFilteredTitleCount(g_currentUId, mSaveTypeFilter);
+        size_t count    = TitleCatalog::get().getFilteredTitleCount(g_currentUId, mSaveTypeFilter);
         size_t oldindex = hid.index();
         if (sidebarFocused && (input.kDown & (HidNpadButton_Right | HidNpadButton_B))) {
             sidebarFocused   = false;
@@ -475,13 +476,13 @@ void MainScreen::updateSelector(const InputState& input)
 
 size_t MainScreen::rawIndex() const
 {
-    return filteredToRawIndex(g_currentUId, mSaveTypeFilter, this->index(TITLES));
+    return TitleCatalog::get().filteredToRawIndex(g_currentUId, mSaveTypeFilter, this->index(TITLES));
 }
 
 void MainScreen::doBackup(size_t rawIdx, size_t cellIndex)
 {
     Title title;
-    getTitle(title, g_currentUId, rawIdx);
+    TitleCatalog::get().getTitle(title, g_currentUId, rawIdx);
 
     bool usedKeyboardFallback      = false;
     std::optional<std::string> dst = chooseBackupDst(title, cellIndex, usedKeyboardFallback);
@@ -509,7 +510,7 @@ void MainScreen::doBackup(size_t rawIdx, size_t cellIndex)
 void MainScreen::doRestore(size_t rawIdx, size_t cellIndex)
 {
     Title title;
-    getTitle(title, g_currentUId, rawIdx);
+    TitleCatalog::get().getTitle(title, g_currentUId, rawIdx);
     std::string name = nameFromCell(cellIndex);
 
     UiProgressSink sink;
@@ -589,7 +590,7 @@ void MainScreen::handleEvents(const InputState& input)
     // handle PKSM bridge (only for account saves)
     if (mSaveTypeFilter == FILTER_SAVES && Configuration::getInstance().isPKSMBridgeEnabled()) {
         Title title;
-        getTitle(title, g_currentUId, rawIndex());
+        TitleCatalog::get().getTitle(title, g_currentUId, rawIndex());
         if (!getPKSMBridgeFlag()) {
             if ((kheld & HidNpadButton_L) && (kheld & HidNpadButton_R) && title.saveDataType() != FsSaveDataType_Bcat &&
                 title.saveDataType() != FsSaveDataType_Device && isPKSMBridgeTitle(title.id())) {
@@ -628,7 +629,7 @@ void MainScreen::handleEvents(const InputState& input)
     // Backup list active:   Backup/Restore
     // Backup list inactive: Activate backup list only if multiple
     //                       selections are enabled
-    if ((kdown & HidNpadButton_A) && getFilteredTitleCount(g_currentUId, mSaveTypeFilter) > 0) {
+    if ((kdown & HidNpadButton_A) && TitleCatalog::get().getFilteredTitleCount(g_currentUId, mSaveTypeFilter) > 0) {
         // If backup list is active...
         if (g_backupScrollEnabled) {
             // If the "New..." entry is selected...
@@ -684,10 +685,10 @@ void MainScreen::handleEvents(const InputState& input)
                     *this, "Delete selected backup?",
                     [this, index]() {
                         Title title;
-                        getTitle(title, g_currentUId, rawIndex());
+                        TitleCatalog::get().getTitle(title, g_currentUId, rawIndex());
                         std::string path = title.fullPath(index);
                         io::deleteFolderRecursively((path + "/").c_str());
-                        refreshDirectories(title.id());
+                        TitleCatalog::get().refreshDirectories(title.id());
                         this->index(CELLS, index - 1);
                         this->removeOverlay();
                     },
@@ -695,7 +696,7 @@ void MainScreen::handleEvents(const InputState& input)
             }
         }
         else {
-            rotateSortMode();
+            TitleCatalog::get().rotateSortMode();
         }
     }
 
@@ -724,7 +725,7 @@ void MainScreen::handleEvents(const InputState& input)
 
     if (selectionTimer > 45) {
         MS::clearSelectedEntries();
-        for (size_t i = 0, sz = getFilteredTitleCount(g_currentUId, mSaveTypeFilter); i < sz; i++) {
+        for (size_t i = 0, sz = TitleCatalog::get().getFilteredTitleCount(g_currentUId, mSaveTypeFilter); i < sz; i++) {
             MS::addSelectedEntry(i);
         }
         selectionTimer = 0;
@@ -739,7 +740,7 @@ void MainScreen::handleEvents(const InputState& input)
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
                 multiSelectCount = i;
                 // translate filtered index to raw index for multi-selection
-                size_t raw = filteredToRawIndex(g_currentUId, mSaveTypeFilter, list.at(i));
+                size_t raw = TitleCatalog::get().filteredToRawIndex(g_currentUId, mSaveTypeFilter, list.at(i));
                 doBackup(raw, this->index(CELLS));
             }
             multiSelectTotal = 0;
@@ -807,7 +808,7 @@ void MainScreen::handleEvents(const InputState& input)
         }
         else {
             Title title;
-            getTitle(title, g_currentUId, rawIndex());
+            TitleCatalog::get().getTitle(title, g_currentUId, rawIndex());
             std::string key = StringUtils::format("%016llX", title.id());
             if (CheatManager::getInstance().areCheatsAvailable(key)) {
                 currentOverlay = std::make_shared<CheatManagerOverlay>(*this, key);
@@ -902,7 +903,7 @@ void MainScreen::updateButtons(void)
 
 std::string MainScreen::sortMode() const
 {
-    switch (g_sortMode) {
+    switch (TitleCatalog::get().sortMode()) {
         case SORT_LAST_PLAYED:
             return "Last played";
         case SORT_PLAY_TIME:

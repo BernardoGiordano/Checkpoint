@@ -26,6 +26,7 @@
 
 #include "io.hpp"
 #include "savedatasource.hpp"
+#include "titlecatalog.hpp"
 
 bool io::fileExists(const std::string& path)
 {
@@ -198,7 +199,7 @@ io::IoOutcome io::backup(Title& title, const std::string& dstPath, ProgressSink&
         return {false, res, io::BackupStage::Copy};
     }
 
-    refreshDirectories(title.id());
+    TitleCatalog::get().refreshDirectories(title.id());
     FileSystem::unmountDevice();
     Logging::info("Backup succeeded.");
     return {true, 0, io::BackupStage::Copy};

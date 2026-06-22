@@ -25,6 +25,7 @@
  */
 
 #include "configuration.hpp"
+#include "titlecatalog.hpp"
 
 static struct mg_mgr mgr;
 static struct mg_connection* nc;
@@ -38,7 +39,7 @@ static void handle_populate(struct mg_connection* nc, struct http_message* hm)
     blinkLed(2);
 
     auto json          = Configuration::getInstance().getJson();
-    auto map           = getCompleteTitleList();
+    auto map           = TitleCatalog::get().getCompleteTitleList();
     json["title_list"] = map;
     std::string body   = json.dump();
     mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%.*s", (unsigned long)body.length(), (int)body.length(), body.c_str());

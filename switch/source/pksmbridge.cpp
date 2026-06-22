@@ -25,6 +25,7 @@
  */
 
 #include "pksmbridge.hpp"
+#include "titlecatalog.hpp"
 
 static bool isLGPE(u64 id)
 {
@@ -56,7 +57,7 @@ std::tuple<bool, Result, std::string> sendToPKSMBrigde(size_t index, AccountUid 
 
     // load data
     Title title;
-    getTitle(title, uid, index);
+    TitleCatalog::get().getTitle(title, uid, index);
     std::string filename;
     if (isLGPE(title.id())) {
         filename = "/savedata.bin";
@@ -164,7 +165,7 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUi
 
     size_t size = 0;
     Title title;
-    getTitle(title, uid, index);
+    TitleCatalog::get().getTitle(title, uid, index);
     std::string filename;
     if (isLGPE(title.id())) {
         filename = "/savedata.bin";
