@@ -44,8 +44,6 @@ FORMATINCLUDES	:=	include ../common
 INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/mongoose ../3rd-party/json ../3rd-party/ftp
 EXEFS_SRC		:=	exefs_src
 ROMFS			:=	romfs
-SHARKIVE		:=	../sharkive
-CHEATS			:=	cheats
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -65,7 +63,6 @@ CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections \
 			-DMG_ENABLE_FILESYSTEM \
 			-DJSON_HAS_FILESYSTEM=0 \
 			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
-			-DCHEAT_SIZE_DECOMPRESSED=${CHEAT_SIZE_DECOMPRESSED}
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D_GNU_SOURCE=1
 
@@ -165,31 +162,16 @@ endif
 .PHONY: $(BUILD) clean all format
 
 #---------------------------------------------------------------------------------
-all: cheats $(BUILD)
+all: $(BUILD)
 
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@ $(BUILD) $(OUTDIR)
-ifeq ($(OS),Windows_NT)
-	@cd $(SHARKIVE) && py -3 joiner.py switch
-else
-	@cd $(SHARKIVE) && python3 joiner.py switch
-endif
-	@cd $(SHARKIVE)/$(BUILD) && mv switch.json.bz2 ../../switch/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(OUTDIR)
-#---------------------------------------------------------------------------------
-cheats:
-	@mkdir -p $@ $(ROMFS)/$(CHEATS)
-ifeq ($(OS),Windows_NT)
-	@cd $(SHARKIVE) && py -3 joiner.py switch
-else
-	@cd $(SHARKIVE) && python3 joiner.py switch
-endif
-	@cd $(SHARKIVE)/$(BUILD) && mv switch.json.bz2 ../../switch/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
 #---------------------------------------------------------------------------------
 format:
 	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp) $(wildcard $(dir)/*.tcc)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))

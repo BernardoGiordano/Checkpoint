@@ -120,10 +120,8 @@ MainScreen::MainScreen(const InputState& input) : hid(rowlen * collen, collen, i
     backupList    = std::make_unique<Scrollable>(608, 316, 400, 408, rows);
     buttonBackup  = std::make_unique<Clickable>(1012, 316, 260, 64, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Backup \ue004", true);
     buttonRestore = std::make_unique<Clickable>(1012, 384, 260, 64, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Restore \ue005", true);
-    buttonCheats  = std::make_unique<Clickable>(1012, 452, 260, 64, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Cheats \ue0c5", true);
     buttonBackup->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
-    buttonCheats->canChangeColorWhenSelected(true);
 
     int filterY = TOPBAR_h + 12;
     for (int k = 0; k < 4; k++) {
@@ -301,7 +299,6 @@ void MainScreen::draw() const
         backupList->draw(g_backupScrollEnabled);
         buttonBackup->draw(30, COLOR_PURPLE_LIGHT);
         buttonRestore->draw(30, COLOR_PURPLE_LIGHT);
-        buttonCheats->draw(30, COLOR_PURPLE_LIGHT);
     }
     else {
         const char* emptyMsg = SaveKind::of(mSaveTypeFilter).emptyMsg;
@@ -804,24 +801,6 @@ void MainScreen::handleEvents(const InputState& input)
             }
         }
     }
-
-    if ((buttonCheats->released() || (kdown & HidNpadButton_StickR)) && CheatManager::getInstance().cheats() != nullptr) {
-        if (MS::multipleSelectionEnabled()) {
-            MS::clearSelectedEntries();
-            updateButtons();
-        }
-        else {
-            Title title;
-            TitleCatalog::get().getTitle(title, g_currentUId, rawIndex());
-            std::string key = StringUtils::format("%016llX", title.id());
-            if (CheatManager::getInstance().areCheatsAvailable(key)) {
-                currentOverlay = std::make_shared<CheatManagerOverlay>(*this, key);
-            }
-            else {
-                currentOverlay = std::make_shared<InfoOverlay>(*this, "No available cheat codes for this title.");
-            }
-        }
-    }
 }
 
 std::string MainScreen::nameFromCell(size_t index) const
@@ -876,23 +855,18 @@ void MainScreen::updateButtons(void)
     if (MS::multipleSelectionEnabled()) {
         buttonRestore->canChangeColorWhenSelected(true);
         buttonRestore->canChangeColorWhenSelected(false);
-        buttonCheats->canChangeColorWhenSelected(false);
         buttonBackup->setColors(COLOR_BLACK_DARKER, COLOR_WHITE);
         buttonRestore->setColors(COLOR_BLACK_DARKER, COLOR_GREY_LIGHT);
-        buttonCheats->setColors(COLOR_BLACK_DARKER, COLOR_GREY_LIGHT);
     }
     else if (g_backupScrollEnabled) {
         buttonBackup->canChangeColorWhenSelected(true);
         buttonRestore->canChangeColorWhenSelected(true);
-        buttonCheats->canChangeColorWhenSelected(true);
         buttonBackup->setColors(COLOR_BLACK_DARKER, COLOR_WHITE);
         buttonRestore->setColors(COLOR_BLACK_DARKER, COLOR_WHITE);
-        buttonCheats->setColors(COLOR_BLACK_DARKER, COLOR_WHITE);
     }
     else {
         buttonBackup->setColors(COLOR_BLACK_DARKER, COLOR_GREY_LIGHT);
         buttonRestore->setColors(COLOR_BLACK_DARKER, COLOR_GREY_LIGHT);
-        buttonCheats->setColors(COLOR_BLACK_DARKER, COLOR_GREY_LIGHT);
     }
 
     if (getPKSMBridgeFlag() && mSaveTypeFilter == FILTER_SAVES) {

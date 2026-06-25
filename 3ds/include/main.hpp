@@ -40,7 +40,5 @@
 inline std::shared_ptr<Screen> g_screen = nullptr;
 inline bool g_bottomScrollEnabled       = false;
 inline float g_timer                    = 0;
-inline std::string g_selectedCheatKey;
-inline std::vector<std::string> g_selectedCheatCodes;
 
 #endif

@@ -83,7 +83,6 @@ Result servicesInit(void)
     mkdir("sdmc:/3ds/Checkpoint/saves", 777);
     mkdir("sdmc:/3ds/Checkpoint/extdata", 777);
     mkdir("sdmc:/3ds/Checkpoint/logs", 777);
-    mkdir("sdmc:/cheats", 777);
 
     Logging::initFileLogging();
 

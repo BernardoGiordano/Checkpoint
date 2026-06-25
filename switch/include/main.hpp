@@ -42,8 +42,6 @@ inline bool g_notificationLedAvailable  = false;
 inline std::shared_ptr<Screen> g_screen = nullptr;
 inline bool g_ftpAvailable              = false;
 inline bool g_shouldExitNetworkLoop     = false;
-inline std::string g_selectedCheatKey;
-inline std::vector<std::string> g_selectedCheatCodes;
 inline u32 g_username_dotsize;
 inline const InputState* g_input = nullptr;
 

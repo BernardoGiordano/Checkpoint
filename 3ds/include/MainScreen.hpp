@@ -27,7 +27,6 @@
 #ifndef MAINSCREEN_HPP
 #define MAINSCREEN_HPP
 
-#include "CheatManagerOverlay.hpp"
 #include "ErrorOverlay.hpp"
 #include "InfoOverlay.hpp"
 #include "Screen.hpp"
@@ -68,7 +67,7 @@ protected:
 
 private:
     Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
-    std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonCheats, buttonPlayCoins, buttonTransfer;
+    std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonPlayCoins, buttonTransfer;
     std::unique_ptr<Scrollable> directoryList;
     char ver[10];
 
