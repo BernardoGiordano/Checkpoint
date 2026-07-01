@@ -39,6 +39,19 @@ namespace {
         return loadTextureFromBytes(smdh->bigIconData);
     }
 
+    // Some titles (notably malformed VC injects) don't null-terminate SMDH title
+    // fields; reading them as raw char16_t* would run past the fixed-size array
+    // into whatever struct data follows, producing a huge garbage string that can
+    // overflow the shared C2D text buffer. Bound the scan to the field's size.
+    std::u16string boundedU16String(const u16* data, size_t maxLen)
+    {
+        size_t len = 0;
+        while (len < maxLen && data[len] != 0) {
+            len++;
+        }
+        return std::u16string((const char16_t*)data, len);
+    }
+
     void loadDSIcon(u8* banner)
     {
         static constexpr int WIDTH_POW2  = 32;
@@ -98,8 +111,8 @@ namespace {
         char uniqueStr[12] = {0};
         sprintf(uniqueStr, "0x%05X ", (unsigned int)unique);
 
-        shortDescription = StringUtils::removeForbiddenCharacters((char16_t*)smdh->applicationTitles[1].shortDescription);
-        longDescription  = (char16_t*)smdh->applicationTitles[1].longDescription;
+        shortDescription = StringUtils::removeForbiddenCharacters(boundedU16String(smdh->applicationTitles[1].shortDescription, 0x40));
+        longDescription  = boundedU16String(smdh->applicationTitles[1].longDescription, 0x80);
         savePath         = StringUtils::UTF8toUTF16("/3ds/Checkpoint/saves/") + StringUtils::UTF8toUTF16(uniqueStr) + shortDescription;
         extdataPath      = StringUtils::UTF8toUTF16("/3ds/Checkpoint/extdata/") + StringUtils::UTF8toUTF16(uniqueStr) + shortDescription;
         AM_GetTitleProductCode(media, id, (char*)productCode);
@@ -141,7 +154,7 @@ namespace {
     }
 
     // Probe a legacy DS card title: rom header, banner icon, SPI card type.
-    bool probeCard(FS_MediaType media, bool& accessibleSave, bool& gba, bool& accessibleExtdata, std::u16string& shortDescription,
+    bool probeCard(FS_MediaType media, u8* productCode, bool& accessibleSave, bool& gba, bool& accessibleExtdata, std::u16string& shortDescription,
         std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, CardType& spiCard, C2D_Image& icon, bool& hasIcon)
     {
         u8* headerData = new u8[0x3B4];
@@ -173,6 +186,10 @@ namespace {
             Logging::error("Failed get SPI Card Type with result 0x{:08X}.", res);
             return false;
         }
+
+        // No AM product-code API exists for a legacy card; synthesize the
+        // "NTR-XXXX" cart identifier from the ROM header's game code instead.
+        snprintf((char*)productCode, 16, "NTR-%s", gameCode);
 
         shortDescription = StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(cardTitle));
         longDescription  = shortDescription;
@@ -211,8 +228,8 @@ bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType car
             id, media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, icon, hasIcon);
     }
     else {
-        loadTitle = probeCard(
-            media, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, spiCard, icon, hasIcon);
+        loadTitle = probeCard(media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath,
+            spiCard, icon, hasIcon);
     }
 
     // On a hard failure (smdh == NULL, header/SPI error) probeCtr/probeCard

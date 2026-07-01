@@ -25,6 +25,7 @@
  */
 
 #include "util.hpp"
+#include "backupsize.hpp"
 #include "loader.hpp"
 #include "server.hpp"
 #include "thread.hpp"
@@ -58,6 +59,10 @@ Result servicesInit(void)
 
     Threads::init(0, 2);
     ATEXIT(Threads::exit);
+    // atexit is LIFO, so registering after Threads::exit makes this run *before*
+    // it: the abort flag is raised, any in-flight backup-size walk returns, then
+    // the worker pool joins without blocking on a long scan.
+    ATEXIT(BackupSizeCache::shutdownStatic);
 
     gfxInitDefault();
     ATEXIT(gfxExit);

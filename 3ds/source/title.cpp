@@ -36,6 +36,9 @@ C2D_Image loadTextureFromBytes(u16* bigIconData)
     static const Tex3DS_SubTexture subt3x = {48, 48, 0.0f, 48 / 64.0f, 48 / 64.0f, 0.0f};
     C2D_Image image                       = (C2D_Image){tex, &subt3x};
     C3D_TexInit(image.tex, 64, 64, GPU_RGB565);
+    // Bilinear filtering: the grid tile scales this 48px icon down to 44px, and
+    // the default nearest filter makes that shrink look like a bad downsample.
+    C3D_TexSetFilter(image.tex, GPU_LINEAR, GPU_LINEAR);
 
     u16* dest = (u16*)image.tex->data + (64 - 48) * 64;
     u16* src  = bigIconData;
