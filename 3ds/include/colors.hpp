@@ -45,4 +45,23 @@ inline const u32 COLOR_PURPLE_DARK   = C2D_Color32(9, 25, 69, 255);
 inline const u32 COLOR_PURPLE_LIGHT  = C2D_Color32(122, 66, 196, 255);
 inline const u32 COLOR_LIGHT_BLUE    = C2D_Color32(195, 240, 239, 255);
 
+// ---- v4 redesign tokens (Checkpoint UI/UX refresh) ----
+// Surfaces
+inline const u32 COLOR_V4_BASE    = C2D_Color32(14, 16, 20, 255); // #0E1014 screens
+inline const u32 COLOR_V4_SURFACE = C2D_Color32(21, 24, 30, 255); // #15181E bars
+inline const u32 COLOR_V4_CARD    = C2D_Color32(19, 22, 28, 255); // #13161C cards
+inline const u32 COLOR_V4_RAISED  = C2D_Color32(26, 30, 38, 255); // #1A1E26 buttons
+inline const u32 COLOR_V4_LINE    = C2D_Color32(32, 36, 44, 255); // #20242C hairlines
+// Accents
+inline const u32 COLOR_V4_ACCENT = C2D_Color32(122, 66, 196, 255);  // #7A42C4 selection
+inline const u32 COLOR_V4_RING   = C2D_Color32(154, 107, 255, 255); // #9A6BFF pulsing ring
+inline const u32 COLOR_V4_TEAL   = C2D_Color32(143, 227, 218, 255); // #8FE3DA additive actions
+inline const u32 COLOR_V4_GOLD   = C2D_Color32(230, 195, 77, 255);  // #E6C34D favorites
+inline const u32 COLOR_V4_DANGER = C2D_Color32(229, 72, 77, 255);   // #E5484D delete
+// Text
+inline const u32 COLOR_V4_TEXT  = C2D_Color32(238, 241, 245, 255); // #EEF1F5 primary
+inline const u32 COLOR_V4_MUTED = C2D_Color32(154, 163, 177, 255); // #9AA3B1 secondary
+inline const u32 COLOR_V4_FAINT = C2D_Color32(111, 119, 133, 255); // #6F7785 captions
+inline const u32 COLOR_V4_DIM   = C2D_Color32(0, 0, 0, 130);       // multi-select dim veil
+
 #endif

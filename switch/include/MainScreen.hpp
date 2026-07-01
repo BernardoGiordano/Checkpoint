@@ -27,7 +27,6 @@
 #ifndef MAINSCREEN_HPP
 #define MAINSCREEN_HPP
 
-#include "CheatManagerOverlay.hpp"
 #include "ErrorOverlay.hpp"
 #include "InfoOverlay.hpp"
 #include "Screen.hpp"
@@ -87,7 +86,7 @@ private:
     saveTypeFilter_t mSaveTypeFilter = FILTER_SAVES;
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::unique_ptr<Scrollable> backupList;
-    std::unique_ptr<Clickable> buttonCheats, buttonBackup, buttonRestore;
+    std::unique_ptr<Clickable> buttonBackup, buttonRestore;
     // Filter buttons in UI order, indexed by saveTypeFilter_t.
     std::array<std::unique_ptr<Clickable>, 4> filterButtons;
     char ver[8];

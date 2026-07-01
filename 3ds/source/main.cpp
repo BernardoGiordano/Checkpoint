@@ -25,7 +25,7 @@
  */
 
 #include "main.hpp"
-#include "MainScreen.hpp"
+#include "MainScreenV4.hpp"
 #include "loader.hpp"
 #include "thread.hpp"
 #include "util.hpp"
@@ -54,7 +54,7 @@ int main()
     }
 
     try {
-        g_screen       = std::make_unique<MainScreen>();
+        g_screen       = std::make_unique<MainScreenV4>();
         auto uiIsReady = std::chrono::high_resolution_clock::now();
         Logging::info("Loading took {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(uiIsReady - start).count());
 

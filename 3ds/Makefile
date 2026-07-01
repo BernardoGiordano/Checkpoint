@@ -46,8 +46,6 @@ INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/sha256
 GRAPHICS		:=	assets/gfx
 ROMFS			:=	assets/romfs
 GFXBUILD		:=	$(ROMFS)/gfx
-SHARKIVE 		:=	../sharkive
-CHEATS 			:=	cheats
 
 # If left blank, will try to use "icon.png", "$(TARGET).png", or the default ctrulib icon, in that order
 ICON			:=	assets/icon.png
@@ -81,8 +79,7 @@ CFLAGS	:=	-g -gdwarf-4 -Wall -Wextra -Wno-psabi -O3 -mword-relocations -flto=aut
 			-DVERSION_MICRO=${VERSION_MICRO} \
 			-DGIT_REV=\"${GIT_REV}\" \
 			-DJSON_HAS_FILESYSTEM=0 \
-			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
-			-DCHEAT_SIZE_DECOMPRESSED=${CHEAT_SIZE_DECOMPRESSED}
+			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D__3DS__ -D_GNU_SOURCE=1
 
@@ -91,7 +88,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++23
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lbz2 -lcitro2d -lcitro3d -lctru -lm
+LIBS	:= -lcitro2d -lcitro3d -lctru -lm
 
 CCACHE	:=	$(shell command -v ccache 2>/dev/null)
 ifneq ($(strip $(CCACHE)),)
@@ -186,10 +183,10 @@ ifneq ($(ROMFS),)
 	export _3DSXFLAGS += --romfs=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: all clean format cheats
+.PHONY: all clean format
 
 #---------------------------------------------------------------------------------
-all: cheats sprites
+all: sprites
 	@mkdir -p $(BUILD) $(GFXBUILD) $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $(OUTPUT).3dsx
 	@bannertool makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o $(BUILD)/banner.bnr
@@ -198,16 +195,7 @@ all: cheats sprites
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(GFXBUILD) $(OUTDIR) $(ROMFS)/$(CHEATS)
-#---------------------------------------------------------------------------------
-cheats:
-	@mkdir -p $(BUILD) $(ROMFS)/$(CHEATS)
-ifeq ($(OS),Windows_NT)
-	@cd $(SHARKIVE) && py -3 joiner.py 3ds
-else
-	@cd $(SHARKIVE) && python3 joiner.py 3ds
-endif
-	@cd $(SHARKIVE)/$(BUILD) && mv 3ds.json.bz2 ../../3ds/$(ROMFS)/$(CHEATS)/$(CHEATS).json.bz2
+	@rm -fr $(BUILD) $(GFXBUILD) $(OUTDIR)
 #---------------------------------------------------------------------------------
 sprites:
 	@mkdir -p $(BUILD) $(GFXBUILD)

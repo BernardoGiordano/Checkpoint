@@ -121,13 +121,11 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
 
     buttonBackup    = std::make_unique<Clickable>(204, 102, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Backup \uE004", true);
     buttonRestore   = std::make_unique<Clickable>(204, 139, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Restore \uE005", true);
-    buttonCheats    = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Cheats", true);
     buttonPlayCoins = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "\uE075 Coins", true);
     buttonTransfer  = std::make_unique<Clickable>(4, 223, 110, 16, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Transfer", true);
     directoryList   = std::make_unique<Scrollable>(6, 102, 196, 110, 5);
     buttonBackup->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
-    buttonCheats->canChangeColorWhenSelected(true);
     buttonPlayCoins->canChangeColorWhenSelected(true);
     buttonTransfer->canChangeColorWhenSelected(true);
 
@@ -376,9 +374,6 @@ void MainScreen::drawBottom(void) const
         buttonRestore->draw(0.7, COLOR_PURPLE_LIGHT);
         if (title.isActivityLog()) {
             buttonPlayCoins->draw(0.7, COLOR_PURPLE_LIGHT);
-        }
-        else {
-            buttonCheats->draw(0.7, COLOR_PURPLE_LIGHT);
         }
     }
 
@@ -786,23 +781,6 @@ void MainScreen::handleEvents(const InputState& input)
                 currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");
             }
         }
-        else {
-            if (buttonCheats->released() && CheatManager::getInstance().cheats() != nullptr) {
-                if (MS::multipleSelectionEnabled()) {
-                    MS::clearSelectedEntries();
-                    updateButtons();
-                }
-                else {
-                    std::string key = StringUtils::format("%016llX", title.id());
-                    if (CheatManager::getInstance().areCheatsAvailable(key)) {
-                        currentOverlay = std::make_shared<CheatManagerOverlay>(*this, key);
-                    }
-                    else {
-                        currentOverlay = std::make_shared<InfoOverlay>(*this, "No available cheat codes for this title.");
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -839,27 +817,22 @@ void MainScreen::updateButtons(void)
     if (MS::multipleSelectionEnabled()) {
         buttonRestore->canChangeColorWhenSelected(true);
         buttonRestore->canChangeColorWhenSelected(false);
-        buttonCheats->canChangeColorWhenSelected(false);
         buttonPlayCoins->canChangeColorWhenSelected(false);
         buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
         buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
-        buttonCheats->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
         buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
     }
     else if (g_bottomScrollEnabled) {
         buttonBackup->canChangeColorWhenSelected(true);
         buttonRestore->canChangeColorWhenSelected(true);
-        buttonCheats->canChangeColorWhenSelected(true);
         buttonPlayCoins->canChangeColorWhenSelected(true);
         buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
         buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
-        buttonCheats->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
         buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
     }
     else {
         buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
         buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
-        buttonCheats->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
         buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
     }
 }
