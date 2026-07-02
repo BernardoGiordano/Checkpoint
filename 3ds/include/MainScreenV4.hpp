@@ -69,11 +69,16 @@ protected:
     void startTransferSend(void);
     void doBackup(size_t fullIndex, size_t cellIndex);
     void doRestore(size_t fullIndex, size_t cellIndex);
+    // Runs a restore of the current title's cellIndex backup, gated by the
+    // "Confirm before restore" setting: shows a Yes/No prompt when enabled,
+    // otherwise restores immediately.
+    void requestRestore(size_t cellIndex);
 
 private:
     Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
     std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonPlayCoins, buttonTransfer;
     std::unique_ptr<Clickable> buttonBackupAL, buttonRestoreAL; // narrower Backup/Restore laid out alongside Coins on Activity Log
+    std::unique_ptr<Clickable> buttonBackupAll;                 // full-width batch Backup shown in multi-select, replacing the two action buttons
     std::unique_ptr<BackupList> directoryList;
     char ver[10];
 

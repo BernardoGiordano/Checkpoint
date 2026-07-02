@@ -41,6 +41,10 @@ namespace Server {
 
     void init(void);
     void exit(void);
+    // Signals the network loop to stop (it exits within one iteration) without
+    // tearing anything down. Needed at shutdown so the thread ends before
+    // Threads::exit joins the pool; the socket cleanup in Server::exit runs later.
+    void requestStop(void);
     bool isRunning(void);
     std::string getAddress(void);
 

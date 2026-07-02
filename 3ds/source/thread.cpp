@@ -190,6 +190,13 @@ void Threads::executeTask(void (*task)(void*), void* arg)
 
 void Threads::exit(void)
 {
+    // Idempotent: called explicitly at the end of main (so every worker is joined
+    // before exit() runs static destructors) and again via atexit as a backstop
+    // for early-error exits that never reach the explicit call.
+    static std::atomic<bool> alreadyExited{false};
+    if (alreadyExited.exchange(true)) {
+        return;
+    }
     workerTasks.lock()->clear();
     LightSemaphore_Release(&moreTasks, numWorkers);
     svcSignalEvent(threads.lock()->second[0]);

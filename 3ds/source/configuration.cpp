@@ -28,6 +28,7 @@
 #include "archive.hpp"
 #include "io.hpp"
 #include "util.hpp"
+#include <algorithm>
 
 Configuration::Configuration(void)
 {
@@ -69,6 +70,10 @@ Configuration::Configuration(void)
                 if (!(mJson->contains("transfer_enabled") && (*mJson)["transfer_enabled"].is_boolean())) {
                     (*mJson)["transfer_enabled"] = false;
                     updateJson                   = true;
+                }
+                if (!(mJson->contains("confirm_restore") && (*mJson)["confirm_restore"].is_boolean())) {
+                    (*mJson)["confirm_restore"] = true;
+                    updateJson                  = true;
                 }
                 if (!(mJson->contains("filter") && (*mJson)["filter"].is_array())) {
                     (*mJson)["filter"] = nlohmann::json::array();
@@ -137,6 +142,7 @@ Configuration::Configuration(void)
             mNandSaves       = (*mJson)["nand_saves"];
             mScanCard        = (*mJson)["scan_cart"];
             mTransferEnabled = (*mJson)["transfer_enabled"];
+            mConfirmRestore  = (*mJson)["confirm_restore"];
 
             // parse additional save folders
             auto js = (*mJson)["additional_save_folders"];
@@ -229,4 +235,147 @@ bool Configuration::shouldScanCard(void)
 bool Configuration::transferEnabled(void)
 {
     return mTransferEnabled;
+}
+
+bool Configuration::confirmRestore(void)
+{
+    return mConfirmRestore;
+}
+
+void Configuration::setNandSaves(bool v)
+{
+    mNandSaves             = v;
+    (*mJson)["nand_saves"] = v;
+    save();
+}
+
+void Configuration::setScanCard(bool v)
+{
+    mScanCard             = v;
+    (*mJson)["scan_cart"] = v;
+    save();
+}
+
+void Configuration::setTransferEnabled(bool v)
+{
+    mTransferEnabled             = v;
+    (*mJson)["transfer_enabled"] = v;
+    save();
+}
+
+void Configuration::setConfirmRestore(bool v)
+{
+    mConfirmRestore             = v;
+    (*mJson)["confirm_restore"] = v;
+    save();
+}
+
+// Rebuilds a json string-array of hex title ids from the given set.
+static nlohmann::json idSetToJson(const std::unordered_set<u64>& ids)
+{
+    auto arr = nlohmann::json::array();
+    for (auto id : ids) {
+        arr.push_back(StringUtils::format("%016llX", id));
+    }
+    return arr;
+}
+
+// Rebuilds a json object { "<hexid>": { "folders": [ ... ] } } from the map.
+static nlohmann::json folderMapToJson(const std::unordered_map<u64, std::vector<std::u16string>>& map)
+{
+    auto obj = nlohmann::json::object();
+    for (auto& entry : map) {
+        auto folders = nlohmann::json::array();
+        for (auto& folder : entry.second) {
+            folders.push_back(StringUtils::UTF16toUTF8(folder));
+        }
+        obj[StringUtils::format("%016llX", entry.first)]["folders"] = folders;
+    }
+    return obj;
+}
+
+void Configuration::addFavorite(u64 id)
+{
+    if (!mFavoriteIds.insert(id).second) {
+        return; // already a favorite
+    }
+    (*mJson)["favorites"] = idSetToJson(mFavoriteIds);
+    save();
+}
+
+void Configuration::addFilter(u64 id)
+{
+    if (!mFilterIds.insert(id).second) {
+        return; // already filtered
+    }
+    (*mJson)["filter"] = idSetToJson(mFilterIds);
+    save();
+}
+
+void Configuration::addSaveFolder(u64 id, const std::u16string& path)
+{
+    auto& vec = mAdditionalSaveFolders[id];
+    if (std::find(vec.begin(), vec.end(), path) != vec.end()) {
+        return; // already present for this title
+    }
+    vec.push_back(path);
+    (*mJson)["additional_save_folders"] = folderMapToJson(mAdditionalSaveFolders);
+    save();
+}
+
+void Configuration::addExtdataFolder(u64 id, const std::u16string& path)
+{
+    auto& vec = mAdditionalExtdataFolders[id];
+    if (std::find(vec.begin(), vec.end(), path) != vec.end()) {
+        return; // already present for this title
+    }
+    vec.push_back(path);
+    (*mJson)["additional_extdata_folders"] = folderMapToJson(mAdditionalExtdataFolders);
+    save();
+}
+
+void Configuration::removeFavorite(u64 id)
+{
+    if (mFavoriteIds.erase(id) == 0) {
+        return;
+    }
+    (*mJson)["favorites"] = idSetToJson(mFavoriteIds);
+    save();
+}
+
+void Configuration::removeFilter(u64 id)
+{
+    if (mFilterIds.erase(id) == 0) {
+        return;
+    }
+    (*mJson)["filter"] = idSetToJson(mFilterIds);
+    save();
+}
+
+void Configuration::removeSaveFolder(u64 id, size_t index)
+{
+    auto it = mAdditionalSaveFolders.find(id);
+    if (it == mAdditionalSaveFolders.end() || index >= it->second.size()) {
+        return;
+    }
+    it->second.erase(it->second.begin() + index);
+    if (it->second.empty()) {
+        mAdditionalSaveFolders.erase(it);
+    }
+    (*mJson)["additional_save_folders"] = folderMapToJson(mAdditionalSaveFolders);
+    save();
+}
+
+void Configuration::removeExtdataFolder(u64 id, size_t index)
+{
+    auto it = mAdditionalExtdataFolders.find(id);
+    if (it == mAdditionalExtdataFolders.end() || index >= it->second.size()) {
+        return;
+    }
+    it->second.erase(it->second.begin() + index);
+    if (it->second.empty()) {
+        mAdditionalExtdataFolders.erase(it);
+    }
+    (*mJson)["additional_extdata_folders"] = folderMapToJson(mAdditionalExtdataFolders);
+    save();
 }

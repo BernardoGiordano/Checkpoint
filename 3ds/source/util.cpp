@@ -58,11 +58,6 @@ Result servicesInit(void)
     ATEXIT(hidExit);
 
     Threads::init(0, 2);
-    ATEXIT(Threads::exit);
-    // atexit is LIFO, so registering after Threads::exit makes this run *before*
-    // it: the abort flag is raised, any in-flight backup-size walk returns, then
-    // the worker pool joins without blocking on a long scan.
-    ATEXIT(BackupSizeCache::shutdownStatic);
 
     gfxInitDefault();
     ATEXIT(gfxExit);
@@ -120,6 +115,21 @@ Result servicesInit(void)
     else {
         Logging::warning("Failed to create socket buffer.");
     }
+
+    // BACKSTOP ONLY for exits that never reach the end of main (early errors, no
+    // workers running yet). The real thread shutdown happens explicitly at the end
+    // of main(), BEFORE exit(): singletons the workers use (BackupSizeCache,
+    // TitleCatalog, …) are lazily constructed after these registrations, so their
+    // destructors run before these handlers would — a live worker would race the
+    // destruction (heap corruption). Threads::exit is idempotent so running it here
+    // after the explicit call is harmless. Order still matters for the backstop:
+    // atexit is LIFO, so these run flags-first, join-second, before any service
+    // teardown; every persistent loop thread must have its stop flag raised before
+    // the join (Server::requestStop here, cart scan via clearCartScanFlag below) or
+    // Threads::exit waits on it forever.
+    ATEXIT(Threads::exit);
+    ATEXIT(BackupSizeCache::shutdownStatic);
+    ATEXIT(Server::requestStop);
 
     Threads::executeTask(TitleCatalog::loadTitlesThread);
 

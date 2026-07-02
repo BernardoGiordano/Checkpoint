@@ -14,5 +14,6 @@
   "nand_saves": false,
   "scan_cart": false,
   "transfer_enabled": false,
-  "version": 4
+  "confirm_restore": true,
+  "version": 5
 }

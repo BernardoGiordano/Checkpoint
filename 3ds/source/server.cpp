@@ -303,6 +303,11 @@ void Server::init()
     serverAddress = "http://" + std::string(ipStr) + ":" + std::to_string(SERVER_PORT);
 }
 
+void Server::requestStop()
+{
+    serverRunning.clear();
+}
+
 void Server::exit()
 {
     serverIsRunning.store(false);

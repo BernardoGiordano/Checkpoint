@@ -26,6 +26,7 @@
 
 #include "MainScreenV4.hpp"
 #include "KeyboardManager.hpp"
+#include "SettingsScreenV4.hpp"
 #include "backupsize.hpp"
 #include "backuptarget.hpp"
 #include "configuration.hpp"
@@ -180,9 +181,12 @@ MainScreenV4::MainScreenV4(void) : hid(rowlen * collen, collen)
     buttonBackupAL  = std::make_unique<Clickable>(8, 182, 96, 30, COLOR_V4_ACCENT, COLOR_WHITE, "Backup", true);
     buttonPlayCoins = std::make_unique<Clickable>(112, 182, 96, 30, COLOR_V4_RAISED, COLOR_V4_TEXT, "Coins", true);
     buttonRestoreAL = std::make_unique<Clickable>(216, 182, 96, 30, COLOR_V4_RAISED, COLOR_V4_TEXT, "Restore", true);
+    // Full-width batch-backup button shown only while multi-selecting.
+    buttonBackupAll = std::make_unique<Clickable>(8, 182, 304, 30, COLOR_V4_ACCENT, COLOR_WHITE, "Backup selected", true);
     buttonTransfer  = std::make_unique<Clickable>(4, 223, 96, 16, COLOR_V4_RAISED, COLOR_V4_MUTED, "Transfer", true);
     directoryList   = std::make_unique<BackupList>(12, 70, 296, 106, 5);
     buttonBackup->canChangeColorWhenSelected(true);
+    buttonBackupAll->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
     buttonPlayCoins->canChangeColorWhenSelected(true);
     buttonBackupAL->canChangeColorWhenSelected(true);
@@ -336,7 +340,7 @@ void MainScreenV4::drawTop(void) const
     C2D_DrawRectSolid(0, 220, 0.5f, 400, FOOTER_H, COLOR_V4_SURFACE);
     C2D_DrawRectSolid(0, 219, 0.5f, 400, 1, COLOR_V4_LINE);
     if (multi) {
-        drawHints(dynamicBuf, 400, 223, " Tag     hold all     Backup all     Clear");
+        drawHints(dynamicBuf, 400, 223, " Tag     hold all     Backup all     Clear");
     }
     else {
         drawHints(dynamicBuf, 400, 223, " Open     Select     Extdata    Hold SELECT: help");
@@ -351,6 +355,7 @@ void MainScreenV4::drawTop(void) const
             " Back  -  hold to refresh titles",
             " Tag title  -  hold to select all",
             " Switch Save / Extdata",
+            "\xEE\x80\x80 Open Settings",
         };
         const float scale = 0.6f;
         const float lh    = scale * fontGetInfo(NULL)->lineFeed;
@@ -475,8 +480,13 @@ void MainScreenV4::drawBottom(void) const
         }
         directoryList->draw(g_bottomScrollEnabled);
 
-        // Actions.
-        if (title.isActivityLog()) {
+        // Actions. While multi-selecting, one full-width Backup button replaces the
+        // per-title Backup/Restore pair and drives the whole tagged batch.
+        if (MS::multipleSelectionEnabled()) {
+            buttonBackupAll->text(StringUtils::format("Backup %zu selected", MS::selectedEntries().size()));
+            buttonBackupAll->draw(0.6f, COLOR_V4_RING);
+        }
+        else if (title.isActivityLog()) {
             buttonBackupAL->draw(0.6f, COLOR_V4_RING);
             buttonPlayCoins->draw(0.6f, COLOR_V4_ACCENT);
             buttonRestoreAL->draw(0.6f, COLOR_V4_RING);
@@ -494,7 +504,10 @@ void MainScreenV4::drawBottom(void) const
     // Footer hint bar.
     C2D_DrawRectSolid(0, 220, 0.5f, 320, FOOTER_H, COLOR_V4_SURFACE);
     C2D_DrawRectSolid(0, 219, 0.5f, 320, 1, COLOR_V4_LINE);
-    drawHints(dynamicBuf, 320, 223, g_bottomScrollEnabled ? " Confirm      Delete      Back" : " Backups      Backup      Restore");
+    drawHints(dynamicBuf, 320, 223,
+        MS::multipleSelectionEnabled() ? "Backup selected      Clear selection"
+        : g_bottomScrollEnabled        ? " Confirm      Delete      Back"
+                                       : " Backups      Backup      Restore");
 
     // Live local-copy progress modal (network sends draw on the top screen).
     TransferSnapshot ts = TransferStatus::snapshot();
@@ -570,6 +583,9 @@ void MainScreenV4::drawBottom(void) const
 
 void MainScreenV4::update(const InputState& input)
 {
+    // Re-read in case the Settings page toggled it while this screen was parked.
+    transferEnabled = Configuration::getInstance().transferEnabled();
+
     if (auto result = TransferJob::get().takeResult()) {
         // A backup/restore changed one or more folders; drop every cached total so
         // they get re-walked off-thread (a batch may have touched many titles).
@@ -589,7 +605,8 @@ void MainScreenV4::update(const InputState& input)
         return;
     }
 
-    if (Transfer::consumePendingRefresh()) {
+    if (Transfer::consumePendingRefresh() || g_titlesDirty) {
+        g_titlesDirty = false;
         refreshTitlesFull();
     }
     updateSelector();
@@ -660,10 +677,30 @@ void MainScreenV4::doRestore(size_t fullIndex, size_t cellIndex)
     TransferJob::get().enqueueRestore(std::move(title), backupKind, std::move(src), std::move(dataType), std::move(successMsg));
 }
 
+void MainScreenV4::requestRestore(size_t cellIndex)
+{
+    auto run = [this, cellIndex]() {
+        this->doRestore(hid.fullIndex(), cellIndex);
+        TransferJob::get().start();
+    };
+    if (Configuration::getInstance().confirmRestore()) {
+        currentOverlay = std::make_shared<YesNoOverlay>(*this, "Restore selected save?", run, [this]() { this->removeOverlay(); });
+    }
+    else {
+        run();
+    }
+}
+
 void MainScreenV4::handleEvents(const InputState& input)
 {
     u32 kDown = hidKeysDown();
     u32 kHeld = hidKeysHeld();
+
+    // Hold SELECT (shows the command help) then press A to open Settings.
+    if ((kHeld & KEY_SELECT) && (kDown & KEY_A)) {
+        g_pendingScreen = std::make_shared<SettingsScreenV4>(g_screen);
+        return;
+    }
 
     if (kDown & KEY_A) {
         if (g_bottomScrollEnabled) {
@@ -677,13 +714,7 @@ void MainScreenV4::handleEvents(const InputState& input)
                     [this]() { this->removeOverlay(); });
             }
             else {
-                currentOverlay = std::make_shared<YesNoOverlay>(
-                    *this, "Restore selected title?",
-                    [this]() {
-                        this->doRestore(hid.fullIndex(), directoryList->index());
-                        TransferJob::get().start();
-                    },
-                    [this]() { this->removeOverlay(); });
+                requestRestore(directoryList->index());
             }
         }
         else {
@@ -788,8 +819,10 @@ void MainScreenV4::handleEvents(const InputState& input)
         activityLog = title.isActivityLog();
     }
 
-    if ((activityLog ? buttonBackupAL : buttonBackup)->released()) {
-        if (MS::multipleSelectionEnabled()) {
+    if (MS::multipleSelectionEnabled()) {
+        // One large Backup button (touch or A) backs up the whole tagged batch;
+        // it replaces the per-title Backup/Restore pair while multi-selecting.
+        if (buttonBackupAll->released() || (kDown & KEY_A)) {
             directoryList->resetIndex();
             std::vector<size_t> list = MS::selectedEntries();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
@@ -799,31 +832,25 @@ void MainScreenV4::handleEvents(const InputState& input)
             MS::clearSelectedEntries();
             updateButtons();
         }
-        else if (g_bottomScrollEnabled) {
-            currentOverlay = std::make_shared<YesNoOverlay>(
-                *this, "Backup selected save?",
-                [this]() {
-                    this->doBackup(hid.fullIndex(), directoryList->index());
-                    TransferJob::get().start();
-                },
-                [this]() { this->removeOverlay(); });
-        }
     }
-
-    if ((activityLog ? buttonRestoreAL : buttonRestore)->released()) {
-        size_t cellIndex = directoryList->index();
-        if (MS::multipleSelectionEnabled()) {
-            MS::clearSelectedEntries();
-            updateButtons();
+    else {
+        if ((activityLog ? buttonBackupAL : buttonBackup)->released()) {
+            if (g_bottomScrollEnabled) {
+                currentOverlay = std::make_shared<YesNoOverlay>(
+                    *this, "Backup selected save?",
+                    [this]() {
+                        this->doBackup(hid.fullIndex(), directoryList->index());
+                        TransferJob::get().start();
+                    },
+                    [this]() { this->removeOverlay(); });
+            }
         }
-        else if (g_bottomScrollEnabled && cellIndex > 0) {
-            currentOverlay = std::make_shared<YesNoOverlay>(
-                *this, "Restore selected save?",
-                [this, cellIndex]() {
-                    this->doRestore(hid.fullIndex(), cellIndex);
-                    TransferJob::get().start();
-                },
-                [this]() { this->removeOverlay(); });
+
+        if ((activityLog ? buttonRestoreAL : buttonRestore)->released()) {
+            size_t cellIndex = directoryList->index();
+            if (g_bottomScrollEnabled && cellIndex > 0) {
+                requestRestore(cellIndex);
+            }
         }
     }
 

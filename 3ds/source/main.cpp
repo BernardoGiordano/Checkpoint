@@ -26,7 +26,9 @@
 
 #include "main.hpp"
 #include "MainScreenV4.hpp"
+#include "backupsize.hpp"
 #include "loader.hpp"
+#include "server.hpp"
 #include "thread.hpp"
 #include "util.hpp"
 #include <chrono>
@@ -75,6 +77,13 @@ int main()
             g_screen->doDrawBottom();
             Gui::frameEnd();
             g_screen->doUpdate(InputState{touch});
+
+            // Apply any deferred screen swap requested during doUpdate (e.g.
+            // opening or leaving the Settings page) now that it has returned.
+            if (g_pendingScreen) {
+                g_screen        = std::move(g_pendingScreen);
+                g_pendingScreen = nullptr;
+            }
         }
     }
     catch (const std::exception& e) {
@@ -83,6 +92,20 @@ int main()
     catch (...) {
         res = consoleDisplayError("Unknown error during main", -6);
     }
+
+    // Stop and join every background thread BEFORE calling exit(). This cannot be
+    // left to the atexit-registered Threads::exit: exit() runs atexit handlers and
+    // static destructors in one LIFO chain ordered by registration time, and the
+    // lazily-constructed singletons workers use (BackupSizeCache, TitleCatalog, …)
+    // are created after servicesInit registered its handlers — so their destructors
+    // run before that Threads::exit would, freeing the maps a live size-walk is
+    // still inserting into (heap corruption, data abort in free()). Raise every
+    // stop flag first, then join; the atexit registrations stay as a backstop for
+    // early-error exits (Threads::exit is idempotent).
+    TitleCatalog::clearCartScanFlag();
+    Server::requestStop();
+    BackupSizeCache::shutdownStatic();
+    Threads::exit();
 
     exit(0);
 }

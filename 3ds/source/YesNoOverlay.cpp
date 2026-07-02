@@ -37,11 +37,11 @@ YesNoOverlay::YesNoOverlay(
     yesFunc = callbackYes;
     noFunc  = callbackNo;
 
-    posx = ceilf(320 - text.width * 0.6) / 2;
-    posy = 40 + ceilf(120 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2;
+    posx = ceilf((320 - text.width * 0.55f) / 2);
+    posy = 84;
 
-    buttonYes = std::make_unique<Clickable>(42, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "\uE000 Yes", true);
-    buttonNo  = std::make_unique<Clickable>(162, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "\uE001 No", true);
+    buttonNo  = std::make_unique<Clickable>(46, 142, 110, 32, COLOR_V4_RAISED, COLOR_V4_TEXT, "\uE001 Cancel", true);
+    buttonYes = std::make_unique<Clickable>(164, 142, 110, 32, COLOR_V4_ACCENT, COLOR_WHITE, "\uE000 Confirm", true);
 }
 
 YesNoOverlay::~YesNoOverlay(void)
@@ -56,19 +56,19 @@ void YesNoOverlay::drawTop(void) const
 
 void YesNoOverlay::drawBottom(void) const
 {
-    C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_BLACK_DARKER);
-    C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, 0.6f, 0.6f, COLOR_WHITE);
-    C2D_DrawRectSolid(40, 160, 0.5f, 240, 40, COLOR_BLACK_MEDIUM);
+    C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
+    C2D_DrawRectSolid(34, 54, 0.5f, 252, 132, COLOR_V4_CARD);
+    Gui::drawOutline(34, 54, 252, 132, 2, COLOR_V4_LINE);
+    C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, 0.55f, 0.55f, COLOR_V4_TEXT);
 
-    buttonYes->draw(0.7, 0);
-    buttonNo->draw(0.7, 0);
+    buttonYes->draw(0.55f, COLOR_V4_RING);
+    buttonNo->draw(0.55f, COLOR_V4_RING);
 
     if (hid.index() == 0) {
-        Gui::drawPulsingOutline(42, 162, 116, 36, 2, COLOR_PURPLE_DARK);
+        Gui::drawPulsingOutline(164, 142, 110, 32, 2, COLOR_V4_RING);
     }
     else {
-        Gui::drawPulsingOutline(162, 162, 116, 36, 2, COLOR_PURPLE_DARK);
+        Gui::drawPulsingOutline(46, 142, 110, 32, 2, COLOR_V4_RING);
     }
 }
 

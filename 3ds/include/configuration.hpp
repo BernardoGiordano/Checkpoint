@@ -37,7 +37,7 @@
 
 class Configuration {
 public:
-    static constexpr int CURRENT_VERSION = 3;
+    static constexpr int CURRENT_VERSION = 4;
 
     static Configuration& getInstance(void)
     {
@@ -50,8 +50,32 @@ public:
     bool nandSaves(void);
     bool shouldScanCard(void);
     bool transferEnabled(void);
+    bool confirmRestore(void);
     std::vector<std::u16string> additionalSaveFolders(u64 id);
     std::vector<std::u16string> additionalExtdataFolders(u64 id);
+
+    // Whole-list accessors for the Library / Folders settings sections.
+    const std::unordered_set<u64>& favoriteIds(void) const { return mFavoriteIds; }
+    const std::unordered_set<u64>& filterIds(void) const { return mFilterIds; }
+    const std::unordered_map<u64, std::vector<std::u16string>>& saveFolders(void) const { return mAdditionalSaveFolders; }
+    const std::unordered_map<u64, std::vector<std::u16string>>& extdataFolders(void) const { return mAdditionalExtdataFolders; }
+
+    // General-settings mutators: update the cached value, write it into the
+    // in-memory json and persist config.json immediately (save-on-change).
+    void setNandSaves(bool v);
+    void setScanCard(bool v);
+    void setTransferEnabled(bool v);
+    void setConfirmRestore(bool v);
+
+    // Library / Folders list mutators (same save-on-change contract).
+    void addFavorite(u64 id);
+    void addFilter(u64 id);
+    void addSaveFolder(u64 id, const std::u16string& path);
+    void addExtdataFolder(u64 id, const std::u16string& path);
+    void removeFavorite(u64 id);
+    void removeFilter(u64 id);
+    void removeSaveFolder(u64 id, size_t index);
+    void removeExtdataFolder(u64 id, size_t index);
 
     void save(void);
 
@@ -67,7 +91,7 @@ private:
     std::unique_ptr<nlohmann::json> mJson;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::u16string>> mAdditionalSaveFolders, mAdditionalExtdataFolders;
-    bool mNandSaves = false, mScanCard = false, mTransferEnabled = false;
+    bool mNandSaves = false, mScanCard = false, mTransferEnabled = false, mConfirmRestore = true;
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
     size_t oldSize       = 0;
 };

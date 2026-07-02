@@ -24,30 +24,34 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef MAIN_HPP
-#define MAIN_HPP
+#ifndef TITLEPICKEROVERLAY_HPP
+#define TITLEPICKEROVERLAY_HPP
 
-#include "Screen.hpp"
-#include "logging.hpp"
-#include <atomic>
+#include "Overlay.hpp"
+#include "hid.hpp"
 #include <citro2d.h>
-#include <cstdio>
-#include <memory>
-#include <mutex>
+#include <functional>
 #include <string>
-#include <vector>
 
-inline std::shared_ptr<Screen> g_screen = nullptr;
-// A screen may request replacing g_screen with another (e.g. Main -> Settings).
-// The swap is deferred to the main loop and applied only after the current
-// screen's update() returns, so a screen never destroys itself mid-update.
-inline std::shared_ptr<Screen> g_pendingScreen = nullptr;
-inline bool g_bottomScrollEnabled              = false;
-inline float g_timer                           = 0;
-// Set by the Settings page when a change affects the main title grid or its
-// detail (cart scan, NAND saves, favorites, filters, extra folders). The main
-// screen consumes it on its next update and reloads titles once, so edits show
-// up without the user manually refreshing.
-inline bool g_titlesDirty = false;
+// Modal title picker used by the Settings Library / Folders "add" flows. Lists
+// every catalog title (Save kind) with icon + name on the top screen; A selects
+// (invokes onPick with the title id, then dismisses), B cancels. The picked id
+// is all the caller needs — what it does with the choice (favorite / hide /
+// prompt for a folder path) lives in the caller's callback.
+class TitlePickerOverlay : public Overlay {
+public:
+    TitlePickerOverlay(Screen& screen, const std::string& prompt, const std::function<void(u64)>& onPick);
+    ~TitlePickerOverlay(void);
+    void drawTop(void) const override;
+    void drawBottom(void) const override;
+    void update(const InputState& input) override;
+
+private:
+    std::string mPrompt;
+    std::function<void(u64)> mOnPick;
+    C2D_TextBuf mBuf;
+    Hid<HidDirection::VERTICAL, HidDirection::VERTICAL> mHid;
+    static constexpr size_t VISIBLE = 6;
+};
 
 #endif

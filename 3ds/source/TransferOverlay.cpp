@@ -40,11 +40,11 @@ TransferMenuOverlay::TransferMenuOverlay(Screen& screen, const std::function<voi
     sendFunc    = callbackSend;
     receiveFunc = callbackReceive;
 
-    posx = ceilf(320 - text.width * 0.6f) / 2;
-    posy = 40 + ceilf(120 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2;
+    posx = ceilf((320 - text.width * 0.55f) / 2);
+    posy = 84;
 
-    buttonSend    = std::make_unique<Clickable>(42, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "Send", true);
-    buttonReceive = std::make_unique<Clickable>(162, 162, 116, 36, COLOR_BLACK_DARKERR, COLOR_WHITE, "Receive", true);
+    buttonSend    = std::make_unique<Clickable>(46, 142, 110, 32, COLOR_V4_ACCENT, COLOR_WHITE, "Send", true);
+    buttonReceive = std::make_unique<Clickable>(164, 142, 110, 32, COLOR_V4_RAISED, COLOR_V4_TEXT, "Receive", true);
 }
 
 TransferMenuOverlay::~TransferMenuOverlay(void)
@@ -60,18 +60,18 @@ void TransferMenuOverlay::drawTop(void) const
 void TransferMenuOverlay::drawBottom(void) const
 {
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_BLACK_DARKER);
-    C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, 0.6f, 0.6f, COLOR_WHITE);
-    C2D_DrawRectSolid(40, 160, 0.5f, 240, 40, COLOR_BLACK_MEDIUM);
+    C2D_DrawRectSolid(34, 54, 0.5f, 252, 132, COLOR_V4_CARD);
+    Gui::drawOutline(34, 54, 252, 132, 2, COLOR_V4_LINE);
+    C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, 0.55f, 0.55f, COLOR_V4_TEXT);
 
-    buttonSend->draw(0.7f, 0);
-    buttonReceive->draw(0.7f, 0);
+    buttonSend->draw(0.55f, COLOR_V4_RING);
+    buttonReceive->draw(0.55f, COLOR_V4_RING);
 
     if (hid.index() == 0) {
-        Gui::drawPulsingOutline(42, 162, 116, 36, 2, COLOR_PURPLE_DARK);
+        Gui::drawPulsingOutline(46, 142, 110, 32, 2, COLOR_V4_RING);
     }
     else {
-        Gui::drawPulsingOutline(162, 162, 116, 36, 2, COLOR_PURPLE_DARK);
+        Gui::drawPulsingOutline(164, 142, 110, 32, 2, COLOR_V4_RING);
     }
 }
 
@@ -115,7 +115,8 @@ void ReceiveOverlay::drawBottom(void) const
 {
     C2D_TextBufClear(textBuf);
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(30, 40, 0.5f, 260, 160, COLOR_BLACK_DARKERR);
+    C2D_DrawRectSolid(30, 40, 0.5f, 260, 160, COLOR_V4_CARD);
+    Gui::drawOutline(30, 40, 260, 160, 2, COLOR_V4_LINE);
 
     TransferSnapshot ts      = TransferStatus::snapshot();
     const bool networkActive = ts.active && ts.kind == TransferKind::Network;
@@ -130,25 +131,25 @@ void ReceiveOverlay::drawBottom(void) const
         C2D_Text titleText;
         C2D_TextParse(&titleText, textBuf, "File received");
         C2D_TextOptimize(&titleText);
-        C2D_DrawText(&titleText, C2D_WithColor, 40, 60, 0.5f, 0.65f, 0.65f, COLOR_WHITE);
+        C2D_DrawText(&titleText, C2D_WithColor, 40, 60, 0.5f, 0.65f, 0.65f, COLOR_V4_TEXT);
 
         C2D_Text nameText;
         C2D_TextParse(&nameText, textBuf, backupName.c_str());
         C2D_TextOptimize(&nameText);
-        C2D_DrawText(&nameText, C2D_WithColor, 40, 92, 0.5f, 0.52f, 0.52f, COLOR_GREY_LIGHT);
+        C2D_DrawText(&nameText, C2D_WithColor, 40, 92, 0.5f, 0.52f, 0.52f, COLOR_V4_MUTED);
 
         std::string notice = Transfer::receiverNotice();
         if (!notice.empty()) {
             C2D_Text noticeText;
             C2D_TextParse(&noticeText, textBuf, notice.c_str());
             C2D_TextOptimize(&noticeText);
-            C2D_DrawText(&noticeText, C2D_WithColor, 40, 122, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+            C2D_DrawText(&noticeText, C2D_WithColor, 40, 122, 0.5f, 0.45f, 0.45f, COLOR_V4_MUTED);
         }
 
         C2D_Text hintText;
         C2D_TextParse(&hintText, textBuf, "Press A (OK) to refresh now");
         C2D_TextOptimize(&hintText);
-        C2D_DrawText(&hintText, C2D_WithColor, 40, 170, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
+        C2D_DrawText(&hintText, C2D_WithColor, 40, 170, 0.5f, 0.5f, 0.5f, COLOR_V4_MUTED);
         return;
     }
 
@@ -164,7 +165,7 @@ void ReceiveOverlay::drawBottom(void) const
     C2D_Text infoText;
     C2D_TextParse(&infoText, textBuf, info.c_str());
     C2D_TextOptimize(&infoText);
-    C2D_DrawText(&infoText, C2D_WithColor, 40, 60, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
+    C2D_DrawText(&infoText, C2D_WithColor, 40, 60, 0.5f, 0.55f, 0.55f, COLOR_V4_TEXT);
 
     int noticeY = 120;
     if (networkActive) {
@@ -175,7 +176,7 @@ void ReceiveOverlay::drawBottom(void) const
         C2D_Text statusText;
         C2D_TextParse(&statusText, textBuf, status.c_str());
         C2D_TextOptimize(&statusText);
-        C2D_DrawText(&statusText, C2D_WithColor, 40, 120, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
+        C2D_DrawText(&statusText, C2D_WithColor, 40, 120, 0.5f, 0.5f, 0.5f, COLOR_V4_MUTED);
         noticeY = 142;
     }
 
@@ -184,13 +185,13 @@ void ReceiveOverlay::drawBottom(void) const
         C2D_Text noticeText;
         C2D_TextParse(&noticeText, textBuf, notice.c_str());
         C2D_TextOptimize(&noticeText);
-        C2D_DrawText(&noticeText, C2D_WithColor, 40, noticeY, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+        C2D_DrawText(&noticeText, C2D_WithColor, 40, noticeY, 0.5f, 0.45f, 0.45f, COLOR_V4_MUTED);
     }
 
     C2D_Text hintText;
     C2D_TextParse(&hintText, textBuf, "Press B to close");
     C2D_TextOptimize(&hintText);
-    C2D_DrawText(&hintText, C2D_WithColor, 40, 170, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
+    C2D_DrawText(&hintText, C2D_WithColor, 40, 170, 0.5f, 0.5f, 0.5f, COLOR_V4_MUTED);
 }
 
 void ReceiveOverlay::update(const InputState& input)

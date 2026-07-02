@@ -29,13 +29,13 @@
 InfoOverlay::InfoOverlay(Screen& screen, const std::string& mtext) : Overlay(screen)
 {
     textBuf = C2D_TextBufNew(64);
-    button  = std::make_unique<Clickable>(42, 162, 236, 36, COLOR_BLACK_DARK, COLOR_WHITE, "OK", true);
+    button  = std::make_unique<Clickable>(46, 142, 228, 32, COLOR_V4_ACCENT, COLOR_WHITE, " OK", true);
     button->selected(true);
     std::string t = StringUtils::wrap(mtext, size, 220);
     C2D_TextParse(&text, textBuf, t.c_str());
     C2D_TextOptimize(&text);
-    posx = ceilf(320 - StringUtils::textWidth(text, size)) / 2;
-    posy = 40 + ceilf(120 - StringUtils::textHeight(t, size)) / 2;
+    posx = ceilf((320 - StringUtils::textWidth(text, size)) / 2);
+    posy = 54 + ceilf((88 - StringUtils::textHeight(t, size)) / 2);
 }
 
 InfoOverlay::~InfoOverlay(void)
@@ -51,10 +51,11 @@ void InfoOverlay::drawTop(void) const
 void InfoOverlay::drawBottom(void) const
 {
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(40, 40, 0.5f, 240, 160, COLOR_BLACK_DARKERR);
-    C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, size, size, COLOR_WHITE);
-    button->draw(0.7f, COLOR_PURPLE_DARK);
-    Gui::drawPulsingOutline(42, 162, 236, 36, 2, COLOR_PURPLE_DARK);
+    C2D_DrawRectSolid(34, 54, 0.5f, 252, 132, COLOR_V4_CARD);
+    Gui::drawOutline(34, 54, 252, 132, 2, COLOR_V4_LINE);
+    C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, size, size, COLOR_V4_TEXT);
+    button->draw(0.55f, COLOR_V4_RING);
+    Gui::drawPulsingOutline(46, 142, 228, 32, 2, COLOR_V4_RING);
 }
 
 void InfoOverlay::update(const InputState& input)
