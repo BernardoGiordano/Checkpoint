@@ -213,11 +213,13 @@ void Configuration::commit(void)
 
 bool Configuration::filter(u64 id)
 {
+    std::lock_guard<std::mutex> lock(mIdMutex);
     return mFilterIds.find(id) != mFilterIds.end();
 }
 
 bool Configuration::favorite(u64 id)
 {
+    std::lock_guard<std::mutex> lock(mIdMutex);
     return mFavoriteIds.find(id) != mFavoriteIds.end();
 }
 
@@ -321,6 +323,7 @@ static nlohmann::json folderMapToJson(const std::unordered_map<u64, std::vector<
 
 void Configuration::addFavorite(u64 id)
 {
+    std::lock_guard<std::mutex> lock(mIdMutex);
     if (!mFavoriteIds.insert(id).second) {
         return; // already a favorite
     }
@@ -330,6 +333,7 @@ void Configuration::addFavorite(u64 id)
 
 void Configuration::addFilter(u64 id)
 {
+    std::lock_guard<std::mutex> lock(mIdMutex);
     if (!mFilterIds.insert(id).second) {
         return; // already filtered
     }
@@ -361,6 +365,7 @@ void Configuration::addExtdataFolder(u64 id, const std::u16string& path)
 
 void Configuration::removeFavorite(u64 id)
 {
+    std::lock_guard<std::mutex> lock(mIdMutex);
     if (mFavoriteIds.erase(id) == 0) {
         return;
     }
@@ -370,6 +375,7 @@ void Configuration::removeFavorite(u64 id)
 
 void Configuration::removeFilter(u64 id)
 {
+    std::lock_guard<std::mutex> lock(mIdMutex);
     if (mFilterIds.erase(id) == 0) {
         return;
     }

@@ -202,10 +202,15 @@ std::u16string StringUtils::removeForbiddenCharacters(std::u16string src)
         }
     }
 
-    size_t i;
-    for (i = src.length() - 1; i > 0 && src[i] == L' '; i--)
-        ;
-    src.erase(i + 1, src.length() - i);
+    // Trim trailing spaces. find_last_not_of handles the empty / all-spaces cases
+    // (npos) without the size()-1 underflow of a reverse index loop.
+    size_t end = src.find_last_not_of(u' ');
+    if (end == std::u16string::npos) {
+        src.clear();
+    }
+    else {
+        src.erase(end + 1);
+    }
 
     return src;
 }

@@ -58,9 +58,12 @@ namespace {
     bool g_receiverRunning = false;
     std::atomic<bool> g_pendingRefresh{false};
     std::atomic<bool> g_receiverCompleted{false};
-    // g_receiverNotice / g_receiverCompletedName are written by the HTTP server
-    // thread (in handleUpload) and read by the UI thread, so they are guarded by
-    // this mutex. Pass an empty string to clear.
+    // Guards the receiver state shared UI<->network thread: g_token (read by the
+    // server thread in handleUpload, written by the UI thread), g_receiverIp,
+    // g_receiverPort, g_receiverRunning, and g_receiverNotice /
+    // g_receiverCompletedName (written by handleUpload, read by the UI thread).
+    // Pass an empty string to clear the notice/name. TransferReceiver (4.1) is the
+    // real home for this state.
     std::mutex g_receiverMutex;
     std::string g_receiverNotice;
     std::string g_receiverCompletedName;
@@ -642,7 +645,12 @@ namespace {
         size_t headerEnd    = requestData.find("\r\n\r\n");
         std::string headers = headerEnd == std::string::npos ? requestData : requestData.substr(0, headerEnd);
         std::string token   = headerValue(headers, "X-CP-Token");
-        if (!constantTimeEquals(token, g_token)) {
+        std::string expectedToken;
+        {
+            std::lock_guard<std::mutex> lock(g_receiverMutex);
+            expectedToken = g_token;
+        }
+        if (!constantTimeEquals(token, expectedToken)) {
             cleanup();
             return {403, "application/json", "{\"ok\":false,\"error\":\"Invalid token\"}"};
         }
@@ -808,26 +816,43 @@ bool Transfer::startReceiver(std::string& outError)
         return false;
     }
 
-    if (!g_receiverRunning) {
-        srand((unsigned int)osGetTime());
-        int pin      = 1000 + (rand() % 9000);
-        g_token      = StringUtils::format("%04d", pin);
-        g_receiverIp = Server::getAddress();
-        setReceiverNotice("");
-        setReceiverCompletedName("");
-        g_receiverCompleted.store(false);
-        size_t pos = g_receiverIp.find("://");
-        if (pos != std::string::npos) {
-            g_receiverIp = g_receiverIp.substr(pos + 3);
+    {
+        std::lock_guard<std::mutex> lock(g_receiverMutex);
+        if (g_receiverRunning) {
+            return true;
         }
-        pos = g_receiverIp.find(":");
-        if (pos != std::string::npos) {
-            g_receiverIp = g_receiverIp.substr(0, pos);
-        }
-        g_receiverPort = TRANSFER_PORT;
+    }
 
-        Server::registerHandler("/transfer/info", handleInfo);
-        Server::registerHandler("/transfer/upload", handleUpload);
+    srand((unsigned int)osGetTime());
+    int pin           = 1000 + (rand() % 9000);
+    std::string token = StringUtils::format("%04d", pin);
+    std::string ip    = Server::getAddress();
+    setReceiverNotice("");
+    setReceiverCompletedName("");
+    g_receiverCompleted.store(false);
+    size_t pos = ip.find("://");
+    if (pos != std::string::npos) {
+        ip = ip.substr(pos + 3);
+    }
+    pos = ip.find(":");
+    if (pos != std::string::npos) {
+        ip = ip.substr(0, pos);
+    }
+
+    // Publish token/ip/port before the handler is reachable, so an upload that
+    // arrives the instant it registers validates against the real token.
+    {
+        std::lock_guard<std::mutex> lock(g_receiverMutex);
+        g_token        = token;
+        g_receiverIp   = ip;
+        g_receiverPort = TRANSFER_PORT;
+    }
+
+    Server::registerHandler("/transfer/info", handleInfo);
+    Server::registerHandler("/transfer/upload", handleUpload);
+
+    {
+        std::lock_guard<std::mutex> lock(g_receiverMutex);
         g_receiverRunning = true;
     }
 
@@ -836,15 +861,23 @@ bool Transfer::startReceiver(std::string& outError)
 
 void Transfer::stopReceiver(void)
 {
-    if (g_receiverRunning) {
-        Server::unregisterHandler("/transfer/info");
-        Server::unregisterHandler("/transfer/upload");
+    {
+        std::lock_guard<std::mutex> lock(g_receiverMutex);
+        if (!g_receiverRunning) {
+            return;
+        }
+    }
+    Server::unregisterHandler("/transfer/info");
+    Server::unregisterHandler("/transfer/upload");
+    {
+        std::lock_guard<std::mutex> lock(g_receiverMutex);
         g_receiverRunning = false;
     }
 }
 
 bool Transfer::receiverRunning(void)
 {
+    std::lock_guard<std::mutex> lock(g_receiverMutex);
     return g_receiverRunning;
 }
 
@@ -855,16 +888,19 @@ bool Transfer::consumePendingRefresh(void)
 
 std::string Transfer::receiverToken(void)
 {
+    std::lock_guard<std::mutex> lock(g_receiverMutex);
     return g_token;
 }
 
 std::string Transfer::receiverIp(void)
 {
+    std::lock_guard<std::mutex> lock(g_receiverMutex);
     return g_receiverIp;
 }
 
 int Transfer::receiverPort(void)
 {
+    std::lock_guard<std::mutex> lock(g_receiverMutex);
     return g_receiverPort;
 }
 

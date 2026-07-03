@@ -226,16 +226,20 @@ void TitleCatalog::exportTitleListCache(std::vector<Title>& list, const std::u16
 void TitleCatalog::importTitleListCache(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons)
 {
     FSStream inputsaves(Archive::sdmc(), saveCachePath, FS_OPEN_READ);
-    u32 sizesaves = inputsaves.size() / TitleCache::ENTRY_SIZE;
-    std::unique_ptr<u8[]> cachesaves(new u8[inputsaves.size()]);
-    inputsaves.read(cachesaves.get(), inputsaves.size());
+    u32 bytesSaves = inputsaves.size();
+    std::unique_ptr<u8[]> cachesaves(new u8[bytesSaves]);
+    u32 readSaves = inputsaves.read(cachesaves.get(), bytesSaves);
     inputsaves.close();
+    // A cache whose size isn't a whole number of entries, or that read short, is
+    // corrupt: treat it as empty rather than decoding desynced/garbage entries.
+    u32 sizesaves = (bytesSaves % TitleCache::ENTRY_SIZE == 0 && readSaves == bytesSaves) ? bytesSaves / TitleCache::ENTRY_SIZE : 0;
 
     FSStream inputextdatas(Archive::sdmc(), extdataCachePath, FS_OPEN_READ);
-    u32 sizeextdatas = inputextdatas.size() / TitleCache::ENTRY_SIZE;
-    std::unique_ptr<u8[]> cacheextdatas(new u8[inputextdatas.size()]);
-    inputextdatas.read(cacheextdatas.get(), inputextdatas.size());
+    u32 bytesExtdatas = inputextdatas.size();
+    std::unique_ptr<u8[]> cacheextdatas(new u8[bytesExtdatas]);
+    u32 readExtdatas = inputextdatas.read(cacheextdatas.get(), bytesExtdatas);
     inputextdatas.close();
+    u32 sizeextdatas = (bytesExtdatas % TitleCache::ENTRY_SIZE == 0 && readExtdatas == bytesExtdatas) ? bytesExtdatas / TitleCache::ENTRY_SIZE : 0;
 
     mLimit = sizesaves + sizeextdatas;
 

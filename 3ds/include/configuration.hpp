@@ -30,6 +30,7 @@
 #include "json.hpp"
 #include <3ds/types.h>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -96,6 +97,10 @@ private:
     void loadFromRomfs(void);
 
     std::unique_ptr<nlohmann::json> mJson;
+    // Guards mFilterIds / mFavoriteIds: the cart-scan and loader threads call
+    // filter()/favorite() while Settings mutates the sets on the UI thread. The
+    // whole-list accessors and JSON writes stay UI-thread-only.
+    std::mutex mIdMutex;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::u16string>> mAdditionalSaveFolders, mAdditionalExtdataFolders;
     bool mNandSaves = false, mScanCard = false, mTransferEnabled = false, mConfirmRestore = true;

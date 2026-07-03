@@ -61,6 +61,11 @@ public:
         // Set only for network sends; when present the screen maps
         // SendOutcome::stage to a message instead of the io fields above.
         std::optional<Transfer::SendOutcome> send;
+        // Batch aggregate: `failed` items out of `total`. On a batch with any
+        // failure this JobResult carries the *first* failing item's outcome; the
+        // batch counts as success only when failed == 0.
+        size_t failed = 0;
+        size_t total  = 0;
     };
 
     static TransferJob& get(void)

@@ -35,7 +35,10 @@ FSStream::FSStream(FS_Archive archive, const std::u16string& path, u32 flags)
     mGood   = false;
     mSize   = 0;
     mOffset = 0;
-    Handle hnd;
+    // Default to a zeroed FS handle so a failed open leaves mHandle valid (and
+    // isPxi() false) instead of the variant's default-constructed FSPXI_File.
+    mHandle    = (Handle)0;
+    Handle hnd = 0;
 
     mResult = FSUSER_OpenFile(&hnd, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
     if (R_SUCCEEDED(mResult)) {
@@ -49,10 +52,10 @@ FSStream::FSStream(FS_Archive archive, const std::u16string& path, u32 flags)
 
 FSStream::FSStream(FS_Archive archive, const std::u16string& path, u32 flags, u32 size)
 {
-    mGood   = false;
-    mSize   = size;
-    mOffset = 0;
-    Handle hnd;
+    mGood      = false;
+    mSize      = size;
+    mOffset    = 0;
+    Handle hnd = 0;
 
     mResult = FSUSER_OpenFile(&hnd, archive, fsMakePath(PATH_UTF16, path.data()), flags, 0);
     if (R_FAILED(mResult)) {

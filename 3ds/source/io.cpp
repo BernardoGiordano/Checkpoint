@@ -357,7 +357,12 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
     else {
         CardType cardType = title.SPICardType();
         u32 saveSize      = SPIGetCapacity(cardType);
-        u32 sectorSize    = (saveSize < 0x10000) ? saveSize : 0x10000;
+        // NO_CHIP / an unreadable cart reports 0 capacity; guard the division below.
+        if (saveSize == 0) {
+            Logging::error("SPI backup: card reports zero capacity ({}).", (int)cardType);
+            return {false, res, BackupStage::OpenArchive};
+        }
+        u32 sectorSize = (saveSize < 0x10000) ? saveSize : 0x10000;
 
         // Start from a clean destination folder.
         if (io::directoryExists(Archive::sdmc(), dstPath)) {
@@ -499,6 +504,11 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
         CardType cardType = title.SPICardType();
         u32 saveSize      = SPIGetCapacity(cardType);
         u32 pageSize      = SPIGetPageSize(cardType);
+        // NO_CHIP / an unreadable cart reports 0 capacity or page size; guard the divisions below.
+        if (saveSize == 0 || pageSize == 0) {
+            Logging::error("SPI restore: card reports zero capacity/page size ({}).", (int)cardType);
+            return {false, res, BackupStage::OpenArchive};
+        }
 
         std::u16string fileName = StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
         std::u16string fullSrc  = srcPath + StringUtils::UTF8toUTF16("/") + fileName;

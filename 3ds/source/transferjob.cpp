@@ -117,6 +117,15 @@ void TransferJob::run(void)
     UiProgressSink sink;
     size_t done = 0;
 
+    // Accumulate the batch outcome in locals; a later item's success must not
+    // erase an earlier failure. We keep the first failing item's result and,
+    // if nothing failed, the last item's (all-success) result.
+    JobResult firstFailure;
+    bool haveFailure = false;
+    JobResult lastResult;
+    size_t failed = 0;
+    size_t total  = 0;
+
     for (;;) {
         WorkItem item;
         {
@@ -128,16 +137,16 @@ void TransferJob::run(void)
             mQueue.pop_front();
         }
 
+        JobResult current;
         if (item.op == Kind::Send) {
             Transfer::SendOutcome out = Transfer::sendBackup(item.title, item.path, item.backupName, item.dataType, item.ip, item.port, item.token);
-            std::lock_guard<std::mutex> lock(mMutex);
-            mResult = JobResult{.isRestore = false,
-                .ok                        = out.ok,
-                .res                       = 0,
-                .stage                     = io::BackupStage::Copy,
-                .successMsg                = item.successMsg,
-                .dataType                  = item.dataType,
-                .send                      = out};
+            current                   = JobResult{.isRestore = false,
+                                  .ok                        = out.ok,
+                                  .res                       = 0,
+                                  .stage                     = io::BackupStage::Copy,
+                                  .successMsg                = item.successMsg,
+                                  .dataType                  = item.dataType,
+                                  .send                      = out};
         }
         else {
             TransferStatus::setSaveCount(done);
@@ -145,8 +154,7 @@ void TransferJob::run(void)
             BackupTarget target = item.title.backup(item.kind);
             io::IoOutcome out   = item.op == Kind::Restore ? io::restore(target, item.path, sink) : io::backup(target, item.path, sink);
 
-            std::lock_guard<std::mutex> lock(mMutex);
-            mResult = JobResult{.isRestore = item.op == Kind::Restore,
+            current = JobResult{.isRestore = item.op == Kind::Restore,
                 .ok                        = out.ok,
                 .res                       = out.res,
                 .stage                     = out.stage,
@@ -154,7 +162,24 @@ void TransferJob::run(void)
                 .dataType                  = item.dataType,
                 .send                      = std::nullopt};
         }
+
+        total++;
+        if (!current.ok) {
+            failed++;
+            if (!haveFailure) {
+                firstFailure = current;
+                haveFailure  = true;
+            }
+        }
+        lastResult = current;
         done++;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        mResult        = haveFailure ? firstFailure : lastResult;
+        mResult.failed = failed;
+        mResult.total  = total;
     }
 
     TransferStatus::end();

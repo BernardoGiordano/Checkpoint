@@ -63,9 +63,10 @@ namespace {
 
     std::string extractPath(const std::string& request)
     {
-        size_t pathStart = request.find(" ") + 1;
-        if (pathStart != std::string::npos) {
-            size_t pathEnd = request.find(" ", pathStart);
+        size_t sp = request.find(" ");
+        if (sp != std::string::npos) {
+            size_t pathStart = sp + 1;
+            size_t pathEnd   = request.find(" ", pathStart);
             if (pathEnd != std::string::npos) {
                 return request.substr(pathStart, pathEnd - pathStart);
             }
@@ -236,8 +237,8 @@ namespace {
                 handleHttpRequest(clientSocket);
                 close(clientSocket);
             }
-            else if (errno != EAGAIN) {
-                // FIXME do something
+            else if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                Logging::error("accept() failed on the transfer socket with errno {}.", errno);
             }
 
             // Prevent 100% CPU usage
