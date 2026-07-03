@@ -29,6 +29,7 @@
 #include "backupsize.hpp"
 #include "loader.hpp"
 #include "server.hpp"
+#include "textpool.hpp"
 #include "thread.hpp"
 #include "util.hpp"
 #include <chrono>
@@ -76,6 +77,7 @@ int main()
             C2D_SceneBegin(g_bottom);
             g_screen->doDrawBottom();
             Gui::frameEnd();
+            TextPool::get().frameTick();
             g_screen->doUpdate(InputState{touch});
 
             // Apply any deferred screen swap requested during doUpdate (e.g.

@@ -51,7 +51,6 @@
 class SettingsScreenV4 : public Screen {
 public:
     explicit SettingsScreenV4(std::shared_ptr<Screen> parent);
-    ~SettingsScreenV4(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
@@ -72,7 +71,6 @@ private:
     void drawHints(int screenW, int y, const std::string& text) const;
 
     std::shared_ptr<Screen> mParent;
-    C2D_TextBuf dynamicBuf;
     C2D_ImageTint flagTint;
 
     Hid<HidDirection::VERTICAL, HidDirection::VERTICAL> navHid;

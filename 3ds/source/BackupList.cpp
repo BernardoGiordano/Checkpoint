@@ -26,6 +26,7 @@
 
 #include "BackupList.hpp"
 #include "colors.hpp"
+#include "textpool.hpp"
 #include "util.hpp"
 #include <3ds.h>
 #include <algorithm>
@@ -36,12 +37,6 @@ static constexpr u64 REPEAT_DELAY = 50000000;
 BackupList::BackupList(int x, int y, int w, int h, size_t visibleRows) : mx(x), my(y), mw(w), mh(h), mVisibleRows(visibleRows)
 {
     mRowH = mh / (int)mVisibleRows;
-    mBuf  = C2D_TextBufNew(512);
-}
-
-BackupList::~BackupList(void)
-{
-    C2D_TextBufDelete(mBuf);
 }
 
 void BackupList::setIndex(size_t i)
@@ -128,8 +123,7 @@ void BackupList::update(void)
 
 void BackupList::draw(bool focused) const
 {
-    C2D_TextBufClear(mBuf);
-
+    TextPool& text    = TextPool::get();
     const size_t last = std::min(mOffset + mVisibleRows, mRows.size());
     for (size_t i = mOffset; i < last; i++) {
         const Row& r   = mRows[i];
@@ -146,29 +140,20 @@ void BackupList::draw(bool focused) const
         // Leading marker: a teal "+" tile for "New backup", a small dot otherwise.
         if (r.isNew) {
             C2D_DrawRectSolid(mx + 6, rowY + (mRowH - 14) / 2, 0.5f, 14, 14, C2D_Color32(143, 227, 218, 40));
-            C2D_Text plus;
-            C2D_TextParse(&plus, mBuf, "+");
-            C2D_TextOptimize(&plus);
-            C2D_DrawText(&plus, C2D_WithColor, mx + 10, textY - 1, 0.5f, 0.5f, 0.5f, COLOR_V4_TEAL);
+            text.draw("+", mx + 10, textY - 1, 0.5f, COLOR_V4_TEAL);
         }
         else {
             C2D_DrawRectSolid(mx + 9, rowY + mRowH / 2 - 2, 0.5f, 4, 4, sel ? COLOR_V4_RING : COLOR_V4_FAINT);
         }
 
         // Name (left) — teal for the New row, brighter when selected.
-        C2D_Text name;
-        C2D_TextParse(&name, mBuf, r.name.c_str());
-        C2D_TextOptimize(&name);
         const u32 nameColor = r.isNew ? COLOR_V4_TEAL : (sel ? COLOR_V4_TEXT : COLOR_V4_MUTED);
-        C2D_DrawText(&name, C2D_WithColor, mx + 26, textY, 0.5f, 0.45f, 0.45f, nameColor);
+        text.draw(r.name, mx + 26, textY, 0.45f, nameColor);
 
         // Meta (right) — backup size, or the New-row caption.
         if (!r.meta.empty()) {
-            C2D_Text meta;
-            C2D_TextParse(&meta, mBuf, r.meta.c_str());
-            C2D_TextOptimize(&meta);
-            const float metaW = StringUtils::textWidth(meta, 0.4f);
-            C2D_DrawText(&meta, C2D_WithColor, mx + mw - 10 - metaW, textY + 1, 0.5f, 0.4f, 0.4f, COLOR_V4_FAINT);
+            const float metaW = text.width(r.meta, 0.4f);
+            text.draw(r.meta, mx + mw - 10 - metaW, textY + 1, 0.4f, COLOR_V4_FAINT);
         }
     }
 

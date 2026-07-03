@@ -39,15 +39,11 @@
 class TransferMenuOverlay : public Overlay {
 public:
     TransferMenuOverlay(Screen& screen, const std::function<void()>& callbackSend, const std::function<void()>& callbackReceive);
-    ~TransferMenuOverlay(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
 
 private:
-    u32 posx, posy;
-    C2D_TextBuf textBuf;
-    C2D_Text text;
     std::unique_ptr<Clickable> buttonSend, buttonReceive;
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::function<void()> sendFunc, receiveFunc;
@@ -56,13 +52,9 @@ private:
 class ReceiveOverlay : public Overlay {
 public:
     ReceiveOverlay(Screen& screen);
-    ~ReceiveOverlay(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
-
-private:
-    C2D_TextBuf textBuf;
 };
 
 #endif

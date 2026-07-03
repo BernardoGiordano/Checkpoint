@@ -32,6 +32,7 @@
 #include "loader.hpp"
 #include "main.hpp"
 #include "server.hpp"
+#include "textpool.hpp"
 #include "title.hpp"
 #include "util.hpp"
 #include <3ds.h>
@@ -137,46 +138,6 @@ namespace {
         return rows;
     }
 
-    // Parses, draws and returns the advance width of a text run.
-    float drawRun(C2D_TextBuf buf, const std::string& s, float x, float y, float scale, u32 color)
-    {
-        C2D_Text t;
-        C2D_TextParse(&t, buf, s.c_str());
-        C2D_TextOptimize(&t);
-        C2D_DrawText(&t, C2D_WithColor, x, y, 0.5f, scale, scale, color);
-        return StringUtils::textWidth(t, scale);
-    }
-
-    float runWidth(C2D_TextBuf buf, const std::string& s, float scale)
-    {
-        C2D_Text t;
-        C2D_TextParse(&t, buf, s.c_str());
-        C2D_TextOptimize(&t);
-        return StringUtils::textWidth(t, scale);
-    }
-
-    // Shortens `s` with a trailing ellipsis until it fits `maxWidth`.
-    std::string truncateToWidth(C2D_TextBuf buf, const std::string& s, float maxWidth, float scale)
-    {
-        if (runWidth(buf, s, scale) <= maxWidth) {
-            return s;
-        }
-        std::string truncated = s;
-        while (!truncated.empty() && runWidth(buf, truncated + "...", scale) > maxWidth) {
-            truncated.pop_back();
-        }
-        return truncated + "...";
-    }
-
-    // Draws a word-wrapped paragraph within maxWidth starting at (x, y).
-    void drawParagraph(C2D_TextBuf buf, const std::string& s, float x, float y, float scale, u32 color, float maxWidth)
-    {
-        C2D_Text t;
-        C2D_TextParse(&t, buf, s.c_str());
-        C2D_TextOptimize(&t);
-        C2D_DrawText(&t, C2D_WithColor | C2D_WordWrap, x, y, 0.5f, scale, scale, color, maxWidth);
-    }
-
     std::string humanSize(u64 bytes)
     {
         if (bytes >= 1024ull * 1024ull * 1024ull) {
@@ -191,13 +152,7 @@ namespace {
 
 SettingsScreenV4::SettingsScreenV4(std::shared_ptr<Screen> parent) : mParent(std::move(parent)), navHid(SECTION_COUNT, 1)
 {
-    dynamicBuf = C2D_TextBufNew(2048);
     C2D_PlainImageTint(&flagTint, COLOR_V4_TEAL, 1.0f);
-}
-
-SettingsScreenV4::~SettingsScreenV4(void)
-{
-    C2D_TextBufDelete(dynamicBuf);
 }
 
 bool SettingsScreenV4::sectionInteractive(size_t section) const
@@ -221,10 +176,7 @@ size_t SettingsScreenV4::contentRowCount(size_t section) const
 
 void SettingsScreenV4::drawHints(int screenW, int y, const std::string& text) const
 {
-    C2D_Text t;
-    C2D_TextParse(&t, dynamicBuf, text.c_str());
-    C2D_TextOptimize(&t);
-    C2D_DrawText(&t, C2D_WithColor, ceilf((screenW - StringUtils::textWidth(t, 0.47f)) / 2), y, 0.5f, 0.47f, 0.47f, COLOR_V4_MUTED);
+    TextPool::get().drawCentered(text, 0, screenW, y, 0.47f, COLOR_V4_MUTED);
 }
 
 void SettingsScreenV4::drawToggleRow(int y, const char* name, const char* sub, bool on, bool focused) const
@@ -234,8 +186,8 @@ void SettingsScreenV4::drawToggleRow(int y, const char* name, const char* sub, b
         C2D_DrawRectSolid(6, y, 0.5f, 308, rowH, C2D_Color32(122, 66, 196, 40));
         Gui::drawOutline(6, y, 308, rowH, 1, COLOR_V4_ACCENT);
     }
-    drawRun(dynamicBuf, name, 14, y + 4, 0.44f, COLOR_V4_TEXT);
-    drawRun(dynamicBuf, sub, 14, y + 18, 0.36f, COLOR_V4_FAINT);
+    TextPool::get().draw(name, 14, y + 4, 0.44f, COLOR_V4_TEXT);
+    TextPool::get().draw(sub, 14, y + 18, 0.36f, COLOR_V4_FAINT);
 
     // Pill toggle, right-aligned.
     const int px = 320 - 14 - 34, py = y + (rowH - 18) / 2;
@@ -255,12 +207,12 @@ void SettingsScreenV4::drawListRow(int y, const std::string& primary, const std:
         Gui::drawOutline(6, y, 308, rowH, 1, COLOR_V4_ACCENT);
     }
     C2D_DrawRectSolid(14, y + (rowH - 7) / 2, 0.5f, 7, 7, pipColor);
-    drawRun(dynamicBuf, truncateToWidth(dynamicBuf, primary, 250, 0.44f), 28, y + 4, 0.44f, COLOR_V4_TEXT);
-    drawRun(dynamicBuf, truncateToWidth(dynamicBuf, secondary, 270, 0.36f), 28, y + 18, 0.36f, COLOR_V4_FAINT);
+    TextPool::get().draw(TextPool::get().truncate(primary, 250, 0.44f), 28, y + 4, 0.44f, COLOR_V4_TEXT);
+    TextPool::get().draw(TextPool::get().truncate(secondary, 270, 0.36f), 28, y + 18, 0.36f, COLOR_V4_FAINT);
     if (removable && focused) {
         std::string tag = std::string(GLYPH_X);
-        float w         = runWidth(dynamicBuf, tag, 0.44f);
-        drawRun(dynamicBuf, tag, 320 - 14 - w, y + 8, 0.44f, COLOR_V4_DANGER);
+        float w         = TextPool::get().width(tag, 0.44f);
+        TextPool::get().draw(tag, 320 - 14 - w, y + 8, 0.44f, COLOR_V4_DANGER);
     }
 }
 
@@ -268,18 +220,14 @@ void SettingsScreenV4::drawEmptyState(const char* title, const char* body) const
 {
     C2D_DrawRectSolid(140, 74, 0.5f, 40, 40, COLOR_V4_CARD);
     Gui::drawOutline(140, 74, 40, 40, 1, COLOR_V4_LINE);
-    drawRun(dynamicBuf, "\xE2\x8A\x9F", 155, 82, 0.7f, COLOR_V4_FAINT); // "⊟"
-    float w = runWidth(dynamicBuf, title, 0.5f);
-    drawRun(dynamicBuf, title, ceilf((320 - w) / 2), 124, 0.5f, COLOR_V4_MUTED);
-    C2D_Text t;
-    C2D_TextParse(&t, dynamicBuf, body);
-    C2D_TextOptimize(&t);
-    C2D_DrawText(&t, C2D_WithColor | C2D_WordWrap | C2D_AlignCenter, 160, 146, 0.5f, 0.4f, 0.4f, COLOR_V4_FAINT, 240.0f);
+    TextPool::get().draw("\xE2\x8A\x9F", 155, 82, 0.7f, COLOR_V4_FAINT); // "⊟"
+    float w = TextPool::get().width(title, 0.5f);
+    TextPool::get().draw(title, ceilf((320 - w) / 2), 124, 0.5f, COLOR_V4_MUTED);
+    TextPool::get().drawWrapped(body, 160, 146, 0.4f, COLOR_V4_FAINT, 240.0f, 0.5f, C2D_AlignCenter);
 }
 
 void SettingsScreenV4::drawTop(void) const
 {
-    C2D_TextBufClear(dynamicBuf);
     C2D_TargetClear(g_top, COLOR_V4_BASE);
     C2D_TargetClear(g_bottom, COLOR_V4_BASE);
     C2D_SceneBegin(g_top);
@@ -289,11 +237,11 @@ void SettingsScreenV4::drawTop(void) const
     C2D_DrawRectSolid(0, 24, 0.5f, 400, 1, COLOR_V4_LINE);
     C2D_DrawImageAt(flag, 6, 3, 0.5f, &flagTint, 1.0f, 1.0f);
     float nameX = 6 + ceilf(flag.subtex->width * 1.0f) + 6;
-    drawRun(dynamicBuf, "Settings", nameX, 4, 0.5f, COLOR_V4_TEXT);
+    TextPool::get().draw("Settings", nameX, 4, 0.5f, COLOR_V4_TEXT);
     {
         std::string right = "config.json";
-        float w           = runWidth(dynamicBuf, right, 0.42f);
-        drawRun(dynamicBuf, right, 400 - 6 - w, 6, 0.42f, COLOR_V4_FAINT);
+        float w           = TextPool::get().width(right, 0.42f);
+        TextPool::get().draw(right, 400 - 6 - w, 6, 0.42f, COLOR_V4_FAINT);
     }
 
     // Section rail (left) + section blurb card (right).
@@ -307,17 +255,17 @@ void SettingsScreenV4::drawTop(void) const
         }
         C2D_DrawRectSolid(14, rowY + 4, 0.5f, 20, 20, isSel ? COLOR_V4_ACCENT : COLOR_V4_RAISED);
         {
-            float cw = runWidth(dynamicBuf, SECTIONS[i].letter, 0.5f);
-            drawRun(dynamicBuf, SECTIONS[i].letter, 14 + (20 - cw) / 2, rowY + 6, 0.5f, isSel ? COLOR_WHITE : COLOR_V4_MUTED);
+            float cw = TextPool::get().width(SECTIONS[i].letter, 0.5f);
+            TextPool::get().draw(SECTIONS[i].letter, 14 + (20 - cw) / 2, rowY + 6, 0.5f, isSel ? COLOR_WHITE : COLOR_V4_MUTED);
         }
-        drawRun(dynamicBuf, SECTIONS[i].name, 42, rowY + 4, 0.44f, isSel ? COLOR_V4_TEXT : COLOR_V4_MUTED);
+        TextPool::get().draw(SECTIONS[i].name, 42, rowY + 4, 0.44f, isSel ? COLOR_V4_TEXT : COLOR_V4_MUTED);
     }
 
     // Blurb card.
     C2D_DrawRectSolid(166, 34, 0.5f, 226, 160, COLOR_V4_CARD);
     Gui::drawOutline(166, 34, 226, 160, 1, COLOR_V4_LINE);
-    drawRun(dynamicBuf, SECTIONS[sel].name, 178, 44, 0.5f, COLOR_V4_TEXT);
-    drawParagraph(dynamicBuf, SECTIONS[sel].blurb, 178, 66, 0.44f, COLOR_V4_MUTED, 202);
+    TextPool::get().draw(SECTIONS[sel].name, 178, 44, 0.5f, COLOR_V4_TEXT);
+    TextPool::get().drawWrapped(SECTIONS[sel].blurb, 178, 66, 0.44f, COLOR_V4_MUTED, 202);
 
     // Footer.
     C2D_DrawRectSolid(0, 220, 0.5f, 400, 20, COLOR_V4_SURFACE);
@@ -405,8 +353,8 @@ void SettingsScreenV4::drawNetwork(void) const
     const bool on      = cfg.transferEnabled();
     int y              = 40;
     auto field         = [&](const char* label, const std::string& value, u32 valColor) {
-        drawRun(dynamicBuf, label, 20, y, 0.4f, COLOR_V4_FAINT);
-        drawRun(dynamicBuf, value, 20, y + 14, 0.46f, valColor);
+        TextPool::get().draw(label, 20, y, 0.4f, COLOR_V4_FAINT);
+        TextPool::get().draw(value, 20, y + 14, 0.46f, valColor);
         y += 44;
     };
     field("Wi-Fi transfer", on ? "Enabled" : "Disabled", on ? COLOR_V4_TEAL : COLOR_V4_MUTED);
@@ -414,9 +362,9 @@ void SettingsScreenV4::drawNetwork(void) const
     std::string address = Server::getAddress();
     field("This console's address", address.empty() ? "Unavailable" : address, address.empty() ? COLOR_V4_MUTED : COLOR_V4_TEXT);
 
-    drawRun(dynamicBuf, "Send / receive", 20, y, 0.4f, COLOR_V4_FAINT);
-    drawParagraph(
-        dynamicBuf, "Use the Transfer button on the main screen to send a backup or wait to receive one.", 20, y + 14, 0.4f, COLOR_V4_MUTED, 280);
+    TextPool::get().draw("Send / receive", 20, y, 0.4f, COLOR_V4_FAINT);
+    TextPool::get().drawWrapped(
+        "Use the Transfer button on the main screen to send a backup or wait to receive one.", 20, y + 14, 0.4f, COLOR_V4_MUTED, 280);
 
     drawHints(320, 223, std::string(GLYPH_B) + " Back");
 }
@@ -428,14 +376,14 @@ void SettingsScreenV4::drawAbout(void) const
 
     C2D_DrawImageAt(flag, 20, 36, 0.5f, &flagTint, 1.0f, 1.0f);
     float x = 20 + ceilf(flag.subtex->width * 1.0f) + 8;
-    drawRun(dynamicBuf, "Checkpoint", x, 34, 0.62f, COLOR_V4_TEXT);
-    drawRun(dynamicBuf, ver, x, 54, 0.42f, COLOR_V4_FAINT);
+    TextPool::get().draw("Checkpoint", x, 34, 0.62f, COLOR_V4_TEXT);
+    TextPool::get().draw(ver, x, 54, 0.42f, COLOR_V4_FAINT);
 
     int y     = 82;
     auto line = [&](const char* label, const std::string& value) {
-        drawRun(dynamicBuf, label, 20, y, 0.4f, COLOR_V4_FAINT);
-        float lw = runWidth(dynamicBuf, value, 0.42f);
-        drawRun(dynamicBuf, value, 300 - lw, y, 0.42f, COLOR_V4_TEXT);
+        TextPool::get().draw(label, 20, y, 0.4f, COLOR_V4_FAINT);
+        float lw = TextPool::get().width(value, 0.42f);
+        TextPool::get().draw(value, 300 - lw, y, 0.42f, COLOR_V4_TEXT);
         y += 24;
     };
     line("Author", "Bernardo Giordano");
@@ -454,7 +402,6 @@ void SettingsScreenV4::drawAbout(void) const
 
 void SettingsScreenV4::drawBottom(void) const
 {
-    C2D_TextBufClear(dynamicBuf);
     C2D_SceneBegin(g_bottom);
 
     const size_t sel = navHid.index();
@@ -462,11 +409,11 @@ void SettingsScreenV4::drawBottom(void) const
     // Header.
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 24, COLOR_V4_SURFACE);
     C2D_DrawRectSolid(0, 24, 0.5f, 320, 1, COLOR_V4_LINE);
-    drawRun(dynamicBuf, SECTIONS[sel].name, 10, 4, 0.5f, COLOR_V4_TEXT);
+    TextPool::get().draw(SECTIONS[sel].name, 10, 4, 0.5f, COLOR_V4_TEXT);
     if (sectionInteractive(sel) && savedTimer > 0) {
         std::string saved = "\xE2\x97\x8F Saved"; // "● Saved"
-        float w           = runWidth(dynamicBuf, saved, 0.4f);
-        drawRun(dynamicBuf, saved, 320 - 10 - w, 6, 0.4f, COLOR_V4_TEAL);
+        float w           = TextPool::get().width(saved, 0.4f);
+        TextPool::get().draw(saved, 320 - 10 - w, 6, 0.4f, COLOR_V4_TEAL);
     }
 
     // Footer bar (content is drawn by the per-section helpers, which also emit

@@ -39,22 +39,13 @@ public:
     Clickable(int x, int y, u16 w, u16 h, u32 colorBg, u32 colorText, std::string message, bool centered)
         : IClickable(x, y, w, h, colorBg, colorText, message, centered)
     {
-        mTextBuf = C2D_TextBufNew(64);
-        C2D_TextParse(&mC2dText, mTextBuf, message.c_str());
-        C2D_TextOptimize(&mC2dText);
     }
-
-    virtual ~Clickable(void) { C2D_TextBufDelete(mTextBuf); }
 
     void draw(float size, u32 overlayWhenSelected) override;
     void drawOutline(u32 color) override;
     bool held(void) override;
     bool released(void) override;
     void c2dText(const std::string& text);
-
-protected:
-    C2D_Text mC2dText;
-    C2D_TextBuf mTextBuf;
 };
 
 #endif

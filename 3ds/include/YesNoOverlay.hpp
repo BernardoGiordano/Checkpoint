@@ -41,15 +41,12 @@ class Clickable;
 class YesNoOverlay : public Overlay {
 public:
     YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
-    ~YesNoOverlay(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
 
 private:
-    u32 posx, posy;
-    C2D_TextBuf textBuf;
-    C2D_Text text;
+    std::string text;
     std::unique_ptr<Clickable> buttonYes, buttonNo;
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::function<void()> yesFunc, noFunc;

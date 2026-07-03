@@ -28,6 +28,7 @@
 #include "archive.hpp"
 #include "gui.hpp"
 #include "loader.hpp"
+#include "textpool.hpp"
 #include "title.hpp"
 #include "util.hpp"
 #include <3ds.h>
@@ -36,34 +37,8 @@ static const char* GLYPH_A = "\xEE\x80\x80"; // U+E000
 static const char* GLYPH_B = "\xEE\x80\x81"; // U+E001
 
 namespace {
-    float drawRun(C2D_TextBuf buf, const std::string& s, float x, float y, float scale, u32 color)
-    {
-        C2D_Text t;
-        C2D_TextParse(&t, buf, s.c_str());
-        C2D_TextOptimize(&t);
-        C2D_DrawText(&t, C2D_WithColor, x, y, 0.6f, scale, scale, color);
-        return StringUtils::textWidth(t, scale);
-    }
-
-    float runWidth(C2D_TextBuf buf, const std::string& s, float scale)
-    {
-        C2D_Text t;
-        C2D_TextParse(&t, buf, s.c_str());
-        C2D_TextOptimize(&t);
-        return StringUtils::textWidth(t, scale);
-    }
-
-    std::string truncateToWidth(C2D_TextBuf buf, const std::string& s, float maxWidth, float scale)
-    {
-        if (runWidth(buf, s, scale) <= maxWidth) {
-            return s;
-        }
-        std::string truncated = s;
-        while (!truncated.empty() && runWidth(buf, truncated + "...", scale) > maxWidth) {
-            truncated.pop_back();
-        }
-        return truncated + "...";
-    }
+    // Overlay text draws above the screen content layer.
+    constexpr float OVERLAY_Z = 0.6f;
 
     // Icon sized into a `side`x`side` box at (x, y): SMDH icons scale down, small
     // ones sit centered.
@@ -82,17 +57,11 @@ namespace {
 TitlePickerOverlay::TitlePickerOverlay(Screen& screen, const std::string& prompt, const std::function<void(u64)>& onPick)
     : Overlay(screen), mPrompt(prompt), mOnPick(onPick), mHid(VISIBLE, 1)
 {
-    mBuf = C2D_TextBufNew(4096);
-}
-
-TitlePickerOverlay::~TitlePickerOverlay(void)
-{
-    C2D_TextBufDelete(mBuf);
 }
 
 void TitlePickerOverlay::drawTop(void) const
 {
-    C2D_TextBufClear(mBuf);
+    TextPool& text  = TextPool::get();
     const int count = TitleCatalog::get().getTitleCount(BackupKind::Save);
 
     C2D_DrawRectSolid(0, 0, 0.6f, 400, 240, COLOR_OVERLAY);
@@ -100,17 +69,16 @@ void TitlePickerOverlay::drawTop(void) const
     Gui::drawOutline(24, 14, 352, 212, 2, COLOR_V4_ACCENT);
 
     // Header.
-    drawRun(mBuf, mPrompt, 36, 22, 0.5f, COLOR_V4_TEXT);
+    text.draw(mPrompt, 36, 22, 0.5f, COLOR_V4_TEXT, OVERLAY_Z);
     if (count > 0) {
         std::string counter = StringUtils::format("%d / %d", mHid.fullIndex() + 1, count);
-        float w             = runWidth(mBuf, counter, 0.42f);
-        drawRun(mBuf, counter, 364 - w, 24, 0.42f, COLOR_V4_FAINT);
+        float w             = text.width(counter, 0.42f);
+        text.draw(counter, 364 - w, 24, 0.42f, COLOR_V4_FAINT, OVERLAY_Z);
     }
     C2D_DrawRectSolid(36, 42, 0.6f, 328, 1, COLOR_V4_LINE);
 
     if (count == 0) {
-        std::string msg = "No titles available.";
-        drawRun(mBuf, msg, ceilf((400 - runWidth(mBuf, msg, 0.5f)) / 2), 110, 0.5f, COLOR_V4_MUTED);
+        text.drawCentered("No titles available.", 0, 400, 110, 0.5f, COLOR_V4_MUTED, OVERLAY_Z);
         return;
     }
 
@@ -128,7 +96,7 @@ void TitlePickerOverlay::drawTop(void) const
 
         Title title;
         TitleCatalog::get().getTitle(title, k, BackupKind::Save);
-        drawRun(mBuf, truncateToWidth(mBuf, title.shortDescription(), 290, 0.46f), 66, rowY + 5, 0.46f, sel ? COLOR_V4_TEXT : COLOR_V4_MUTED);
+        text.draw(text.truncate(title.shortDescription(), 290, 0.46f), 66, rowY + 5, 0.46f, sel ? COLOR_V4_TEXT : COLOR_V4_MUTED, OVERLAY_Z);
     }
 }
 
@@ -136,10 +104,7 @@ void TitlePickerOverlay::drawBottom(void) const
 {
     C2D_DrawRectSolid(0, 0, 0.6f, 320, 240, COLOR_OVERLAY);
     std::string hints = std::string(GLYPH_A) + " Select      " + GLYPH_B + " Cancel";
-    C2D_Text t;
-    C2D_TextParse(&t, mBuf, hints.c_str());
-    C2D_TextOptimize(&t);
-    C2D_DrawText(&t, C2D_WithColor, ceilf((320 - StringUtils::textWidth(t, 0.5f)) / 2), 112, 0.6f, 0.5f, 0.5f, COLOR_V4_TEXT);
+    TextPool::get().drawCentered(hints, 0, 320, 112, 0.5f, COLOR_V4_TEXT, OVERLAY_Z);
 }
 
 void TitlePickerOverlay::update(const InputState& input)

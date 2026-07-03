@@ -43,7 +43,6 @@
 class BackupList {
 public:
     BackupList(int x, int y, int w, int h, size_t visibleRows);
-    ~BackupList(void);
 
     struct Row {
         std::string name;
@@ -77,7 +76,6 @@ private:
     size_t mIndex  = 0;
     size_t mOffset = 0; // index of the first visible row
     u64 mLastTick  = 0;
-    C2D_TextBuf mBuf;
     std::vector<Row> mRows;
 };
 

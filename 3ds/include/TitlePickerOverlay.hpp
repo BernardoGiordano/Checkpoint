@@ -41,7 +41,6 @@
 class TitlePickerOverlay : public Overlay {
 public:
     TitlePickerOverlay(Screen& screen, const std::string& prompt, const std::function<void(u64)>& onPick);
-    ~TitlePickerOverlay(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
@@ -49,7 +48,6 @@ public:
 private:
     std::string mPrompt;
     std::function<void(u64)> mOnPick;
-    C2D_TextBuf mBuf;
     Hid<HidDirection::VERTICAL, HidDirection::VERTICAL> mHid;
     static constexpr size_t VISIBLE = 6;
 };

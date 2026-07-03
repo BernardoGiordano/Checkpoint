@@ -40,7 +40,6 @@ class Clickable;
 class ErrorOverlay : public Overlay {
 public:
     ErrorOverlay(Screen& screen, Result res, const std::string& mtext);
-    ~ErrorOverlay(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
@@ -48,8 +47,7 @@ public:
 private:
     u32 posx, posy;
     const float size = 0.6f;
-    C2D_Text text, error;
-    C2D_TextBuf textBuf;
+    std::string text, error;
     std::unique_ptr<Clickable> button;
 };
 

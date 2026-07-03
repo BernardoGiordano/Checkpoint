@@ -25,28 +25,17 @@
  */
 
 #include "YesNoOverlay.hpp"
+#include "textpool.hpp"
 
 YesNoOverlay::YesNoOverlay(
     Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo)
-    : Overlay(screen), hid(2, 2)
+    : Overlay(screen), text(mtext), hid(2, 2)
 {
-    textBuf = C2D_TextBufNew(64);
-    C2D_TextParse(&text, textBuf, mtext.c_str());
-    C2D_TextOptimize(&text);
-
     yesFunc = callbackYes;
     noFunc  = callbackNo;
 
-    posx = ceilf((320 - text.width * 0.55f) / 2);
-    posy = 84;
-
     buttonNo  = std::make_unique<Clickable>(46, 142, 110, 32, COLOR_V4_RAISED, COLOR_V4_TEXT, "\uE001 Cancel", true);
     buttonYes = std::make_unique<Clickable>(164, 142, 110, 32, COLOR_V4_ACCENT, COLOR_WHITE, "\uE000 Confirm", true);
-}
-
-YesNoOverlay::~YesNoOverlay(void)
-{
-    C2D_TextBufDelete(textBuf);
 }
 
 void YesNoOverlay::drawTop(void) const
@@ -59,7 +48,7 @@ void YesNoOverlay::drawBottom(void) const
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
     C2D_DrawRectSolid(34, 54, 0.5f, 252, 132, COLOR_V4_CARD);
     Gui::drawOutline(34, 54, 252, 132, 2, COLOR_V4_LINE);
-    C2D_DrawText(&text, C2D_WithColor, posx, posy, 0.5f, 0.55f, 0.55f, COLOR_V4_TEXT);
+    TextPool::get().drawCentered(text, 0, 320, 84, 0.55f, COLOR_V4_TEXT);
 
     buttonYes->draw(0.55f, COLOR_V4_RING);
     buttonNo->draw(0.55f, COLOR_V4_RING);

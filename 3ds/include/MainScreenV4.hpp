@@ -51,7 +51,6 @@ class Title;
 class MainScreenV4 : public Screen {
 public:
     MainScreenV4(void);
-    ~MainScreenV4(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
@@ -81,8 +80,6 @@ private:
     std::unique_ptr<Clickable> buttonBackupAll;                 // full-width batch Backup shown in multi-select, replacing the two action buttons
     std::unique_ptr<BackupList> directoryList;
     char ver[10];
-
-    C2D_TextBuf dynamicBuf;
 
     C2D_ImageTint flagTint;     // teal brand mark
     C2D_ImageTint checkboxTint; // dark check on the multi-select badge

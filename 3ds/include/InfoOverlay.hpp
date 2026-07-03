@@ -40,7 +40,6 @@ class Clickable;
 class InfoOverlay : public Overlay {
 public:
     InfoOverlay(Screen& screen, const std::string& mtext);
-    ~InfoOverlay(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
@@ -48,8 +47,7 @@ public:
 private:
     u32 posx, posy;
     const float size = 0.6f;
-    C2D_Text text;
-    C2D_TextBuf textBuf;
+    std::string text;
     std::unique_ptr<Clickable> button;
 };
 

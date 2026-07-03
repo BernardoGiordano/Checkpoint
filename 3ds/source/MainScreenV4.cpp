@@ -34,6 +34,7 @@
 #include "loader.hpp"
 #include "progress.hpp"
 #include "server.hpp"
+#include "textpool.hpp"
 #include "transfer.hpp"
 #include "transferjob.hpp"
 #include "transferstatus.hpp"
@@ -125,44 +126,9 @@ namespace {
     }
 
     // Draws a single button-glyph footer hint line, centered on `screenW`.
-    void drawHints(C2D_TextBuf buf, int screenW, int y, const std::string& text)
+    void drawHints(int screenW, int y, const std::string& text)
     {
-        C2D_Text t;
-        C2D_TextParse(&t, buf, text.c_str());
-        C2D_TextOptimize(&t);
-        C2D_DrawText(&t, C2D_WithColor, ceilf((screenW - StringUtils::textWidth(t, 0.47f)) / 2), y, 0.5f, 0.47f, 0.47f, COLOR_V4_MUTED);
-    }
-
-    // Parses, draws and returns the advance width of a text run.
-    float drawRun(C2D_TextBuf buf, const std::string& s, float x, float y, float scale, u32 color)
-    {
-        C2D_Text t;
-        C2D_TextParse(&t, buf, s.c_str());
-        C2D_TextOptimize(&t);
-        C2D_DrawText(&t, C2D_WithColor, x, y, 0.5f, scale, scale, color);
-        return StringUtils::textWidth(t, scale);
-    }
-
-    // Measures a text run without drawing it.
-    float runWidth(C2D_TextBuf buf, const std::string& s, float scale)
-    {
-        C2D_Text t;
-        C2D_TextParse(&t, buf, s.c_str());
-        C2D_TextOptimize(&t);
-        return StringUtils::textWidth(t, scale);
-    }
-
-    // Shortens `s` with a trailing ellipsis until it fits `maxWidth`.
-    std::string truncateToWidth(C2D_TextBuf buf, const std::string& s, float maxWidth, float scale)
-    {
-        if (runWidth(buf, s, scale) <= maxWidth) {
-            return s;
-        }
-        std::string truncated = s;
-        while (!truncated.empty() && runWidth(buf, truncated + "...", scale) > maxWidth) {
-            truncated.pop_back();
-        }
-        return truncated + "...";
+        TextPool::get().drawCentered(text, 0, screenW, y, 0.47f, COLOR_V4_MUTED);
     }
 }
 
@@ -171,8 +137,6 @@ MainScreenV4::MainScreenV4(void) : hid(rowlen * collen, collen)
     selectionTimer  = 0;
     refreshTimer    = 0;
     transferEnabled = Configuration::getInstance().transferEnabled();
-
-    dynamicBuf = C2D_TextBufNew(2048);
 
     // Detail action buttons. Backup is the primary (accent), Restore secondary.
     buttonBackup  = std::make_unique<Clickable>(8, 182, 148, 30, COLOR_V4_ACCENT, COLOR_WHITE, "Backup ", true);
@@ -198,11 +162,6 @@ MainScreenV4::MainScreenV4(void) : hid(rowlen * collen, collen)
     C2D_PlainImageTint(&flagTint, COLOR_V4_TEAL, 1.0f);
     C2D_PlainImageTint(&checkboxTint, COLOR_V4_BASE, 1.0f);
     C2D_PlainImageTint(&starTint, COLOR_V4_BASE, 1.0f);
-}
-
-MainScreenV4::~MainScreenV4(void)
-{
-    C2D_TextBufDelete(dynamicBuf);
 }
 
 int MainScreenV4::cellX(size_t i) const
@@ -248,7 +207,7 @@ void MainScreenV4::drawTop(void) const
     const size_t count   = TitleCatalog::get().getTitleCount(backupKind);
     const size_t max     = hid.maxEntries(count) + 1;
 
-    C2D_TextBufClear(dynamicBuf);
+    TextPool& text = TextPool::get();
     C2D_TargetClear(g_top, COLOR_V4_BASE);
     C2D_TargetClear(g_bottom, COLOR_V4_BASE);
     C2D_SceneBegin(g_top);
@@ -259,35 +218,26 @@ void MainScreenV4::drawTop(void) const
     // Teal brand mark + wordmark.
     C2D_DrawImageAt(flag, 6, 3, 0.5f, &flagTint, 1.0f, 1.0f);
     float nameX = 6 + ceilf(flag.subtex->width * 1.0f) + 6;
-    nameX += drawRun(dynamicBuf, "Checkpoint", nameX, 4, 0.5f, COLOR_V4_TEXT) + 6;
-    drawRun(dynamicBuf, ver, nameX, 6, 0.4f, COLOR_V4_FAINT);
+    nameX += text.draw("Checkpoint", nameX, 4, 0.5f, COLOR_V4_TEXT) + 6;
+    text.draw(ver, nameX, 6, 0.4f, COLOR_V4_FAINT);
 
     // Right cluster: time, count / multi-select badge.
     std::string timeStr = DateTime::timeStr();
     {
-        C2D_Text t;
-        C2D_TextParse(&t, dynamicBuf, timeStr.c_str());
-        C2D_TextOptimize(&t);
-        float w = StringUtils::textWidth(t, 0.42f);
-        C2D_DrawText(&t, C2D_WithColor, 400 - 6 - w, 6, 0.5f, 0.42f, 0.42f, COLOR_V4_FAINT);
+        float w = text.width(timeStr, 0.42f);
+        text.draw(timeStr, 400 - 6 - w, 6, 0.42f, COLOR_V4_FAINT);
 
         if (multi) {
             std::string badge = StringUtils::format("%zu selected", selEnt.size());
-            C2D_Text b;
-            C2D_TextParse(&b, dynamicBuf, badge.c_str());
-            C2D_TextOptimize(&b);
-            float bw = StringUtils::textWidth(b, 0.42f);
-            float bx = 400 - 6 - w - 8 - bw - 12;
+            float bw          = text.width(badge, 0.42f);
+            float bx          = 400 - 6 - w - 8 - bw - 12;
             C2D_DrawRectSolid(bx - 6, 4, 0.5f, bw + 12, 16, COLOR_V4_ACCENT);
-            C2D_DrawText(&b, C2D_WithColor, bx, 6, 0.5f, 0.42f, 0.42f, COLOR_WHITE);
+            text.draw(badge, bx, 6, 0.42f, COLOR_WHITE);
         }
         else {
             std::string cnt = StringUtils::format("%zu titles", count);
-            C2D_Text c;
-            C2D_TextParse(&c, dynamicBuf, cnt.c_str());
-            C2D_TextOptimize(&c);
-            float cw = StringUtils::textWidth(c, 0.42f);
-            C2D_DrawText(&c, C2D_WithColor, 400 - 6 - w - 10 - cw, 6, 0.5f, 0.42f, 0.42f, COLOR_V4_MUTED);
+            float cw        = text.width(cnt, 0.42f);
+            text.draw(cnt, 400 - 6 - w - 10 - cw, 6, 0.42f, COLOR_V4_MUTED);
         }
     }
 
@@ -298,11 +248,7 @@ void MainScreenV4::drawTop(void) const
             percentage = 99;
         }
         std::string msg = StringUtils::format("Loading titles... %d%%", percentage);
-        C2D_Text loadingText;
-        C2D_TextParse(&loadingText, dynamicBuf, msg.c_str());
-        C2D_TextOptimize(&loadingText);
-        C2D_DrawText(&loadingText, C2D_WithColor, ceilf((400 - StringUtils::textWidth(loadingText, 0.6f)) / 2),
-            ceilf((240 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, 0.6f, 0.6f, COLOR_V4_TEXT);
+        text.drawCentered(msg, 0, 400, ceilf((240 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2), 0.6f, COLOR_V4_TEXT, 0.9f);
         return;
     }
 
@@ -340,10 +286,10 @@ void MainScreenV4::drawTop(void) const
     C2D_DrawRectSolid(0, 220, 0.5f, 400, FOOTER_H, COLOR_V4_SURFACE);
     C2D_DrawRectSolid(0, 219, 0.5f, 400, 1, COLOR_V4_LINE);
     if (multi) {
-        drawHints(dynamicBuf, 400, 223, " Tag     hold all     Backup all     Clear");
+        drawHints(400, 223, " Tag     hold all     Backup all     Clear");
     }
     else {
-        drawHints(dynamicBuf, 400, 223, " Open     Select     Extdata    Hold SELECT: help");
+        drawHints(400, 223, " Open     Select     Extdata    Hold SELECT: help");
     }
 
     // Hold-SELECT command help overlay.
@@ -362,13 +308,10 @@ void MainScreenV4::drawTop(void) const
         const int n       = sizeof(cmds) / sizeof(cmds[0]);
         float top         = ceilf((240 - n * lh) / 2);
         for (int i = 0; i < n; i++) {
-            C2D_Text t;
-            C2D_TextParse(&t, dynamicBuf, cmds[i]);
-            C2D_TextOptimize(&t);
-            C2D_DrawText(&t, C2D_WithColor, ceilf((400 - StringUtils::textWidth(t, scale)) / 2), top + i * lh, 0.9f, scale, scale, COLOR_V4_TEXT);
+            text.drawCentered(cmds[i], 0, 400, top + i * lh, scale, COLOR_V4_TEXT, 0.9f);
         }
         if (Server::isRunning() && Server::getAddress().length() > 0) {
-            drawRun(dynamicBuf, "Logs at " + Server::getAddress() + "/logs/memory", 6, 223, 0.42f, COLOR_V4_FAINT);
+            text.draw("Logs at " + Server::getAddress() + "/logs/memory", 6, 223, 0.42f, COLOR_V4_FAINT);
         }
     }
 
@@ -383,14 +326,14 @@ void MainScreenV4::drawTop(void) const
         std::string line2  = TransferStatus::bytesToMB(done, total);
         const float lh     = 0.7f * fontGetInfo(NULL)->lineFeed;
         float startY       = ceilf((240 - 2 * lh) / 2);
-        drawRun(dynamicBuf, line1, ceilf((400 - runWidth(dynamicBuf, line1, 0.7f)) / 2), startY, 0.7f, COLOR_V4_TEXT);
-        drawRun(dynamicBuf, line2, ceilf((400 - runWidth(dynamicBuf, line2, 0.7f)) / 2), startY + lh, 0.7f, COLOR_V4_MUTED);
+        text.drawCentered(line1, 0, 400, startY, 0.7f, COLOR_V4_TEXT);
+        text.drawCentered(line2, 0, 400, startY + lh, 0.7f, COLOR_V4_MUTED);
     }
 }
 
 void MainScreenV4::drawBottom(void) const
 {
-    C2D_TextBufClear(dynamicBuf);
+    TextPool& text = TextPool::get();
     C2D_SceneBegin(g_bottom);
 
     LoadProgress loadProgress = TitleCatalog::get().progress();
@@ -411,25 +354,18 @@ void MainScreenV4::drawBottom(void) const
         int segX = 320;
         {
             const int segH = 16, segY = 4, pad = 7;
-            C2D_Text saveT, extT;
-            C2D_TextParse(&saveT, dynamicBuf, "Save");
-            C2D_TextParse(&extT, dynamicBuf, "Extdata");
-            C2D_TextOptimize(&saveT);
-            C2D_TextOptimize(&extT);
-            float saveW   = StringUtils::textWidth(saveT, 0.4f);
-            float extW    = StringUtils::textWidth(extT, 0.4f);
-            int cellSaveW = (int)ceilf(saveW) + pad * 2;
-            int cellExtW  = (int)ceilf(extW) + pad * 2;
+            int cellSaveW = (int)ceilf(text.width("Save", 0.4f)) + pad * 2;
+            int cellExtW  = (int)ceilf(text.width("Extdata", 0.4f)) + pad * 2;
             segX          = 320 - 6 - cellSaveW - cellExtW;
             C2D_DrawRectSolid(segX, segY, 0.5f, cellSaveW + cellExtW, segH, COLOR_V4_RAISED);
             const bool onSave = backupKind == BackupKind::Save;
             C2D_DrawRectSolid(onSave ? segX : segX + cellSaveW, segY, 0.5f, onSave ? cellSaveW : cellExtW, segH, COLOR_V4_ACCENT);
-            C2D_DrawText(&saveT, C2D_WithColor, segX + pad, segY + 2, 0.5f, 0.4f, 0.4f, onSave ? COLOR_WHITE : COLOR_V4_MUTED);
-            C2D_DrawText(&extT, C2D_WithColor, segX + cellSaveW + pad, segY + 2, 0.5f, 0.4f, 0.4f, onSave ? COLOR_V4_MUTED : COLOR_WHITE);
+            text.draw("Save", segX + pad, segY + 2, 0.4f, onSave ? COLOR_WHITE : COLOR_V4_MUTED);
+            text.draw("Extdata", segX + cellSaveW + pad, segY + 2, 0.4f, onSave ? COLOR_V4_MUTED : COLOR_WHITE);
         }
 
-        std::string name = truncateToWidth(dynamicBuf, title.shortDescription(), segX - 8 - 8, 0.5f);
-        drawRun(dynamicBuf, name, 8, 4, 0.5f, COLOR_V4_TEXT);
+        std::string name = text.truncate(title.shortDescription(), segX - 8 - 8, 0.5f);
+        text.draw(name, 8, 4, 0.5f, COLOR_V4_TEXT);
 
         // Thin info line: cart identifier, media type, favorite.
         {
@@ -437,10 +373,10 @@ void MainScreenV4::drawBottom(void) const
             const float y      = 28;
             const float sep    = 6;
             std::string cartId = title.productCode[0] != '\0' ? std::string(title.productCode) : std::string("System title");
-            x += drawRun(dynamicBuf, cartId, x, y, 0.42f, COLOR_V4_MUTED) + sep;
-            x += drawRun(dynamicBuf, "·  " + title.mediaTypeString(), x, y, 0.42f, COLOR_V4_MUTED) + sep;
+            x += text.draw(cartId, x, y, 0.42f, COLOR_V4_MUTED) + sep;
+            x += text.draw("·  " + title.mediaTypeString(), x, y, 0.42f, COLOR_V4_MUTED) + sep;
             if (TitleCatalog::get().favorite(hid.fullIndex(), backupKind)) {
-                drawRun(dynamicBuf, "·  ★ Favorite", x, y, 0.42f, COLOR_V4_GOLD);
+                text.draw("·  ★ Favorite", x, y, 0.42f, COLOR_V4_GOLD);
             }
         }
 
@@ -468,15 +404,15 @@ void MainScreenV4::drawBottom(void) const
 
         C2D_DrawRectSolid(8, 46, 0.5f, 304, 132, COLOR_V4_CARD);
         C2D_DrawRectSolid(8, 67, 0.5f, 304, 1, COLOR_V4_LINE);
-        drawRun(dynamicBuf, "Backups", 16, 49, 0.45f, COLOR_V4_MUTED);
+        text.draw("Backups", 16, 49, 0.45f, COLOR_V4_MUTED);
         {
             // Total: shown once the worker has resolved it; until then a "…" placeholder.
             std::optional<u64> sz = BackupSizeCache::get().total(selectedId, backupKind);
             std::string meta      = backupCount == 0 ? std::string("No backups")
                                     : sz.has_value() ? StringUtils::format("%zu saved  ·  %s", backupCount, humanSize(*sz).c_str())
                                                      : StringUtils::format("%zu saved  ·  …", backupCount);
-            float w               = runWidth(dynamicBuf, meta, 0.42f);
-            drawRun(dynamicBuf, meta, 312 - 8 - w, 50, 0.42f, COLOR_V4_FAINT);
+            float w               = text.width(meta, 0.42f);
+            text.draw(meta, 312 - 8 - w, 50, 0.42f, COLOR_V4_FAINT);
         }
         directoryList->draw(g_bottomScrollEnabled);
 
@@ -504,7 +440,7 @@ void MainScreenV4::drawBottom(void) const
     // Footer hint bar.
     C2D_DrawRectSolid(0, 220, 0.5f, 320, FOOTER_H, COLOR_V4_SURFACE);
     C2D_DrawRectSolid(0, 219, 0.5f, 320, 1, COLOR_V4_LINE);
-    drawHints(dynamicBuf, 320, 223,
+    drawHints(320, 223,
         MS::multipleSelectionEnabled() ? "Backup selected      Clear selection"
         : g_bottomScrollEnabled        ? " Confirm      Delete      Back"
                                        : " Backups      Backup      Restore");
@@ -522,18 +458,10 @@ void MainScreenV4::drawBottom(void) const
         Gui::drawOutline(mx, my, mw, mh, 2, COLOR_V4_ACCENT);
 
         std::string titleStr = (ts.mode.empty() ? "Copying files" : ts.mode) + " in progress...";
-        C2D_Text titleText;
-        C2D_TextParse(&titleText, dynamicBuf, titleStr.c_str());
-        C2D_TextOptimize(&titleText);
-        C2D_DrawText(
-            &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_V4_TEXT);
+        text.drawCentered(titleStr, mx, mw, my + 10, 0.55f, COLOR_V4_TEXT);
 
         std::string fname = StringUtils::UTF16toUTF8(ts.currentFile);
-        C2D_Text fileText;
-        C2D_TextParse(&fileText, dynamicBuf, fname.c_str());
-        C2D_TextOptimize(&fileText);
-        C2D_DrawText(
-            &fileText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(fileText, 0.5f)) / 2), my + 30, 0.5f, 0.5f, 0.5f, COLOR_V4_FAINT);
+        text.drawCentered(fname, mx, mw, my + 30, 0.5f, COLOR_V4_FAINT);
 
         const int barX = mx + 12, barW = mw - 24, barH = 10;
         auto drawProgressBar = [&](int y, float frac, const char* leftLabel, const char* rightLabel) {
@@ -545,14 +473,8 @@ void MainScreenV4::drawBottom(void) const
             if (fillW > 0) {
                 C2D_DrawRectSolid(barX, y, 0.5f, fillW, barH, COLOR_V4_ACCENT);
             }
-            C2D_Text leftText, rightText;
-            C2D_TextParse(&leftText, dynamicBuf, leftLabel);
-            C2D_TextOptimize(&leftText);
-            C2D_DrawText(&leftText, C2D_WithColor, barX, y + barH + 3, 0.5f, 0.42f, 0.42f, COLOR_V4_FAINT);
-            C2D_TextParse(&rightText, dynamicBuf, rightLabel);
-            C2D_TextOptimize(&rightText);
-            C2D_DrawText(&rightText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(rightText, 0.42f)), y + barH + 3, 0.5f, 0.42f, 0.42f,
-                COLOR_V4_TEXT);
+            text.draw(leftLabel, barX, y + barH + 3, 0.42f, COLOR_V4_FAINT);
+            text.draw(rightLabel, barX + barW - ceilf(text.width(rightLabel, 0.42f)), y + barH + 3, 0.42f, COLOR_V4_TEXT);
         };
 
         int barY = my + 52;

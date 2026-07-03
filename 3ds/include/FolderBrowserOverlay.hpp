@@ -45,7 +45,6 @@
 class FolderBrowserOverlay : public Overlay {
 public:
     FolderBrowserOverlay(Screen& screen, const std::string& prompt, const std::function<void(const std::u16string&)>& onPick);
-    ~FolderBrowserOverlay(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
@@ -58,7 +57,6 @@ private:
 
     std::string mPrompt;
     std::function<void(const std::u16string&)> mOnPick;
-    C2D_TextBuf mBuf;
     Hid<HidDirection::VERTICAL, HidDirection::VERTICAL> mHid;
 
     // Archive-relative path of the current folder, always starting with '/'
