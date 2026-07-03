@@ -24,6 +24,9 @@
  *         reasonable ways as different from the original version.
  */
 
+#ifndef MULTISELECTION_HPP
+#define MULTISELECTION_HPP
+
 #include <cstddef>
 #include <vector>
 
@@ -33,3 +36,5 @@ namespace MS {
     void clearSelectedEntries(void);
     void addSelectedEntry(size_t idx);
 }
+
+#endif

@@ -91,9 +91,9 @@ void BackupList::draw(bool focused) const
             C2D_DrawRectSolid(mx, rowY, 0.5f, mw, mRowH, focused ? C2D_Color32(122, 66, 196, 70) : C2D_Color32(122, 66, 196, 40));
             if (focused) {
                 // Breathing outline + accent bar so the active row reads as live.
-                Gui::drawPulsingOutline(mx, rowY, mw, mRowH, 1, COLOR_V4_RING);
+                Gui::drawPulsingOutline(mx, rowY, mw, mRowH, 1, COLOR_RING);
             }
-            C2D_DrawRectSolid(mx, rowY + 3, 0.5f, 2, mRowH - 6, COLOR_V4_RING); // left accent bar
+            C2D_DrawRectSolid(mx, rowY + 3, 0.5f, 2, mRowH - 6, COLOR_RING); // left accent bar
         }
 
         const int textY = rowY + (mRowH - 13) / 2;
@@ -102,32 +102,32 @@ void BackupList::draw(bool focused) const
         // (high contrast in every row state), a small dot otherwise.
         if (r.isNew) {
             const int tileSz = 14, tileX = mx + 6, tileY = rowY + (mRowH - tileSz) / 2;
-            C2D_DrawRectSolid(tileX, tileY, 0.5f, tileSz, tileSz, COLOR_V4_TEAL);
+            C2D_DrawRectSolid(tileX, tileY, 0.5f, tileSz, tileSz, COLOR_TEAL);
             // Teal stays light in both themes, so a black "+" holds contrast either way.
             const float pw = text.width("+", 0.5f);
             const float lf = fontGetInfo(NULL)->lineFeed;
             text.draw("+", tileX + (tileSz - pw) / 2, tileY - 2 + (tileSz - 0.5f * lf) / 2, 0.5f, COLOR_BLACK);
         }
         else {
-            C2D_DrawRectSolid(mx + 9, rowY + mRowH / 2 - 2, 0.5f, 4, 4, sel ? COLOR_V4_RING : COLOR_V4_FAINT);
+            C2D_DrawRectSolid(mx + 9, rowY + mRowH / 2 - 2, 0.5f, 4, 4, sel ? COLOR_RING : COLOR_FAINT);
         }
 
         // Name (left) — near-white so it stays legible on the card and on the
         // purple selection fill alike; muted only for unselected existing rows.
-        const u32 nameColor = (r.isNew || sel) ? COLOR_V4_TEXT : COLOR_V4_MUTED;
+        const u32 nameColor = (r.isNew || sel) ? COLOR_TEXT : COLOR_MUTED;
         text.draw(r.name, mx + 26, textY, 0.45f, nameColor);
 
         // Meta (right) — backup size, or the New-row caption.
         if (!r.meta.empty()) {
             const float metaW = text.width(r.meta, 0.4f);
-            text.draw(r.meta, mx + mw - 10 - metaW, textY + 1, 0.4f, COLOR_V4_FAINT);
+            text.draw(r.meta, mx + mw - 10 - metaW, textY + 1, 0.4f, COLOR_FAINT);
         }
     }
 
     // Scrollbar: only when there is more than one viewport of rows.
     if (mRows.size() > mVisibleRows) {
         const int trackX = mx + mw - 3;
-        C2D_DrawRectSolid(trackX, my, 0.5f, 3, mh, COLOR_V4_LINE);
+        C2D_DrawRectSolid(trackX, my, 0.5f, 3, mh, COLOR_LINE);
         const float frac = (float)mVisibleRows / (float)mRows.size();
         int thumbH       = (int)(mh * frac);
         if (thumbH < 12) {
@@ -135,6 +135,6 @@ void BackupList::draw(bool focused) const
         }
         const float posFrac = (float)offset / (float)(mRows.size() - mVisibleRows);
         const int thumbY    = my + (int)((mh - thumbH) * posFrac);
-        C2D_DrawRectSolid(trackX, thumbY, 0.5f, 3, thumbH, COLOR_V4_ACCENT);
+        C2D_DrawRectSolid(trackX, thumbY, 0.5f, 3, thumbH, COLOR_ACCENT);
     }
 }

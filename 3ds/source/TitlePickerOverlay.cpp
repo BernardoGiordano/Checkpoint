@@ -26,15 +26,13 @@
 
 #include "TitlePickerOverlay.hpp"
 #include "archive.hpp"
+#include "glyphs.hpp"
 #include "gui.hpp"
 #include "loader.hpp"
 #include "textpool.hpp"
 #include "title.hpp"
 #include "util.hpp"
 #include <3ds.h>
-
-static const char* GLYPH_A = "\xEE\x80\x80"; // U+E000
-static const char* GLYPH_B = "\xEE\x80\x81"; // U+E001
 
 namespace {
     // Overlay text draws above the screen content layer.
@@ -65,20 +63,20 @@ void TitlePickerOverlay::drawTop(void) const
     const int count = TitleCatalog::get().getTitleCount(BackupKind::Save);
 
     C2D_DrawRectSolid(0, 0, 0.6f, 400, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(24, 14, 0.6f, 352, 212, COLOR_V4_CARD);
-    Gui::drawOutline(24, 14, 352, 212, 2, COLOR_V4_ACCENT);
+    C2D_DrawRectSolid(24, 14, 0.6f, 352, 212, COLOR_CARD);
+    Gui::drawOutline(24, 14, 352, 212, 2, COLOR_ACCENT);
 
     // Header.
-    text.draw(mPrompt, 36, 22, 0.5f, COLOR_V4_TEXT, OVERLAY_Z);
+    text.draw(mPrompt, 36, 22, 0.5f, COLOR_TEXT, OVERLAY_Z);
     if (count > 0) {
         std::string counter = StringUtils::format("%d / %d", mHid.fullIndex() + 1, count);
         float w             = text.width(counter, 0.42f);
-        text.draw(counter, 364 - w, 24, 0.42f, COLOR_V4_FAINT, OVERLAY_Z);
+        text.draw(counter, 364 - w, 24, 0.42f, COLOR_FAINT, OVERLAY_Z);
     }
-    C2D_DrawRectSolid(36, 42, 0.6f, 328, 1, COLOR_V4_LINE);
+    C2D_DrawRectSolid(36, 42, 0.6f, 328, 1, COLOR_LINE);
 
     if (count == 0) {
-        text.drawCentered("No titles available.", 0, 400, 110, 0.5f, COLOR_V4_MUTED, OVERLAY_Z);
+        text.drawCentered("No titles available.", 0, 400, 110, 0.5f, COLOR_MUTED, OVERLAY_Z);
         return;
     }
 
@@ -89,14 +87,14 @@ void TitlePickerOverlay::drawTop(void) const
         const int rowY = 48 + i * rowH;
         const bool sel = i == (int)mHid.index();
         if (sel) {
-            C2D_DrawRectSolid(30, rowY, 0.6f, 340, rowH - 2, C2D_Color32(122, 66, 196, 60));
-            Gui::drawOutline(30, rowY, 340, rowH - 2, 1, COLOR_V4_ACCENT);
+            C2D_DrawRectSolid(30, rowY, 0.6f, 340, rowH - 2, COLOR_ROW_SELECT);
+            Gui::drawOutline(30, rowY, 340, rowH - 2, 1, COLOR_ACCENT);
         }
         drawIcon(TitleCatalog::get().icon(k, BackupKind::Save), 36, rowY + 1, 24);
 
         Title title;
         TitleCatalog::get().getTitle(title, k, BackupKind::Save);
-        text.draw(text.truncate(title.shortDescription(), 290, 0.46f), 66, rowY + 5, 0.46f, sel ? COLOR_V4_TEXT : COLOR_V4_MUTED, OVERLAY_Z);
+        text.draw(text.truncate(title.shortDescription(), 290, 0.46f), 66, rowY + 5, 0.46f, sel ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
     }
 }
 
@@ -104,7 +102,7 @@ void TitlePickerOverlay::drawBottom(void) const
 {
     C2D_DrawRectSolid(0, 0, 0.6f, 320, 240, COLOR_OVERLAY);
     std::string hints = std::string(GLYPH_A) + " Select      " + GLYPH_B + " Cancel";
-    TextPool::get().drawCentered(hints, 0, 320, 112, 0.5f, COLOR_V4_TEXT, OVERLAY_Z);
+    TextPool::get().drawCentered(hints, 0, 320, 112, 0.5f, COLOR_TEXT, OVERLAY_Z);
 }
 
 void TitlePickerOverlay::update(const InputState& input)

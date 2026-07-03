@@ -26,12 +26,15 @@
 
 #include "MainScreen.hpp"
 #include "KeyboardManager.hpp"
+#include "SettingsScreen.hpp"
+#include "backupsize.hpp"
 #include "backuptarget.hpp"
 #include "configuration.hpp"
 #include "io.hpp"
 #include "loader.hpp"
 #include "progress.hpp"
 #include "server.hpp"
+#include "textpool.hpp"
 #include "transfer.hpp"
 #include "transferjob.hpp"
 #include "transferstatus.hpp"
@@ -39,13 +42,17 @@
 #include <cctype>
 #include <optional>
 
+// ---- v4 main-page geometry ----------------------------------------------
+// Top grid (400x240): 8 columns x 4 rows of native 48px SMDH tiles, 1px gap,
+// centered. Full-size icons (no downscale) keep them crisp, matching the old
+// main screen; the 1px gap gives the grid a little breathing room.
 static constexpr size_t rowlen = 4, collen = 8;
+static constexpr int HEADER_H = 24, FOOTER_H = 20;
+static constexpr int TILE = 48, GAP = 1;
+static constexpr int GRID_LEFT = (400 - (8 * TILE + 7 * GAP)) / 2; // = 4
+static constexpr int GRID_TOP  = HEADER_H + 1;                     // = 25
 
 namespace {
-    // Picks the destination folder for a backup. cellIndex 0 = a new folder (named
-    // by the keyboard, or the date-time stamp during a multi-selection); cellIndex
-    // > 0 = overwrite the chosen existing backup. Returns nullopt if the keyboard
-    // prompt was cancelled.
     std::optional<std::u16string> chooseBackupDst(const BackupTarget& target, size_t cellIndex)
     {
         if (cellIndex != 0) {
@@ -90,6 +97,24 @@ namespace {
         }
     }
 
+    std::string sendErrorMessage(const Transfer::SendOutcome& outcome)
+    {
+        switch (outcome.stage) {
+            case Transfer::SendStage::Zip:
+                return "Failed to create backup package.";
+            case Transfer::SendStage::Socket:
+                return "Failed to open socket.";
+            case Transfer::SendStage::Resolve:
+                return "Invalid IP address.";
+            case Transfer::SendStage::Connect:
+                return "Failed to connect.";
+            case Transfer::SendStage::Response:
+                return outcome.detail.empty() ? "Receiver returned no response." : "Receiver error: " + outcome.detail;
+            default:
+                return "Transfer failed.";
+        }
+    }
+
     std::string rawKeyboard(const std::string& suggestion, const std::string& hint, size_t maxLen)
     {
         SwkbdState swkbd;
@@ -107,422 +132,386 @@ namespace {
         buf[sizeof(buf) - 1] = '\0';
         return button == SWKBD_BUTTON_CONFIRM ? std::string(buf) : std::string();
     }
+
+    // Draws a single button-glyph footer hint line, centered on `screenW`.
+    void drawHints(int screenW, int y, const std::string& text)
+    {
+        TextPool::get().drawCentered(text, 0, screenW, y, 0.47f, COLOR_MUTED);
+    }
+
+    // Layout of the Save / Extdata segmented control in the bottom header. Both
+    // drawBottom() and the touch hit-test derive from this so the box and the
+    // labels can never drift apart. Cell widths follow the rendered label width.
+    struct SegGeometry {
+        int segX, segY, segH, pad, cellSaveW, cellExtW;
+        int width(void) const { return cellSaveW + cellExtW; }
+    };
+
+    SegGeometry segmentGeometry(void)
+    {
+        TextPool& text = TextPool::get();
+        SegGeometry g;
+        g.segH      = 16;
+        g.segY      = 4;
+        g.pad       = 7;
+        g.cellSaveW = (int)ceilf(text.width("Save", 0.4f)) + g.pad * 2;
+        g.cellExtW  = (int)ceilf(text.width("Extdata", 0.4f)) + g.pad * 2;
+        g.segX      = 320 - 6 - g.cellSaveW - g.cellExtW;
+        return g;
+    }
 }
 
 MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
 {
-    selectionTimer = 0;
-    refreshTimer   = 0;
-    // Wi-Fi backup transfer is gated behind a config flag, disabled by default.
+    selectionTimer  = 0;
+    refreshTimer    = 0;
     transferEnabled = Configuration::getInstance().transferEnabled();
 
-    staticBuf  = C2D_TextBufNew(280);
-    dynamicBuf = C2D_TextBufNew(512);
-
-    buttonBackup    = std::make_unique<Clickable>(204, 102, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Backup \uE004", true);
-    buttonRestore   = std::make_unique<Clickable>(204, 139, 110, 35, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Restore \uE005", true);
-    buttonPlayCoins = std::make_unique<Clickable>(204, 176, 110, 36, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "\uE075 Coins", true);
-    buttonTransfer  = std::make_unique<Clickable>(4, 223, 110, 16, COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT, "Transfer", true);
-    directoryList   = std::make_unique<Scrollable>(6, 102, 196, 110, 5);
+    // Detail action buttons. Backup is the primary (accent), Restore secondary.
+    buttonBackup  = std::make_unique<Clickable>(8, 182, 148, 30, COLOR_ACCENT, COLOR_WHITE, "Backup ", true);
+    buttonRestore = std::make_unique<Clickable>(164, 182, 148, 30, COLOR_RAISED, COLOR_TEXT, "Restore ", true);
+    // Narrower Backup/Restore + Coins trio shown side by side on the Activity Log title.
+    buttonBackupAL  = std::make_unique<Clickable>(8, 182, 96, 30, COLOR_ACCENT, COLOR_WHITE, "Backup", true);
+    buttonPlayCoins = std::make_unique<Clickable>(112, 182, 96, 30, COLOR_RAISED, COLOR_TEXT, "Coins", true);
+    buttonRestoreAL = std::make_unique<Clickable>(216, 182, 96, 30, COLOR_RAISED, COLOR_TEXT, "Restore", true);
+    // Full-width batch-backup button shown only while multi-selecting.
+    buttonBackupAll = std::make_unique<Clickable>(8, 182, 304, 30, COLOR_ACCENT, COLOR_WHITE, "Backup selected", true);
+    buttonTransfer  = std::make_unique<Clickable>(4, 223, 96, 16, COLOR_RAISED, COLOR_MUTED, "Transfer", true);
+    directoryList   = std::make_unique<BackupList>(12, 70, 296, 106, 5);
     buttonBackup->canChangeColorWhenSelected(true);
+    buttonBackupAll->canChangeColorWhenSelected(true);
     buttonRestore->canChangeColorWhenSelected(true);
     buttonPlayCoins->canChangeColorWhenSelected(true);
+    buttonBackupAL->canChangeColorWhenSelected(true);
+    buttonRestoreAL->canChangeColorWhenSelected(true);
     buttonTransfer->canChangeColorWhenSelected(true);
 
-    sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+    ver = StringUtils::versionString();
 
-    C2D_TextParse(&ins1, staticBuf, "Hold SELECT to see commands. Press \uE002 for ");
-    C2D_TextParse(&ins2, staticBuf, "extdata");
-    C2D_TextParse(&ins3, staticBuf, ".");
-    C2D_TextParse(&ins4, staticBuf, "Press \uE073 or START to exit.");
-    C2D_TextParse(&version, staticBuf, ver);
-    C2D_TextParse(&checkpoint, staticBuf, "checkpoint");
-    C2D_TextParse(&c2dId, staticBuf, "ID:");
-    C2D_TextParse(&c2dMediatype, staticBuf, "Mediatype:");
-
-    C2D_TextParse(&top_move, staticBuf, "\uE006 to move between titles");
-    C2D_TextParse(&top_a, staticBuf, "\uE000 to enter target");
-    C2D_TextParse(&top_y, staticBuf, "\uE003 to select multiple titles");
-    C2D_TextParse(&top_my, staticBuf, "\uE003 hold to select all titles");
-    C2D_TextParse(&top_b, staticBuf, "\uE001 to exit target or deselect all titles");
-    C2D_TextParse(&top_hb, staticBuf, "\uE001 hold to refresh titles");
-    C2D_TextParse(&bot_ts, staticBuf, "\uE01D \uE006 to move between backups");
-    C2D_TextParse(&bot_x, staticBuf, "\uE002 to delete backups");
-    C2D_TextParse(&coins, staticBuf, "\uE075");
-
-    C2D_TextOptimize(&ins1);
-    C2D_TextOptimize(&ins2);
-    C2D_TextOptimize(&ins3);
-    C2D_TextOptimize(&ins4);
-    C2D_TextOptimize(&version);
-    C2D_TextOptimize(&checkpoint);
-    C2D_TextOptimize(&c2dId);
-    C2D_TextOptimize(&c2dMediatype);
-
-    C2D_TextOptimize(&top_move);
-    C2D_TextOptimize(&top_a);
-    C2D_TextOptimize(&top_y);
-    C2D_TextOptimize(&top_my);
-    C2D_TextOptimize(&top_b);
-    C2D_TextOptimize(&top_hb);
-    C2D_TextOptimize(&bot_ts);
-    C2D_TextOptimize(&bot_x);
-    C2D_TextOptimize(&coins);
-
-    C2D_PlainImageTint(&checkboxTint, COLOR_BLACK_DARKERR, 1.0f);
-    C2D_PlainImageTint(&flagTint, COLOR_PURPLE_LIGHT, 1.0f);
+    C2D_PlainImageTint(&flagTint, COLOR_TEAL, 1.0f);
+    C2D_PlainImageTint(&checkboxTint, COLOR_BLUE, 1.0f); // blue check on the white selection chip
+    C2D_PlainImageTint(&starTint, COLOR_BLACK, 1.0f);    // black star on the gold favorite chip
 }
 
-MainScreen::~MainScreen(void)
+int MainScreen::cellX(size_t i) const
 {
-    C2D_TextBufDelete(dynamicBuf);
-    C2D_TextBufDelete(staticBuf);
+    return GRID_LEFT + (int)((i % (rowlen * collen)) % collen) * (TILE + GAP);
+}
+
+int MainScreen::cellY(size_t i) const
+{
+    return GRID_TOP + (int)((i % (rowlen * collen)) / collen) * (TILE + GAP);
+}
+
+void MainScreen::drawSelector(void) const
+{
+    const int x = cellX(hid.index());
+    const int y = cellY(hid.index());
+    // No wash over the icon: the pulsing ring alone marks the selection, which
+    // keeps bright icons from turning into a bright-on-bright smear.
+    Gui::drawPulsingOutline(x, y, TILE, TILE, 2, COLOR_RING);
+}
+
+void MainScreen::drawTile(size_t k) const
+{
+    const int x = cellX(k);
+    const int y = cellY(k);
+    C2D_DrawRectSolid(x, y, 0.5f, TILE, TILE, COLOR_CARD);
+    C2D_Image icon = TitleCatalog::get().icon(k, backupKind);
+    if (icon.subtex->width == 48) {
+        // Native 48px SMDH icon fills the 48px tile 1:1 — no scaling, no aliasing.
+        C2D_DrawImageAt(icon, x, y, 0.5f, nullptr, 1.0f, 1.0f);
+    }
+    else {
+        // Smaller icons (DS/other) sit centered, unscaled.
+        const int off = (TILE - icon.subtex->width) / 2;
+        C2D_DrawImageAt(icon, x + off, y + off, 0.5f, nullptr, 1.0f, 1.0f);
+    }
 }
 
 void MainScreen::drawTop(void) const
 {
     auto selEnt          = MS::selectedEntries();
+    const bool multi     = MS::multipleSelectionEnabled();
     const size_t entries = hid.maxVisibleEntries();
-    const size_t max     = hid.maxEntries(TitleCatalog::get().getTitleCount(backupKind)) + 1;
+    const size_t count   = TitleCatalog::get().getTitleCount(backupKind);
+    const size_t max     = hid.maxEntries(count) + 1;
 
-    C2D_TargetClear(g_top, COLOR_BLACK_DARKERR);
-    C2D_TargetClear(g_bottom, COLOR_BLACK_DARKERR);
-
+    TextPool& text = TextPool::get();
+    C2D_TargetClear(g_top, COLOR_BASE);
+    C2D_TargetClear(g_bottom, COLOR_BASE);
     C2D_SceneBegin(g_top);
-    C2D_DrawRectSolid(0, 0, 0.5f, 400, 19, COLOR_BLACK_DARKER);
-    C2D_DrawRectSolid(0, 221, 0.5f, 400, 19, COLOR_BLACK_DARKER);
 
-    C2D_Text timeText;
-    C2D_TextParse(&timeText, dynamicBuf, DateTime::timeStr().c_str());
-    C2D_TextOptimize(&timeText);
-    C2D_DrawText(&timeText, C2D_WithColor, 4.0f, 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
+    // Header bar.
+    C2D_DrawRectSolid(0, 0, 0.5f, 400, HEADER_H, COLOR_SURFACE);
+    C2D_DrawRectSolid(0, HEADER_H, 0.5f, 400, 1, COLOR_LINE);
+    // Brand mark + wordmark. Teal on dark, Checkpoint blue on light.
+    C2D_ImageTint brandTint;
+    C2D_PlainImageTint(&brandTint, Configuration::getInstance().theme() == "light" ? COLOR_BLUE : COLOR_TEAL, 1.0f);
+    C2D_DrawImageAt(flag, 6, 3, 0.5f, &brandTint, 1.0f, 1.0f);
+    float nameX = 6 + ceilf(flag.subtex->width * 1.0f) + 6;
+    nameX += text.draw("Checkpoint", nameX, 4, 0.5f, COLOR_TEXT) + 6;
+    text.draw(ver, nameX, 6, 0.4f, COLOR_FAINT);
 
-    C2D_DrawText(&version, C2D_WithColor, 400 - 4 - ceilf(0.45f * version.width), 3.0f, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
-    C2D_DrawImageAt(flag, 400 - 24 - ceilf(version.width * 0.45f), 0.0f, 0.5f, &flagTint, 1.0f, 1.0f);
-    C2D_DrawText(&checkpoint, C2D_WithColor, 400 - 6 - 0.45f * version.width - 0.5f * checkpoint.width - 19, 2.0f, 0.5f, 0.5f, 0.5f, COLOR_WHITE);
+    // Right cluster: time, count / multi-select badge.
+    std::string timeStr = DateTime::timeStr();
+    {
+        float w = text.width(timeStr, 0.42f);
+        text.draw(timeStr, 400 - 6 - w, 6, 0.42f, COLOR_FAINT);
+
+        if (multi) {
+            std::string badge = StringUtils::format("%zu selected", selEnt.size());
+            float bw          = text.width(badge, 0.42f);
+            float bx          = 400 - 6 - w - 8 - bw - 12;
+            C2D_DrawRectSolid(bx - 6, 4, 0.5f, bw + 12, 16, COLOR_ACCENT);
+            text.draw(badge, bx, 6, 0.42f, COLOR_WHITE);
+        }
+        else {
+            std::string cnt = StringUtils::format("%zu titles", count);
+            float cw        = text.width(cnt, 0.42f);
+            text.draw(cnt, 400 - 6 - w - 10 - cw, 6, 0.42f, COLOR_MUTED);
+        }
+    }
 
     LoadProgress loadProgress = TitleCatalog::get().progress();
     if (loadProgress.active) {
-        // Show a loading message
         int percentage = loadProgress.percent();
         if (percentage >= 100) {
             percentage = 99;
         }
+        std::string msg = StringUtils::format("Loading titles... %d%%", percentage);
+        text.drawCentered(msg, 0, 400, ceilf((240 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2), 0.6f, COLOR_TEXT, 0.9f);
+        return;
+    }
 
-        char loadingMessage[32] = {0};
-        snprintf(loadingMessage, sizeof(loadingMessage), "Loading titles... %d%%", percentage);
+    // Tiles.
+    for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
+        drawTile(k);
+    }
 
-        C2D_Text loadingText;
-        C2D_TextParse(&loadingText, dynamicBuf, loadingMessage);
-        C2D_TextOptimize(&loadingText);
-        C2D_DrawText(&loadingText, C2D_WithColor, ceilf((400 - StringUtils::textWidth(loadingText, 0.6f)) / 2),
-            ceilf((240 - 0.6f * fontGetInfo(NULL)->lineFeed) / 2), 0.9f, 0.6f, 0.6f, COLOR_WHITE);
+    // Multi-select veil + badges, favorite pips.
+    for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
+        const int x = cellX(k), y = cellY(k);
+        const bool checked = !selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end();
+
+        if (multi && !checked && k != hid.fullIndex()) {
+            C2D_DrawRectSolid(x, y, 0.5f, TILE, TILE, COLOR_DIM);
+        }
+        // Corner badges. The chip is 16px; the sprite art is 24px, so it is offset
+        // by (16-24)/2 = -4 on both axes to sit centered on the chip. The favorite
+        // star is drawn first so the multi-select check lands on top of it — when a
+        // title is both, the selection state must stay visible.
+        constexpr int CHIP = 16, SPR = 24, SPR_OFF = (CHIP - SPR) / 2;
+        const int cx = x + TILE - CHIP - 1, cy = y + 1;
+        if (k < gridFavorites.size() && gridFavorites[k]) {
+            C2D_DrawRectSolid(cx, cy, 0.5f, CHIP, CHIP, COLOR_GOLD);
+            C2D_SpriteSetPos(&star, cx + SPR_OFF, cy + SPR_OFF);
+            C2D_DrawSpriteTinted(&star, &starTint);
+        }
+        if (checked) {
+            C2D_DrawRectSolid(x, y, 0.5f, TILE, TILE, C2D_Color32(122, 66, 196, 90));
+            C2D_DrawRectSolid(cx, cy, 0.5f, CHIP, CHIP, COLOR_WHITE);
+            C2D_SpriteSetPos(&checkbox, cx + SPR_OFF, cy + SPR_OFF);
+            C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
+        }
+    }
+
+    // Breathing selector drawn last so its ring sits above every veil and badge.
+    if (count > 0) {
+        drawSelector();
+    }
+
+    // Footer hint bar.
+    C2D_DrawRectSolid(0, 220, 0.5f, 400, FOOTER_H, COLOR_SURFACE);
+    C2D_DrawRectSolid(0, 219, 0.5f, 400, 1, COLOR_LINE);
+    if (multi) {
+        drawHints(400, 223, " Tag     hold all     Backup all     Clear");
     }
     else {
-        for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-            C2D_Image titleIcon = TitleCatalog::get().icon(k, backupKind);
-            if (titleIcon.subtex->width == 48) {
-                C2D_DrawImageAt(titleIcon, selectorX(k) + 1, selectorY(k) + 1, 0.5f, NULL, 1.0f, 1.0f);
-            }
-            else {
-                C2D_DrawImageAt(titleIcon, selectorX(k) + 9, selectorY(k) + 9, 0.5f, NULL, 1.0f, 1.0f);
-            }
-        }
+        drawHints(400, 223, " Open     Tag     Extdata    SELECT Settings");
+    }
 
-        if (TitleCatalog::get().getTitleCount(backupKind) > 0) {
-            drawSelector();
-        }
-
-        for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-            if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end()) {
-                C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 31, 0.5f, 16, 16, COLOR_WHITE);
-                C2D_SpriteSetPos(&checkbox, selectorX(k) + 27, selectorY(k) + 27);
-                C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
-            }
-
-            if (TitleCatalog::get().favorite(k, backupKind)) {
-                C2D_DrawRectSolid(selectorX(k) + 31, selectorY(k) + 3, 0.5f, 16, 16, COLOR_GOLD);
-                C2D_SpriteSetPos(&star, selectorX(k) + 27, selectorY(k) - 1);
-                C2D_DrawSpriteTinted(&star, &checkboxTint);
-            }
-        }
-
-        if (hidKeysHeld() & KEY_SELECT) {
-            const u32 inst_lh      = scaleInst * fontGetInfo(NULL)->lineFeed;
-            const u32 total_height = inst_lh * 6;
-            const u32 inst_h       = (240 - total_height) / 2;
-
-            C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
-            C2D_DrawText(&top_move, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_move, scaleInst)) / 2), inst_h, 0.9f, scaleInst, scaleInst,
-                COLOR_WHITE);
-            C2D_DrawText(&top_a, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_a, scaleInst)) / 2), inst_h + inst_lh * 1, 0.9f, scaleInst,
-                scaleInst, COLOR_WHITE);
-            C2D_DrawText(&top_b, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_b, scaleInst)) / 2), inst_h + inst_lh * 2, 0.9f, scaleInst,
-                scaleInst, COLOR_WHITE);
-            C2D_DrawText(&top_y, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_y, scaleInst)) / 2), inst_h + inst_lh * 3, 0.9f, scaleInst,
-                scaleInst, COLOR_WHITE);
-            C2D_DrawText(&top_my, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_my, scaleInst)) / 2), inst_h + inst_lh * 4, 0.9f, scaleInst,
-                scaleInst, COLOR_WHITE);
-            C2D_DrawText(&top_hb, C2D_WithColor, ceilf((400 - StringUtils::textWidth(top_hb, scaleInst)) / 2), inst_h + inst_lh * 5, 0.9f, scaleInst,
-                scaleInst, COLOR_WHITE);
-        }
-
-        if (hidKeysHeld() & KEY_SELECT && Server::isRunning() && Server::getAddress().length() > 0) {
-            C2D_Text logsText;
-            C2D_TextParse(&logsText, dynamicBuf, ("Logs available at " + Server::getAddress() + "/logs/memory").c_str());
-            C2D_TextOptimize(&logsText);
-            C2D_DrawText(&logsText, C2D_WithColor, ceilf((400 - logsText.width * 0.47f) / 2), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
-        }
-        else {
-            static const float border = ceilf((400 - (ins1.width + ins2.width + ins3.width) * 0.47f) / 2);
-            C2D_DrawText(&ins1, C2D_WithColor, border, 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
-            C2D_DrawText(&ins2, C2D_WithColor, border + ceilf(ins1.width * 0.47f), 223, 0.5f, 0.47f, 0.47f,
-                backupKind == BackupKind::Save ? COLOR_WHITE : COLOR_RED);
-            C2D_DrawText(&ins3, C2D_WithColor, border + ceilf((ins1.width + ins2.width) * 0.47f), 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
-        }
-
-        TransferSnapshot ts = TransferStatus::snapshot();
-        if (ts.active) {
-            C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
-
-            const float size     = 0.7f;
-            const float lineFeed = size * fontGetInfo(NULL)->lineFeed;
-            if (ts.kind == TransferKind::Network) {
-                // Two centered lines keep the (potentially long) mode label and the
-                // size readout on screen, matching the bottom progress modal.
-                u64 total = ts.bytesTotal, done = ts.bytesDone;
-                int pct            = total > 0 ? (int)((done * 100) / total) : 0;
-                std::string prefix = ts.mode.empty() ? "Transferring backup" : ts.mode;
-                std::string line1  = StringUtils::format("%s... %d%%", prefix.c_str(), pct);
-                std::string line2  = TransferStatus::bytesToMB(done, total);
-
-                float startY = ceilf((240 - 2 * lineFeed) / 2);
-
-                C2D_Text line1Text;
-                C2D_TextParse(&line1Text, dynamicBuf, line1.c_str());
-                C2D_TextOptimize(&line1Text);
-                C2D_DrawText(
-                    &line1Text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(line1Text, size)) / 2), startY, 0.9f, size, size, COLOR_WHITE);
-
-                C2D_Text line2Text;
-                C2D_TextParse(&line2Text, dynamicBuf, line2.c_str());
-                C2D_TextOptimize(&line2Text);
-                C2D_DrawText(&line2Text, C2D_WithColor, ceilf((400 - StringUtils::textWidth(line2Text, size)) / 2), startY + lineFeed, 0.9f, size,
-                    size, COLOR_GREY_LIGHT);
-            }
-            else {
-                std::string modeStr = (ts.mode.empty() ? "Copying files" : ts.mode) + " in progress...";
-                C2D_Text modeText;
-                C2D_TextParse(&modeText, dynamicBuf, modeStr.c_str());
-                C2D_TextOptimize(&modeText);
-                C2D_DrawText(&modeText, C2D_WithColor, ceilf((400 - StringUtils::textWidth(modeText, size)) / 2), ceilf((240 - lineFeed) / 2), 0.9f,
-                    size, size, COLOR_WHITE);
-            }
-        }
+    // Live transfer status (network sends draw their own modal on the bottom).
+    TransferSnapshot ts = TransferStatus::snapshot();
+    if (ts.active && ts.kind == TransferKind::Network) {
+        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
+        u64 total = ts.bytesTotal, done = ts.bytesDone;
+        int pct            = total > 0 ? (int)((done * 100) / total) : 0;
+        std::string prefix = ts.mode.empty() ? "Transferring backup" : ts.mode;
+        std::string line1  = StringUtils::format("%s... %d%%", prefix.c_str(), pct);
+        std::string line2  = TransferStatus::bytesToMB(done, total);
+        const float lh     = 0.7f * fontGetInfo(NULL)->lineFeed;
+        float startY       = ceilf((240 - 2 * lh) / 2);
+        text.drawCentered(line1, 0, 400, startY, 0.7f, COLOR_TEXT);
+        text.drawCentered(line2, 0, 400, startY + lh, 0.7f, COLOR_MUTED);
     }
 }
 
 void MainScreen::drawBottom(void) const
 {
-    C2D_TextBufClear(dynamicBuf);
+    TextPool& text = TextPool::get();
+    C2D_SceneBegin(g_bottom);
 
-    C2D_DrawRectSolid(0, 0, 0.5f, 320, 19, COLOR_BLACK_DARKER);
-    C2D_DrawRectSolid(0, 221, 0.5f, 320, 19, COLOR_BLACK_DARKER);
+    if (selected.valid) {
+        // Header: title name, Save/Extdata segmented control.
+        C2D_DrawRectSolid(0, 0, 0.5f, 320, HEADER_H, COLOR_SURFACE);
+        C2D_DrawRectSolid(0, HEADER_H, 0.5f, 320, 1, COLOR_LINE);
 
-    if (TitleCatalog::get().progress().active) {}
-
-    else if (TitleCatalog::get().getTitleCount(backupKind) > 0) {
-        Title title;
-        TitleCatalog::get().getTitle(title, hid.fullIndex(), backupKind);
-
-        directoryList->flush();
-        std::vector<std::u16string> dirs = title.backup(backupKind).backups();
-
-        for (size_t i = 0; i < dirs.size(); i++) {
-            directoryList->push_back(COLOR_BLACK_DARKERR, COLOR_WHITE, StringUtils::UTF16toUTF8(dirs.at(i)), i == directoryList->index());
+        // Segmented Save / Extdata toggle (right-aligned in the header) — laid out
+        // first so the title name below knows how much width it can use.
+        const SegGeometry seg = segmentGeometry();
+        {
+            C2D_DrawRectSolid(seg.segX, seg.segY, 0.5f, seg.width(), seg.segH, COLOR_RAISED);
+            const bool onSave = backupKind == BackupKind::Save;
+            C2D_DrawRectSolid(
+                onSave ? seg.segX : seg.segX + seg.cellSaveW, seg.segY, 0.5f, onSave ? seg.cellSaveW : seg.cellExtW, seg.segH, COLOR_ACCENT);
+            text.draw("Save", seg.segX + seg.pad, seg.segY + 2, 0.4f, onSave ? COLOR_WHITE : COLOR_MUTED);
+            text.draw("Extdata", seg.segX + seg.cellSaveW + seg.pad, seg.segY + 2, 0.4f, onSave ? COLOR_MUTED : COLOR_WHITE);
         }
 
-        C2D_Text longDesc, c2dTitleInfo;
-        std::string desc = title.longDescription();
-        std::replace(desc.begin(), desc.end(), '\n', ' ');
+        std::string name = text.truncate(selected.name, seg.segX - 8 - 8, 0.5f);
+        text.draw(name, 8, 4, 0.5f, COLOR_TEXT);
 
-        std::string titleInfo = title.lowId() != 0 ? StringUtils::format("ID: %08X (%s)\nMedia type: %s", (int)title.lowId(), title.productCode,
-                                                         title.mediaTypeString().c_str())
-                                                   : StringUtils::format("Media type: %s", title.mediaTypeString().c_str());
+        // Thin info line: cart identifier, media type, favorite.
+        {
+            float x         = 8;
+            const float y   = 28;
+            const float sep = 6;
+            x += text.draw(selected.cartId, x, y, 0.42f, COLOR_MUTED) + sep;
+            x += text.draw("·  " + selected.mediaType, x, y, 0.42f, COLOR_MUTED) + sep;
+            if (selected.favorite) {
+                text.draw("·  ★ Favorite", x, y, 0.42f, COLOR_GOLD);
+            }
+        }
 
-        C2D_TextParse(&longDesc, dynamicBuf, desc.c_str());
-        C2D_TextParse(&c2dTitleInfo, dynamicBuf, titleInfo.c_str());
+        // Backups card. Rows (entry 0 "New backup", then existing backups with
+        // their async sizes) were rebuilt by refreshSelected() when they changed.
+        C2D_DrawRectSolid(8, 46, 0.5f, 304, 132, COLOR_CARD);
+        C2D_DrawRectSolid(8, 67, 0.5f, 304, 1, COLOR_LINE);
+        text.draw("Backups", 16, 49, 0.45f, COLOR_MUTED);
+        {
+            // Total: shown once the worker has resolved it; until then a "…" placeholder.
+            std::string meta = selected.backupCount == 0 ? std::string("No backups")
+                               : selected.totalSize      ? StringUtils::format("%zu saved  ·  %s", selected.backupCount,
+                                                               StringUtils::humanBytes(*selected.totalSize).c_str())
+                                                         : StringUtils::format("%zu saved  ·  …", selected.backupCount);
+            float w          = text.width(meta, 0.42f);
+            text.draw(meta, 312 - 8 - w, 50, 0.42f, COLOR_FAINT);
+        }
+        directoryList->draw(g_bottomScrollEnabled);
 
-        C2D_TextOptimize(&longDesc);
-        C2D_TextOptimize(&c2dTitleInfo);
-
-        C2D_DrawText(&longDesc, C2D_WithColor, 4, 1, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
-        C2D_DrawText(&c2dTitleInfo, C2D_WithColor, 4, 29, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
-
-        C2D_DrawRectSolid(260, 27, 0.5f, 52, 52, COLOR_PURPLE_DARK);
-        if (title.icon().subtex->width == 48) {
-            C2D_DrawImageAt(title.icon(), 262, 29, 0.5f, NULL, 1.0f, 1.0f);
+        // Actions. While multi-selecting, one full-width Backup button replaces the
+        // per-title Backup/Restore pair and drives the whole tagged batch.
+        if (MS::multipleSelectionEnabled()) {
+            buttonBackupAll->text(StringUtils::format("Backup %zu selected ", MS::selectedEntries().size()));
+            buttonBackupAll->draw(0.6f, COLOR_RING);
+        }
+        else if (selected.activityLog) {
+            buttonBackupAL->draw(0.6f, COLOR_RING);
+            buttonPlayCoins->draw(0.6f, COLOR_ACCENT);
+            buttonRestoreAL->draw(0.6f, COLOR_RING);
         }
         else {
-            C2D_DrawImageAt(title.icon(), 262 + 8, 29 + 8, 0.5f, NULL, 1.0f, 1.0f);
-        }
-
-        C2D_DrawRectSolid(4, 100, 0.5f, 312, 114, COLOR_BLACK_DARK);
-
-        directoryList->draw(g_bottomScrollEnabled);
-        buttonBackup->draw(0.7, COLOR_PURPLE_LIGHT);
-        buttonRestore->draw(0.7, COLOR_PURPLE_LIGHT);
-        if (title.isActivityLog()) {
-            buttonPlayCoins->draw(0.7, COLOR_PURPLE_LIGHT);
+            buttonBackup->draw(0.6f, COLOR_RING);
+            buttonRestore->draw(0.6f, COLOR_RING);
         }
     }
 
     if (transferEnabled) {
-        buttonTransfer->draw(0.55f, COLOR_PURPLE_LIGHT);
-    }
-    float ins4X = transferEnabled ? ceilf(320 - StringUtils::textWidth(ins4, 0.47f) - 4) : ceilf((320 - StringUtils::textWidth(ins4, 0.47f)) / 2);
-    C2D_DrawText(&ins4, C2D_WithColor, ins4X, 223, 0.5f, 0.47f, 0.47f, COLOR_GREY_LIGHT);
-
-    if (hidKeysHeld() & KEY_SELECT) {
-        C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-        C2D_DrawText(&bot_ts, C2D_WithColor, (320 - bot_ts.width * scaleInst) / 2, 102, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
-        C2D_DrawText(&bot_x, C2D_WithColor, (320 - bot_x.width * scaleInst) / 2, 132, 0.5f, scaleInst, scaleInst, COLOR_WHITE);
-        // play coins
-        C2D_DrawText(&coins, C2D_WithColor, ceilf(318 - StringUtils::textWidth(coins, scaleInst)), -1, 0.5f, scaleInst, scaleInst, COLOR_GOLD);
+        buttonTransfer->draw(0.5f, COLOR_ACCENT);
     }
 
+    // Subtle scrim while no title is opened: the top grid holds focus, so the
+    // detail panel reads as inactive until the user drills in (A / Go to saves).
+    if (!g_bottomScrollEnabled) {
+        C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_SCRIM);
+    }
+
+    // Footer hint bar.
+    C2D_DrawRectSolid(0, 220, 0.5f, 320, FOOTER_H, COLOR_SURFACE);
+    C2D_DrawRectSolid(0, 219, 0.5f, 320, 1, COLOR_LINE);
+    drawHints(320, 223,
+        MS::multipleSelectionEnabled() ? "Backup selected      Clear selection"
+        : g_bottomScrollEnabled        ? " Confirm      Delete      Back"
+                                       : " Go to saves");
+
+    // Live local-copy progress modal (network sends draw on the top screen).
     TransferSnapshot ts = TransferStatus::snapshot();
-    if (ts.active) {
+    if (ts.active && ts.kind != TransferKind::Network) {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
 
-        if (ts.kind == TransferKind::Network) {
-            const int mx = 30, my = 65, mw = 260, mh = 110;
-            C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
-            Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
+        const bool multiSelect = ts.saveTotal > 1;
+        const int mx = 30, mw = 260;
+        const int mh = multiSelect ? 162 : 130;
+        const int my = multiSelect ? 40 : 65;
+        C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_CARD);
+        Gui::drawOutline(mx, my, mw, mh, 2, COLOR_ACCENT);
 
-            u64 total = ts.bytesTotal, done = ts.bytesDone;
-            int pct              = total > 0 ? (int)((done * 100) / total) : 0;
-            std::string prefix   = ts.mode.empty() ? "Transferring backup" : ts.mode;
-            std::string titleStr = StringUtils::format("%s... %d%%", prefix.c_str(), pct);
+        std::string titleStr = (ts.mode.empty() ? "Copying files" : ts.mode) + " in progress...";
+        text.drawCentered(titleStr, mx, mw, my + 10, 0.55f, COLOR_TEXT);
 
-            C2D_Text titleText;
-            C2D_TextParse(&titleText, dynamicBuf, titleStr.c_str());
-            C2D_TextOptimize(&titleText);
-            C2D_DrawText(
-                &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
+        std::string fname = StringUtils::UTF16toUTF8(ts.currentFile);
+        text.drawCentered(fname, mx, mw, my + 30, 0.5f, COLOR_FAINT);
 
-            std::string bytesStr = TransferStatus::bytesToMB(done, total);
-            C2D_Text bytesText;
-            C2D_TextParse(&bytesText, dynamicBuf, bytesStr.c_str());
-            C2D_TextOptimize(&bytesText);
-            C2D_DrawText(&bytesText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(bytesText, 0.5f)) / 2), my + 38, 0.5f, 0.5f, 0.5f,
-                COLOR_GREY_LIGHT);
-
-            const int barX = mx + 12, barW = mw - 24, barH = 10;
-            const int barY = my + 65;
-            C2D_DrawRectSolid(barX, barY, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
-            float progress = (total > 0) ? (float)done / (float)total : 0.0f;
-            if (progress > 1.0f) {
-                progress = 1.0f;
+        const int barX = mx + 12, barW = mw - 24, barH = 10;
+        auto drawProgressBar = [&](int y, float frac, const char* leftLabel, const char* rightLabel) {
+            if (frac > 1.0f) {
+                frac = 1.0f;
             }
-            int fillW = (int)(barW * progress);
+            C2D_DrawRectSolid(barX, y, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
+            int fillW = (int)(barW * frac);
             if (fillW > 0) {
-                C2D_DrawRectSolid(barX, barY, 0.5f, fillW, barH, COLOR_PURPLE_LIGHT);
+                C2D_DrawRectSolid(barX, y, 0.5f, fillW, barH, COLOR_ACCENT);
             }
-            Gui::drawOutline(barX, barY, barW, barH, 1, COLOR_GREY_LIGHT);
-        }
-        else {
-            // An extra bar is shown to track the overall progress when backing up multiple saves at once
-            const bool multiSelect = ts.saveTotal > 1;
+            text.draw(leftLabel, barX, y + barH + 3, 0.42f, COLOR_FAINT);
+            text.draw(rightLabel, barX + barW - ceilf(text.width(rightLabel, 0.42f)), y + barH + 3, 0.42f, COLOR_TEXT);
+        };
 
-            // Modal box
-            const int mx = 30, mw = 260;
-            const int mh = multiSelect ? 162 : 130;
-            const int my = multiSelect ? 40 : 65;
-            C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_BLACK_DARKERR);
-            Gui::drawOutline(mx, my, mw, mh, 2, COLOR_PURPLE_LIGHT);
-
-            // Title
-            std::string titleStr = (ts.mode.empty() ? "Copying files" : ts.mode) + " in progress...";
-            C2D_Text titleText;
-            C2D_TextParse(&titleText, dynamicBuf, titleStr.c_str());
-            C2D_TextOptimize(&titleText);
-            C2D_DrawText(
-                &titleText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(titleText, 0.55f)) / 2), my + 10, 0.5f, 0.55f, 0.55f, COLOR_WHITE);
-
-            // Current filename
-            std::string fname = StringUtils::UTF16toUTF8(ts.currentFile);
-            C2D_Text fileText;
-            C2D_TextParse(&fileText, dynamicBuf, fname.c_str());
-            C2D_TextOptimize(&fileText);
-            C2D_DrawText(
-                &fileText, C2D_WithColor, ceilf(mx + (mw - StringUtils::textWidth(fileText, 0.5f)) / 2), my + 30, 0.5f, 0.5f, 0.5f, COLOR_GREY_LIGHT);
-
-            const int barX = mx + 12, barW = mw - 24, barH = 10;
-
-            auto drawProgressBar = [&](int y, float frac, const char* leftLabel, const char* rightLabel) {
-                if (frac > 1.0f)
-                    frac = 1.0f;
-                C2D_DrawRectSolid(barX, y, 0.5f, barW, barH, COLOR_BLACK_MEDIUM);
-                int fillW = (int)(barW * frac);
-                if (fillW > 0) {
-                    C2D_DrawRectSolid(barX, y, 0.5f, fillW, barH, COLOR_PURPLE_LIGHT);
-                }
-                Gui::drawOutline(barX, y, barW, barH, 1, COLOR_GREY_LIGHT);
-
-                C2D_Text leftText;
-                C2D_TextParse(&leftText, dynamicBuf, leftLabel);
-                C2D_TextOptimize(&leftText);
-                C2D_DrawText(&leftText, C2D_WithColor, barX, y + barH + 3, 0.5f, 0.45f, 0.45f, COLOR_GREY_LIGHT);
-
-                C2D_Text rightText;
-                C2D_TextParse(&rightText, dynamicBuf, rightLabel);
-                C2D_TextOptimize(&rightText);
-                C2D_DrawText(&rightText, C2D_WithColor, barX + barW - ceilf(StringUtils::textWidth(rightText, 0.45f)), y + barH + 3, 0.5f, 0.45f,
-                    0.45f, COLOR_WHITE);
-            };
-
-            int barY = my + 52;
-
-            // Overall progress bar across the selected saves (multi-selection only)
-            if (multiSelect) {
-                float overallProgress = (float)ts.saveCount / (float)ts.saveTotal;
-                char overallCountStr[24];
-                snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", ts.saveCount + 1, ts.saveTotal);
-                char overallPctStr[8];
-                snprintf(overallPctStr, sizeof(overallPctStr), "%d%%", (int)(overallProgress * 100));
-                drawProgressBar(barY, overallProgress, overallCountStr, overallPctStr);
-                barY += 30;
-            }
-
-            // Per-save progress bar
-            float progress = (ts.copyTotal > 0) ? (float)ts.copyCount / (float)ts.copyTotal : 0.0f;
-            char countStr[24];
-            snprintf(countStr, sizeof(countStr), "File %zu / %zu", ts.copyCount, ts.copyTotal);
-            char pctStr[8];
-            snprintf(pctStr, sizeof(pctStr), "%d%%", (int)((progress > 1.0f ? 1.0f : progress) * 100));
-            drawProgressBar(barY, progress, countStr, pctStr);
+        int barY = my + 52;
+        if (multiSelect) {
+            float overallProgress = (float)ts.saveCount / (float)ts.saveTotal;
+            char overallCountStr[24];
+            snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", ts.saveCount + 1, ts.saveTotal);
+            char overallPctStr[8];
+            snprintf(overallPctStr, sizeof(overallPctStr), "%d%%", (int)(overallProgress * 100));
+            drawProgressBar(barY, overallProgress, overallCountStr, overallPctStr);
             barY += 30;
-
-            // Per-file progress bar
-            float fileProgress = (ts.currentFileSize > 0) ? (float)ts.currentFileOffset / (float)ts.currentFileSize : 0.0f;
-            char kbStr[32];
-            snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", ts.currentFileOffset / 1024.0f, ts.currentFileSize / 1024.0f);
-            char filePctStr[8];
-            snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
-            drawProgressBar(barY, fileProgress, kbStr, filePctStr);
         }
+        float progress = (ts.copyTotal > 0) ? (float)ts.copyCount / (float)ts.copyTotal : 0.0f;
+        char countStr[24];
+        snprintf(countStr, sizeof(countStr), "File %zu / %zu", ts.copyCount, ts.copyTotal);
+        char pctStr[8];
+        snprintf(pctStr, sizeof(pctStr), "%d%%", (int)((progress > 1.0f ? 1.0f : progress) * 100));
+        drawProgressBar(barY, progress, countStr, pctStr);
+        barY += 30;
+        float fileProgress = (ts.currentFileSize > 0) ? (float)ts.currentFileOffset / (float)ts.currentFileSize : 0.0f;
+        char kbStr[32];
+        snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", ts.currentFileOffset / 1024.0f, ts.currentFileSize / 1024.0f);
+        char filePctStr[8];
+        snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
+        drawProgressBar(barY, fileProgress, kbStr, filePctStr);
     }
 }
 
 void MainScreen::update(const InputState& input)
 {
-    // Deliver a finished backup/restore: the worker thread ran the copy off the
-    // main loop, so the result comes back here rather than inline. Raise the
-    // result overlay and skip input this frame (next frame routes to it).
+    // Re-read in case the Settings page toggled it while this screen was parked.
+    transferEnabled = Configuration::getInstance().transferEnabled();
+
     if (auto result = TransferJob::get().takeResult()) {
+        // A backup/restore changed one or more folders; drop every cached total so
+        // they get re-walked off-thread (a batch may have touched many titles).
+        BackupSizeCache::get().invalidateAll();
         if (result->ok) {
             currentOverlay = std::make_shared<InfoOverlay>(*this, result->successMsg);
+        }
+        else if (result->send) {
+            if (result->send->stage == Transfer::SendStage::EmptyBackup) {
+                currentOverlay = std::make_shared<InfoOverlay>(*this, "Selected backup is empty.");
+            }
+            else {
+                currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, sendErrorMessage(*result->send));
+            }
         }
         else {
             std::string message = result->isRestore ? restoreErrorMessage(result->stage, result->dataType.c_str())
@@ -532,17 +521,97 @@ void MainScreen::update(const InputState& input)
         return;
     }
 
-    // While a transfer runs on the worker, the loop keeps drawing the modal from
-    // TransferStatus; ignore input so nothing mutates underneath the copy.
     if (TransferJob::get().active()) {
         return;
     }
 
-    if (Transfer::consumePendingRefresh()) {
+    if (Transfer::consumePendingRefresh() || g_titlesDirty) {
+        g_titlesDirty = false;
         refreshTitlesFull();
     }
     updateSelector();
     handleEvents(input);
+
+    // Refresh the snapshot last so the frame drawn right after already shows the
+    // selection/kind changes the handlers above made.
+    refreshSelected();
+
+    // Kick off (or no-op) an off-thread size walk for the selected title; the
+    // cache coalesces repeats and refreshSelected() picks the total up through
+    // the generation bump once the worker lands it.
+    if (selected.valid) {
+        BackupSizeCache::get().request(selected.id, backupKind, selected.rootPath);
+    }
+}
+
+void MainScreen::refreshSelected(void)
+{
+    TitleCatalog& catalog = TitleCatalog::get();
+
+    // While the catalog reloads, show no detail card; the generation bump at the
+    // end of the load triggers the rebuild.
+    if (catalog.progress().active) {
+        if (selected.valid) {
+            selected.valid = false;
+            directoryList->clear();
+        }
+        return;
+    }
+
+    const u32 catalogGen = catalog.generation();
+    const u32 sizeGen    = BackupSizeCache::get().generation();
+    const size_t count   = (size_t)catalog.getTitleCount(backupKind);
+
+    if (selected.valid == (count > 0) && selected.fullIndex == hid.fullIndex() && selected.kind == backupKind && selected.catalogGen == catalogGen &&
+        selected.sizeGen == sizeGen) {
+        return; // snapshot still describes what is on screen
+    }
+
+    if (!selected.valid || selected.kind != backupKind || selected.catalogGen != catalogGen) {
+        gridFavorites.assign(count, 0);
+        for (size_t i = 0; i < count; i++) {
+            gridFavorites[i] = catalog.favorite(i, backupKind) ? 1 : 0;
+        }
+    }
+
+    selected.valid      = count > 0;
+    selected.fullIndex  = hid.fullIndex();
+    selected.kind       = backupKind;
+    selected.catalogGen = catalogGen;
+    selected.sizeGen    = sizeGen;
+
+    if (!selected.valid) {
+        directoryList->clear();
+        return;
+    }
+
+    Title title;
+    catalog.getTitle(title, selected.fullIndex, backupKind);
+    BackupTarget target = title.backup(backupKind);
+
+    selected.id          = title.id();
+    selected.rootPath    = target.rootPath();
+    selected.name        = title.shortDescription();
+    selected.cartId      = title.productCode[0] != '\0' ? std::string(title.productCode) : std::string("System title");
+    selected.mediaType   = title.mediaTypeString();
+    selected.favorite    = catalog.favorite(selected.fullIndex, backupKind);
+    selected.activityLog = title.isActivityLog();
+    selected.totalSize   = BackupSizeCache::get().total(selected.id, backupKind);
+
+    // Rows: entry 0 is the "New backup" affordance, the rest are existing
+    // backups labelled with their (async) size.
+    std::vector<std::u16string> dirs = target.backups();
+    directoryList->clear();
+    for (size_t i = 0; i < dirs.size(); i++) {
+        if (i == 0) {
+            directoryList->push_back("New backup", backupKind == BackupKind::Save ? "From current save" : "From current extdata", true);
+        }
+        else {
+            std::optional<u64> bs = BackupSizeCache::get().backupSize(target.fullPath(i));
+            directoryList->push_back(StringUtils::UTF16toUTF8(dirs.at(i)), bs.has_value() ? StringUtils::humanBytes(*bs) : std::string("…"), false);
+        }
+    }
+    selected.backupCount = dirs.empty() ? 0 : dirs.size() - 1; // entry 0 is "New..."
 }
 
 void MainScreen::refreshTitlesFull(void)
@@ -557,7 +626,6 @@ void MainScreen::refreshTitlesFull(void)
 void MainScreen::updateSelector(void)
 {
     if (TitleCatalog::get().progress().active) {
-        // Don't update selection while loading
         return;
     }
 
@@ -569,7 +637,7 @@ void MainScreen::updateSelector(void)
         }
     }
     else {
-        directoryList->updateSelection();
+        directoryList->update();
     }
 }
 
@@ -579,12 +647,9 @@ void MainScreen::doBackup(size_t fullIndex, size_t cellIndex)
     TitleCatalog::get().getTitle(title, fullIndex, backupKind);
     BackupTarget target = title.backup(backupKind);
 
-    // Resolve everything that needs the UI thread (keyboard prompt, data-type
-    // name) up front, then hand the owned Title to the worker via the job. The
-    // caller calls TransferJob::start() once all saves are enqueued.
     auto dst = chooseBackupDst(target, cellIndex);
     removeOverlay();
-    if (!dst) { // keyboard prompt cancelled
+    if (!dst) {
         return;
     }
 
@@ -606,18 +671,51 @@ void MainScreen::doRestore(size_t fullIndex, size_t cellIndex)
     TransferJob::get().enqueueRestore(std::move(title), backupKind, std::move(src), std::move(dataType), std::move(successMsg));
 }
 
+void MainScreen::requestRestore(size_t cellIndex)
+{
+    auto run = [this, cellIndex]() {
+        this->doRestore(hid.fullIndex(), cellIndex);
+        TransferJob::get().start();
+    };
+    if (Configuration::getInstance().confirmRestore()) {
+        currentOverlay = std::make_shared<YesNoOverlay>(*this, "Restore selected save?", run, [this]() { this->removeOverlay(); });
+    }
+    else {
+        run();
+    }
+}
+
 void MainScreen::handleEvents(const InputState& input)
 {
     u32 kDown = hidKeysDown();
     u32 kHeld = hidKeysHeld();
-    // Handle pressing A
-    // Backup list active:   Backup/Restore
-    // Backup list inactive: Activate backup list only if multiple
-    //                       selections are enabled
+
+    // SELECT opens Settings, but not while the catalog is still loading titles.
+    if ((kDown & KEY_SELECT) && !TitleCatalog::get().progress().active) {
+        g_pendingScreen = std::make_shared<SettingsScreen>(g_screen);
+        return;
+    }
+
+    // Touch the Save / Extdata segmented control in the bottom header to switch
+    // kinds. Geometry mirrors drawBottom() exactly so the hit box tracks the label.
+    if (selected.valid && (kDown & KEY_TOUCH)) {
+        const SegGeometry seg = segmentGeometry();
+        if (input.py >= seg.segY && input.py < seg.segY + seg.segH && input.px >= seg.segX && input.px < seg.segX + seg.width()) {
+            BackupKind want = input.px < seg.segX + seg.cellSaveW ? BackupKind::Save : BackupKind::Extdata;
+            if (want != backupKind) {
+                hid.reset();
+                backupKind            = want;
+                g_bottomScrollEnabled = false;
+                MS::clearSelectedEntries();
+                directoryList->resetIndex();
+                updateButtons();
+            }
+            return;
+        }
+    }
+
     if (kDown & KEY_A) {
-        // If backup list is active...
         if (g_bottomScrollEnabled) {
-            // If the "New..." entry is selected...
             if (0 == directoryList->index()) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Backup selected title?",
@@ -628,17 +726,10 @@ void MainScreen::handleEvents(const InputState& input)
                     [this]() { this->removeOverlay(); });
             }
             else {
-                currentOverlay = std::make_shared<YesNoOverlay>(
-                    *this, "Restore selected title?",
-                    [this]() {
-                        this->doRestore(hid.fullIndex(), directoryList->index());
-                        TransferJob::get().start();
-                    },
-                    [this]() { this->removeOverlay(); });
+                requestRestore(directoryList->index());
             }
         }
         else {
-            // Activate backup list only if multiple selections are not enabled
             if (!MS::multipleSelectionEnabled()) {
                 g_bottomScrollEnabled = true;
                 updateButtons();
@@ -656,7 +747,6 @@ void MainScreen::handleEvents(const InputState& input)
     if (kDown & KEY_X) {
         if (g_bottomScrollEnabled) {
             size_t index = directoryList->index();
-            // avoid actions if X is pressed on "New..."
             if (index > 0) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Delete selected backup?",
@@ -667,6 +757,8 @@ void MainScreen::handleEvents(const InputState& input)
                         io::deleteBackupFolder(path);
                         TitleCatalog::get().refreshDirectories(title.id());
                         directoryList->setIndex(index - 1);
+                        // Folder shrank; drop its cached size so it is re-walked off-thread.
+                        BackupSizeCache::get().invalidate(title.id(), backupKind, title.backup(backupKind).rootPath());
                         this->removeOverlay();
                     },
                     [this]() { this->removeOverlay(); });
@@ -686,7 +778,7 @@ void MainScreen::handleEvents(const InputState& input)
             g_bottomScrollEnabled = false;
         }
         MS::addSelectedEntry(hid.fullIndex());
-        updateButtons(); // Do this last
+        updateButtons();
     }
 
     if (kHeld & KEY_Y) {
@@ -732,12 +824,16 @@ void MainScreen::handleEvents(const InputState& input)
             });
     }
 
-    if (buttonBackup->released() || (kDown & KEY_L)) {
-        if (MS::multipleSelectionEnabled()) {
+    // From the snapshot the current frame was drawn from, so input maps to the
+    // buttons the user actually sees.
+    const bool activityLog = selected.valid && selected.activityLog;
+
+    if (MS::multipleSelectionEnabled()) {
+        // One large Backup button (touch or A) backs up the whole tagged batch;
+        // it replaces the per-title Backup/Restore pair while multi-selecting.
+        if (buttonBackupAll->released() || (kDown & KEY_A) || (kDown & KEY_L)) {
             directoryList->resetIndex();
             std::vector<size_t> list = MS::selectedEntries();
-            // Enqueue every selected save, then start the worker once. The job
-            // drains them in order and the modal's overall bar tracks the batch.
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
                 doBackup(list.at(i), directoryList->index());
             }
@@ -745,101 +841,63 @@ void MainScreen::handleEvents(const InputState& input)
             MS::clearSelectedEntries();
             updateButtons();
         }
-        else if (g_bottomScrollEnabled) {
-            currentOverlay = std::make_shared<YesNoOverlay>(
-                *this, "Backup selected save?",
-                [this]() {
-                    this->doBackup(hid.fullIndex(), directoryList->index());
-                    TransferJob::get().start();
-                },
-                [this]() { this->removeOverlay(); });
-        }
     }
-
-    if (buttonRestore->released() || (kDown & KEY_R)) {
-        size_t cellIndex = directoryList->index();
-        if (MS::multipleSelectionEnabled()) {
-            MS::clearSelectedEntries();
-            updateButtons();
+    else {
+        if ((activityLog ? buttonBackupAL : buttonBackup)->released() || (kDown & KEY_L)) {
+            if (g_bottomScrollEnabled) {
+                currentOverlay = std::make_shared<YesNoOverlay>(
+                    *this, "Backup selected save?",
+                    [this]() {
+                        this->doBackup(hid.fullIndex(), directoryList->index());
+                        TransferJob::get().start();
+                    },
+                    [this]() { this->removeOverlay(); });
+            }
         }
-        else if (g_bottomScrollEnabled && cellIndex > 0) {
-            currentOverlay = std::make_shared<YesNoOverlay>(
-                *this, "Restore selected save?",
-                [this, cellIndex]() {
-                    this->doRestore(hid.fullIndex(), cellIndex);
-                    TransferJob::get().start();
-                },
-                [this]() { this->removeOverlay(); });
-        }
-    }
 
-    if (TitleCatalog::get().getTitleCount(backupKind) > 0) {
-        Title title;
-        TitleCatalog::get().getTitle(title, hid.fullIndex(), backupKind);
-        if ((title.isActivityLog() && buttonPlayCoins->released()) || ((hidKeysDown() & KEY_TOUCH) && input.py < 20 && input.px > 294)) {
-            if (!Archive::setPlayCoins()) {
-                currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");
+        if ((activityLog ? buttonRestoreAL : buttonRestore)->released() || (kDown & KEY_R)) {
+            size_t cellIndex = directoryList->index();
+            if (g_bottomScrollEnabled && cellIndex > 0) {
+                requestRestore(cellIndex);
             }
         }
     }
-}
 
-int MainScreen::selectorX(size_t i) const
-{
-    return 50 * ((i % (rowlen * collen)) % collen);
-}
-
-int MainScreen::selectorY(size_t i) const
-{
-    return 20 + 50 * ((i % (rowlen * collen)) / collen);
-}
-
-void MainScreen::drawSelector(void) const
-{
-    static const int w         = 2;
-    const int x                = selectorX(hid.index());
-    const int y                = selectorY(hid.index());
-    float highlight_multiplier = fmax(0.0, fabs(fmod(g_timer, 1.0) - 0.5) / 0.5);
-    u8 r                       = COLOR_PURPLE_LIGHT & 0xFF;
-    u8 g                       = (COLOR_PURPLE_LIGHT >> 8) & 0xFF;
-    u8 b                       = (COLOR_PURPLE_LIGHT >> 16) & 0xFF;
-    u32 color = C2D_Color32(r + (255 - r) * highlight_multiplier, g + (255 - g) * highlight_multiplier, b + (255 - b) * highlight_multiplier, 255);
-
-    C2D_DrawRectSolid(x, y, 0.5f, 50, 50, COLOR_WHITEMASK);
-    C2D_DrawRectSolid(x, y, 0.5f, 50, w, color);                      // top
-    C2D_DrawRectSolid(x, y + w, 0.5f, w, 50 - 2 * w, color);          // left
-    C2D_DrawRectSolid(x + 50 - w, y + w, 0.5f, w, 50 - 2 * w, color); // right
-    C2D_DrawRectSolid(x, y + 50 - w, 0.5f, 50, w, color);             // bottom
+    if (activityLog && buttonPlayCoins->released()) {
+        if (!Archive::setPlayCoins()) {
+            currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");
+        }
+    }
 }
 
 void MainScreen::updateButtons(void)
 {
     if (MS::multipleSelectionEnabled()) {
-        buttonRestore->canChangeColorWhenSelected(true);
-        buttonRestore->canChangeColorWhenSelected(false);
-        buttonPlayCoins->canChangeColorWhenSelected(false);
-        buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
-        buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
-        buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonBackup->setColors(COLOR_ACCENT, COLOR_WHITE);
+        buttonRestore->setColors(COLOR_RAISED, COLOR_MUTED);
+        buttonPlayCoins->setColors(COLOR_RAISED, COLOR_MUTED);
+        buttonBackupAL->setColors(COLOR_ACCENT, COLOR_WHITE);
+        buttonRestoreAL->setColors(COLOR_RAISED, COLOR_MUTED);
     }
     else if (g_bottomScrollEnabled) {
-        buttonBackup->canChangeColorWhenSelected(true);
-        buttonRestore->canChangeColorWhenSelected(true);
-        buttonPlayCoins->canChangeColorWhenSelected(true);
-        buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
-        buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
-        buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_WHITE);
+        buttonBackup->setColors(COLOR_ACCENT, COLOR_WHITE);
+        buttonRestore->setColors(COLOR_RAISED, COLOR_TEXT);
+        buttonPlayCoins->setColors(COLOR_RAISED, COLOR_TEXT);
+        buttonBackupAL->setColors(COLOR_ACCENT, COLOR_WHITE);
+        buttonRestoreAL->setColors(COLOR_RAISED, COLOR_TEXT);
     }
     else {
-        buttonBackup->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
-        buttonRestore->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
-        buttonPlayCoins->setColors(COLOR_BLACK_DARKERR, COLOR_GREY_LIGHT);
+        buttonBackup->setColors(COLOR_ACCENT, COLOR_WHITE);
+        buttonRestore->setColors(COLOR_RAISED, COLOR_TEXT);
+        buttonPlayCoins->setColors(COLOR_RAISED, COLOR_TEXT);
+        buttonBackupAL->setColors(COLOR_ACCENT, COLOR_WHITE);
+        buttonRestoreAL->setColors(COLOR_RAISED, COLOR_TEXT);
     }
 }
 
 std::string MainScreen::nameFromCell(size_t index) const
 {
-    return directoryList->cellName(index);
+    return directoryList->name(index);
 }
 
 void MainScreen::startTransferSend(void)
@@ -883,25 +941,17 @@ void MainScreen::startTransferSend(void)
     if (pin.empty()) {
         return;
     }
-    // The receiver always generates a 4-digit PIN, so require exactly 4 here;
-    // a longer PIN could never match.
     bool pinOk = pin.size() == 4 && std::all_of(pin.begin(), pin.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
     if (!pinOk) {
         currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "PIN must be 4 digits.");
         return;
     }
 
-    // Legacy screen (slated for deletion): still sends synchronously on the UI
-    // thread, now through the typed outcome.
-    std::string dataType         = target.dataTypeName();
-    Transfer::SendOutcome result = Transfer::sendBackup(title, backupPath, backupName, dataType, ip, (u16)port, pin);
-    if (result.ok) {
-        currentOverlay = std::make_shared<InfoOverlay>(*this, "Transfer completed.");
-    }
-    else if (result.stage == Transfer::SendStage::EmptyBackup) {
-        currentOverlay = std::make_shared<InfoOverlay>(*this, "Selected backup is empty.");
-    }
-    else {
-        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, result.detail.empty() ? "Transfer failed." : result.detail);
-    }
+    // Keyboard + validation happened above on the UI thread; the blocking IO
+    // (zip + socket) runs on the TransferJob worker. Title and params go by
+    // value so nothing here needs to outlive this frame.
+    std::string dataType = target.dataTypeName();
+    TransferJob::get().enqueueSend(
+        std::move(title), std::move(backupPath), std::move(backupName), std::move(dataType), std::move(ip), (u16)port, std::move(pin));
+    TransferJob::get().start();
 }

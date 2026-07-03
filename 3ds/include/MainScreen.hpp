@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #ifndef MAINSCREEN_HPP
 #define MAINSCREEN_HPP
 
+#include "BackupList.hpp"
 #include "ErrorOverlay.hpp"
 #include "InfoOverlay.hpp"
 #include "Screen.hpp"
@@ -36,57 +37,87 @@
 #include "clickable.hpp"
 #include "gui.hpp"
 #include "multiselection.hpp"
-#include "scrollable.hpp"
 #include "thread.hpp"
 #include <algorithm>
 #include <memory>
+#include <optional>
+#include <string>
 #include <tuple>
+#include <vector>
 
+class Title;
+
+// v4 redesign of the main page: top = title library grid, bottom = title detail
+// (backups list + actions). The backend wiring mirrors MainScreen exactly; only
+// the presentation differs. Built as a parallel Screen so both can coexist while
+// the redesign is wired up gradually.
 class MainScreen : public Screen {
 public:
     MainScreen(void);
-    ~MainScreen(void);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
 
 protected:
-    int selectorX(size_t i) const;
-    int selectorY(size_t i) const;
+    int cellX(size_t i) const;
+    int cellY(size_t i) const;
     void drawSelector(void) const;
+    void drawTile(size_t k) const;
     void handleEvents(const InputState& input);
     void updateSelector(void);
     void updateButtons(void);
     void refreshTitlesFull(void);
     std::string nameFromCell(size_t index) const;
     void startTransferSend(void);
-    // Resolve the title, pick the destination/source path (prompting the keyboard
-    // for a new backup folder), run the io operation and raise the result overlay.
+    // Rebuilds the SelectedTitle snapshot (and the grid favorite pips) when the
+    // selection, backup kind, catalog generation, or size-cache generation moved
+    // since the last frame; no-op otherwise. Also rebuilds directoryList's rows.
+    void refreshSelected(void);
     void doBackup(size_t fullIndex, size_t cellIndex);
     void doRestore(size_t fullIndex, size_t cellIndex);
+    // Runs a restore of the current title's cellIndex backup, gated by the
+    // "Confirm before restore" setting: shows a Yes/No prompt when enabled,
+    // otherwise restores immediately.
+    void requestRestore(size_t cellIndex);
 
 private:
     Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
     std::unique_ptr<Clickable> buttonBackup, buttonRestore, buttonPlayCoins, buttonTransfer;
-    std::unique_ptr<Scrollable> directoryList;
-    char ver[10];
+    std::unique_ptr<Clickable> buttonBackupAL, buttonRestoreAL; // narrower Backup/Restore laid out alongside Coins on Activity Log
+    std::unique_ptr<Clickable> buttonBackupAll;                 // full-width batch Backup shown in multi-select, replacing the two action buttons
+    std::unique_ptr<BackupList> directoryList;
+    std::string ver;
 
-    C2D_Text ins1, ins2, ins3, ins4, c2dId, c2dMediatype;
-    C2D_Text checkpoint, version;
-    // instructions text
-    C2D_Text top_move, top_a, top_y, top_my, top_b, top_hb, bot_ts, bot_x, coins;
-    C2D_TextBuf dynamicBuf, staticBuf;
-
-    const float scaleInst = 0.7f;
-    C2D_ImageTint checkboxTint;
-    C2D_ImageTint flagTint;
+    C2D_ImageTint flagTint;     // teal brand mark
+    C2D_ImageTint checkboxTint; // dark check on the multi-select badge
+    C2D_ImageTint starTint;     // dark star on the gold favorite pip
     int selectionTimer;
     int refreshTimer;
     bool transferEnabled;
-    // Which backup facet the UI is currently showing. The single owner of this
-    // selection (there is no global mode flag); toggled by the user and passed
-    // down to the loader and io layers explicitly.
     BackupKind backupKind = BackupKind::Save;
+
+    // Value snapshot of everything the detail card (and the grid favorite pips)
+    // needs, rebuilt by refreshSelected() in update() only when its inputs move.
+    // draw*() read this and never query TitleCatalog/BackupSizeCache themselves,
+    // so drawing takes no locks and copies no Title.
+    struct SelectedTitle {
+        bool valid       = false;
+        size_t fullIndex = 0;
+        BackupKind kind  = BackupKind::Save;
+        u32 catalogGen   = 0; // TitleCatalog::generation() at snapshot time
+        u32 sizeGen      = 0; // BackupSizeCache::generation() at snapshot time
+        u64 id           = 0;
+        std::u16string rootPath; // backup root, for the async size-walk request
+        std::string name;        // shortDescription
+        std::string cartId;      // productCode or "System title"
+        std::string mediaType;
+        bool favorite      = false;
+        bool activityLog   = false;
+        size_t backupCount = 0;       // existing backups (entry 0 "New..." excluded)
+        std::optional<u64> totalSize; // async total; nullopt while computing
+    };
+    SelectedTitle selected;
+    std::vector<u8> gridFavorites; // favorite pip per title of the current kind
 };
 
 #endif

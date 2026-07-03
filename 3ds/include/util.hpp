@@ -55,6 +55,10 @@ namespace StringUtils {
     float textWidth(const C2D_Text& text, float scaleX);
     std::string wrap(const std::string& text, float scaleX, float maxWidth);
     float textHeight(const std::string& text, float scaleY);
+    // Human-readable byte count (B / KB / MB / GB, one decimal above bytes).
+    std::string humanBytes(u64 bytes);
+    // The app version as "vMAJOR.MINOR.MICRO".
+    std::string versionString(void);
 }
 
 #endif

@@ -24,8 +24,8 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef SETTINGSSCREENV4_HPP
-#define SETTINGSSCREENV4_HPP
+#ifndef SETTINGSSCREEN_HPP
+#define SETTINGSSCREEN_HPP
 
 #include "Screen.hpp"
 #include "hid.hpp"
@@ -48,9 +48,9 @@
 //
 // Opened as a full Screen swapped into g_screen; the parent (main page) is kept
 // alive through mParent so leaving Settings restores it with its state intact.
-class SettingsScreenV4 : public Screen {
+class SettingsScreen : public Screen {
 public:
-    explicit SettingsScreenV4(std::shared_ptr<Screen> parent);
+    explicit SettingsScreen(std::shared_ptr<Screen> parent);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;

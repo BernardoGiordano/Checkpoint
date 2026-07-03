@@ -139,9 +139,6 @@ Result servicesInit(void)
         ATEXIT(TitleCatalog::clearCartScanFlag);
     }
 
-    // consoleDebugInit(debugDevice_SVC);
-    // while (aptMainLoop() && !(hidKeysDown() & KEY_START)) { hidScanInput(); }
-
     Logging::info("Checkpoint loading finished!");
 
     return 0;
@@ -342,9 +339,8 @@ std::string StringUtils::wrap(const std::string& text, float scaleX, float maxWi
         }
     }
 
-    // "Another iteration" of the loop b/c it probably won't end with a space
-    // If it does, no harm done
-    // word = StringUtils::splitWord(word, scaleX, maxWidth);
+    // "Another iteration" of the loop b/c it probably won't end with a space.
+    // If it does, no harm done.
     if (StringUtils::textWidth(line + word, scaleX) <= maxWidth) {
         dst += line + word;
     }
@@ -369,4 +365,23 @@ float StringUtils::textHeight(const std::string& text, float scaleY)
 {
     size_t n = std::count(text.begin(), text.end(), '\n') + 1;
     return ceilf(scaleY * fontGetInfo(NULL)->lineFeed * n);
+}
+
+std::string StringUtils::humanBytes(u64 bytes)
+{
+    if (bytes >= 1024ull * 1024ull * 1024ull) {
+        return StringUtils::format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0));
+    }
+    if (bytes >= 1024ull * 1024ull) {
+        return StringUtils::format("%.1f MB", bytes / (1024.0 * 1024.0));
+    }
+    if (bytes >= 1024ull) {
+        return StringUtils::format("%.1f KB", bytes / 1024.0);
+    }
+    return StringUtils::format("%llu B", bytes);
+}
+
+std::string StringUtils::versionString(void)
+{
+    return StringUtils::format("v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 }

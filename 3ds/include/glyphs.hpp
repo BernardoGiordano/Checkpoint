@@ -24,32 +24,14 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef SCROLLABLE_HPP
-#define SCROLLABLE_HPP
+#ifndef GLYPHS_HPP
+#define GLYPHS_HPP
 
-#include "clickable.hpp"
-#include "colors.hpp"
-#include "hid.hpp"
-#include "iscrollable.hpp"
-#include "main.hpp"
-#include <citro2d.h>
-#include <vector>
-
-class Scrollable : public IScrollable<u32> {
-public:
-    Scrollable(int x, int y, u32 w, u32 h, size_t visibleEntries) : IScrollable(x, y, w, h, visibleEntries), mHid(visibleEntries, 1) {}
-
-    virtual ~Scrollable() = default;
-
-    void c2dText(size_t i, const std::string& v);
-    void draw(bool condition = false) override;
-    void setIndex(size_t i);
-    void push_back(u32 color, u32 colorMessage, const std::string& message, bool selected) override;
-    void resetIndex(void) override;
-    void updateSelection(void) override;
-
-protected:
-    Hid<HidDirection::VERTICAL, HidDirection::HORIZONTAL> mHid;
-};
+inline constexpr const char* GLYPH_A     = "\xEE\x80\x80"; // U+E000
+inline constexpr const char* GLYPH_B     = "\xEE\x80\x81"; // U+E001
+inline constexpr const char* GLYPH_X     = "\xEE\x80\x82"; // U+E002
+inline constexpr const char* GLYPH_Y     = "\xEE\x80\x83"; // U+E003
+inline constexpr const char* GLYPH_DPAD  = "\xEE\x80\x86"; // U+E006
+inline constexpr const char* GLYPH_EMPTY = "\xEE\x80\x8B"; // U+E00B sleepy emoticon (empty-state mark)
 
 #endif

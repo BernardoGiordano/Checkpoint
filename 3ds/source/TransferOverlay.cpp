@@ -37,8 +37,8 @@ TransferMenuOverlay::TransferMenuOverlay(Screen& screen, const std::function<voi
     sendFunc    = callbackSend;
     receiveFunc = callbackReceive;
 
-    buttonSend    = std::make_unique<Clickable>(46, 142, 110, 32, COLOR_V4_ACCENT, COLOR_WHITE, "Send", true);
-    buttonReceive = std::make_unique<Clickable>(164, 142, 110, 32, COLOR_V4_RAISED, COLOR_V4_TEXT, "Receive", true);
+    buttonSend    = std::make_unique<Clickable>(46, 142, 110, 32, COLOR_ACCENT, COLOR_WHITE, "Send", true);
+    buttonReceive = std::make_unique<Clickable>(164, 142, 110, 32, COLOR_RAISED, COLOR_TEXT, "Receive", true);
 }
 
 void TransferMenuOverlay::drawTop(void) const
@@ -49,18 +49,18 @@ void TransferMenuOverlay::drawTop(void) const
 void TransferMenuOverlay::drawBottom(void) const
 {
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(34, 54, 0.5f, 252, 132, COLOR_V4_CARD);
-    Gui::drawOutline(34, 54, 252, 132, 2, COLOR_V4_LINE);
-    TextPool::get().drawCentered("Choose Send or Receive", 0, 320, 84, 0.55f, COLOR_V4_TEXT);
+    C2D_DrawRectSolid(34, 54, 0.5f, 252, 132, COLOR_CARD);
+    Gui::drawOutline(34, 54, 252, 132, 2, COLOR_LINE);
+    TextPool::get().drawCentered("Choose Send or Receive", 0, 320, 84, 0.55f, COLOR_TEXT);
 
-    buttonSend->draw(0.55f, COLOR_V4_RING);
-    buttonReceive->draw(0.55f, COLOR_V4_RING);
+    buttonSend->draw(0.55f, COLOR_RING);
+    buttonReceive->draw(0.55f, COLOR_RING);
 
     if (hid.index() == 0) {
-        Gui::drawPulsingOutline(46, 142, 110, 32, 2, COLOR_V4_RING);
+        Gui::drawPulsingOutline(46, 142, 110, 32, 2, COLOR_RING);
     }
     else {
-        Gui::drawPulsingOutline(164, 142, 110, 32, 2, COLOR_V4_RING);
+        Gui::drawPulsingOutline(164, 142, 110, 32, 2, COLOR_RING);
     }
 }
 
@@ -96,8 +96,8 @@ void ReceiveOverlay::drawBottom(void) const
 {
     TextPool& text = TextPool::get();
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(30, 40, 0.5f, 260, 160, COLOR_V4_CARD);
-    Gui::drawOutline(30, 40, 260, 160, 2, COLOR_V4_LINE);
+    C2D_DrawRectSolid(30, 40, 0.5f, 260, 160, COLOR_CARD);
+    Gui::drawOutline(30, 40, 260, 160, 2, COLOR_LINE);
 
     TransferSnapshot ts      = TransferStatus::snapshot();
     const bool networkActive = ts.active && ts.kind == TransferKind::Network;
@@ -109,15 +109,15 @@ void ReceiveOverlay::drawBottom(void) const
             backupName = "(unnamed backup)";
         }
 
-        text.draw("File received", 40, 60, 0.65f, COLOR_V4_TEXT);
-        text.draw(backupName, 40, 92, 0.52f, COLOR_V4_MUTED);
+        text.draw("File received", 40, 60, 0.65f, COLOR_TEXT);
+        text.draw(backupName, 40, 92, 0.52f, COLOR_MUTED);
 
         std::string notice = Transfer::receiverNotice();
         if (!notice.empty()) {
-            text.draw(notice, 40, 122, 0.45f, COLOR_V4_MUTED);
+            text.draw(notice, 40, 122, 0.45f, COLOR_MUTED);
         }
 
-        text.draw("Press A (OK) to refresh now", 40, 170, 0.5f, COLOR_V4_MUTED);
+        text.draw("Press A (OK) to refresh now", 40, 170, 0.5f, COLOR_MUTED);
         return;
     }
 
@@ -130,7 +130,7 @@ void ReceiveOverlay::drawBottom(void) const
         info = "Receiver stopped";
     }
 
-    text.draw(info, 40, 60, 0.55f, COLOR_V4_TEXT);
+    text.draw(info, 40, 60, 0.55f, COLOR_TEXT);
 
     int noticeY = 120;
     if (networkActive) {
@@ -138,16 +138,16 @@ void ReceiveOverlay::drawBottom(void) const
         int pct            = total > 0 ? (int)((done * 100) / total) : 0;
         std::string prefix = ts.mode.empty() ? "Downloading backup" : ts.mode;
         std::string status = StringUtils::format("%s... %d%% (%s)", prefix.c_str(), pct, TransferStatus::bytesToMB(done, total).c_str());
-        text.draw(status, 40, 120, 0.5f, COLOR_V4_MUTED);
+        text.draw(status, 40, 120, 0.5f, COLOR_MUTED);
         noticeY = 142;
     }
 
     std::string notice = Transfer::receiverNotice();
     if (!notice.empty()) {
-        text.draw(notice, 40, noticeY, 0.45f, COLOR_V4_MUTED);
+        text.draw(notice, 40, noticeY, 0.45f, COLOR_MUTED);
     }
 
-    text.draw("Press B to close", 40, 170, 0.5f, COLOR_V4_MUTED);
+    text.draw("Press B to close", 40, 170, 0.5f, COLOR_MUTED);
 }
 
 void ReceiveOverlay::update(const InputState& input)

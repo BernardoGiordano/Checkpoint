@@ -29,7 +29,7 @@
 
 InfoOverlay::InfoOverlay(Screen& screen, const std::string& mtext) : Overlay(screen)
 {
-    button = std::make_unique<Clickable>(46, 142, 228, 32, COLOR_V4_ACCENT, COLOR_WHITE, " OK", true);
+    button = std::make_unique<Clickable>(46, 142, 228, 32, COLOR_ACCENT, COLOR_WHITE, " OK", true);
     button->selected(true);
     text = StringUtils::wrap(mtext, size, 220);
     posx = ceilf((320 - StringUtils::textWidth(text, size)) / 2);
@@ -44,11 +44,11 @@ void InfoOverlay::drawTop(void) const
 void InfoOverlay::drawBottom(void) const
 {
     C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(34, 54, 0.5f, 252, 132, COLOR_V4_CARD);
-    Gui::drawOutline(34, 54, 252, 132, 2, COLOR_V4_LINE);
-    TextPool::get().draw(text, posx, posy, size, COLOR_V4_TEXT);
-    button->draw(0.55f, COLOR_V4_RING);
-    Gui::drawPulsingOutline(46, 142, 228, 32, 2, COLOR_V4_RING);
+    C2D_DrawRectSolid(34, 54, 0.5f, 252, 132, COLOR_CARD);
+    Gui::drawOutline(34, 54, 252, 132, 2, COLOR_LINE);
+    TextPool::get().draw(text, posx, posy, size, COLOR_TEXT);
+    button->draw(0.55f, COLOR_RING);
+    Gui::drawPulsingOutline(46, 142, 228, 32, 2, COLOR_RING);
 }
 
 void InfoOverlay::update(const InputState& input)

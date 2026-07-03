@@ -24,10 +24,11 @@
  *         reasonable ways as different from the original version.
  */
 
-#include "SettingsScreenV4.hpp"
+#include "SettingsScreen.hpp"
 #include "FolderBrowserOverlay.hpp"
 #include "TitlePickerOverlay.hpp"
 #include "configuration.hpp"
+#include "glyphs.hpp"
 #include "gui.hpp"
 #include "loader.hpp"
 #include "main.hpp"
@@ -37,13 +38,6 @@
 #include "util.hpp"
 #include <3ds.h>
 #include <sys/statvfs.h>
-
-static const char* GLYPH_A     = "\xEE\x80\x80"; // U+E000
-static const char* GLYPH_B     = "\xEE\x80\x81"; // U+E001
-static const char* GLYPH_X     = "\xEE\x80\x82"; // U+E002
-static const char* GLYPH_Y     = "\xEE\x80\x83"; // U+E003
-static const char* GLYPH_DPAD  = "\xEE\x80\x86"; // U+E006
-static const char* GLYPH_EMPTY = "\xEE\x80\x8B"; // U+E00B sleepy emoticon (empty-state mark)
 
 // Section indices, used across draw/update.
 enum SectionId { SEC_GENERAL = 0, SEC_LIBRARY, SEC_FOLDERS, SEC_NETWORK, SEC_ABOUT };
@@ -113,10 +107,10 @@ namespace {
         Configuration& cfg = Configuration::getInstance();
         std::vector<Row> rows;
         for (u64 id : cfg.favoriteIds()) {
-            rows.push_back({titleName(id), "Favorite", COLOR_V4_GOLD, RM_FAVORITE, id, 0});
+            rows.push_back({titleName(id), "Favorite", COLOR_GOLD, RM_FAVORITE, id, 0});
         }
         for (u64 id : cfg.filterIds()) {
-            rows.push_back({titleName(id), "Hidden", COLOR_V4_FAINT, RM_FILTER, id, 0});
+            rows.push_back({titleName(id), "Hidden", COLOR_FAINT, RM_FILTER, id, 0});
         }
         return rows;
     }
@@ -127,40 +121,30 @@ namespace {
         std::vector<Row> rows;
         for (auto& entry : cfg.saveFolders()) {
             for (size_t i = 0; i < entry.second.size(); i++) {
-                rows.push_back({titleName(entry.first), StringUtils::UTF16toUTF8(entry.second[i]), COLOR_V4_TEAL, RM_SAVE_FOLDER, entry.first, i});
+                rows.push_back({titleName(entry.first), StringUtils::UTF16toUTF8(entry.second[i]), COLOR_TEAL, RM_SAVE_FOLDER, entry.first, i});
             }
         }
         for (auto& entry : cfg.extdataFolders()) {
             for (size_t i = 0; i < entry.second.size(); i++) {
-                rows.push_back({titleName(entry.first), StringUtils::UTF16toUTF8(entry.second[i]), COLOR_V4_BLUE, RM_EXTDATA_FOLDER, entry.first, i});
+                rows.push_back({titleName(entry.first), StringUtils::UTF16toUTF8(entry.second[i]), COLOR_BLUE, RM_EXTDATA_FOLDER, entry.first, i});
             }
         }
         return rows;
     }
 
-    std::string humanSize(u64 bytes)
-    {
-        if (bytes >= 1024ull * 1024ull * 1024ull) {
-            return StringUtils::format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0));
-        }
-        if (bytes >= 1024ull * 1024ull) {
-            return StringUtils::format("%.0f MB", bytes / (1024.0 * 1024.0));
-        }
-        return StringUtils::format("%.0f KB", bytes / 1024.0);
-    }
 }
 
-SettingsScreenV4::SettingsScreenV4(std::shared_ptr<Screen> parent) : mParent(std::move(parent)), navHid(SECTION_COUNT, 1)
+SettingsScreen::SettingsScreen(std::shared_ptr<Screen> parent) : mParent(std::move(parent)), navHid(SECTION_COUNT, 1)
 {
-    C2D_PlainImageTint(&flagTint, COLOR_V4_TEAL, 1.0f);
+    C2D_PlainImageTint(&flagTint, COLOR_TEAL, 1.0f);
 }
 
-bool SettingsScreenV4::sectionInteractive(size_t section) const
+bool SettingsScreen::sectionInteractive(size_t section) const
 {
     return section == SEC_GENERAL || section == SEC_LIBRARY || section == SEC_FOLDERS;
 }
 
-size_t SettingsScreenV4::contentRowCount(size_t section) const
+size_t SettingsScreen::contentRowCount(size_t section) const
 {
     switch (section) {
         case SEC_GENERAL:
@@ -174,18 +158,18 @@ size_t SettingsScreenV4::contentRowCount(size_t section) const
     }
 }
 
-void SettingsScreenV4::drawHints(int screenW, int y, const std::string& text) const
+void SettingsScreen::drawHints(int screenW, int y, const std::string& text) const
 {
-    TextPool::get().drawCentered(text, 0, screenW, y, 0.47f, COLOR_V4_MUTED);
+    TextPool::get().drawCentered(text, 0, screenW, y, 0.47f, COLOR_MUTED);
 }
 
-void SettingsScreenV4::drawScrollbar(int totalRows) const
+void SettingsScreen::drawScrollbar(int totalRows) const
 {
     if (totalRows <= VISIBLE_ROWS) {
         return;
     }
     const int trackX = 315, trackY = 30, trackH = VISIBLE_ROWS * 34 - 2;
-    C2D_DrawRectSolid(trackX, trackY, 0.5f, 3, trackH, COLOR_V4_LINE);
+    C2D_DrawRectSolid(trackX, trackY, 0.5f, 3, trackH, COLOR_LINE);
     const float frac = (float)VISIBLE_ROWS / (float)totalRows;
     int thumbH       = (int)(trackH * frac);
     if (thumbH < 12) {
@@ -193,76 +177,76 @@ void SettingsScreenV4::drawScrollbar(int totalRows) const
     }
     const float posFrac = (float)contentOffset / (float)(totalRows - VISIBLE_ROWS);
     const int thumbY    = trackY + (int)((trackH - thumbH) * posFrac);
-    C2D_DrawRectSolid(trackX, thumbY, 0.5f, 3, thumbH, COLOR_V4_ACCENT);
+    C2D_DrawRectSolid(trackX, thumbY, 0.5f, 3, thumbH, COLOR_ACCENT);
 }
 
-void SettingsScreenV4::drawToggleRow(int y, const char* name, const char* sub, bool on, bool focused) const
+void SettingsScreen::drawToggleRow(int y, const char* name, const char* sub, bool on, bool focused) const
 {
     const int rowH = 32;
     if (focused) {
         C2D_DrawRectSolid(6, y, 0.5f, 308, rowH, C2D_Color32(122, 66, 196, 40));
-        Gui::drawOutline(6, y, 308, rowH, 1, COLOR_V4_ACCENT);
+        Gui::drawOutline(6, y, 308, rowH, 1, COLOR_ACCENT);
     }
-    TextPool::get().draw(name, 14, y + 4, 0.44f, COLOR_V4_TEXT);
-    TextPool::get().draw(sub, 14, y + 18, 0.36f, COLOR_V4_FAINT);
+    TextPool::get().draw(name, 14, y + 4, 0.44f, COLOR_TEXT);
+    TextPool::get().draw(sub, 14, y + 18, 0.36f, COLOR_FAINT);
 
     // Rectangular toggle, right-aligned: a track with a sliding square knob.
     const int tw = 34, th = 18, tx = 320 - 14 - tw, ty = y + (rowH - th) / 2;
-    C2D_DrawRectSolid(tx, ty, 0.5f, tw, th, on ? COLOR_V4_ACCENT : COLOR_V4_RAISED);
+    C2D_DrawRectSolid(tx, ty, 0.5f, tw, th, on ? COLOR_ACCENT : COLOR_RAISED);
     const int knob = 14, kpad = 2;
     const int knobX = on ? tx + tw - kpad - knob : tx + kpad;
     // Knob contrasts with its track in both themes: white on the accent fill when
     // on, a muted grey on the raised track when off (white-on-light-grey is unreadable).
-    C2D_DrawRectSolid(knobX, ty + kpad, 0.6f, knob, th - 2 * kpad, on ? COLOR_WHITE : COLOR_V4_MUTED);
+    C2D_DrawRectSolid(knobX, ty + kpad, 0.6f, knob, th - 2 * kpad, on ? COLOR_WHITE : COLOR_MUTED);
 }
 
-void SettingsScreenV4::drawListRow(int y, const std::string& primary, const std::string& secondary, u32 pipColor, bool focused, bool removable) const
+void SettingsScreen::drawListRow(int y, const std::string& primary, const std::string& secondary, u32 pipColor, bool focused, bool removable) const
 {
     const int rowH = 32;
     if (focused) {
         C2D_DrawRectSolid(6, y, 0.5f, 308, rowH, C2D_Color32(122, 66, 196, 40));
-        Gui::drawOutline(6, y, 308, rowH, 1, COLOR_V4_ACCENT);
+        Gui::drawOutline(6, y, 308, rowH, 1, COLOR_ACCENT);
     }
     C2D_DrawRectSolid(14, y + (rowH - 7) / 2, 0.5f, 7, 7, pipColor);
-    TextPool::get().draw(TextPool::get().truncate(primary, 250, 0.44f), 28, y + 4, 0.44f, COLOR_V4_TEXT);
-    TextPool::get().draw(TextPool::get().truncate(secondary, 270, 0.36f), 28, y + 18, 0.36f, COLOR_V4_FAINT);
+    TextPool::get().draw(TextPool::get().truncate(primary, 250, 0.44f), 28, y + 4, 0.44f, COLOR_TEXT);
+    TextPool::get().draw(TextPool::get().truncate(secondary, 270, 0.36f), 28, y + 18, 0.36f, COLOR_FAINT);
     if (removable && focused) {
         std::string tag = std::string(GLYPH_X);
         float w         = TextPool::get().width(tag, 0.44f);
-        TextPool::get().draw(tag, 320 - 14 - w, y + 8, 0.44f, COLOR_V4_DANGER);
+        TextPool::get().draw(tag, 320 - 14 - w, y + 8, 0.44f, COLOR_DANGER);
     }
 }
 
-void SettingsScreenV4::drawEmptyState(const char* title, const char* body) const
+void SettingsScreen::drawEmptyState(const char* title, const char* body) const
 {
-    C2D_DrawRectSolid(140, 74, 0.5f, 40, 40, COLOR_V4_CARD);
-    Gui::drawOutline(140, 74, 40, 40, 1, COLOR_V4_LINE);
+    C2D_DrawRectSolid(140, 74, 0.5f, 40, 40, COLOR_CARD);
+    Gui::drawOutline(140, 74, 40, 40, 1, COLOR_LINE);
     const float gw = TextPool::get().width(GLYPH_EMPTY, 0.7f);
     const float lf = fontGetInfo(NULL)->lineFeed;
-    TextPool::get().draw(GLYPH_EMPTY, 140 + (40 - gw) / 2, 74 + (40 - 0.7f * lf) / 2, 0.7f, COLOR_V4_FAINT);
+    TextPool::get().draw(GLYPH_EMPTY, 140 + (40 - gw) / 2, 74 + (40 - 0.7f * lf) / 2, 0.7f, COLOR_FAINT);
     float w = TextPool::get().width(title, 0.5f);
-    TextPool::get().draw(title, ceilf((320 - w) / 2), 124, 0.5f, COLOR_V4_MUTED);
-    TextPool::get().drawWrapped(body, 160, 146, 0.4f, COLOR_V4_FAINT, 240.0f, 0.5f, C2D_AlignCenter);
+    TextPool::get().draw(title, ceilf((320 - w) / 2), 124, 0.5f, COLOR_MUTED);
+    TextPool::get().drawWrapped(body, 160, 146, 0.4f, COLOR_FAINT, 240.0f, 0.5f, C2D_AlignCenter);
 }
 
-void SettingsScreenV4::drawTop(void) const
+void SettingsScreen::drawTop(void) const
 {
-    C2D_TargetClear(g_top, COLOR_V4_BASE);
-    C2D_TargetClear(g_bottom, COLOR_V4_BASE);
+    C2D_TargetClear(g_top, COLOR_BASE);
+    C2D_TargetClear(g_bottom, COLOR_BASE);
     C2D_SceneBegin(g_top);
 
     // Header bar.
-    C2D_DrawRectSolid(0, 0, 0.5f, 400, 24, COLOR_V4_SURFACE);
-    C2D_DrawRectSolid(0, 24, 0.5f, 400, 1, COLOR_V4_LINE);
+    C2D_DrawRectSolid(0, 0, 0.5f, 400, 24, COLOR_SURFACE);
+    C2D_DrawRectSolid(0, 24, 0.5f, 400, 1, COLOR_LINE);
     C2D_ImageTint brandTint;
-    C2D_PlainImageTint(&brandTint, Configuration::getInstance().theme() == "light" ? COLOR_V4_BLUE : COLOR_V4_TEAL, 1.0f);
+    C2D_PlainImageTint(&brandTint, Configuration::getInstance().theme() == "light" ? COLOR_BLUE : COLOR_TEAL, 1.0f);
     C2D_DrawImageAt(flag, 6, 3, 0.5f, &brandTint, 1.0f, 1.0f);
     float nameX = 6 + ceilf(flag.subtex->width * 1.0f) + 6;
-    TextPool::get().draw("Settings", nameX, 4, 0.5f, COLOR_V4_TEXT);
+    TextPool::get().draw("Settings", nameX, 4, 0.5f, COLOR_TEXT);
     {
         std::string right = "config.json";
         float w           = TextPool::get().width(right, 0.42f);
-        TextPool::get().draw(right, 400 - 6 - w, 6, 0.42f, COLOR_V4_FAINT);
+        TextPool::get().draw(right, 400 - 6 - w, 6, 0.42f, COLOR_FAINT);
     }
 
     // Section rail (left) + section blurb card (right).
@@ -273,29 +257,29 @@ void SettingsScreenV4::drawTop(void) const
         const bool isSel = i == sel;
         if (isSel) {
             C2D_DrawRectSolid(8, rowY, 0.5f, 150, 28, C2D_Color32(122, 66, 196, 40));
-            Gui::drawOutline(8, rowY, 150, 28, 1, contentFocus ? COLOR_V4_LINE : COLOR_V4_ACCENT);
+            Gui::drawOutline(8, rowY, 150, 28, 1, contentFocus ? COLOR_LINE : COLOR_ACCENT);
         }
         const int chipY = rowY + 4, chipSz = 20;
-        C2D_DrawRectSolid(14, chipY, 0.5f, chipSz, chipSz, isSel ? COLOR_V4_ACCENT : COLOR_V4_RAISED);
+        C2D_DrawRectSolid(14, chipY, 0.5f, chipSz, chipSz, isSel ? COLOR_ACCENT : COLOR_RAISED);
         {
             const float cw = TextPool::get().width(SECTIONS[i].letter, 0.5f);
             const float cy = chipY + (chipSz - 0.5f * lineFeed) / 2;
-            TextPool::get().draw(SECTIONS[i].letter, 14 + (chipSz - cw) / 2, cy, 0.5f, isSel ? COLOR_WHITE : COLOR_V4_MUTED);
+            TextPool::get().draw(SECTIONS[i].letter, 14 + (chipSz - cw) / 2, cy, 0.5f, isSel ? COLOR_WHITE : COLOR_MUTED);
         }
         // Name is vertically centered against the chip square rather than top-aligned.
         const float ny = chipY + (chipSz - 0.44f * lineFeed) / 2;
-        TextPool::get().draw(SECTIONS[i].name, 42, ny, 0.44f, isSel ? COLOR_V4_TEXT : COLOR_V4_MUTED);
+        TextPool::get().draw(SECTIONS[i].name, 42, ny, 0.44f, isSel ? COLOR_TEXT : COLOR_MUTED);
     }
 
     // Blurb card.
-    C2D_DrawRectSolid(166, 34, 0.5f, 226, 160, COLOR_V4_CARD);
-    Gui::drawOutline(166, 34, 226, 160, 1, COLOR_V4_LINE);
-    TextPool::get().draw(SECTIONS[sel].name, 178, 44, 0.5f, COLOR_V4_TEXT);
-    TextPool::get().drawWrapped(SECTIONS[sel].blurb, 178, 66, 0.44f, COLOR_V4_MUTED, 202);
+    C2D_DrawRectSolid(166, 34, 0.5f, 226, 160, COLOR_CARD);
+    Gui::drawOutline(166, 34, 226, 160, 1, COLOR_LINE);
+    TextPool::get().draw(SECTIONS[sel].name, 178, 44, 0.5f, COLOR_TEXT);
+    TextPool::get().drawWrapped(SECTIONS[sel].blurb, 178, 66, 0.44f, COLOR_MUTED, 202);
 
     // Footer.
-    C2D_DrawRectSolid(0, 220, 0.5f, 400, 20, COLOR_V4_SURFACE);
-    C2D_DrawRectSolid(0, 219, 0.5f, 400, 1, COLOR_V4_LINE);
+    C2D_DrawRectSolid(0, 220, 0.5f, 400, 20, COLOR_SURFACE);
+    C2D_DrawRectSolid(0, 219, 0.5f, 400, 1, COLOR_LINE);
     if (contentFocus) {
         drawHints(400, 223, std::string(GLYPH_B) + " Back to sections");
     }
@@ -309,7 +293,7 @@ void SettingsScreenV4::drawTop(void) const
     }
 }
 
-void SettingsScreenV4::drawGeneral(void) const
+void SettingsScreen::drawGeneral(void) const
 {
     Configuration& cfg             = Configuration::getInstance();
     const bool vals[GENERAL_COUNT] = {cfg.theme() == "light", cfg.shouldScanCard(), cfg.nandSaves(), cfg.transferEnabled(), cfg.confirmRestore()};
@@ -325,7 +309,7 @@ void SettingsScreenV4::drawGeneral(void) const
     }
 }
 
-void SettingsScreenV4::drawFolders(void) const
+void SettingsScreen::drawFolders(void) const
 {
     std::vector<Row> rows = buildFolderRows();
     if (rows.empty()) {
@@ -350,7 +334,7 @@ void SettingsScreenV4::drawFolders(void) const
     }
 }
 
-void SettingsScreenV4::drawLibrary(void) const
+void SettingsScreen::drawLibrary(void) const
 {
     std::vector<Row> rows = buildLibraryRows();
     if (rows.empty()) {
@@ -375,45 +359,44 @@ void SettingsScreenV4::drawLibrary(void) const
     }
 }
 
-void SettingsScreenV4::drawNetwork(void) const
+void SettingsScreen::drawNetwork(void) const
 {
     Configuration& cfg = Configuration::getInstance();
     const bool on      = cfg.transferEnabled();
     int y              = 40;
     auto field         = [&](const char* label, const std::string& value, u32 valColor) {
-        TextPool::get().draw(label, 20, y, 0.4f, COLOR_V4_FAINT);
+        TextPool::get().draw(label, 20, y, 0.4f, COLOR_FAINT);
         TextPool::get().draw(value, 20, y + 14, 0.46f, valColor);
         y += 44;
     };
-    field("Wi-Fi transfer", on ? "Enabled" : "Disabled", on ? COLOR_V4_TEAL : COLOR_V4_MUTED);
+    field("Wi-Fi transfer", on ? "Enabled" : "Disabled", on ? COLOR_TEAL : COLOR_MUTED);
 
     std::string address = Server::getAddress();
-    field("This console's address", address.empty() ? "Unavailable" : address, address.empty() ? COLOR_V4_MUTED : COLOR_V4_TEXT);
+    field("This console's address", address.empty() ? "Unavailable" : address, address.empty() ? COLOR_MUTED : COLOR_TEXT);
 
-    TextPool::get().draw("Send / receive", 20, y, 0.4f, COLOR_V4_FAINT);
+    TextPool::get().draw("Send / receive", 20, y, 0.4f, COLOR_FAINT);
     TextPool::get().drawWrapped(
-        "Use the Transfer button on the main screen to send a backup or wait to receive one.", 20, y + 14, 0.4f, COLOR_V4_MUTED, 280);
+        "Use the Transfer button on the main screen to send a backup or wait to receive one.", 20, y + 14, 0.4f, COLOR_MUTED, 280);
 
     drawHints(320, 223, std::string(GLYPH_B) + " Back");
 }
 
-void SettingsScreenV4::drawAbout(void) const
+void SettingsScreen::drawAbout(void) const
 {
-    char ver[16];
-    sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+    std::string ver = StringUtils::versionString();
 
     C2D_ImageTint brandTint;
-    C2D_PlainImageTint(&brandTint, Configuration::getInstance().theme() == "light" ? COLOR_V4_BLUE : COLOR_V4_TEAL, 1.0f);
+    C2D_PlainImageTint(&brandTint, Configuration::getInstance().theme() == "light" ? COLOR_BLUE : COLOR_TEAL, 1.0f);
     C2D_DrawImageAt(flag, 20, 36, 0.5f, &brandTint, 1.0f, 1.0f);
     float x = 20 + ceilf(flag.subtex->width * 1.0f) + 8;
-    TextPool::get().draw("Checkpoint", x, 34, 0.62f, COLOR_V4_TEXT);
-    TextPool::get().draw(ver, x, 54, 0.42f, COLOR_V4_FAINT);
+    TextPool::get().draw("Checkpoint", x, 34, 0.62f, COLOR_TEXT);
+    TextPool::get().draw(ver, x, 54, 0.42f, COLOR_FAINT);
 
     int y     = 82;
     auto line = [&](const char* label, const std::string& value) {
-        TextPool::get().draw(label, 20, y, 0.4f, COLOR_V4_FAINT);
+        TextPool::get().draw(label, 20, y, 0.4f, COLOR_FAINT);
         float lw = TextPool::get().width(value, 0.42f);
-        TextPool::get().draw(value, 300 - lw, y, 0.42f, COLOR_V4_TEXT);
+        TextPool::get().draw(value, 300 - lw, y, 0.42f, COLOR_TEXT);
         y += 24;
     };
     line("Author", "Bernardo Giordano");
@@ -424,32 +407,32 @@ void SettingsScreenV4::drawAbout(void) const
         u64 total = (u64)st.f_blocks * st.f_frsize;
         u64 avail = (u64)st.f_bavail * st.f_frsize;
         u64 used  = total > avail ? total - avail : 0;
-        line("SD card", humanSize(used) + " used of " + humanSize(total));
+        line("SD card", StringUtils::humanBytes(used) + " used of " + StringUtils::humanBytes(total));
     }
 
     drawHints(320, 223, std::string(GLYPH_B) + " Back");
 }
 
-void SettingsScreenV4::drawBottom(void) const
+void SettingsScreen::drawBottom(void) const
 {
     C2D_SceneBegin(g_bottom);
 
     const size_t sel = navHid.index();
 
     // Header.
-    C2D_DrawRectSolid(0, 0, 0.5f, 320, 24, COLOR_V4_SURFACE);
-    C2D_DrawRectSolid(0, 24, 0.5f, 320, 1, COLOR_V4_LINE);
-    TextPool::get().draw(SECTIONS[sel].name, 10, 4, 0.5f, COLOR_V4_TEXT);
+    C2D_DrawRectSolid(0, 0, 0.5f, 320, 24, COLOR_SURFACE);
+    C2D_DrawRectSolid(0, 24, 0.5f, 320, 1, COLOR_LINE);
+    TextPool::get().draw(SECTIONS[sel].name, 10, 4, 0.5f, COLOR_TEXT);
     if (sectionInteractive(sel) && savedTimer > 0) {
         std::string saved = "\xE2\x97\x8F Saved"; // "● Saved"
         float w           = TextPool::get().width(saved, 0.4f);
-        TextPool::get().draw(saved, 320 - 10 - w, 6, 0.4f, COLOR_V4_TEAL);
+        TextPool::get().draw(saved, 320 - 10 - w, 6, 0.4f, COLOR_TEAL);
     }
 
     // Footer bar (content is drawn by the per-section helpers, which also emit
     // the section-specific footer hints over it).
-    C2D_DrawRectSolid(0, 220, 0.5f, 320, 20, COLOR_V4_SURFACE);
-    C2D_DrawRectSolid(0, 219, 0.5f, 320, 1, COLOR_V4_LINE);
+    C2D_DrawRectSolid(0, 220, 0.5f, 320, 20, COLOR_SURFACE);
+    C2D_DrawRectSolid(0, 219, 0.5f, 320, 1, COLOR_LINE);
 
     switch (sel) {
         case SEC_GENERAL:
@@ -470,7 +453,7 @@ void SettingsScreenV4::drawBottom(void) const
     }
 }
 
-void SettingsScreenV4::toggleGeneral(int idx)
+void SettingsScreen::toggleGeneral(int idx)
 {
     Configuration& cfg = Configuration::getInstance();
     switch (idx) {
@@ -498,7 +481,7 @@ void SettingsScreenV4::toggleGeneral(int idx)
     savedTimer = SAVED_FLASH_FRAMES;
 }
 
-void SettingsScreenV4::update(const InputState& input)
+void SettingsScreen::update(const InputState& input)
 {
     u32 kDown        = hidKeysDown();
     const size_t sel = navHid.index();
