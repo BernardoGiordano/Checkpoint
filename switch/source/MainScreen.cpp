@@ -305,6 +305,14 @@ void MainScreen::draw() const
         SDLH_GetTextDimensions(26, titleStr.c_str(), &title_w, &title_h);
         SDLH_DrawText(26, mx + (mw - (int)title_w) / 2, my + 14, COLOR_WHITE, titleStr.c_str());
 
+        // Cancel is backup-only: a restore in flight cannot be aborted midway.
+        if (transfer.mode == "Backup") {
+            const char* hint = " to cancel";
+            u32 hint_w;
+            SDLH_GetTextDimensions(18, hint, &hint_w, NULL);
+            SDLH_DrawText(18, mx + mw - (int)hint_w - 12, my + mh - 26, COLOR_GREY_LIGHT, hint);
+        }
+
         // Current filename
         u32 fname_w, fname_h;
         std::string fname = trimToFit(transfer.currentFile, mw - 40, 22);
@@ -371,7 +379,10 @@ void MainScreen::update(const InputState& input)
         for (u64 id : result->refreshIds) {
             TitleCatalog::get().refreshDirectories(id);
         }
-        if (result->ok) {
+        if (result->cancelled) {
+            currentOverlay = std::make_shared<InfoOverlay>(*this, "Backup cancelled.");
+        }
+        else if (result->ok) {
             blinkLed(4);
             currentOverlay = std::make_shared<InfoOverlay>(*this, result->successMsg);
         }
@@ -383,8 +394,13 @@ void MainScreen::update(const InputState& input)
     }
 
     // While a transfer runs on the worker, the loop keeps drawing the modal from
-    // TransferStatus; ignore input so nothing mutates underneath the copy.
+    // TransferStatus; ignore input so nothing mutates underneath the copy, except a
+    // B press on a backup in flight, which requests a cancel (a restore can't be
+    // cancelled: aborting mid-write could leave a truncated save on the cartridge).
     if (TransferJob::get().active()) {
+        if ((input.kDown & HidNpadButton_B) && TransferStatus::snapshot().mode == "Backup") {
+            TransferJob::get().requestCancel();
+        }
         return;
     }
 

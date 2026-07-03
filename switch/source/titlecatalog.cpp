@@ -125,6 +125,32 @@ void TitleCatalog::loadTitles(void)
     sortTitles();
 }
 
+// One pass over the raw list, bucketing each index by its SaveKind row. Replaces
+// the O(n) `saveDataType() == type` scan the filtered queries used to repeat
+// once per visible grid cell, every frame.
+void TitleCatalog::rebuildFilterIndex(AccountUid uid)
+{
+    auto& buckets = mFilterIndex[uid];
+    for (auto& bucket : buckets) {
+        bucket.clear();
+    }
+
+    auto it = mTitles.find(uid);
+    if (it == mTitles.end()) {
+        return;
+    }
+
+    for (size_t j = 0; j < it->second.size(); j++) {
+        u8 type = it->second[j].saveDataType();
+        for (const SaveKind& kind : SaveKind::all()) {
+            if (kind.saveDataType == type) {
+                buckets[(size_t)kind.filter].push_back(j);
+                break;
+            }
+        }
+    }
+}
+
 void TitleCatalog::sortTitles(void)
 {
     for (auto& vect : mTitles) {
@@ -142,6 +168,12 @@ void TitleCatalog::sortTitles(void)
                     return l.name() < r.name();
             }
         });
+    }
+    // Sorting reorders every raw index, so every user's filter partition is
+    // stale and must be rebuilt (loadTitles calls this once after populating
+    // mTitles, so the same pass also does the initial build).
+    for (auto& pair : mTitles) {
+        rebuildFilterIndex(pair.first);
     }
     mGeneration++;
 }
@@ -193,51 +225,24 @@ SDL_Texture* TitleCatalog::iconFor(u64 id)
 
 size_t TitleCatalog::getFilteredTitleCount(AccountUid uid, saveTypeFilter_t filter)
 {
-    auto it = mTitles.find(uid);
-    if (it == mTitles.end())
-        return 0;
-    u8 type      = SaveKind::of(filter).saveDataType;
-    size_t count = 0;
-    for (auto& t : it->second) {
-        if (t.saveDataType() == type)
-            count++;
-    }
-    return count;
+    auto it = mFilterIndex.find(uid);
+    return it != mFilterIndex.end() ? it->second[(size_t)filter].size() : 0;
 }
 
 void TitleCatalog::getFilteredTitle(Title& dst, AccountUid uid, saveTypeFilter_t filter, size_t i)
 {
-    auto it = mTitles.find(uid);
-    if (it == mTitles.end())
-        return;
-    u8 type      = SaveKind::of(filter).saveDataType;
-    size_t count = 0;
-    for (auto& t : it->second) {
-        if (t.saveDataType() == type) {
-            if (count == i) {
-                dst = t;
-                return;
-            }
-            count++;
-        }
+    if (i < getFilteredTitleCount(uid, filter)) {
+        getTitle(dst, uid, filteredToRawIndex(uid, filter, i));
     }
 }
 
 size_t TitleCatalog::filteredToRawIndex(AccountUid uid, saveTypeFilter_t filter, size_t filteredIdx)
 {
-    auto it = mTitles.find(uid);
-    if (it == mTitles.end())
+    auto it = mFilterIndex.find(uid);
+    if (it == mFilterIndex.end())
         return 0;
-    u8 type      = SaveKind::of(filter).saveDataType;
-    size_t count = 0;
-    for (size_t j = 0; j < it->second.size(); j++) {
-        if (it->second[j].saveDataType() == type) {
-            if (count == filteredIdx)
-                return j;
-            count++;
-        }
-    }
-    return 0;
+    const auto& bucket = it->second[(size_t)filter];
+    return filteredIdx < bucket.size() ? bucket[filteredIdx] : 0;
 }
 
 bool TitleCatalog::filteredFavorite(AccountUid uid, saveTypeFilter_t filter, int i)

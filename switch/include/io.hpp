@@ -53,7 +53,8 @@ namespace io {
     struct IoOutcome {
         bool ok;
         Result res;
-        BackupStage stage; // meaningful only when !ok
+        BackupStage stage;      // meaningful only when !ok
+        bool cancelled = false; // set only for a backup aborted via ProgressSink::cancelled(); ok is false, res is 0
     };
 
     // Backs up `title` into the already-resolved `dstPath` (the caller picks the

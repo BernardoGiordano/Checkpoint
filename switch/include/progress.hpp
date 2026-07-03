@@ -27,6 +27,7 @@
 #ifndef PROGRESS_HPP
 #define PROGRESS_HPP
 
+#include <atomic>
 #include <string>
 #include <switch.h>
 
@@ -48,19 +49,33 @@ struct ProgressSink {
     virtual void finishFile() = 0;
     // Ends the run (success or failure).
     virtual void end() = 0;
+    // Polled by the copy loops between files (and between chunks of one big
+    // file) to abort early. False by default: only a sink built for a backup
+    // item ever reports true, so a restore can never observe a cancel mid-copy.
+    virtual bool cancelled() const { return false; }
 };
 
 // Real adapter: mirrors progress into the global transfer state read by the
 // transfer modal. It only writes TransferStatus and never renders — the copy
 // runs on the TransferJob worker thread while the main loop draws the modal from
 // the snapshot, so the UI keeps animating throughout.
+//
+// Optionally built with a pointer to the TransferJob cancel flag: present for a
+// backup item, nullptr for a restore item, so cancelled() is structurally always
+// false for restore and the shared copy loops never break on it there.
 class UiProgressSink : public ProgressSink {
 public:
+    explicit UiProgressSink(const std::atomic<bool>* cancelFlag = nullptr) : mCancelFlag(cancelFlag) {}
+
     void begin(const std::string& mode, size_t totalFiles) override;
     void startFile(const std::string& name, u64 size) override;
     void advanceBytes(u64 offset) override;
     void finishFile() override;
     void end() override;
+    bool cancelled() const override { return mCancelFlag && mCancelFlag->load(); }
+
+private:
+    const std::atomic<bool>* mCancelFlag;
 };
 
 // Headless adapter: records the last figures reported, renders nothing. The

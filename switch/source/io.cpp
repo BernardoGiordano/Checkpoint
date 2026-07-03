@@ -77,6 +77,10 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath, Progre
     sink.startFile(srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1), sz);
 
     while (offset < sz) {
+        if (sink.cancelled()) {
+            break;
+        }
+
         u32 count = fread((char*)buf, 1, BUFFER_SIZE, src);
         if (count == 0) {
             Logging::error("fread returned 0 for file {} at offset {}/{} with errno {}. Aborting copy.", srcPath, offset, sz, errno);
@@ -110,6 +114,10 @@ Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath,
     }
 
     for (size_t i = 0, sz = items.size(); i < sz && !quit; i++) {
+        if (sink.cancelled()) {
+            break;
+        }
+
         std::string newsrc = srcPath + items.entry(i);
         std::string newdst = dstPath + items.entry(i);
 
@@ -192,6 +200,12 @@ io::IoOutcome io::backup(Title& title, const std::string& dstPath, ProgressSink&
     sink.begin("Backup", io::countFiles("save:/"));
     res = io::copyDirectory("save:/", dstPath + "/", sink);
     sink.end();
+    if (sink.cancelled()) {
+        FileSystem::unmountDevice();
+        io::deleteFolderRecursively((dstPath + "/").c_str());
+        Logging::info("Backup of {} cancelled by user.", title.name().c_str());
+        return {false, 0, io::BackupStage::Copy, true};
+    }
     if (R_FAILED(res)) {
         FileSystem::unmountDevice();
         io::deleteFolderRecursively((dstPath + "/").c_str());

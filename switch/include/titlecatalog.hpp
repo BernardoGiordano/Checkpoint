@@ -28,7 +28,9 @@
 #define TITLECATALOG_HPP
 
 #include "iconstore.hpp"
+#include "savekind.hpp"
 #include "title.hpp"
+#include <array>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -94,7 +96,17 @@ private:
 
     bool favorite(AccountUid uid, int i);
 
+    // Rebuilds mFilterIndex[uid] from mTitles[uid]: one raw-index vector per
+    // saveTypeFilter_t row, so a filtered query stops being an O(n) scan over
+    // the raw list. Called once per user whenever a load or a sort changes
+    // what a raw index refers to (membership or order); refreshDirectories
+    // touches neither, so it does not need to rebuild.
+    void rebuildFilterIndex(AccountUid uid);
+
+    static constexpr size_t FILTER_COUNT = 4; // one row per SaveKind::all() entry
+
     std::unordered_map<AccountUid, std::vector<Title>> mTitles;
+    std::unordered_map<AccountUid, std::array<std::vector<size_t>, FILTER_COUNT>> mFilterIndex;
     TextureIconStore mIcons;
     sort_t mSortMode = SORT_ALPHA;
     u32 mGeneration  = 0;

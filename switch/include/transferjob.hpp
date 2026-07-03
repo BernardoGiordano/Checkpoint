@@ -62,6 +62,7 @@ public:
         io::BackupStage stage = io::BackupStage::Copy;
         std::string successMsg;      // shown on success (already resolved)
         std::vector<u64> refreshIds; // title ids whose backup list the main thread must refresh
+        bool cancelled = false;      // set when a backup was aborted via requestCancel(); ok is false, res is 0
     };
 
     static TransferJob& get(void)
@@ -83,6 +84,12 @@ public:
     // True while the worker is draining the queue (the main loop renders the modal
     // and ignores input while this holds).
     bool active(void) const { return mState.load() == State::Running; }
+
+    // Backup-only cancel: raises a flag the worker's UiProgressSink polls, but
+    // only while it is built for a backup item (nullptr for restore), so a
+    // cancel can never leave a half-written save on the console. A cancelled
+    // backup deletes its partial folder and drops the rest of the batch.
+    void requestCancel(void) { mCancelRequested.store(true); }
 
     // If the batch finished, joins the worker, returns the last save's outcome and
     // resets to idle; otherwise nullopt.
@@ -110,7 +117,8 @@ private:
     std::deque<WorkItem> mQueue; // filled on the main thread before start(), drained on the worker
     std::mutex mMutex;           // guards mQueue and mResult
     std::atomic<State> mState{State::Idle};
-    JobResult mResult; // last save's outcome; published once mState becomes Done
+    std::atomic<bool> mCancelRequested{false}; // reset by start(); read through a backup item's UiProgressSink
+    JobResult mResult;                         // last save's outcome; published once mState becomes Done
     Thread mThread;
     bool mThreadValid = false;
 };

@@ -61,6 +61,7 @@ void TransferJob::start(void)
     }
 
     TransferStatus::beginLocalBatch(total);
+    mCancelRequested.store(false);
     mState.store(State::Running);
 
     if (R_FAILED(threadCreate(&mThread, TransferJob::runThread, this, nullptr, WORKER_STACK, WORKER_PRIO, -2)) || R_FAILED(threadStart(&mThread))) {
@@ -79,7 +80,6 @@ void TransferJob::runThread(void* arg)
 
 void TransferJob::run(void)
 {
-    UiProgressSink sink;
     size_t done = 0;
     std::vector<u64> refreshIds;
     JobResult last;
@@ -97,12 +97,23 @@ void TransferJob::run(void)
 
         TransferStatus::setSaveCount(done);
 
+        // Only a backup item's sink is given the cancel flag, so cancelled() is
+        // structurally always false while restoring a save.
+        UiProgressSink sink(item.isRestore ? nullptr : &mCancelRequested);
         io::IoOutcome out = item.isRestore ? io::restore(item.title, item.path, sink) : io::backup(item.title, item.path, sink);
         if (out.ok && !item.isRestore) {
             refreshIds.push_back(item.title.id());
         }
-        last = JobResult{item.isRestore, out.ok, out.res, out.stage, item.successMsg, {}};
+        last = JobResult{item.isRestore, out.ok, out.res, out.stage, item.successMsg, {}, out.cancelled};
         done++;
+
+        if (out.cancelled) {
+            // Drop the rest of the queue: a cancel ends the whole batch, not just
+            // the save that was mid-copy.
+            std::lock_guard<std::mutex> lock(mMutex);
+            mQueue.clear();
+            break;
+        }
     }
 
     last.refreshIds = std::move(refreshIds);
