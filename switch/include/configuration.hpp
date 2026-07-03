@@ -33,9 +33,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-extern "C" {
-#include "mongoose.h"
-}
 
 #define CONFIG_VERSION 4
 
@@ -52,8 +49,6 @@ public:
     bool isPKSMBridgeEnabled(void);
     bool isFTPEnabled(void);
     std::vector<std::string> additionalSaveFolders(u64 id);
-    void cleanup(void);
-    void pollServer(void);
     void save(void);
     void load(void);
     void parse(void);
@@ -74,7 +69,6 @@ private:
     nlohmann::json mJson;
     bool PKSMBridgeEnabled;
     bool FTPEnabled;
-    bool mCleanedUp = false;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders;
 };

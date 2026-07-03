@@ -38,10 +38,10 @@ TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out
 BUILD			:=	build
 FORMATSOURCES	:=	source ../common
-SOURCES			:=	$(FORMATSOURCES) ../3rd-party/mongoose ../3rd-party/ftp
+SOURCES			:=	$(FORMATSOURCES) ../3rd-party/ftp
 DATA			:=	data
 FORMATINCLUDES	:=	include ../common
-INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/mongoose ../3rd-party/json ../3rd-party/ftp
+INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/ftp
 EXEFS_SRC		:=	exefs_src
 ROMFS			:=	romfs
 
@@ -58,9 +58,7 @@ CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections \
 			-DVERSION_MINOR=${VERSION_MINOR} \
 			-DVERSION_MICRO=${VERSION_MICRO} \
 			-DGIT_REV=\"${GIT_REV}\" \
-			-DCS_PLATFORM=CS_P_CUSTOM \
 			`sdl2-config --cflags` \
-			-DMG_ENABLE_FILESYSTEM \
 			-DJSON_HAS_FILESYSTEM=0 \
 			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
 

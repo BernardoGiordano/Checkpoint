@@ -35,7 +35,6 @@ extern "C" {
 static void networkLoop(void)
 {
     while (appletMainLoop() && !g_shouldExitNetworkLoop) {
-        Configuration::getInstance().pollServer();
         if (g_ftpAvailable && Configuration::getInstance().isFTPEnabled()) {
             ftp_loop();
         }

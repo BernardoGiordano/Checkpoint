@@ -27,63 +27,6 @@
 #include "configuration.hpp"
 #include "titlecatalog.hpp"
 
-static struct mg_mgr mgr;
-static struct mg_connection* nc;
-static struct mg_serve_http_opts s_http_server_opts;
-static const char* s_http_port = "8000";
-
-static void handle_populate(struct mg_connection* nc, struct http_message* hm)
-{
-    (void)hm;
-    // populate gets called at startup, assume a new connection has been started
-    blinkLed(2);
-
-    auto json          = Configuration::getInstance().getJson();
-    auto map           = TitleCatalog::get().getCompleteTitleList();
-    json["title_list"] = map;
-    std::string body   = json.dump();
-    mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%.*s", (unsigned long)body.length(), (int)body.length(), body.c_str());
-    Logging::info("A new Configuration connection has been handled.");
-}
-
-static void handle_save(struct mg_connection* nc, struct http_message* hm)
-{
-    FILE* f = fopen(Configuration::getInstance().BASEPATH.c_str(), "w");
-    if (f != NULL) {
-        fwrite(hm->body.p, 1, hm->body.len, f);
-        fclose(f);
-        Logging::info("Configurations have been updated.");
-    }
-    else {
-        Logging::error("Failed to write to configuration file with errno {}.", errno);
-    }
-    Configuration::getInstance().load();
-    Configuration::getInstance().parse();
-    // Send response
-    mg_printf(nc, "HTTP/1.1 200 OK\r\nContent-Length: %lu\r\n\r\n%.*s", (unsigned long)hm->body.len, (int)hm->body.len, hm->body.p);
-}
-
-static void ev_handler(struct mg_connection* nc, int ev, void* ev_data)
-{
-    struct http_message* hm = (struct http_message*)ev_data;
-
-    switch (ev) {
-        case MG_EV_HTTP_REQUEST:
-            if (mg_vcmp(&hm->uri, "/save") == 0) {
-                handle_save(nc, hm);
-            }
-            else if (mg_vcmp(&hm->uri, "/populate") == 0) {
-                handle_populate(nc, hm);
-            }
-            else {
-                mg_serve_http(nc, hm, s_http_server_opts);
-            }
-            break;
-        default:
-            break;
-    }
-}
-
 Configuration::Configuration(void)
 {
     // check for existing config.json files on the sd card, BASEPATH
@@ -158,27 +101,9 @@ Configuration::Configuration(void)
     }
 
     parse();
-
-    // load server
-    mg_mgr_init(&mgr, NULL);
-    nc = mg_bind(&mgr, s_http_port, ev_handler);
-    mg_set_protocol_http_websocket(nc);
-    s_http_server_opts.document_root = "romfs:/web_root";
-    s_http_server_opts.auth_domain   = "flagbrew.org";
 }
 
-void Configuration::cleanup(void)
-{
-    if (!mCleanedUp) {
-        mCleanedUp = true;
-        mg_mgr_free(&mgr);
-    }
-}
-
-Configuration::~Configuration(void)
-{
-    cleanup();
-}
+Configuration::~Configuration(void) {}
 
 void Configuration::store(void)
 {
@@ -219,11 +144,6 @@ std::vector<std::string> Configuration::additionalSaveFolders(u64 id)
 bool Configuration::isPKSMBridgeEnabled(void)
 {
     return PKSMBridgeEnabled;
-}
-
-void Configuration::pollServer(void)
-{
-    mg_mgr_poll(&mgr, 1000 / 60);
 }
 
 void Configuration::save(void)

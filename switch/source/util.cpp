@@ -31,7 +31,6 @@ void servicesExit(void)
 {
     if (g_ftpAvailable)
         ftp_exit();
-    Configuration::getInstance().cleanup();
     if (g_notificationLedAvailable)
         hidsysExit();
     pdmqryExit();
