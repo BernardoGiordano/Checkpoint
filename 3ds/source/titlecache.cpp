@@ -68,7 +68,7 @@ namespace {
     }
 }
 
-void TitleCache::encode(u8* dst, Title& title)
+void TitleCache::encode(u8* dst, Title& title, IconStore& icons)
 {
     std::memset(dst, 0, ENTRY_SIZE);
 
@@ -85,11 +85,20 @@ void TitleCache::encode(u8* dst, Title& title)
     CardType card                = title.SPICardType();
 
     if (cardType == CARD_CTR) {
-        smdh_s* smdh = loadSMDH(title.lowId(), title.highId(), media);
-        if (smdh != NULL) {
-            std::memcpy(dst + OFF_ICON, smdh->bigIconData, ICON_BYTES);
+        // The probe already read this title's SMDH and stored its icon bytes in
+        // `icons`; reuse them so the full-scan export doesn't read the SMDH a
+        // second time. Fall back to a fresh SMDH read only on a cache miss.
+        u16 iconPixels[ICON_BYTES / sizeof(u16)];
+        if (icons.copyCtrPixels(id, iconPixels)) {
+            std::memcpy(dst + OFF_ICON, iconPixels, ICON_BYTES);
         }
-        delete smdh;
+        else {
+            smdh_s* smdh = loadSMDH(title.lowId(), title.highId(), media);
+            if (smdh != NULL) {
+                std::memcpy(dst + OFF_ICON, smdh->bigIconData, ICON_BYTES);
+            }
+            delete smdh;
+        }
     }
 
     std::memcpy(dst + OFF_ID, &id, sizeof(u64));

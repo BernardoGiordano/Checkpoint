@@ -38,6 +38,7 @@
 #include "gui.hpp"
 #include "multiselection.hpp"
 #include "thread.hpp"
+#include "transferstatus.hpp"
 #include <algorithm>
 #include <memory>
 #include <optional>
@@ -118,6 +119,10 @@ private:
     };
     SelectedTitle selected;
     std::vector<u8> gridFavorites; // favorite pip per title of the current kind
+
+    // Live transfer state, snapshotted once per frame in update() so drawTop and
+    // drawBottom don't each take the TransferStatus lock and copy the snapshot.
+    TransferSnapshot mTransfer;
 };
 
 #endif

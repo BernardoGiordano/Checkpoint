@@ -32,6 +32,7 @@
 #include <cctype>
 #include <chrono>
 #include <mutex>
+#include <unordered_map>
 
 namespace {
     const std::u16string saveCachePath    = StringUtils::UTF8toUTF16("/3ds/Checkpoint/fullsavecache");
@@ -101,6 +102,17 @@ bool TitleCatalog::nameById(std::string& dst, u64 id)
             dst = title.shortDescription();
             return true;
         }
+    }
+    return false;
+}
+
+bool TitleCatalog::descriptionByIndex(std::string& dst, int i, BackupKind kind)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    const auto& vec = kind == BackupKind::Save ? mSaves : mExtdatas;
+    if (i >= 0 && i < (int)vec.size()) {
+        dst = vec.at(i).shortDescription();
+        return true;
     }
     return false;
 }
@@ -197,12 +209,12 @@ LoadProgress TitleCatalog::progress(void)
     return LoadProgress{mLoading.load(), mCounter.load(), mLimit.load()};
 }
 
-void TitleCatalog::exportTitleListCache(std::vector<Title>& list, const std::u16string& path)
+void TitleCatalog::exportTitleListCache(std::vector<Title>& list, const std::u16string& path, IconStore& icons)
 {
     const size_t bytes          = list.size() * TitleCache::ENTRY_SIZE;
     std::unique_ptr<u8[]> cache = std::unique_ptr<u8[]>(new u8[bytes]());
     for (size_t i = 0; i < list.size(); i++) {
-        TitleCache::encode(cache.get() + i * TitleCache::ENTRY_SIZE, list.at(i));
+        TitleCache::encode(cache.get() + i * TitleCache::ENTRY_SIZE, list.at(i), icons);
     }
 
     FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, path.data()));
@@ -242,13 +254,22 @@ void TitleCatalog::importTitleListCache(std::vector<Title>& saves, std::vector<T
         }
     }
 
-    // store already loaded ids
-    std::vector<u64> alreadystored;
+    // Map each already-loaded save id to its first and last index in `saves`, so
+    // the extdata pass can reuse a decoded save (they share entries) with an O(1)
+    // lookup instead of a linear scan per extdata — this runs on the startup fast
+    // path. Duplicate ids only occur for the cartridge title, hence tracking both
+    // ends (see the i != 0 && first == 0 case below).
+    std::unordered_map<u64, size_t> firstIdx;
+    std::unordered_map<u64, size_t> lastIdx;
+    firstIdx.reserve(sizesaves);
+    lastIdx.reserve(sizesaves);
 
     for (size_t i = 0; i < sizesaves; i++) {
         const u8* titleData = cachesaves.get() + i * TitleCache::ENTRY_SIZE;
         saves.at(i)         = TitleCache::decode(titleData, icons);
-        alreadystored.push_back(TitleCache::readId(titleData));
+        u64 id              = TitleCache::readId(titleData);
+        firstIdx.emplace(id, i); // keeps the first occurrence
+        lastIdx[id] = i;         // always the latest occurrence
 
         mCounter++;
     }
@@ -256,23 +277,22 @@ void TitleCatalog::importTitleListCache(std::vector<Title>& saves, std::vector<T
     for (size_t i = 0; i < sizeextdatas; i++) {
         const u8* titleData = cacheextdatas.get() + i * TitleCache::ENTRY_SIZE;
 
-        u64 id                        = TitleCache::readId(titleData);
-        std::vector<u64>::iterator it = find(alreadystored.begin(), alreadystored.end(), id);
-        if (it == alreadystored.end()) {
+        u64 id  = TitleCache::readId(titleData);
+        auto it = firstIdx.find(id);
+        if (it == firstIdx.end()) {
             extdatas.at(i) = TitleCache::decode(titleData, icons);
 
             mCounter++;
         }
         else {
-            auto pos = it - alreadystored.begin();
+            size_t first = it->second;
 
             // avoid to copy a cartridge title into the extdata list twice
-            if (i != 0 && pos == 0) {
-                auto newpos    = find(alreadystored.rbegin(), alreadystored.rend(), id);
-                extdatas.at(i) = saves.at(alreadystored.rend() - newpos - 1);
+            if (i != 0 && first == 0) {
+                extdatas.at(i) = saves.at(lastIdx[id]);
             }
             else {
-                extdatas.at(i) = saves.at(pos);
+                extdatas.at(i) = saves.at(first);
             }
         }
     }
@@ -487,11 +507,11 @@ void TitleCatalog::sortLists(std::vector<Title>& saves, std::vector<Title>& extd
     std::sort(extdatas.begin(), extdatas.end(), byFavoriteThenName);
 }
 
-void TitleCatalog::exportCaches(std::vector<Title>& saves, std::vector<Title>& extdatas)
+void TitleCatalog::exportCaches(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons)
 {
     Logging::debug("Starting title cache export");
-    exportTitleListCache(saves, saveCachePath);
-    exportTitleListCache(extdatas, extdataCachePath);
+    exportTitleListCache(saves, saveCachePath, icons);
+    exportTitleListCache(extdatas, extdataCachePath, icons);
 }
 
 void TitleCatalog::appendCartTitle(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons)
@@ -560,7 +580,7 @@ void TitleCatalog::loadTitles(bool forceRefreshParam)
         sortLists(saves, extdatas);
 
         if (!optimizedLoad || forceRefreshParam) {
-            exportCaches(saves, extdatas);
+            exportCaches(saves, extdatas, icons);
         }
 
         appendCartTitle(saves, extdatas, icons);

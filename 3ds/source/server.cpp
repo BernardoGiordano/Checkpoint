@@ -34,6 +34,7 @@
 #include <map>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include <arpa/inet.h>
 #include <atomic>
@@ -102,7 +103,11 @@ namespace {
         outTooLarge = false;
         std::string data;
         data.reserve(4096);
-        char buffer[2048];
+        // Heap-allocated: the network thread's stack is only DEFAULT_STACK (16 KB),
+        // so a chunk this size can't live on the stack. A larger recv chunk means
+        // far fewer syscalls/appends on a multi-MB upload.
+        constexpr size_t RECV_CHUNK = 32 * 1024;
+        std::vector<char> buffer(RECV_CHUNK);
         ssize_t received     = 0;
         size_t headerEnd     = std::string::npos;
         size_t contentLength = 0;
@@ -119,11 +124,11 @@ namespace {
                 // Timed out or poll error: abandon this (possibly stalled) request.
                 break;
             }
-            received = recv(clientSocket, buffer, sizeof(buffer), 0);
+            received = recv(clientSocket, buffer.data(), buffer.size(), 0);
             if (received <= 0) {
                 break;
             }
-            data.append(buffer, received);
+            data.append(buffer.data(), received);
 
             if (headerEnd == std::string::npos) {
                 // No header terminator yet: guard against a client that never
@@ -147,6 +152,10 @@ namespace {
                     if (contentLength == 0) {
                         break;
                     }
+                    // Body size is known now (and bounded by MAX_REQUEST_SIZE
+                    // above), so reserve once instead of letting the append below
+                    // repeatedly reallocate/copy a growing multi-MB string.
+                    data.reserve(headerEnd + 4 + contentLength);
                 }
             }
 

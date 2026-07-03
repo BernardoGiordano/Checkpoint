@@ -92,9 +92,9 @@ void TitlePickerOverlay::drawTop(void) const
         }
         drawIcon(TitleCatalog::get().icon(k, BackupKind::Save), 36, rowY + 1, 24);
 
-        Title title;
-        TitleCatalog::get().getTitle(title, k, BackupKind::Save);
-        text.draw(text.truncate(title.shortDescription(), 290, 0.46f), 66, rowY + 5, 0.46f, sel ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
+        std::string name;
+        TitleCatalog::get().descriptionByIndex(name, k, BackupKind::Save);
+        text.draw(text.truncate(name, 290, 0.46f), 66, rowY + 5, 0.46f, sel ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
     }
 }
 

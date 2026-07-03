@@ -75,6 +75,11 @@ public:
     C2D_Image get(u64 id);
 
     bool has(u64 id) const { return mMap.find(id) != mMap.end(); }
+    // Copy the stored raw CTR pixels (0x900 u16) for `id` into `out`. Returns
+    // false if `id` has no stored icon, is a DS icon, or its pixels were already
+    // realized into a texture (reclaimed). Lets the cache export reuse the icon
+    // bytes the probe already read from the SMDH instead of re-reading it.
+    bool copyCtrPixels(u64 id, u16* out) const;
     void clear();
     void swap(IconStore& o) noexcept { mMap.swap(o.mMap); }
 

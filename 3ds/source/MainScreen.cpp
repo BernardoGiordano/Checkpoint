@@ -332,7 +332,7 @@ void MainScreen::drawTop(void) const
     }
 
     // Live transfer status (network sends draw their own modal on the bottom).
-    TransferSnapshot ts = TransferStatus::snapshot();
+    const TransferSnapshot& ts = mTransfer;
     if (ts.active && ts.kind == TransferKind::Network) {
         C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
         u64 total = ts.bytesTotal, done = ts.bytesDone;
@@ -436,7 +436,7 @@ void MainScreen::drawBottom(void) const
                                        : " Go to saves");
 
     // Live local-copy progress modal (network sends draw on the top screen).
-    TransferSnapshot ts = TransferStatus::snapshot();
+    const TransferSnapshot& ts = mTransfer;
     if (ts.active && ts.kind != TransferKind::Network) {
         C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
 
@@ -495,6 +495,11 @@ void MainScreen::drawBottom(void) const
 
 void MainScreen::update(const InputState& input)
 {
+    // Snapshot the live transfer state once for this frame; both draw*() read the
+    // member instead of re-locking TransferStatus. Done before any early return
+    // so the modal keeps updating even while a TransferJob is active.
+    mTransfer = TransferStatus::snapshot();
+
     // Re-read in case the Settings page toggled it while this screen was parked.
     transferEnabled = Configuration::getInstance().transferEnabled();
 

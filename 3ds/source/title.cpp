@@ -98,12 +98,12 @@ std::string Title::mediaTypeString(void)
     return " ";
 }
 
-std::string Title::shortDescription(void) const
+const std::string& Title::shortDescription(void) const
 {
     return mShortDescription;
 }
 
-std::string Title::longDescription(void) const
+const std::string& Title::longDescription(void) const
 {
     return mLongDescription;
 }

@@ -64,6 +64,9 @@ public:
     // Copies out just the short description for a title id, avoiding a full Title
     // copy. Returns false if the id isn't in the catalog.
     bool nameById(std::string& dst, u64 id);
+    // Copies just the short description of the i-th title of `kind`, avoiding a
+    // full Title copy per row. Returns false if the index is out of range.
+    bool descriptionByIndex(std::string& dst, int i, BackupKind kind);
     bool getTitleByName(Title& dst, const std::string& name);
     int getTitleCount(BackupKind kind);
     C2D_Image icon(int i, BackupKind kind);
@@ -106,9 +109,9 @@ private:
     void scanInstalledTitles(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons); // slow path: NAND / SD / PKSM
     void appendCartTitle(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons);     // prepend inserted game-card title
     void sortLists(std::vector<Title>& saves, std::vector<Title>& extdatas);                             // favorites-first, then by name
-    void exportCaches(std::vector<Title>& saves, std::vector<Title>& extdatas);                          // serialize both lists to SD
+    void exportCaches(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons);        // serialize both lists to SD
 
-    void exportTitleListCache(std::vector<Title>& list, const std::u16string& path);
+    void exportTitleListCache(std::vector<Title>& list, const std::u16string& path, IconStore& icons);
     void importTitleListCache(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons);
 
     std::vector<Title> mSaves;

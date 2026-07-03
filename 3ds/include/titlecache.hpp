@@ -44,9 +44,10 @@ namespace TitleCache {
     // regenerated. Folded into the title-DB hash by calculateTitleDBHash().
     constexpr u32 FORMAT_VERSION = 2;
 
-    // Writes one entry (ENTRY_SIZE bytes) at dst, including the CTR icon pulled
-    // fresh from the title's SMDH. Zero-fills the entry first.
-    void encode(u8* dst, Title& title);
+    // Writes one entry (ENTRY_SIZE bytes) at dst, including the CTR icon bytes
+    // reused from `icons` (the probe already read them from the SMDH; a cache
+    // miss falls back to a fresh SMDH read). Zero-fills the entry first.
+    void encode(u8* dst, Title& title, IconStore& icons);
 
     // Reads one entry at src into a fully-formed Title, storing its icon bytes
     // into `icons` under the title's id.

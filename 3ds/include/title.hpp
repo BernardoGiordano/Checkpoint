@@ -71,7 +71,7 @@ public:
     void load(void);
     void load(u64 id, u8* productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::string shortDescription,
         std::string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card);
-    std::string longDescription(void) const;
+    const std::string& longDescription(void) const;
     u32 lowId(void);
     FS_MediaType mediaType(void);
     std::string mediaTypeString(void);
@@ -79,7 +79,7 @@ public:
     std::u16string savePath(void);
     std::u16string fullSavePath(size_t index);
     std::vector<std::u16string> saves(void);
-    std::string shortDescription(void) const;
+    const std::string& shortDescription(void) const;
     CardType SPICardType(void);
     u32 uniqueId(void);
 

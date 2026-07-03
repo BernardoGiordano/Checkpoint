@@ -87,6 +87,16 @@ void IconStore::storeCtrIcon(u64 id, const u16* bigIconData)
     mMap.emplace(id, std::move(e));
 }
 
+bool IconStore::copyCtrPixels(u64 id, u16* out) const
+{
+    auto it = mMap.find(id);
+    if (it == mMap.end() || it->second.isDs || it->second.pixels.size() < CTR_PIXELS) {
+        return false;
+    }
+    memcpy(out, it->second.pixels.data(), CTR_PIXELS * sizeof(u16));
+    return true;
+}
+
 void IconStore::storeDsIcon(u64 id, const u8* banner)
 {
     if (mMap.find(id) != mMap.end()) {
