@@ -201,6 +201,14 @@ void Configuration::save(void)
         fclose(out);
         oldSize = size;
     }
+    mDirty = false;
+}
+
+void Configuration::commit(void)
+{
+    if (mDirty) {
+        save();
+    }
 }
 
 bool Configuration::filter(u64 id)
@@ -256,35 +264,35 @@ void Configuration::setNandSaves(bool v)
 {
     mNandSaves             = v;
     (*mJson)["nand_saves"] = v;
-    save();
+    mDirty                 = true;
 }
 
 void Configuration::setScanCard(bool v)
 {
     mScanCard             = v;
     (*mJson)["scan_cart"] = v;
-    save();
+    mDirty                = true;
 }
 
 void Configuration::setTransferEnabled(bool v)
 {
     mTransferEnabled             = v;
     (*mJson)["transfer_enabled"] = v;
-    save();
+    mDirty                       = true;
 }
 
 void Configuration::setConfirmRestore(bool v)
 {
     mConfirmRestore             = v;
     (*mJson)["confirm_restore"] = v;
-    save();
+    mDirty                      = true;
 }
 
 void Configuration::setTheme(const std::string& v)
 {
     mTheme            = v;
     (*mJson)["theme"] = v;
-    save();
+    mDirty            = true;
 }
 
 // Rebuilds a json string-array of hex title ids from the given set.
@@ -317,7 +325,7 @@ void Configuration::addFavorite(u64 id)
         return; // already a favorite
     }
     (*mJson)["favorites"] = idSetToJson(mFavoriteIds);
-    save();
+    mDirty                = true;
 }
 
 void Configuration::addFilter(u64 id)
@@ -326,7 +334,7 @@ void Configuration::addFilter(u64 id)
         return; // already filtered
     }
     (*mJson)["filter"] = idSetToJson(mFilterIds);
-    save();
+    mDirty             = true;
 }
 
 void Configuration::addSaveFolder(u64 id, const std::u16string& path)
@@ -337,7 +345,7 @@ void Configuration::addSaveFolder(u64 id, const std::u16string& path)
     }
     vec.push_back(path);
     (*mJson)["additional_save_folders"] = folderMapToJson(mAdditionalSaveFolders);
-    save();
+    mDirty                              = true;
 }
 
 void Configuration::addExtdataFolder(u64 id, const std::u16string& path)
@@ -348,7 +356,7 @@ void Configuration::addExtdataFolder(u64 id, const std::u16string& path)
     }
     vec.push_back(path);
     (*mJson)["additional_extdata_folders"] = folderMapToJson(mAdditionalExtdataFolders);
-    save();
+    mDirty                                 = true;
 }
 
 void Configuration::removeFavorite(u64 id)
@@ -357,7 +365,7 @@ void Configuration::removeFavorite(u64 id)
         return;
     }
     (*mJson)["favorites"] = idSetToJson(mFavoriteIds);
-    save();
+    mDirty                = true;
 }
 
 void Configuration::removeFilter(u64 id)
@@ -366,7 +374,7 @@ void Configuration::removeFilter(u64 id)
         return;
     }
     (*mJson)["filter"] = idSetToJson(mFilterIds);
-    save();
+    mDirty             = true;
 }
 
 void Configuration::removeSaveFolder(u64 id, size_t index)
@@ -380,7 +388,7 @@ void Configuration::removeSaveFolder(u64 id, size_t index)
         mAdditionalSaveFolders.erase(it);
     }
     (*mJson)["additional_save_folders"] = folderMapToJson(mAdditionalSaveFolders);
-    save();
+    mDirty                              = true;
 }
 
 void Configuration::removeExtdataFolder(u64 id, size_t index)
@@ -394,5 +402,5 @@ void Configuration::removeExtdataFolder(u64 id, size_t index)
         mAdditionalExtdataFolders.erase(it);
     }
     (*mJson)["additional_extdata_folders"] = folderMapToJson(mAdditionalExtdataFolders);
-    save();
+    mDirty                                 = true;
 }

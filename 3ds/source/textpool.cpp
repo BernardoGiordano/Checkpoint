@@ -26,6 +26,7 @@
 
 #include "textpool.hpp"
 #include "util.hpp"
+#include <cmath>
 #include <vector>
 
 namespace {
@@ -103,14 +104,17 @@ const C2D_Text* TextPool::obtain(const std::string& s)
 float TextPool::draw(const std::string& s, float x, float y, float scale, u32 color, float depth)
 {
     const C2D_Text* t = obtain(s);
-    C2D_DrawText(t, C2D_WithColor, x, y, depth, scale, scale, color);
+    // Snap the pen to whole pixels: the system font is a bitmap atlas, so
+    // fractional origins smear glyph edges across two texels and read as blurry.
+    C2D_DrawText(t, C2D_WithColor, floorf(x + 0.5f), floorf(y + 0.5f), depth, scale, scale, color);
     return StringUtils::textWidth(*t, scale);
 }
 
 void TextPool::drawCentered(const std::string& s, float x, float w, float y, float scale, u32 color, float depth)
 {
     const C2D_Text* t = obtain(s);
-    C2D_DrawText(t, C2D_WithColor, x + ceilf((w - StringUtils::textWidth(*t, scale)) / 2), y, depth, scale, scale, color);
+    const float cx    = x + (w - StringUtils::textWidth(*t, scale)) / 2;
+    C2D_DrawText(t, C2D_WithColor, floorf(cx + 0.5f), floorf(y + 0.5f), depth, scale, scale, color);
 }
 
 void TextPool::drawWrapped(const std::string& s, float x, float y, float scale, u32 color, float maxWidth, float depth, u32 alignFlags)

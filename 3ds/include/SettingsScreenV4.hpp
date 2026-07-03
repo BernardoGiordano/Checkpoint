@@ -54,10 +54,13 @@ public:
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
+    bool allowsExit() const override { return false; }
 
 private:
     bool sectionInteractive(size_t section) const;
     size_t contentRowCount(size_t section) const;
+    // Toggles the General row at idx and flags it as changed (D-Pad+A or touch).
+    void toggleGeneral(int idx);
 
     void drawGeneral(void) const;
     void drawLibrary(void) const;
@@ -69,6 +72,9 @@ private:
     void drawListRow(int y, const std::string& primary, const std::string& secondary, u32 pipColor, bool focused, bool removable) const;
     void drawEmptyState(const char* title, const char* body) const;
     void drawHints(int screenW, int y, const std::string& text) const;
+    // Right-edge position indicator for scrollable content lists, mirroring the
+    // main page's backup list. No-op when everything fits in one viewport.
+    void drawScrollbar(int totalRows) const;
 
     std::shared_ptr<Screen> mParent;
     C2D_ImageTint flagTint;

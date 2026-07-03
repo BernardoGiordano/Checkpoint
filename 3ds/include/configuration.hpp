@@ -62,13 +62,17 @@ public:
     const std::unordered_map<u64, std::vector<std::u16string>>& saveFolders(void) const { return mAdditionalSaveFolders; }
     const std::unordered_map<u64, std::vector<std::u16string>>& extdataFolders(void) const { return mAdditionalExtdataFolders; }
 
-    // General-settings mutators: update the cached value, write it into the
-    // in-memory json and persist config.json immediately (save-on-change).
+    // General-settings mutators: update the cached value and the in-memory json,
+    // then mark the config dirty. The SD write is deferred to commit() so a burst
+    // of toggles doesn't block the UI on one slow flush per keypress.
     void setNandSaves(bool v);
     void setScanCard(bool v);
     void setTransferEnabled(bool v);
     void setConfirmRestore(bool v);
     void setTheme(const std::string& v);
+
+    // Flushes pending changes to config.json (no-op when nothing is dirty).
+    void commit(void);
 
     // Library / Folders list mutators (same save-on-change contract).
     void addFavorite(u64 id);
@@ -98,6 +102,7 @@ private:
     std::string mTheme   = "dark";
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
     size_t oldSize       = 0;
+    bool mDirty          = false; // General toggles pending a deferred save()
 };
 
 #endif

@@ -62,6 +62,7 @@ inline u32 COLOR_V4_LINE    = C2D_Color32(32, 36, 44, 255); // #20242C hairlines
 inline u32 COLOR_V4_ACCENT = C2D_Color32(122, 66, 196, 255);  // #7A42C4 selection
 inline u32 COLOR_V4_RING   = C2D_Color32(154, 107, 255, 255); // #9A6BFF pulsing ring
 inline u32 COLOR_V4_TEAL   = C2D_Color32(143, 227, 218, 255); // #8FE3DA additive actions
+inline u32 COLOR_V4_BLUE   = C2D_Color32(111, 178, 232, 255); // #6FB2E8 Checkpoint brand blue
 inline u32 COLOR_V4_GOLD   = C2D_Color32(230, 195, 77, 255);  // #E6C34D favorites
 inline u32 COLOR_V4_DANGER = C2D_Color32(229, 72, 77, 255);   // #E5484D delete
 // Text
@@ -69,6 +70,7 @@ inline u32 COLOR_V4_TEXT  = C2D_Color32(238, 241, 245, 255); // #EEF1F5 primary
 inline u32 COLOR_V4_MUTED = C2D_Color32(154, 163, 177, 255); // #9AA3B1 secondary
 inline u32 COLOR_V4_FAINT = C2D_Color32(111, 119, 133, 255); // #6F7785 captions
 inline u32 COLOR_V4_DIM   = C2D_Color32(0, 0, 0, 130);       // multi-select dim veil
+inline u32 COLOR_V4_SCRIM = C2D_Color32(0, 0, 0, 45);        // subtle bottom-screen darken when no title is opened
 
 namespace Colors {
     // Rewrites the tokens above to match the requested theme ("light" selects
@@ -93,6 +95,7 @@ namespace Colors {
             COLOR_V4_ACCENT = C2D_Color32(108, 54, 180, 255);
             COLOR_V4_GOLD   = C2D_Color32(190, 150, 30, 255);
             COLOR_V4_DANGER = C2D_Color32(206, 48, 54, 255);
+            COLOR_V4_BLUE   = C2D_Color32(43, 108, 176, 255); // deeper so it reads on light surfaces
             // Masks/veils invert: darken over light instead of lightening.
             COLOR_WHITEMASK    = C2D_Color32(0, 0, 0, 40);
             COLOR_BLACK_MEDIUM = C2D_Color32(212, 214, 219, 255); // progress-bar track
@@ -110,6 +113,7 @@ namespace Colors {
             COLOR_V4_ACCENT    = C2D_Color32(122, 66, 196, 255);
             COLOR_V4_GOLD      = C2D_Color32(230, 195, 77, 255);
             COLOR_V4_DANGER    = C2D_Color32(229, 72, 77, 255);
+            COLOR_V4_BLUE      = C2D_Color32(111, 178, 232, 255);
             COLOR_WHITEMASK    = C2D_Color32(255, 255, 255, 80);
             COLOR_BLACK_MEDIUM = C2D_Color32(43, 43, 46, 255);
             COLOR_OVERLAY      = C2D_Color32(0, 0, 0, 200);

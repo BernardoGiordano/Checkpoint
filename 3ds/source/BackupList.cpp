@@ -26,6 +26,7 @@
 
 #include "BackupList.hpp"
 #include "colors.hpp"
+#include "gui.hpp"
 #include "textpool.hpp"
 #include "util.hpp"
 #include <3ds.h>
@@ -88,22 +89,32 @@ void BackupList::draw(bool focused) const
 
         if (sel) {
             C2D_DrawRectSolid(mx, rowY, 0.5f, mw, mRowH, focused ? C2D_Color32(122, 66, 196, 70) : C2D_Color32(122, 66, 196, 40));
+            if (focused) {
+                // Breathing outline + accent bar so the active row reads as live.
+                Gui::drawPulsingOutline(mx, rowY, mw, mRowH, 1, COLOR_V4_RING);
+            }
             C2D_DrawRectSolid(mx, rowY + 3, 0.5f, 2, mRowH - 6, COLOR_V4_RING); // left accent bar
         }
 
         const int textY = rowY + (mRowH - 13) / 2;
 
-        // Leading marker: a teal "+" tile for "New backup", a small dot otherwise.
+        // Leading marker: a solid teal tile with a dark "+" for "New backup"
+        // (high contrast in every row state), a small dot otherwise.
         if (r.isNew) {
-            C2D_DrawRectSolid(mx + 6, rowY + (mRowH - 14) / 2, 0.5f, 14, 14, C2D_Color32(143, 227, 218, 40));
-            text.draw("+", mx + 10, textY - 1, 0.5f, COLOR_V4_TEAL);
+            const int tileSz = 14, tileX = mx + 6, tileY = rowY + (mRowH - tileSz) / 2;
+            C2D_DrawRectSolid(tileX, tileY, 0.5f, tileSz, tileSz, COLOR_V4_TEAL);
+            // Teal stays light in both themes, so a black "+" holds contrast either way.
+            const float pw = text.width("+", 0.5f);
+            const float lf = fontGetInfo(NULL)->lineFeed;
+            text.draw("+", tileX + (tileSz - pw) / 2, tileY - 2 + (tileSz - 0.5f * lf) / 2, 0.5f, COLOR_BLACK);
         }
         else {
             C2D_DrawRectSolid(mx + 9, rowY + mRowH / 2 - 2, 0.5f, 4, 4, sel ? COLOR_V4_RING : COLOR_V4_FAINT);
         }
 
-        // Name (left) — teal for the New row, brighter when selected.
-        const u32 nameColor = r.isNew ? COLOR_V4_TEAL : (sel ? COLOR_V4_TEXT : COLOR_V4_MUTED);
+        // Name (left) — near-white so it stays legible on the card and on the
+        // purple selection fill alike; muted only for unselected existing rows.
+        const u32 nameColor = (r.isNew || sel) ? COLOR_V4_TEXT : COLOR_V4_MUTED;
         text.draw(r.name, mx + 26, textY, 0.45f, nameColor);
 
         // Meta (right) — backup size, or the New-row caption.

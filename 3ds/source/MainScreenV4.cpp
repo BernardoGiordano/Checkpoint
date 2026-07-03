@@ -43,12 +43,14 @@
 #include <optional>
 
 // ---- v4 main-page geometry ----------------------------------------------
-// Top grid (400x240): 8 columns x 4 rows of 44px tiles, 4px gap, centered.
+// Top grid (400x240): 8 columns x 4 rows of native 48px SMDH tiles, 1px gap,
+// centered. Full-size icons (no downscale) keep them crisp, matching the old
+// main screen; the 1px gap gives the grid a little breathing room.
 static constexpr size_t rowlen = 4, collen = 8;
 static constexpr int HEADER_H = 24, FOOTER_H = 20;
-static constexpr int TILE = 44, GAP = 4;
-static constexpr int GRID_LEFT = (400 - (8 * TILE + 7 * GAP)) / 2; // = 10
-static constexpr int GRID_TOP  = HEADER_H + 6;                     // = 30
+static constexpr int TILE = 48, GAP = 1;
+static constexpr int GRID_LEFT = (400 - (8 * TILE + 7 * GAP)) / 2; // = 4
+static constexpr int GRID_TOP  = HEADER_H + 1;                     // = 25
 
 namespace {
     std::optional<std::u16string> chooseBackupDst(const BackupTarget& target, size_t cellIndex)
@@ -178,8 +180,8 @@ MainScreenV4::MainScreenV4(void) : hid(rowlen * collen, collen)
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 
     C2D_PlainImageTint(&flagTint, COLOR_V4_TEAL, 1.0f);
-    C2D_PlainImageTint(&checkboxTint, COLOR_V4_BASE, 1.0f);
-    C2D_PlainImageTint(&starTint, COLOR_V4_BASE, 1.0f);
+    C2D_PlainImageTint(&checkboxTint, COLOR_V4_BLUE, 1.0f); // blue check on the white selection chip
+    C2D_PlainImageTint(&starTint, COLOR_BLACK, 1.0f);       // black star on the gold favorite chip
 }
 
 int MainScreenV4::cellX(size_t i) const
@@ -196,7 +198,8 @@ void MainScreenV4::drawSelector(void) const
 {
     const int x = cellX(hid.index());
     const int y = cellY(hid.index());
-    C2D_DrawRectSolid(x, y, 0.5f, TILE, TILE, COLOR_WHITEMASK);
+    // No wash over the icon: the pulsing ring alone marks the selection, which
+    // keeps bright icons from turning into a bright-on-bright smear.
     Gui::drawPulsingOutline(x, y, TILE, TILE, 2, COLOR_V4_RING);
 }
 
@@ -207,8 +210,8 @@ void MainScreenV4::drawTile(size_t k) const
     C2D_DrawRectSolid(x, y, 0.5f, TILE, TILE, COLOR_V4_CARD);
     C2D_Image icon = TitleCatalog::get().icon(k, backupKind);
     if (icon.subtex->width == 48) {
-        // Scale the native 48px SMDH icon down to the 44px tile.
-        C2D_DrawImageAt(icon, x, y, 0.5f, nullptr, (float)TILE / 48.0f, (float)TILE / 48.0f);
+        // Native 48px SMDH icon fills the 48px tile 1:1 — no scaling, no aliasing.
+        C2D_DrawImageAt(icon, x, y, 0.5f, nullptr, 1.0f, 1.0f);
     }
     else {
         // Smaller icons (DS/other) sit centered, unscaled.
@@ -233,8 +236,10 @@ void MainScreenV4::drawTop(void) const
     // Header bar.
     C2D_DrawRectSolid(0, 0, 0.5f, 400, HEADER_H, COLOR_V4_SURFACE);
     C2D_DrawRectSolid(0, HEADER_H, 0.5f, 400, 1, COLOR_V4_LINE);
-    // Teal brand mark + wordmark.
-    C2D_DrawImageAt(flag, 6, 3, 0.5f, &flagTint, 1.0f, 1.0f);
+    // Brand mark + wordmark. Teal on dark, Checkpoint blue on light.
+    C2D_ImageTint brandTint;
+    C2D_PlainImageTint(&brandTint, Configuration::getInstance().theme() == "light" ? COLOR_V4_BLUE : COLOR_V4_TEAL, 1.0f);
+    C2D_DrawImageAt(flag, 6, 3, 0.5f, &brandTint, 1.0f, 1.0f);
     float nameX = 6 + ceilf(flag.subtex->width * 1.0f) + 6;
     nameX += text.draw("Checkpoint", nameX, 4, 0.5f, COLOR_V4_TEXT) + 6;
     text.draw(ver, nameX, 6, 0.4f, COLOR_V4_FAINT);
@@ -275,10 +280,6 @@ void MainScreenV4::drawTop(void) const
         drawTile(k);
     }
 
-    if (count > 0) {
-        drawSelector();
-    }
-
     // Multi-select veil + badges, favorite pips.
     for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
         const int x = cellX(k), y = cellY(k);
@@ -287,17 +288,28 @@ void MainScreenV4::drawTop(void) const
         if (multi && !checked && k != hid.fullIndex()) {
             C2D_DrawRectSolid(x, y, 0.5f, TILE, TILE, COLOR_V4_DIM);
         }
-        if (checked) {
-            C2D_DrawRectSolid(x, y, 0.5f, TILE, TILE, C2D_Color32(122, 66, 196, 90));
-            C2D_DrawRectSolid(x + TILE - 17, y + 2, 0.5f, 15, 15, COLOR_V4_ACCENT);
-            C2D_SpriteSetPos(&checkbox, x + TILE - 18, y + 1);
-            C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
-        }
+        // Corner badges. The chip is 16px; the sprite art is 24px, so it is offset
+        // by (16-24)/2 = -4 on both axes to sit centered on the chip. The favorite
+        // star is drawn first so the multi-select check lands on top of it — when a
+        // title is both, the selection state must stay visible.
+        constexpr int CHIP = 16, SPR = 24, SPR_OFF = (CHIP - SPR) / 2;
+        const int cx = x + TILE - CHIP - 1, cy = y + 1;
         if (k < gridFavorites.size() && gridFavorites[k]) {
-            C2D_DrawRectSolid(x + TILE - 14, y - 3, 0.5f, 15, 15, COLOR_V4_GOLD);
-            C2D_SpriteSetPos(&star, x + TILE - 15, y - 4);
+            C2D_DrawRectSolid(cx, cy, 0.5f, CHIP, CHIP, COLOR_V4_GOLD);
+            C2D_SpriteSetPos(&star, cx + SPR_OFF, cy + SPR_OFF);
             C2D_DrawSpriteTinted(&star, &starTint);
         }
+        if (checked) {
+            C2D_DrawRectSolid(x, y, 0.5f, TILE, TILE, C2D_Color32(122, 66, 196, 90));
+            C2D_DrawRectSolid(cx, cy, 0.5f, CHIP, CHIP, COLOR_WHITE);
+            C2D_SpriteSetPos(&checkbox, cx + SPR_OFF, cy + SPR_OFF);
+            C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
+        }
+    }
+
+    // Breathing selector drawn last so its ring sits above every veil and badge.
+    if (count > 0) {
+        drawSelector();
     }
 
     // Footer hint bar.
@@ -307,30 +319,7 @@ void MainScreenV4::drawTop(void) const
         drawHints(400, 223, " Tag     hold all     Backup all     Clear");
     }
     else {
-        drawHints(400, 223, " Open     Select     Extdata    Hold SELECT: help");
-    }
-
-    // Hold-SELECT command help overlay.
-    if (hidKeysHeld() & KEY_SELECT) {
-        C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
-        const char* cmds[] = {
-            " Move between titles",
-            " Enter title",
-            " Back  -  hold to refresh titles",
-            " Tag title  -  hold to select all",
-            " Switch Save / Extdata",
-            "\xEE\x80\x80 Open Settings",
-        };
-        const float scale = 0.6f;
-        const float lh    = scale * fontGetInfo(NULL)->lineFeed;
-        const int n       = sizeof(cmds) / sizeof(cmds[0]);
-        float top         = ceilf((240 - n * lh) / 2);
-        for (int i = 0; i < n; i++) {
-            text.drawCentered(cmds[i], 0, 400, top + i * lh, scale, COLOR_V4_TEXT, 0.9f);
-        }
-        if (Server::isRunning() && Server::getAddress().length() > 0) {
-            text.draw("Logs at " + Server::getAddress() + "/logs/memory", 6, 223, 0.42f, COLOR_V4_FAINT);
-        }
+        drawHints(400, 223, " Open     Tag     Extdata    SELECT Settings");
     }
 
     // Live transfer status (network sends draw their own modal on the bottom).
@@ -408,7 +397,7 @@ void MainScreenV4::drawBottom(void) const
         // Actions. While multi-selecting, one full-width Backup button replaces the
         // per-title Backup/Restore pair and drives the whole tagged batch.
         if (MS::multipleSelectionEnabled()) {
-            buttonBackupAll->text(StringUtils::format("Backup %zu selected", MS::selectedEntries().size()));
+            buttonBackupAll->text(StringUtils::format("Backup %zu selected ", MS::selectedEntries().size()));
             buttonBackupAll->draw(0.6f, COLOR_V4_RING);
         }
         else if (selected.activityLog) {
@@ -426,13 +415,19 @@ void MainScreenV4::drawBottom(void) const
         buttonTransfer->draw(0.5f, COLOR_V4_ACCENT);
     }
 
+    // Subtle scrim while no title is opened: the top grid holds focus, so the
+    // detail panel reads as inactive until the user drills in (A / Go to saves).
+    if (!g_bottomScrollEnabled) {
+        C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_V4_SCRIM);
+    }
+
     // Footer hint bar.
     C2D_DrawRectSolid(0, 220, 0.5f, 320, FOOTER_H, COLOR_V4_SURFACE);
     C2D_DrawRectSolid(0, 219, 0.5f, 320, 1, COLOR_V4_LINE);
     drawHints(320, 223,
         MS::multipleSelectionEnabled() ? "Backup selected      Clear selection"
         : g_bottomScrollEnabled        ? " Confirm      Delete      Back"
-                                       : " Backups      Backup      Restore");
+                                       : " Go to saves");
 
     // Live local-copy progress modal (network sends draw on the top screen).
     TransferSnapshot ts = TransferStatus::snapshot();
@@ -689,10 +684,32 @@ void MainScreenV4::handleEvents(const InputState& input)
     u32 kDown = hidKeysDown();
     u32 kHeld = hidKeysHeld();
 
-    // Hold SELECT (shows the command help) then press A to open Settings.
-    if ((kHeld & KEY_SELECT) && (kDown & KEY_A)) {
+    // SELECT opens Settings, but not while the catalog is still loading titles.
+    if ((kDown & KEY_SELECT) && !TitleCatalog::get().progress().active) {
         g_pendingScreen = std::make_shared<SettingsScreenV4>(g_screen);
         return;
+    }
+
+    // Touch the Save / Extdata segmented control in the bottom header to switch
+    // kinds. Geometry mirrors drawBottom() exactly so the hit box tracks the label.
+    if (selected.valid && (kDown & KEY_TOUCH)) {
+        TextPool& text = TextPool::get();
+        const int segH = 16, segY = 4, pad = 7;
+        const int cellSaveW = (int)ceilf(text.width("Save", 0.4f)) + pad * 2;
+        const int cellExtW  = (int)ceilf(text.width("Extdata", 0.4f)) + pad * 2;
+        const int segX      = 320 - 6 - cellSaveW - cellExtW;
+        if (input.py >= segY && input.py < segY + segH && input.px >= segX && input.px < segX + cellSaveW + cellExtW) {
+            BackupKind want = input.px < segX + cellSaveW ? BackupKind::Save : BackupKind::Extdata;
+            if (want != backupKind) {
+                hid.reset();
+                backupKind            = want;
+                g_bottomScrollEnabled = false;
+                MS::clearSelectedEntries();
+                directoryList->resetIndex();
+                updateButtons();
+            }
+            return;
+        }
     }
 
     if (kDown & KEY_A) {
@@ -812,7 +829,7 @@ void MainScreenV4::handleEvents(const InputState& input)
     if (MS::multipleSelectionEnabled()) {
         // One large Backup button (touch or A) backs up the whole tagged batch;
         // it replaces the per-title Backup/Restore pair while multi-selecting.
-        if (buttonBackupAll->released() || (kDown & KEY_A)) {
+        if (buttonBackupAll->released() || (kDown & KEY_A) || (kDown & KEY_L)) {
             directoryList->resetIndex();
             std::vector<size_t> list = MS::selectedEntries();
             for (size_t i = 0, sz = list.size(); i < sz; i++) {
@@ -824,7 +841,7 @@ void MainScreenV4::handleEvents(const InputState& input)
         }
     }
     else {
-        if ((activityLog ? buttonBackupAL : buttonBackup)->released()) {
+        if ((activityLog ? buttonBackupAL : buttonBackup)->released() || (kDown & KEY_L)) {
             if (g_bottomScrollEnabled) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Backup selected save?",
@@ -836,7 +853,7 @@ void MainScreenV4::handleEvents(const InputState& input)
             }
         }
 
-        if ((activityLog ? buttonRestoreAL : buttonRestore)->released()) {
+        if ((activityLog ? buttonRestoreAL : buttonRestore)->released() || (kDown & KEY_R)) {
             size_t cellIndex = directoryList->index();
             if (g_bottomScrollEnabled && cellIndex > 0) {
                 requestRestore(cellIndex);
@@ -844,7 +861,7 @@ void MainScreenV4::handleEvents(const InputState& input)
         }
     }
 
-    if ((activityLog && buttonPlayCoins->released()) || ((hidKeysDown() & KEY_TOUCH) && input.py < 20 && input.px > 294)) {
+    if (activityLog && buttonPlayCoins->released()) {
         if (!Archive::setPlayCoins()) {
             currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Failed to set play coins.");
         }

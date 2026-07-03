@@ -73,7 +73,7 @@ int main()
             hidTouchRead(&touch);
 
             if (hidKeysDown() & KEY_START) {
-                if (!TitleCatalog::get().progress().active && !TransferJob::get().active()) {
+                if (g_screen->allowsExit() && !TitleCatalog::get().progress().active && !TransferJob::get().active()) {
                     break;
                 }
             }

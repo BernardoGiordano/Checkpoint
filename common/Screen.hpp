@@ -50,6 +50,8 @@ public:
     // Call currentOverlay->update if it exists, and update if it doesn't
     void doUpdate(const InputState&);
     virtual void update(const InputState&) = 0;
+    // Whether pressing START should quit the app from this screen.
+    virtual bool allowsExit() const { return true; }
     void removeOverlay() { currentOverlay.reset(); }
     void setOverlay(std::shared_ptr<Overlay>& overlay) { currentOverlay = overlay; }
 
