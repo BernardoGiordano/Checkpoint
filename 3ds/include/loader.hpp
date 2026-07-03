@@ -93,17 +93,19 @@ private:
     bool validId(u64 id);
     bool scanCard(void);
 
-    // loadTitles orchestrates these steps; each owns one phase.
+    // loadTitles orchestrates these steps; each owns one phase. Every phase
+    // works on caller-owned vectors so the whole load runs lock-free on
+    // locals; loadTitles publishes the result with a swap under mMutex.
     void loadTitles(bool forceRefreshParam);
-    bool isCacheFresh(void);        // hash check; (re)writes the hash file as a side effect
-    void loadFromCache(void);       // fast path: deserialize the cache + refresh dirs
-    void scanInstalledTitles(void); // slow path: enumerate NAND / SD / PKSM
-    void appendCartTitle(void);     // prepend the inserted game-card title, if any
-    void sortLists(void);           // favorites-first, then by name
-    void exportCaches(void);        // serialize both lists to the SD cache
+    bool isCacheFresh(void);                                                           // hash check; (re)writes the hash file as a side effect
+    void loadFromCache(std::vector<Title>& saves, std::vector<Title>& extdatas);       // fast path: deserialize the cache + refresh dirs
+    void scanInstalledTitles(std::vector<Title>& saves, std::vector<Title>& extdatas); // slow path: enumerate NAND / SD / PKSM
+    void appendCartTitle(std::vector<Title>& saves, std::vector<Title>& extdatas);     // prepend the inserted game-card title, if any
+    void sortLists(std::vector<Title>& saves, std::vector<Title>& extdatas);           // favorites-first, then by name
+    void exportCaches(std::vector<Title>& saves, std::vector<Title>& extdatas);        // serialize both lists to the SD cache
 
     void exportTitleListCache(std::vector<Title>& list, const std::u16string& path);
-    void importTitleListCache(void);
+    void importTitleListCache(std::vector<Title>& saves, std::vector<Title>& extdatas);
 
     std::vector<Title> mSaves;
     std::vector<Title> mExtdatas;

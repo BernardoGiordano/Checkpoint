@@ -192,7 +192,7 @@ void TitleCatalog::exportTitleListCache(std::vector<Title>& list, const std::u16
     output.close();
 }
 
-void TitleCatalog::importTitleListCache(void)
+void TitleCatalog::importTitleListCache(std::vector<Title>& saves, std::vector<Title>& extdatas)
 {
     FSStream inputsaves(Archive::sdmc(), saveCachePath, FS_OPEN_READ);
     u32 sizesaves = inputsaves.size() / TitleCache::ENTRY_SIZE;
@@ -208,18 +208,18 @@ void TitleCatalog::importTitleListCache(void)
 
     mLimit = sizesaves + sizeextdatas;
 
-    mSaves.reserve(sizesaves);
-    mExtdatas.reserve(sizeextdatas);
+    saves.reserve(sizesaves);
+    extdatas.reserve(sizeextdatas);
 
     // fill the lists with blank titles first
     for (size_t i = 0, sz = std::max(sizesaves, sizeextdatas); i < sz; i++) {
         Title title;
         title.load();
         if (i < sizesaves) {
-            mSaves.push_back(title);
+            saves.push_back(title);
         }
         if (i < sizeextdatas) {
-            mExtdatas.push_back(title);
+            extdatas.push_back(title);
         }
     }
 
@@ -228,7 +228,7 @@ void TitleCatalog::importTitleListCache(void)
 
     for (size_t i = 0; i < sizesaves; i++) {
         const u8* titleData = cachesaves.get() + i * TitleCache::ENTRY_SIZE;
-        mSaves.at(i)        = TitleCache::decode(titleData);
+        saves.at(i)         = TitleCache::decode(titleData);
         alreadystored.push_back(TitleCache::readId(titleData));
 
         mCounter++;
@@ -240,7 +240,7 @@ void TitleCatalog::importTitleListCache(void)
         u64 id                        = TitleCache::readId(titleData);
         std::vector<u64>::iterator it = find(alreadystored.begin(), alreadystored.end(), id);
         if (it == alreadystored.end()) {
-            mExtdatas.at(i) = TitleCache::decode(titleData);
+            extdatas.at(i) = TitleCache::decode(titleData);
 
             mCounter++;
         }
@@ -249,11 +249,11 @@ void TitleCatalog::importTitleListCache(void)
 
             // avoid to copy a cartridge title into the extdata list twice
             if (i != 0 && pos == 0) {
-                auto newpos     = find(alreadystored.rbegin(), alreadystored.rend(), id);
-                mExtdatas.at(i) = mSaves.at(alreadystored.rend() - newpos - 1);
+                auto newpos    = find(alreadystored.rbegin(), alreadystored.rend(), id);
+                extdatas.at(i) = saves.at(alreadystored.rend() - newpos - 1);
             }
             else {
-                mExtdatas.at(i) = mSaves.at(pos);
+                extdatas.at(i) = saves.at(pos);
             }
         }
     }
@@ -353,21 +353,21 @@ bool TitleCatalog::isCacheFresh(void)
     return false;
 }
 
-void TitleCatalog::loadFromCache(void)
+void TitleCatalog::loadFromCache(std::vector<Title>& saves, std::vector<Title>& extdatas)
 {
     mCounter = 0;
-    importTitleListCache();
-    mCounter = mSaves.size() + mExtdatas.size();
+    importTitleListCache(saves, extdatas);
+    mCounter = saves.size() + extdatas.size();
 
-    for (auto& title : mSaves) {
+    for (auto& title : saves) {
         title.refreshDirectories();
     }
-    for (auto& title : mExtdatas) {
+    for (auto& title : extdatas) {
         title.refreshDirectories();
     }
 }
 
-void TitleCatalog::scanInstalledTitles(void)
+void TitleCatalog::scanInstalledTitles(std::vector<Title>& saves, std::vector<Title>& extdatas)
 {
     u32 count     = 0;
     u32 nandCount = 0;
@@ -394,11 +394,11 @@ void TitleCatalog::scanInstalledTitles(void)
                 Title title;
                 if (TitleProbe::probe(title, ids_nand[i], MEDIATYPE_NAND, CARD_CTR)) {
                     if (title.accessibleSave()) {
-                        mSaves.push_back(title);
+                        saves.push_back(title);
                     }
 
                     if (title.accessibleExtdata()) {
-                        mExtdatas.push_back(title);
+                        extdatas.push_back(title);
                     }
                 }
             }
@@ -417,11 +417,11 @@ void TitleCatalog::scanInstalledTitles(void)
             Title title;
             if (TitleProbe::probe(title, ids[i], MEDIATYPE_SD, CARD_CTR)) {
                 if (title.accessibleSave() || title.isGBAVC()) {
-                    mSaves.push_back(title);
+                    saves.push_back(title);
                 }
 
                 if (title.accessibleExtdata()) {
-                    mExtdatas.push_back(title);
+                    extdatas.push_back(title);
                 }
             }
         }
@@ -441,7 +441,7 @@ void TitleCatalog::scanInstalledTitles(void)
         Title title;
         if (TitleProbe::probe(title, TID_PKSM, MEDIATYPE_SD, CARD_CTR)) {
             if (title.accessibleExtdata()) {
-                mExtdatas.push_back(title);
+                extdatas.push_back(title);
             }
         }
 
@@ -449,7 +449,7 @@ void TitleCatalog::scanInstalledTitles(void)
     }
 }
 
-void TitleCatalog::sortLists(void)
+void TitleCatalog::sortLists(std::vector<Title>& saves, std::vector<Title>& extdatas)
 {
     auto byFavoriteThenName = [](Title& l, Title& r) {
         Configuration& cfg = Configuration::getInstance();
@@ -459,18 +459,18 @@ void TitleCatalog::sortLists(void)
         return l.shortDescription() < r.shortDescription();
     };
 
-    std::sort(mSaves.begin(), mSaves.end(), byFavoriteThenName);
-    std::sort(mExtdatas.begin(), mExtdatas.end(), byFavoriteThenName);
+    std::sort(saves.begin(), saves.end(), byFavoriteThenName);
+    std::sort(extdatas.begin(), extdatas.end(), byFavoriteThenName);
 }
 
-void TitleCatalog::exportCaches(void)
+void TitleCatalog::exportCaches(std::vector<Title>& saves, std::vector<Title>& extdatas)
 {
     Logging::debug("Starting title cache export");
-    exportTitleListCache(mSaves, saveCachePath);
-    exportTitleListCache(mExtdatas, extdataCachePath);
+    exportTitleListCache(saves, saveCachePath);
+    exportTitleListCache(extdatas, extdataCachePath);
 }
 
-void TitleCatalog::appendCartTitle(void)
+void TitleCatalog::appendCartTitle(std::vector<Title>& saves, std::vector<Title>& extdatas)
 {
     FS_CardType cardType;
     Result res = FSUSER_GetCardType(&cardType);
@@ -488,11 +488,11 @@ void TitleCatalog::appendCartTitle(void)
                 Title title;
                 if (TitleProbe::probe(title, ids[0], MEDIATYPE_GAME_CARD, cardType)) {
                     if (title.accessibleSave()) {
-                        mSaves.insert(mSaves.begin(), title);
+                        saves.insert(saves.begin(), title);
                     }
 
                     if (title.accessibleExtdata()) {
-                        mExtdatas.insert(mExtdatas.begin(), title);
+                        extdatas.insert(extdatas.begin(), title);
                     }
                 }
             }
@@ -502,7 +502,7 @@ void TitleCatalog::appendCartTitle(void)
     else {
         Title title;
         if (TitleProbe::probe(title, 0, MEDIATYPE_GAME_CARD, cardType)) {
-            mSaves.insert(mSaves.begin(), title);
+            saves.insert(saves.begin(), title);
         }
         mCounter++;
     }
@@ -511,34 +511,45 @@ void TitleCatalog::appendCartTitle(void)
 void TitleCatalog::loadTitles(bool forceRefreshParam)
 {
     auto totalStart = std::chrono::high_resolution_clock::now();
-    try {
-        mSaves.clear();
-        mExtdatas.clear();
-        mSaves.reserve(128);
-        mExtdatas.reserve(128);
 
+    // Build the new lists into locals so no lock is held during the slow
+    // SMDH/FS IO; readers keep seeing the previous catalog until the swap.
+    std::vector<Title> saves;
+    std::vector<Title> extdatas;
+    saves.reserve(128);
+    extdatas.reserve(128);
+
+    try {
         const bool optimizedLoad = isCacheFresh();
 
         if (optimizedLoad && !forceRefreshParam) {
-            loadFromCache();
+            loadFromCache(saves, extdatas);
         }
         else {
-            scanInstalledTitles();
+            scanInstalledTitles(saves, extdatas);
         }
 
-        sortLists();
+        sortLists(saves, extdatas);
 
         if (!optimizedLoad || forceRefreshParam) {
-            exportCaches();
+            exportCaches(saves, extdatas);
         }
 
-        appendCartTitle();
+        appendCartTitle(saves, extdatas);
     }
     catch (const std::exception& e) {
         Logging::error("Exception in loadTitles: {}", e.what());
     }
     catch (...) {
         Logging::error("Unknown exception in loadTitles");
+    }
+
+    // Publish atomically: short critical section, old lists land in the
+    // locals and are destroyed after the lock is released.
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        mSaves.swap(saves);
+        mExtdatas.swap(extdatas);
     }
 
     auto totalEnd      = std::chrono::high_resolution_clock::now();
