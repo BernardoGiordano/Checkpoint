@@ -61,6 +61,9 @@ public:
     // Queries (each takes the mutex, copies out).
     void getTitle(Title& dst, int i, BackupKind kind);
     bool getTitleById(Title& dst, u64 id);
+    // Copies out just the short description for a title id, avoiding a full Title
+    // copy. Returns false if the id isn't in the catalog.
+    bool nameById(std::string& dst, u64 id);
     bool getTitleByName(Title& dst, const std::string& name);
     int getTitleCount(BackupKind kind);
     C2D_Image icon(int i, BackupKind kind);

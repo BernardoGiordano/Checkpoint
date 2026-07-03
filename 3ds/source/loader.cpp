@@ -87,6 +87,24 @@ bool TitleCatalog::getTitleById(Title& dst, u64 id)
     return false;
 }
 
+bool TitleCatalog::nameById(std::string& dst, u64 id)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    for (const auto& title : mSaves) {
+        if (title.id() == id) {
+            dst = title.shortDescription();
+            return true;
+        }
+    }
+    for (const auto& title : mExtdatas) {
+        if (title.id() == id) {
+            dst = title.shortDescription();
+            return true;
+        }
+    }
+    return false;
+}
+
 bool TitleCatalog::getTitleByName(Title& dst, const std::string& name)
 {
     if (name.empty()) {

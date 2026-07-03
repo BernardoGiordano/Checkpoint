@@ -79,64 +79,49 @@ namespace {
 
     constexpr int SAVED_FLASH_FRAMES = 90;
 
-    // A single removable content row (Library / Folders). removeKind selects the
-    // Configuration mutator; id/idx address the entry to remove.
-    enum RemoveKind { RM_FAVORITE = 0, RM_FILTER, RM_SAVE_FOLDER, RM_EXTDATA_FOLDER };
-    struct Row {
-        std::string primary;
-        std::string secondary;
-        u32 pip;
-        int removeKind;
-        u64 id;
-        size_t idx;
-    };
-
     // Resolves a title id to its short description, falling back to the hex id
     // for titles not present in the catalog (e.g. a cart that isn't inserted).
+    // Copies out one string, not a full Title.
     std::string titleName(u64 id)
     {
-        Title t;
-        if (TitleCatalog::get().getTitleById(t, id) && !t.shortDescription().empty()) {
-            return t.shortDescription();
+        std::string name;
+        if (TitleCatalog::get().nameById(name, id) && !name.empty()) {
+            return name;
         }
         return StringUtils::format("%016llX", id);
     }
 
-    std::vector<Row> buildLibraryRows(void)
-    {
-        Configuration& cfg = Configuration::getInstance();
-        std::vector<Row> rows;
-        for (u64 id : cfg.favoriteIds()) {
-            rows.push_back({titleName(id), "Favorite", COLOR_GOLD, RM_FAVORITE, id, 0});
-        }
-        for (u64 id : cfg.filterIds()) {
-            rows.push_back({titleName(id), "Hidden", COLOR_FAINT, RM_FILTER, id, 0});
-        }
-        return rows;
+}
+
+void SettingsScreen::rebuildRows()
+{
+    Configuration& cfg = Configuration::getInstance();
+
+    mLibraryRows.clear();
+    for (u64 id : cfg.favoriteIds()) {
+        mLibraryRows.push_back({titleName(id), "Favorite", COLOR_GOLD, RM_FAVORITE, id, 0});
+    }
+    for (u64 id : cfg.filterIds()) {
+        mLibraryRows.push_back({titleName(id), "Hidden", COLOR_FAINT, RM_FILTER, id, 0});
     }
 
-    std::vector<Row> buildFolderRows(void)
-    {
-        Configuration& cfg = Configuration::getInstance();
-        std::vector<Row> rows;
-        for (auto& entry : cfg.saveFolders()) {
-            for (size_t i = 0; i < entry.second.size(); i++) {
-                rows.push_back({titleName(entry.first), StringUtils::UTF16toUTF8(entry.second[i]), COLOR_TEAL, RM_SAVE_FOLDER, entry.first, i});
-            }
+    mFolderRows.clear();
+    for (auto& entry : cfg.saveFolders()) {
+        for (size_t i = 0; i < entry.second.size(); i++) {
+            mFolderRows.push_back({titleName(entry.first), StringUtils::UTF16toUTF8(entry.second[i]), COLOR_TEAL, RM_SAVE_FOLDER, entry.first, i});
         }
-        for (auto& entry : cfg.extdataFolders()) {
-            for (size_t i = 0; i < entry.second.size(); i++) {
-                rows.push_back({titleName(entry.first), StringUtils::UTF16toUTF8(entry.second[i]), COLOR_BLUE, RM_EXTDATA_FOLDER, entry.first, i});
-            }
-        }
-        return rows;
     }
-
+    for (auto& entry : cfg.extdataFolders()) {
+        for (size_t i = 0; i < entry.second.size(); i++) {
+            mFolderRows.push_back({titleName(entry.first), StringUtils::UTF16toUTF8(entry.second[i]), COLOR_BLUE, RM_EXTDATA_FOLDER, entry.first, i});
+        }
+    }
 }
 
 SettingsScreen::SettingsScreen(std::shared_ptr<Screen> parent) : mParent(std::move(parent)), navHid(SECTION_COUNT, 1)
 {
     C2D_PlainImageTint(&flagTint, COLOR_TEAL, 1.0f);
+    rebuildRows();
 }
 
 bool SettingsScreen::sectionInteractive(size_t section) const
@@ -150,9 +135,9 @@ size_t SettingsScreen::contentRowCount(size_t section) const
         case SEC_GENERAL:
             return GENERAL_COUNT;
         case SEC_LIBRARY:
-            return buildLibraryRows().size();
+            return mLibraryRows.size();
         case SEC_FOLDERS:
-            return buildFolderRows().size();
+            return mFolderRows.size();
         default:
             return 0;
     }
@@ -311,7 +296,7 @@ void SettingsScreen::drawGeneral(void) const
 
 void SettingsScreen::drawFolders(void) const
 {
-    std::vector<Row> rows = buildFolderRows();
+    const std::vector<Row>& rows = mFolderRows;
     if (rows.empty()) {
         drawEmptyState("No extra folders", "Add a per-title save or extdata folder on your SD card.");
     }
@@ -336,7 +321,7 @@ void SettingsScreen::drawFolders(void) const
 
 void SettingsScreen::drawLibrary(void) const
 {
-    std::vector<Row> rows = buildLibraryRows();
+    const std::vector<Row>& rows = mLibraryRows;
     if (rows.empty()) {
         drawEmptyState("No favorites or hidden titles", "Favorite a title or hide it from the library grid.");
     }
@@ -507,6 +492,7 @@ void SettingsScreen::update(const InputState& input)
                 contentFocus  = true;
                 contentCursor = 0;
                 contentOffset = 0;
+                rebuildRows(); // refresh the row cache on entering an interactive section
             }
         }
         else if (kDown & KEY_B) {
@@ -539,6 +525,7 @@ void SettingsScreen::update(const InputState& input)
                     Configuration::getInstance().addFavorite(id);
                     g_titlesDirty = true;
                     savedTimer    = SAVED_FLASH_FRAMES;
+                    rebuildRows();
                 });
             }
             else if (kDown & KEY_Y) {
@@ -546,12 +533,12 @@ void SettingsScreen::update(const InputState& input)
                     Configuration::getInstance().addFilter(id);
                     g_titlesDirty = true;
                     savedTimer    = SAVED_FLASH_FRAMES;
+                    rebuildRows();
                 });
             }
             else if ((kDown & KEY_X) && rows > 0) {
-                std::vector<Row> list = buildLibraryRows();
-                if (contentCursor < (int)list.size()) {
-                    const Row& r = list[contentCursor];
+                if (contentCursor < (int)mLibraryRows.size()) {
+                    const Row& r = mLibraryRows[contentCursor];
                     if (r.removeKind == RM_FAVORITE) {
                         Configuration::getInstance().removeFavorite(r.id);
                     }
@@ -560,6 +547,7 @@ void SettingsScreen::update(const InputState& input)
                     }
                     g_titlesDirty = true;
                     savedTimer    = SAVED_FLASH_FRAMES;
+                    rebuildRows();
                 }
             }
             else if (kDown & KEY_B) {
@@ -573,6 +561,7 @@ void SettingsScreen::update(const InputState& input)
                         Configuration::getInstance().addSaveFolder(id, path);
                         g_titlesDirty = true;
                         savedTimer    = SAVED_FLASH_FRAMES;
+                        rebuildRows();
                     });
                 });
             }
@@ -582,13 +571,13 @@ void SettingsScreen::update(const InputState& input)
                         Configuration::getInstance().addExtdataFolder(id, path);
                         g_titlesDirty = true;
                         savedTimer    = SAVED_FLASH_FRAMES;
+                        rebuildRows();
                     });
                 });
             }
             else if ((kDown & KEY_X) && rows > 0) {
-                std::vector<Row> list = buildFolderRows();
-                if (contentCursor < (int)list.size()) {
-                    const Row& r = list[contentCursor];
+                if (contentCursor < (int)mFolderRows.size()) {
+                    const Row& r = mFolderRows[contentCursor];
                     if (r.removeKind == RM_SAVE_FOLDER) {
                         Configuration::getInstance().removeSaveFolder(r.id, r.idx);
                     }
@@ -597,6 +586,7 @@ void SettingsScreen::update(const InputState& input)
                     }
                     g_titlesDirty = true;
                     savedTimer    = SAVED_FLASH_FRAMES;
+                    rebuildRows();
                 }
             }
             else if (kDown & KEY_B) {

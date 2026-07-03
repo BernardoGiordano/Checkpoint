@@ -31,6 +31,8 @@
 #include "hid.hpp"
 #include <citro2d.h>
 #include <memory>
+#include <string>
+#include <vector>
 
 // v4 Settings page. Top screen = section navigation (a vertical list of
 // sections) plus a short blurb; bottom screen = the selected section's content.
@@ -57,8 +59,24 @@ public:
     bool allowsExit() const override { return false; }
 
 private:
+    // A single removable content row (Library / Folders). removeKind selects the
+    // Configuration mutator; id/idx address the entry to remove.
+    enum RemoveKind { RM_FAVORITE = 0, RM_FILTER, RM_SAVE_FOLDER, RM_EXTDATA_FOLDER };
+    struct Row {
+        std::string primary;
+        std::string secondary;
+        u32 pip;
+        int removeKind;
+        u64 id;
+        size_t idx;
+    };
+
     bool sectionInteractive(size_t section) const;
     size_t contentRowCount(size_t section) const;
+    // Rebuilds the Library and Folders row caches from Configuration. Called on
+    // entering an interactive section and after any config mutation — not per
+    // frame: the row set is static while parked on a tab.
+    void rebuildRows();
     // Toggles the General row at idx and flags it as changed (D-Pad+A or touch).
     void toggleGeneral(int idx);
 
@@ -78,6 +96,11 @@ private:
 
     std::shared_ptr<Screen> mParent;
     C2D_ImageTint flagTint;
+
+    // Cached rows for the Library and Folders tabs, rebuilt by rebuildRows() only
+    // when the underlying config changes rather than every draw/update.
+    std::vector<Row> mLibraryRows;
+    std::vector<Row> mFolderRows;
 
     Hid<HidDirection::VERTICAL, HidDirection::VERTICAL> navHid;
     bool contentFocus                 = false; // false: section list (top) focused; true: content (bottom)
