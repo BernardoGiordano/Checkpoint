@@ -35,13 +35,29 @@
 void TransferJob::enqueueBackup(Title title, BackupKind kind, std::u16string dstPath, std::string dataType)
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    mQueue.push_back(WorkItem{Kind::Backup, std::move(title), kind, std::move(dstPath), std::move(dataType), "Progress correctly saved to disk."});
+    mQueue.push_back(WorkItem{.op = Kind::Backup,
+        .title                    = std::move(title),
+        .kind                     = kind,
+        .path                     = std::move(dstPath),
+        .dataType                 = std::move(dataType),
+        .successMsg               = "Progress correctly saved to disk.",
+        .backupName               = "",
+        .ip                       = "",
+        .token                    = ""});
 }
 
 void TransferJob::enqueueRestore(Title title, BackupKind kind, std::u16string srcPath, std::string dataType, std::string successMsg)
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    mQueue.push_back(WorkItem{Kind::Restore, std::move(title), kind, std::move(srcPath), std::move(dataType), std::move(successMsg)});
+    mQueue.push_back(WorkItem{.op = Kind::Restore,
+        .title                    = std::move(title),
+        .kind                     = kind,
+        .path                     = std::move(srcPath),
+        .dataType                 = std::move(dataType),
+        .successMsg               = std::move(successMsg),
+        .backupName               = "",
+        .ip                       = "",
+        .token                    = ""});
 }
 
 void TransferJob::enqueueSend(
@@ -115,8 +131,13 @@ void TransferJob::run(void)
         if (item.op == Kind::Send) {
             Transfer::SendOutcome out = Transfer::sendBackup(item.title, item.path, item.backupName, item.dataType, item.ip, item.port, item.token);
             std::lock_guard<std::mutex> lock(mMutex);
-            mResult      = JobResult{false, out.ok, 0, io::BackupStage::Copy, item.successMsg, item.dataType};
-            mResult.send = out;
+            mResult = JobResult{.isRestore = false,
+                .ok                        = out.ok,
+                .res                       = 0,
+                .stage                     = io::BackupStage::Copy,
+                .successMsg                = item.successMsg,
+                .dataType                  = item.dataType,
+                .send                      = out};
         }
         else {
             TransferStatus::setSaveCount(done);
@@ -125,7 +146,13 @@ void TransferJob::run(void)
             io::IoOutcome out   = item.op == Kind::Restore ? io::restore(target, item.path, sink) : io::backup(target, item.path, sink);
 
             std::lock_guard<std::mutex> lock(mMutex);
-            mResult = JobResult{item.op == Kind::Restore, out.ok, out.res, out.stage, item.successMsg, item.dataType};
+            mResult = JobResult{.isRestore = item.op == Kind::Restore,
+                .ok                        = out.ok,
+                .res                       = out.res,
+                .stage                     = out.stage,
+                .successMsg                = item.successMsg,
+                .dataType                  = item.dataType,
+                .send                      = std::nullopt};
         }
         done++;
     }
