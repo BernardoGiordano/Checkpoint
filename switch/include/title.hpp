@@ -39,9 +39,17 @@
 #include <unordered_map>
 #include <vector>
 
-// Sort order applied to a user's title list. Owned by TitleCatalog (mSortMode);
-// the UI reads it back through TitleCatalog::sortMode() to label the sort button.
-typedef enum { SORT_ALPHA, SORT_LAST_PLAYED, SORT_PLAY_TIME, SORT_MODES_COUNT } sort_t;
+// Sort order applied to a user's title list. Owned by TitleCatalog (mSortMode),
+// persisted through Configuration so it survives a relaunch; the UI reads it
+// back through SortMode::label() for both the grid's X-button cycle and the
+// Settings "Default sort" spinner — the same setting, not two.
+//
+// A named enum with a fixed underlying type so configuration.hpp can
+// forward-declare it without a full #include: title.hpp already includes
+// configuration.hpp, and configuration.hpp needs sort_t in Configuration's own
+// signature, so an #include cycle would otherwise leave sort_t undefined at the
+// point configuration.hpp needs it.
+enum sort_t : u8 { SORT_ALPHA, SORT_LAST_PLAYED, SORT_MOST_BACKUPS, SORT_FAVORITES_FIRST, SORT_MODES_COUNT };
 
 class Title {
 public:

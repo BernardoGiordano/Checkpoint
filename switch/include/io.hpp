@@ -64,6 +64,8 @@ namespace io {
     IoOutcome restore(Title& title, const std::string& srcPath, ProgressSink& sink);
 
     size_t countFiles(const std::string& path);
+    // Total byte size of everything under `path`, recursively (0 if unreadable).
+    u64 directorySize(const std::string& path);
     Result copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
     void copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
     Result createDirectory(const std::string& path);

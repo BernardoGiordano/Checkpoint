@@ -26,6 +26,7 @@
 
 #include "main.hpp"
 #include "MainScreen.hpp"
+#include "backupsize.hpp"
 #include "titlecatalog.hpp"
 #include "transferjob.hpp"
 extern "C" {
@@ -82,12 +83,19 @@ int main(void)
 
         g_screen->doDraw();
         g_screen->doUpdate(input);
+        if (g_pendingScreen) {
+            g_screen        = std::move(g_pendingScreen);
+            g_pendingScreen = nullptr;
+        }
         SDLH_Render();
     }
 
     // If the system forced the loop to end while a copy was live, let it finish
     // and join the worker before tearing anything down.
     TransferJob::get().join();
+    // Stop the backup-size worker and join it before tearing down the fs services
+    // it walks (aborts any long scan in progress).
+    BackupSizeCache::get().shutdown();
 
     g_shouldExitNetworkLoop = true;
     threadWaitForExit(&networkThread);

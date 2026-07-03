@@ -24,30 +24,35 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef MAIN_HPP
-#define MAIN_HPP
+#include "sortmode.hpp"
 
-#include "InputState.hpp"
-#include "Screen.hpp"
-#include "account.hpp"
-#include "title.hpp"
-#include "util.hpp"
-#include <memory>
-#include <switch.h>
+const std::array<SortMode, SORT_MODES_COUNT>& SortMode::all()
+{
+    static const std::array<SortMode, SORT_MODES_COUNT> modes = {{
+        {SORT_ALPHA, "A-Z", "alpha"},
+        {SORT_LAST_PLAYED, "Last played", "last-played"},
+        {SORT_MOST_BACKUPS, "Most backups", "most-backups"},
+        {SORT_FAVORITES_FIRST, "Favorites first", "favorites-first"},
+    }};
+    return modes;
+}
 
-inline float g_currentTime = 0;
-inline AccountUid g_currentUId;
-inline bool g_backupScrollEnabled       = 0;
-inline bool g_notificationLedAvailable  = false;
-inline std::shared_ptr<Screen> g_screen = nullptr;
-// Screen swap requested during the current frame's update; main() applies it
-// after doUpdate() returns so a screen never destroys itself mid-method
-// (Minus: MainScreen -> SettingsScreen; B: SettingsScreen -> the MainScreen it
-// came from, which SettingsScreen holds alive so its state is preserved).
-inline std::shared_ptr<Screen> g_pendingScreen = nullptr;
-inline bool g_ftpAvailable                     = false;
-inline bool g_shouldExitNetworkLoop            = false;
-inline u32 g_username_dotsize;
-inline const InputState* g_input = nullptr;
+const SortMode& SortMode::of(sort_t mode)
+{
+    return all()[static_cast<size_t>(mode)];
+}
 
-#endif
+sort_t SortMode::next(sort_t mode)
+{
+    return static_cast<sort_t>((static_cast<int>(mode) + 1) % SORT_MODES_COUNT);
+}
+
+sort_t SortMode::fromConfigKey(const std::string& key)
+{
+    for (const SortMode& m : all()) {
+        if (key == m.configKey) {
+            return m.mode;
+        }
+    }
+    return SORT_ALPHA;
+}

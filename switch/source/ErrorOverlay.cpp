@@ -31,18 +31,18 @@ ErrorOverlay::ErrorOverlay(Screen& screen, Result mres, const std::string& mtext
     res  = mres;
     text = mtext;
     SDLH_GetTextDimensions(28, text.c_str(), &textw, &texth);
-    button = std::make_unique<Clickable>(322, 462, 636, 56, COLOR_BLACK_DARKERR, COLOR_WHITE, "OK", true);
+    button = std::make_unique<Clickable>(322, 462, 636, 56, COLOR_BG, COLOR_WHITE, "OK", true);
     button->selected(true);
 }
 
 void ErrorOverlay::draw(void) const
 {
-    SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
+    SDLH_DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
     SDLH_DrawRect(320, 200, 640, 260, COLOR_BLACK);
-    SDLH_DrawText(20, 330, 210, COLOR_RED, StringUtils::format("Error: 0x%0llX", res).c_str());
+    SDLH_DrawText(20, 330, 210, COLOR_DANGER, StringUtils::format("Error: 0x%0llX", res).c_str());
     SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), COLOR_WHITE, text.c_str());
-    button->draw(28, COLOR_RED);
-    drawPulsingOutline(322, 462, 636, 56, 4, COLOR_RED);
+    button->draw(28, COLOR_DANGER);
+    drawPulsingOutline(322, 462, 636, 56, 4, COLOR_DANGER);
 }
 
 void ErrorOverlay::update(const InputState& input)

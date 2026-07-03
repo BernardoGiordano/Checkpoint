@@ -25,7 +25,19 @@
  */
 
 #include "configuration.hpp"
+#include "sortmode.hpp"
 #include "titlecatalog.hpp"
+#include <algorithm>
+
+namespace {
+    // Every id in config.json is stored as this same hex string, matching
+    // TitleCatalog::getCompleteTitleList()'s key format so Settings' Library/
+    // Save-folders tabs can look a stored id straight up in that map.
+    std::string hexId(u64 id)
+    {
+        return StringUtils::format("0x%016llX", id);
+    }
+}
 
 Configuration::Configuration(void)
 {
@@ -70,6 +82,14 @@ Configuration::Configuration(void)
         if (!(mJson.contains("additional_save_folders") && mJson["additional_save_folders"].is_object())) {
             mJson["additional_save_folders"] = nlohmann::json::object();
             updateJson                       = true;
+        }
+        if (!(mJson.contains("theme") && mJson["theme"].is_string())) {
+            mJson["theme"] = "dark";
+            updateJson     = true;
+        }
+        if (!(mJson.contains("sort-mode") && mJson["sort-mode"].is_string())) {
+            mJson["sort-mode"] = SortMode::of(SORT_ALPHA).configKey;
+            updateJson         = true;
         }
         // check every single entry in the arrays...
         for (auto& obj : mJson["filter"]) {
@@ -201,6 +221,9 @@ void Configuration::parse(void)
     PKSMBridgeEnabled = mJson["pksm-bridge"];
     // parse FTP flag
     FTPEnabled = mJson["ftp-enabled"];
+
+    mTheme    = mJson.value("theme", "dark");
+    mSortMode = SortMode::fromConfigKey(mJson.value("sort-mode", std::string(SortMode::of(SORT_ALPHA).configKey)));
 }
 
 const char* Configuration::c_str(void)
@@ -216,4 +239,121 @@ nlohmann::json Configuration::getJson(void)
 bool Configuration::isFTPEnabled(void)
 {
     return FTPEnabled;
+}
+
+std::vector<u64> Configuration::hiddenIds(void)
+{
+    return std::vector<u64>(mFilterIds.begin(), mFilterIds.end());
+}
+
+std::vector<u64> Configuration::favoriteIds(void)
+{
+    return std::vector<u64>(mFavoriteIds.begin(), mFavoriteIds.end());
+}
+
+std::vector<u64> Configuration::additionalSaveFolderIds(void)
+{
+    std::vector<u64> ids;
+    ids.reserve(mAdditionalSaveFolders.size());
+    for (const auto& pair : mAdditionalSaveFolders) {
+        ids.push_back(pair.first);
+    }
+    return ids;
+}
+
+void Configuration::setFilter(u64 id, bool hidden)
+{
+    if (hidden) {
+        mFilterIds.emplace(id);
+    }
+    else {
+        mFilterIds.erase(id);
+    }
+    mJson["filter"] = std::vector<std::string>(); // rebuild rather than track array-vs-set indices
+    for (u64 filtered : mFilterIds) {
+        mJson["filter"].push_back(hexId(filtered));
+    }
+    save();
+}
+
+void Configuration::setFavorite(u64 id, bool favorite)
+{
+    if (favorite) {
+        mFavoriteIds.emplace(id);
+    }
+    else {
+        mFavoriteIds.erase(id);
+    }
+    mJson["favorites"] = std::vector<std::string>();
+    for (u64 fav : mFavoriteIds) {
+        mJson["favorites"].push_back(hexId(fav));
+    }
+    save();
+}
+
+void Configuration::setPKSMBridgeEnabled(bool enabled)
+{
+    PKSMBridgeEnabled    = enabled;
+    mJson["pksm-bridge"] = enabled;
+    save();
+}
+
+void Configuration::setFTPEnabled(bool enabled)
+{
+    FTPEnabled           = enabled;
+    mJson["ftp-enabled"] = enabled;
+    save();
+}
+
+void Configuration::addAdditionalSaveFolder(u64 id, const std::string& path)
+{
+    std::vector<std::string>& folders = mAdditionalSaveFolders[id];
+    if (std::find(folders.begin(), folders.end(), path) != folders.end()) {
+        return;
+    }
+    folders.push_back(path);
+    mJson["additional_save_folders"][hexId(id)]["folders"] = folders;
+    save();
+}
+
+void Configuration::removeAdditionalSaveFolder(u64 id, const std::string& path)
+{
+    auto it = mAdditionalSaveFolders.find(id);
+    if (it == mAdditionalSaveFolders.end()) {
+        return;
+    }
+    auto& folders = it->second;
+    folders.erase(std::remove(folders.begin(), folders.end(), path), folders.end());
+    if (folders.empty()) {
+        mAdditionalSaveFolders.erase(it);
+        mJson["additional_save_folders"].erase(hexId(id));
+    }
+    else {
+        mJson["additional_save_folders"][hexId(id)]["folders"] = folders;
+    }
+    save();
+}
+
+std::string Configuration::theme(void)
+{
+    return mTheme;
+}
+
+void Configuration::setTheme(const std::string& theme)
+{
+    mTheme         = theme;
+    mJson["theme"] = theme;
+    save();
+}
+
+sort_t Configuration::sortMode(void)
+{
+    return mSortMode;
+}
+
+void Configuration::setSortMode(sort_t mode)
+{
+    mSortMode          = mode;
+    mJson["sort-mode"] = SortMode::of(mode).configKey;
+    save();
 }

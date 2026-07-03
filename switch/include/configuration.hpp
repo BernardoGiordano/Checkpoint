@@ -30,11 +30,19 @@
 #include "io.hpp"
 #include "json.hpp"
 #include "util.hpp"
+#include <switch.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
-#define CONFIG_VERSION 4
+// Forward-declared, not #include "title.hpp": title.hpp includes this header,
+// so a full include here would leave sort_t undefined by the time this class
+// body needs it (whichever header is included first wins the include-guard
+// race). sort_t is a named enum with a fixed underlying type specifically so
+// this forward declaration is legal — see the comment on its definition.
+enum sort_t : u8;
+
+#define CONFIG_VERSION 5
 
 class Configuration {
 public:
@@ -55,6 +63,34 @@ public:
     const char* c_str(void);
     nlohmann::json getJson(void);
 
+    // Every id currently hidden/favorited (Settings > Library reads these to
+    // build its two lists; getCompleteTitleList() supplies the id->name map).
+    std::vector<u64> hiddenIds(void);
+    std::vector<u64> favoriteIds(void);
+    // Every id with at least one additional save folder configured (Settings
+    // > Save folders).
+    std::vector<u64> additionalSaveFolderIds(void);
+
+    // Mutators. Each writes mJson and calls save() immediately — Settings has
+    // no separate "save" step; every change writes config.json synchronously.
+    void setFilter(u64 id, bool hidden);
+    void setFavorite(u64 id, bool favorite);
+    void setPKSMBridgeEnabled(bool enabled);
+    void setFTPEnabled(bool enabled);
+    void addAdditionalSaveFolder(u64 id, const std::string& path);
+    void removeAdditionalSaveFolder(u64 id, const std::string& path);
+
+    // "dark" (default, only theme that renders today) or "light" (persisted,
+    // reserved for a future light theme).
+    std::string theme(void);
+    void setTheme(const std::string& theme);
+
+    // Default/current title-grid sort mode. Persisted so it survives a
+    // relaunch; the grid's X-button cycle and the Settings "Default sort"
+    // spinner both read/write this same setting through TitleCatalog.
+    sort_t sortMode(void);
+    void setSortMode(sort_t mode);
+
     const std::string BASEPATH = "/switch/Checkpoint/config.json";
 
 private:
@@ -71,6 +107,8 @@ private:
     bool FTPEnabled;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders;
+    std::string mTheme;
+    sort_t mSortMode;
 };
 
 #endif

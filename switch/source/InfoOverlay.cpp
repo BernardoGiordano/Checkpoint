@@ -30,17 +30,17 @@ InfoOverlay::InfoOverlay(Screen& screen, const std::string& mtext) : Overlay(scr
 {
     text = mtext;
     SDLH_GetTextDimensions(28, text.c_str(), &textw, &texth);
-    button = std::make_unique<Clickable>(322, 462, 636, 56, COLOR_BLACK_DARK, COLOR_WHITE, "OK", true);
+    button = std::make_unique<Clickable>(322, 462, 636, 56, COLOR_SURFACE, COLOR_WHITE, "OK", true);
     button->selected(true);
 }
 
 void InfoOverlay::draw(void) const
 {
-    SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
-    SDLH_DrawRect(320, 200, 640, 260, COLOR_BLACK_DARK);
+    SDLH_DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
+    SDLH_DrawRect(320, 200, 640, 260, COLOR_SURFACE);
     SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), COLOR_WHITE, text.c_str());
-    button->draw(28, COLOR_PURPLE_DARK);
-    drawPulsingOutline(322, 462, 636, 56, 4, COLOR_PURPLE_DARK);
+    button->draw(28, COLOR_ACCENT);
+    drawPulsingOutline(322, 462, 636, 56, 4, COLOR_ACCENT);
 }
 
 void InfoOverlay::update(const InputState& input)

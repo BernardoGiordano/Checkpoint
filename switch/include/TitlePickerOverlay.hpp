@@ -24,30 +24,31 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef MAIN_HPP
-#define MAIN_HPP
+#ifndef TITLEPICKEROVERLAY_HPP
+#define TITLEPICKEROVERLAY_HPP
 
-#include "InputState.hpp"
-#include "Screen.hpp"
-#include "account.hpp"
-#include "title.hpp"
-#include "util.hpp"
-#include <memory>
+#include "Overlay.hpp"
+#include <functional>
+#include <string>
 #include <switch.h>
+#include <utility>
+#include <vector>
 
-inline float g_currentTime = 0;
-inline AccountUid g_currentUId;
-inline bool g_backupScrollEnabled       = 0;
-inline bool g_notificationLedAvailable  = false;
-inline std::shared_ptr<Screen> g_screen = nullptr;
-// Screen swap requested during the current frame's update; main() applies it
-// after doUpdate() returns so a screen never destroys itself mid-method
-// (Minus: MainScreen -> SettingsScreen; B: SettingsScreen -> the MainScreen it
-// came from, which SettingsScreen holds alive so its state is preserved).
-inline std::shared_ptr<Screen> g_pendingScreen = nullptr;
-inline bool g_ftpAvailable                     = false;
-inline bool g_shouldExitNetworkLoop            = false;
-inline u32 g_username_dotsize;
-inline const InputState* g_input = nullptr;
+// A scrollable title chooser raised by Settings > Save folders' "+ Add title"
+// row. A selects a title and fires onPick; B dismisses. Styled with the shared
+// design tokens.
+class TitlePickerOverlay : public Overlay {
+public:
+    TitlePickerOverlay(Screen& screen, const std::string& heading, std::vector<std::pair<u64, std::string>> items, std::function<void(u64)> onPick);
+    void draw(void) const override;
+    void update(const InputState& input) override;
 
-#endif
+private:
+    std::string mHeading;
+    std::vector<std::pair<u64, std::string>> mItems;
+    std::function<void(u64)> mOnPick;
+    int mCursor = 0;
+    int mScroll = 0;
+};
+
+#endif // TITLEPICKEROVERLAY_HPP

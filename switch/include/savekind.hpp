@@ -34,9 +34,7 @@
 // One ordered row per save kind the UI cycles through, in UI order (the
 // saveTypeFilter_t value is the row index). The single place that answers, per
 // kind: its filter-button label, its empty-list message, and which
-// FsSaveDataType it filters to. Replaces the scattered save-kind branches that
-// used to live in MainScreen (button colours/handlers, empty message, sidebar
-// cursor, cycle order) and TitleCatalog (filterToSaveDataType).
+// FsSaveDataType it filters to.
 //
 // Per-kind *colour* does not exist: every filter button shares the same
 // active/inactive colour pair, so SaveKind carries no SDL_Color and no SDL
@@ -44,7 +42,8 @@
 // "how to draw a kind" (SaveKind) vs "how to open a kind" (SaveDataSource).
 struct SaveKind {
     saveTypeFilter_t filter;
-    const char* buttonLabel;
+    const char* buttonLabel; // single glyph shown large on the rail button ("A", "B", "D", "S")
+    const char* railLabel;   // small kind name stacked under it ("USER", "BCAT", "DEVICE", "SYSTEM")
     const char* emptyMsg;
     u8 saveDataType;
 

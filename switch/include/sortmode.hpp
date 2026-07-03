@@ -24,30 +24,36 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef MAIN_HPP
-#define MAIN_HPP
+#ifndef SORTMODE_HPP
+#define SORTMODE_HPP
 
-#include "InputState.hpp"
-#include "Screen.hpp"
-#include "account.hpp"
 #include "title.hpp"
-#include "util.hpp"
-#include <memory>
-#include <switch.h>
+#include <array>
+#include <string>
 
-inline float g_currentTime = 0;
-inline AccountUid g_currentUId;
-inline bool g_backupScrollEnabled       = 0;
-inline bool g_notificationLedAvailable  = false;
-inline std::shared_ptr<Screen> g_screen = nullptr;
-// Screen swap requested during the current frame's update; main() applies it
-// after doUpdate() returns so a screen never destroys itself mid-method
-// (Minus: MainScreen -> SettingsScreen; B: SettingsScreen -> the MainScreen it
-// came from, which SettingsScreen holds alive so its state is preserved).
-inline std::shared_ptr<Screen> g_pendingScreen = nullptr;
-inline bool g_ftpAvailable                     = false;
-inline bool g_shouldExitNetworkLoop            = false;
-inline u32 g_username_dotsize;
-inline const InputState* g_input = nullptr;
+// One ordered row per sort_t value (mirrors SaveKind's shape). The single
+// place that answers, per mode: its display label (shown by both the grid's
+// X-button cycle and the Settings "Default sort" spinner — the two share one
+// setting) and its config.json key. Configuration stores the key string, not
+// the raw enum, so a future reordering of sort_t doesn't shift anyone's saved
+// setting.
+struct SortMode {
+    sort_t mode;
+    const char* label;
+    const char* configKey;
 
-#endif
+    // The four rows in UI order; all()[k].mode == sort_t(k).
+    static const std::array<SortMode, SORT_MODES_COUNT>& all();
+
+    // Row for this mode.
+    static const SortMode& of(sort_t mode);
+
+    // The next mode in the cycle ((mode + 1) % SORT_MODES_COUNT).
+    static sort_t next(sort_t mode);
+
+    // Config (de)serialization. fromConfigKey falls back to SORT_ALPHA for an
+    // unrecognized/missing key (e.g. an older config.json).
+    static sort_t fromConfigKey(const std::string& key);
+};
+
+#endif // SORTMODE_HPP

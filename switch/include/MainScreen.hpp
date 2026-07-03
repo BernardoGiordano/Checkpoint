@@ -66,10 +66,7 @@ protected:
     void resetIndex(entryType_t type);
     bool getPKSMBridgeFlag(void) const;
     void setPKSMBridgeFlag(bool f);
-    void updateButtons(void);
-    std::string sortMode(void) const;
     void setSaveTypeFilter(saveTypeFilter_t filter);
-    void colorFilterButtons(void);
     size_t rawIndex(void) const;
     void doBackup(size_t rawIdx, size_t cellIndex);
     void doRestore(size_t rawIdx, size_t cellIndex);
@@ -78,7 +75,6 @@ private:
     entryType_t type;
     int selectionTimer;
     bool pksmBridge;
-    bool wantInstructions;
     bool sidebarFocused              = false;
     bool sidebarExitFrame            = false;
     int sidebarCursor                = 0;
@@ -86,8 +82,12 @@ private:
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::unique_ptr<BackupList> backupList;
     std::unique_ptr<Clickable> buttonBackup, buttonRestore;
-    // Filter buttons in UI order, indexed by saveTypeFilter_t.
+    // Save-kind rail buttons in UI order, indexed by saveTypeFilter_t. Kept as
+    // Clickables purely for their stateful touch-release hit-testing; the rail
+    // look is drawn by hand, not through Clickable::draw.
     std::array<std::unique_ptr<Clickable>, 4> filterButtons;
+    // Rail gear button, touch shortcut to Settings; also opened by Minus.
+    std::unique_ptr<Clickable> settingsButton;
     char ver[8];
 };
 

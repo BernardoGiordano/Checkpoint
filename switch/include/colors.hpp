@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -29,21 +29,38 @@
 
 #include "SDLHelper.hpp"
 
-inline const SDL_Color COLOR_OVERLAY    = FC_MakeColor(0, 0, 0, 200);
-inline const SDL_Color COLOR_WHITEMASK  = FC_MakeColor(255, 255, 255, 80);
-inline const SDL_Color COLOR_WHITE      = FC_MakeColor(255, 255, 255, 255);
-inline const SDL_Color COLOR_BLACK      = FC_MakeColor(0, 0, 0, 255);
-inline const SDL_Color COLOR_RED        = FC_MakeColor(255, 81, 48, 255);
-inline const SDL_Color COLOR_GOLD       = FC_MakeColor(215, 183, 64, 255);
-inline const SDL_Color COLOR_GREY_LIGHT = FC_MakeColor(138, 138, 138, 255);
+// Design tokens for the dark-first UI.
+// A light theme derives later; every draw call in switch/ uses these tokens
+// today (no hardcoded SDL_Color literals outside this file).
 
-inline const SDL_Color COLOR_BLACK_DARKERR = FC_MakeColor(28, 28, 30, 255);
-inline const SDL_Color COLOR_BLACK_DARKER  = FC_MakeColor(36, 36, 40, 255);
-inline const SDL_Color COLOR_BLACK_DARK    = FC_MakeColor(42, 42, 46, 255);
-inline const SDL_Color COLOR_BLACK_MEDIUM  = FC_MakeColor(60, 60, 63, 255);
-inline const SDL_Color COLOR_PURPLE_DARK   = FC_MakeColor(9, 25, 69, 255);
-inline const SDL_Color COLOR_PURPLE_LIGHT  = FC_MakeColor(122, 66, 196, 255);
+inline const SDL_Color COLOR_BG       = FC_MakeColor(16, 16, 20, 255); // screen background
+inline const SDL_Color COLOR_SURFACE  = FC_MakeColor(23, 23, 29, 255); // settings rows
+inline const SDL_Color COLOR_SURFACE2 = FC_MakeColor(21, 21, 27, 255); // panels / cards
+inline const SDL_Color COLOR_TILE     = FC_MakeColor(35, 35, 44, 255); // title-icon placeholders, avatar
 
-inline const SDL_Color COLOR_GREEN = FC_MakeColor(0, 254, 197, 255);
+inline const SDL_Color COLOR_FILL1 = FC_MakeColor(255, 255, 255, 10); // unfocused list rows
+inline const SDL_Color COLOR_FILL2 = FC_MakeColor(255, 255, 255, 15); // pills, chips, meta badges
+inline const SDL_Color COLOR_FILL3 = FC_MakeColor(255, 255, 255, 31); // button-hint circles, toggle-off track
+
+inline const SDL_Color COLOR_STROKE1 = FC_MakeColor(255, 255, 255, 15); // hairline separators
+inline const SDL_Color COLOR_STROKE2 = FC_MakeColor(255, 255, 255, 20); // card/tile borders
+inline const SDL_Color COLOR_STROKE3 = FC_MakeColor(255, 255, 255, 41); // outlined-button border
+
+inline const SDL_Color COLOR_ACCENT       = FC_MakeColor(139, 124, 246, 255); // primary buttons, selection, focus ring
+inline const SDL_Color COLOR_ACCENT_LIGHT = FC_MakeColor(183, 171, 255, 255); // accent text on dark
+inline const SDL_Color COLOR_ACCENT_TINT  = FC_MakeColor(139, 124, 246, 41);  // focused/selected row background
+
+inline const SDL_Color COLOR_TEXT     = FC_MakeColor(242, 242, 247, 255); // primary text
+inline const SDL_Color COLOR_TEXT2    = FC_MakeColor(154, 154, 168, 255); // secondary text, inactive nav
+inline const SDL_Color COLOR_TEXT3    = FC_MakeColor(109, 109, 122, 255); // tertiary text, section labels, paths
+inline const SDL_Color COLOR_MONO_VAL = FC_MakeColor(201, 201, 212, 255); // monospace values on unfocused rows
+
+inline const SDL_Color COLOR_GOLD    = FC_MakeColor(245, 196, 81, 255);  // favorite star
+inline const SDL_Color COLOR_SUCCESS = FC_MakeColor(62, 207, 142, 255);  // "running" status text
+inline const SDL_Color COLOR_DANGER  = FC_MakeColor(229, 126, 141, 255); // delete affordances
+
+inline const SDL_Color COLOR_WHITE = FC_MakeColor(255, 255, 255, 255);
+inline const SDL_Color COLOR_BLACK = FC_MakeColor(0, 0, 0, 255);
+inline const SDL_Color COLOR_SCRIM = FC_MakeColor(0, 0, 0, 200); // modal backdrops
 
 #endif

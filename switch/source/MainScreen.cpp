@@ -25,20 +25,57 @@
  */
 
 #include "MainScreen.hpp"
+#include "SettingsScreen.hpp"
+#include "backupsize.hpp"
 #include "savedatasource.hpp"
+#include "savekind.hpp"
+#include "shapes.hpp"
 #include "titlecatalog.hpp"
 #include "transferjob.hpp"
+#include "uikit.hpp"
 #include <optional>
 
-static constexpr size_t rowlen = 5, collen = 4, rows = 10, TOPBAR_h = 48;
-static constexpr size_t LEFT_SIDEBAR_w  = 72;
-static constexpr int SIDEBAR_PAD        = 4;
-static constexpr int FILTER_BTN_SIZE    = 56;
-static constexpr int FILTER_BTN_X       = 8;
-static constexpr int FILTER_BTN_SPACING = 64;
-static constexpr int ACCT_ICON_SIZE     = 56;
-
+// Main browser layout. All coordinates are absolute pixels on the fixed
+// 1280x720 canvas.
 namespace {
+    constexpr int TOPBAR_H = 56;
+
+    // Left rail: 56x56 save-kind buttons at x12, y72 stepping by 66; the
+    // gear button and the account avatar anchored to the bottom.
+    constexpr int RAIL_W          = 80;
+    constexpr int RAIL_ITEM       = 56;
+    constexpr int RAIL_ITEM_X     = 12;
+    constexpr int RAIL_ITEM_Y0    = 72;
+    constexpr int RAIL_ITEM_PITCH = 66;
+    constexpr int SETTINGS_BTN_Y  = 544;
+    constexpr int AVATAR_SIZE     = 44;
+    constexpr int AVATAR_X        = 18;
+    constexpr int AVATAR_Y        = 610;
+
+    // Title grid: origin 100,76; 5 columns of 142px tiles, 12px gap →
+    // 154px pitch; 3 rows visible per page (15 tiles).
+    constexpr int GRID_COLS    = 5;
+    constexpr int GRID_ROWS    = 3;
+    constexpr int GRID_VISIBLE = GRID_COLS * GRID_ROWS;
+    constexpr int TILE         = 142;
+    constexpr int TILE_PITCH   = 154;
+    constexpr int GRID_X0      = 100;
+    constexpr int GRID_Y0      = 76;
+    constexpr int GRID_AREA_X  = RAIL_W;
+    constexpr int GRID_AREA_W  = 800;
+
+    // Right panel: 400px column with an inner 360px content column.
+    constexpr int PANEL_X       = 880;
+    constexpr int COL_X         = 900;
+    constexpr int COL_W         = 360;
+    constexpr int HEADER_ICON   = 88;
+    constexpr int BTN_W         = 360;
+    constexpr int BTN_H         = 56;
+    constexpr int BTN_BACKUP_Y  = 532;
+    constexpr int BTN_RESTORE_Y = 598;
+    constexpr int LIST_Y        = 214;
+    constexpr int LIST_ROWS     = 5;
+
     std::string backupErrorMessage(io::BackupStage stage)
     {
         switch (stage) {
@@ -66,47 +103,74 @@ namespace {
                 return "Failed to restore save.";
         }
     }
+
+    // A save-kind rail button: filled accent when active, faint fill
+    // otherwise, with the single glyph over the small kind label.
+    void drawRailItem(int y, const SaveKind& kind, bool active)
+    {
+        Shapes::fillRound(RAIL_ITEM_X, y, RAIL_ITEM, RAIL_ITEM, 14, active ? COLOR_ACCENT : COLOR_FILL1);
+        SDL_Color fg = active ? COLOR_WHITE : COLOR_TEXT2;
+
+        u32 gw, gh, lw, lh;
+        SDLH_GetTextDimensions(16, kind.buttonLabel, &gw, &gh);
+        SDLH_GetTextDimensions(9, kind.railLabel, &lw, &lh);
+        const int stackH = (int)gh + 2 + (int)lh;
+        const int top    = y + (RAIL_ITEM - stackH) / 2;
+        SDLH_DrawText(16, RAIL_ITEM_X + (RAIL_ITEM - (int)gw) / 2, top, fg, kind.buttonLabel);
+        SDLH_DrawText(9, RAIL_ITEM_X + (RAIL_ITEM - (int)lw) / 2, top + (int)gh + 2, fg, kind.railLabel);
+    }
+
+    // An action button: filled accent (Backup/Send) or outlined
+    // (Restore/Receive), label + shoulder-key square centered as a group.
+    void drawActionButton(int x, int y, const std::string& label, const std::string& key, bool filled)
+    {
+        if (filled) {
+            Shapes::fillRound(x, y, BTN_W, BTN_H, 14, COLOR_ACCENT);
+        }
+        else {
+            Shapes::strokeRound(x, y, BTN_W, BTN_H, 14, 2, COLOR_STROKE3);
+        }
+
+        u32 lw, lh;
+        SDLH_GetTextDimensions(16, label.c_str(), &lw, &lh);
+        const int keyW  = UiKit::keySquareWidth(key);
+        const int gap   = 10;
+        const int group = (int)lw + gap + keyW;
+        const int sx    = x + (BTN_W - group) / 2;
+        SDLH_DrawText(16, sx, y + (BTN_H - (int)lh) / 2, filled ? COLOR_WHITE : COLOR_TEXT, label.c_str());
+        UiKit::drawKeySquare(sx + (int)lw + gap, y + (BTN_H - 22) / 2, key, filled);
+    }
 }
 
-MainScreen::MainScreen(const InputState& input) : hid(rowlen * collen, collen, input)
+MainScreen::MainScreen(const InputState& input) : hid(GRID_VISIBLE, GRID_COLS, input)
 {
-    pksmBridge       = false;
-    wantInstructions = false;
-    selectionTimer   = 0;
+    pksmBridge     = false;
+    selectionTimer = 0;
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
-    backupList    = std::make_unique<BackupList>(608, 316, 400, 408, rows);
-    buttonBackup  = std::make_unique<Clickable>(1012, 316, 260, 64, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Backup \ue004", true);
-    buttonRestore = std::make_unique<Clickable>(1012, 384, 260, 64, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Restore \ue005", true);
-    buttonBackup->canChangeColorWhenSelected(true);
-    buttonRestore->canChangeColorWhenSelected(true);
 
-    int filterY = TOPBAR_h + 12;
-    for (int k = 0; k < 4; k++) {
-        const SaveKind& kind = SaveKind::all()[k];
-        filterButtons[k]     = std::make_unique<Clickable>(FILTER_BTN_X, filterY + FILTER_BTN_SPACING * k, FILTER_BTN_SIZE, FILTER_BTN_SIZE,
-                COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, kind.buttonLabel, true);
-        filterButtons[k]->canChangeColorWhenSelected(true);
-    }
-    colorFilterButtons();
-}
+    backupList    = std::make_unique<BackupList>(COL_X, LIST_Y, COL_W, LIST_ROWS * BackupList::ROW_PITCH, LIST_ROWS);
+    buttonBackup  = std::make_unique<Clickable>(COL_X, BTN_BACKUP_Y, BTN_W, BTN_H, COLOR_ACCENT, COLOR_WHITE, "Backup", true);
+    buttonRestore = std::make_unique<Clickable>(COL_X, BTN_RESTORE_Y, BTN_W, BTN_H, COLOR_SURFACE, COLOR_TEXT, "Restore", true);
 
-void MainScreen::colorFilterButtons(void)
-{
+    // The rail Clickables exist only so released() can hit-test touches; the
+    // rail is drawn by drawRailItem, not by Clickable::draw.
     for (int k = 0; k < 4; k++) {
-        bool on = mSaveTypeFilter == static_cast<saveTypeFilter_t>(k);
-        filterButtons[k]->setColors(on ? COLOR_PURPLE_DARK : COLOR_BLACK_DARKER, on ? COLOR_WHITE : COLOR_GREY_LIGHT);
+        int y            = RAIL_ITEM_Y0 + RAIL_ITEM_PITCH * k;
+        filterButtons[k] = std::make_unique<Clickable>(RAIL_ITEM_X, y, RAIL_ITEM, RAIL_ITEM, COLOR_FILL1, COLOR_TEXT2, "", true);
     }
+    settingsButton = std::make_unique<Clickable>(RAIL_ITEM_X, SETTINGS_BTN_Y, RAIL_ITEM, RAIL_ITEM, COLOR_FILL1, COLOR_TEXT2, "", true);
 }
 
 int MainScreen::selectorX(size_t i) const
 {
-    return LEFT_SIDEBAR_w + 4 + 128 * ((i % (rowlen * collen)) % collen) + 4 * (((i % (rowlen * collen)) % collen) + 1);
+    const int col = (int)((i % GRID_VISIBLE) % GRID_COLS);
+    return GRID_X0 + col * TILE_PITCH;
 }
 
 int MainScreen::selectorY(size_t i) const
 {
-    const int row = (i % (rowlen * collen)) / collen;
-    return 4 + 128 * row + 4 * (row + 1) + TOPBAR_h;
+    const int row = (int)((i % GRID_VISIBLE) / GRID_COLS);
+    return GRID_Y0 + row * TILE_PITCH;
 }
 
 void MainScreen::setSaveTypeFilter(saveTypeFilter_t filter)
@@ -119,227 +183,225 @@ void MainScreen::setSaveTypeFilter(saveTypeFilter_t filter)
     g_backupScrollEnabled = false;
     MS::clearSelectedEntries();
     setPKSMBridgeFlag(false);
-
-    colorFilterButtons();
 }
 
 void MainScreen::draw() const
 {
-    auto selEnt              = MS::selectedEntries();
     const size_t entries     = hid.maxVisibleEntries();
     const size_t filteredCnt = TitleCatalog::get().getFilteredTitleCount(g_currentUId, mSaveTypeFilter);
     const size_t max         = filteredCnt > 0 ? hid.maxEntries(filteredCnt) + 1 : 0;
+    auto selEnt              = MS::selectedEntries();
 
-    SDLH_ClearScreen(COLOR_BLACK_DARKERR);
+    SDLH_ClearScreen(COLOR_BG);
 
-    // left sidebar background (with padding for elevated look)
-    SDLH_DrawRect(SIDEBAR_PAD, TOPBAR_h + SIDEBAR_PAD, LEFT_SIDEBAR_w - SIDEBAR_PAD * 2, 720 - TOPBAR_h - SIDEBAR_PAD * 2, COLOR_BLACK_DARKER);
-
-    // title grid background
-    SDLH_DrawRect(LEFT_SIDEBAR_w, TOPBAR_h + 4, 532, 664, COLOR_BLACK_DARKER);
-
-    // top bar
-    SDLH_DrawRect(0, 0, 1280, TOPBAR_h, COLOR_BLACK);
-
-    // filter buttons
-    for (auto& button : filterButtons) {
-        button->draw(24, COLOR_PURPLE_LIGHT);
-    }
-
-    // sidebar focus indicator
-    if (sidebarFocused) {
-        int filterY   = TOPBAR_h + 12;
-        int focusBtnY = filterY + FILTER_BTN_SPACING * sidebarCursor;
-        drawPulsingOutline(FILTER_BTN_X, focusBtnY, FILTER_BTN_SIZE, FILTER_BTN_SIZE, 3, COLOR_PURPLE_LIGHT);
-    }
-
-    // account icon at bottom of left sidebar
-    int acctIconX = (LEFT_SIDEBAR_w - ACCT_ICON_SIZE) / 2;
-    int acctIconY = 720 - ACCT_ICON_SIZE - 30;
-    if (mSaveTypeFilter == FILTER_SAVES) {
-        drawPulsingOutline(acctIconX, acctIconY, ACCT_ICON_SIZE, ACCT_ICON_SIZE, 2, COLOR_GREEN);
-    }
-    if (Account::icon(g_currentUId) != NULL) {
-        SDLH_DrawImageScale(Account::icon(g_currentUId), acctIconX, acctIconY, ACCT_ICON_SIZE, ACCT_ICON_SIZE);
-        if (mSaveTypeFilter != FILTER_SAVES) {
-            SDLH_DrawRect(acctIconX, acctIconY, ACCT_ICON_SIZE, ACCT_ICON_SIZE, FC_MakeColor(0, 0, 0, 160));
-        }
-    }
-
-    u32 username_w, username_h;
-    std::string username = Account::shortName(g_currentUId);
-    SDLH_GetTextDimensions(11, username.c_str(), &username_w, &username_h);
-    SDL_Color usernameColor = mSaveTypeFilter == FILTER_SAVES ? COLOR_WHITE : COLOR_GREY_LIGHT;
-    SDLH_DrawTextBox(11, (LEFT_SIDEBAR_w - username_w) / 2, 720 - 28 + (28 - username_h) / 2, usernameColor, LEFT_SIDEBAR_w, username.c_str());
-
-    // title icons
-    for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
-        int selectorx = selectorX(k);
-        int selectory = selectorY(k);
-        if (TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k) != NULL) {
-            SDLH_DrawImageScale(TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k), selectorx, selectory, 128, 128);
-        }
-        else {
-            SDLH_DrawRect(selectorx, selectory, 128, 128, COLOR_BLACK);
-        }
-
-        if (!selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end()) {
-            SDLH_DrawIcon("checkbox", selectorx + 86, selectory + 86);
-        }
-
-        if (TitleCatalog::get().filteredFavorite(g_currentUId, mSaveTypeFilter, k)) {
-            SDLH_DrawRect(selectorx + 94, selectory + 8, 24, 24, COLOR_GOLD);
-            SDLH_DrawIcon("star", selectorx + 86, selectory);
-        }
-    }
-
-    // title selector (hidden when sidebar is focused)
-    if (filteredCnt > 0 && !sidebarFocused) {
-        const int x = selectorX(hid.index()) + 4 / 2;
-        const int y = selectorY(hid.index()) + 4 / 2;
-        drawPulsingOutline(x, y, 124, 124, 4, COLOR_PURPLE_DARK);
-        SDLH_DrawRect(x, y, 124, 124, COLOR_WHITEMASK);
-    }
-
-    u32 ver_w, ver_h, checkpoint_h, checkpoint_w;
-    SDLH_GetTextDimensions(20, ver, &ver_w, &ver_h);
-    SDLH_GetTextDimensions(26, "checkpoint", &checkpoint_w, &checkpoint_h);
-
-    SDLH_DrawText(26, 8, (TOPBAR_h - checkpoint_h) / 2 + 4, COLOR_WHITE, "checkpoint");
-    SDLH_DrawText(20, 8 + checkpoint_w + 8, (TOPBAR_h - checkpoint_h) / 2 + checkpoint_h - ver_h + 2, COLOR_GREY_LIGHT, ver);
-    SDLH_DrawText(
-        20, 8 + checkpoint_w + 8 + ver_w + 32, (TOPBAR_h - checkpoint_h) / 2 + checkpoint_h - ver_h + 2, COLOR_GREY_LIGHT, "\ue046 Instructions");
-
+    // Resolve the selected title once (cached): its name feeds the top bar and
+    // its detail feeds the right panel.
+    std::string gameName;
     if (filteredCnt > 0) {
-        // No-op unless the selected user/filter/index or the catalog itself
-        // (a backup/restore/delete/sort) moved since the last frame.
         backupList->refreshSelected(g_currentUId, mSaveTypeFilter, hid.fullIndex(), TitleCatalog::get().generation());
+        gameName = backupList->title().displayName();
+    }
+
+    // ---- Top bar ----
+    u32 logoW, logoH;
+    SDLH_GetTextDimensions(22, "checkpoint", &logoW, &logoH);
+    SDLH_DrawText(22, 24, (TOPBAR_H - (int)logoH) / 2, COLOR_TEXT, "checkpoint");
+
+    if (!gameName.empty()) {
+        const int avail = 1256 - (24 + (int)logoW + 24);
+        std::string t   = gameName;
+        u32 tw, th;
+        SDLH_GetTextDimensions(17, t.c_str(), &tw, &th);
+        if ((int)tw > avail) {
+            t = trimToFit(t, avail, 17);
+            SDLH_GetTextDimensions(17, t.c_str(), &tw, &th);
+        }
+        SDLH_DrawText(17, 1256 - (int)tw, (TOPBAR_H - (int)th) / 2, COLOR_TEXT, t.c_str());
+    }
+
+    // ---- Frame hairlines ----
+    SDLH_DrawRect(0, TOPBAR_H, 1280, 1, COLOR_STROKE1);
+    SDLH_DrawRect(RAIL_W, TOPBAR_H + 1, 1, 720 - TOPBAR_H - 1 - UiKit::HINTBAR_H, COLOR_STROKE1);
+    SDLH_DrawRect(PANEL_X, TOPBAR_H + 1, 1, 720 - TOPBAR_H - 1 - UiKit::HINTBAR_H, COLOR_STROKE1);
+
+    // ---- Left rail ----
+    for (int k = 0; k < 4; k++) {
+        drawRailItem(RAIL_ITEM_Y0 + RAIL_ITEM_PITCH * k, SaveKind::all()[k], mSaveTypeFilter == static_cast<saveTypeFilter_t>(k));
+    }
+    // Sidebar cursor spans the 4 save-kind buttons plus the settings gear
+    // (index 4), so it can be reached by pressing Down past SYSTEM.
+    if (sidebarFocused) {
+        const int selY = sidebarCursor < 4 ? RAIL_ITEM_Y0 + RAIL_ITEM_PITCH * sidebarCursor : SETTINGS_BTN_Y;
+        Shapes::focusRing(RAIL_ITEM_X, selY, RAIL_ITEM, RAIL_ITEM, 14, COLOR_ACCENT);
+    }
+
+    Shapes::fillRound(RAIL_ITEM_X, SETTINGS_BTN_Y, RAIL_ITEM, RAIL_ITEM, 14, COLOR_FILL1);
+    {
+        u32 gw, gh;
+        SDLH_GetTextDimensions(22, "", &gw, &gh);
+        SDLH_DrawText(22, RAIL_ITEM_X + (RAIL_ITEM - (int)gw) / 2, SETTINGS_BTN_Y + (RAIL_ITEM - (int)gh) / 2, COLOR_TEXT2, "");
+    }
+
+    Shapes::fillRound(AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE, AVATAR_SIZE / 2, COLOR_TILE);
+    if (Account::icon(g_currentUId) != NULL) {
+        SDLH_DrawImageScale(Account::icon(g_currentUId), AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE);
+    }
+    Shapes::strokeRound(AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE, AVATAR_SIZE / 2, 1, COLOR_STROKE2);
+    {
+        std::string username = Account::shortName(g_currentUId);
+        u32 uw, uh;
+        SDLH_GetTextDimensions(10, username.c_str(), &uw, &uh);
+        SDLH_DrawText(10, RAIL_W / 2 - (int)uw / 2, AVATAR_Y + AVATAR_SIZE + 4, COLOR_TEXT2, username.c_str());
+    }
+
+    // ---- Title grid ----
+    for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
+        const int tx = selectorX(k), ty = selectorY(k);
+        Shapes::cardRound(tx, ty, TILE, TILE, 14, COLOR_TILE, COLOR_STROKE2, 1);
+        if (TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k) != NULL) {
+            SDLH_DrawImageScale(TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k), tx, ty, TILE, TILE);
+        }
+
+        const bool selected = !selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end();
+        const bool favorite = TitleCatalog::get().filteredFavorite(g_currentUId, mSaveTypeFilter, k);
+        if (selected || favorite) {
+            const int bx = tx + TILE - 8 - 24, by = ty + 8;
+            Shapes::fillRound(bx, by, 24, 24, 8, selected ? COLOR_ACCENT : FC_MakeColor(16, 16, 20, 191));
+            if (selected && SDLH_CheckboxTexture() != NULL) {
+                SDLH_DrawImageScale(SDLH_CheckboxTexture(), bx + 4, by + 4, 16, 16);
+            }
+            else if (SDLH_StarTexture() != NULL) {
+                SDLH_DrawImageScale(SDLH_StarTexture(), bx + 5, by + 5, 14, 14);
+            }
+        }
+    }
+
+    // Focus ring on the selected tile (hidden while the rail owns the cursor).
+    if (filteredCnt > 0 && !sidebarFocused) {
+        Shapes::focusRing(selectorX(hid.index()), selectorY(hid.index()), TILE, TILE, 14, COLOR_ACCENT);
+    }
+
+    // ---- Right panel ----
+    if (filteredCnt > 0) {
         Title& title = backupList->title();
 
+        Shapes::cardRound(COL_X, 76, HEADER_ICON, HEADER_ICON, 16, COLOR_TILE, COLOR_STROKE2, 1);
         if (TitleCatalog::get().iconFor(title.id()) != NULL) {
-            drawOutline(1012, 52, 256, 256, 4, COLOR_BLACK_DARK);
-            SDLH_DrawImage(TitleCatalog::get().iconFor(title.id()), 1012, 52);
+            SDLH_DrawImageScale(TitleCatalog::get().iconFor(title.id()), COL_X, 76, HEADER_ICON, HEADER_ICON);
         }
 
-        u32 h = 29, offset = 56, i = 0, title_w;
-        auto gameName = title.displayName();
-        SDLH_GetTextDimensions(26, gameName.c_str(), &title_w, NULL);
+        const int infoX   = COL_X + HEADER_ICON + 14;
+        const int infoW   = COL_X + COL_W - infoX;
+        std::string line1 = title.author();
+        if (title.saveDataType() == FsSaveDataType_Account && !title.userName().empty()) {
+            line1 += " · " + title.userName();
+        }
+        const bool hasPlay = title.saveDataType() == FsSaveDataType_Account && !title.playTime().empty();
+        std::string idStr  = StringUtils::format("%016llX", title.id());
 
-        if (title_w >= 680) {
-            gameName = trimToFit(gameName, 680, 26);
-            SDLH_GetTextDimensions(26, gameName.c_str(), &title_w, NULL);
-        }
+        u32 h1, h2, h3;
+        SDLH_GetTextDimensions(12, "Ag", NULL, &h1);
+        SDLH_GetTextDimensions(13, "Ag", NULL, &h2);
+        SDLH_GetTextDimensions(11, "Ag", NULL, &h3, FontFamily::Mono);
+        int stackH = (int)h1 + 4 + (int)h3 + (hasPlay ? 4 + (int)h2 : 0);
+        int ty     = 76 + (HEADER_ICON - stackH) / 2;
 
-        SDLH_DrawText(26, 1280 - 8 - title_w, (TOPBAR_h - checkpoint_h) / 2 + 4, COLOR_WHITE, gameName.c_str());
-        static constexpr u32 DESC_MAX_W = 360;
-        SDLH_DrawText(
-            23, 610, offset + h * (i++), COLOR_GREY_LIGHT, trimToFit(StringUtils::format("Title ID: %016llX", title.id()), DESC_MAX_W, 23).c_str());
-        SDLH_DrawText(23, 610, offset + h * (i++), COLOR_GREY_LIGHT, trimToFit("Author: " + title.author(), DESC_MAX_W, 23).c_str());
-        if (title.saveDataType() == FsSaveDataType_Bcat) {
-            SDLH_DrawText(23, 610, offset + h * (i++), COLOR_GREY_LIGHT, "Type: BCAT");
+        SDLH_DrawText(12, infoX, ty, COLOR_TEXT2, trimToFit(line1, infoW, 12).c_str());
+        ty += (int)h1 + 4;
+        if (hasPlay) {
+            u32 lblW;
+            SDLH_GetTextDimensions(13, "Play time ", &lblW, NULL);
+            SDLH_DrawText(13, infoX, ty, COLOR_TEXT2, "Play time ");
+            SDLH_DrawText(13, infoX + (int)lblW, ty, COLOR_TEXT, title.playTime().c_str());
+            ty += (int)h2 + 4;
         }
-        else if (title.saveDataType() == FsSaveDataType_Device) {
-            SDLH_DrawText(23, 610, offset + h * (i++), COLOR_GREY_LIGHT, "Type: Device");
-        }
-        else {
-            SDLH_DrawText(23, 610, offset + h * (i++), COLOR_GREY_LIGHT, trimToFit("User: " + title.userName(), DESC_MAX_W, 23).c_str());
-            if (!title.playTime().empty()) {
-                SDLH_DrawText(23, 610, offset + h * i, COLOR_GREY_LIGHT, trimToFit("Play Time: " + title.playTime(), DESC_MAX_W, 23).c_str());
+        SDLH_DrawText(11, infoX, ty, COLOR_TEXT3, idStr.c_str(), FontFamily::Mono);
+
+        // Backups header row.
+        const int headerY      = 184;
+        std::string countLabel = StringUtils::format("BACKUPS · %zu", backupList->backupCount());
+        u32 clH;
+        SDLH_GetTextDimensions(11, countLabel.c_str(), NULL, &clH);
+        UiKit::drawSectionLabel(COL_X, headerY, countLabel.c_str());
+
+        {
+            // Total on-disk size of this title's backups, right-aligned against
+            // the "BACKUPS · N" label.
+            const std::string& totalSize = backupList->totalSizeString();
+            if (!totalSize.empty()) {
+                u32 tw, th;
+                SDLH_GetTextDimensions(11, totalSize.c_str(), &tw, &th, FontFamily::Mono);
+                SDLH_DrawText(11, COL_X + COL_W - (int)tw, headerY + ((int)clH - (int)th) / 2, COLOR_TEXT2, totalSize.c_str(), FontFamily::Mono);
             }
         }
 
         backupList->draw(g_backupScrollEnabled);
-        buttonBackup->draw(30, COLOR_PURPLE_LIGHT);
-        buttonRestore->draw(30, COLOR_PURPLE_LIGHT);
+
+        const bool pksm = getPKSMBridgeFlag() && mSaveTypeFilter == FILTER_SAVES;
+        drawActionButton(COL_X, BTN_BACKUP_Y, pksm ? "Send" : "Backup", "L", true);
+        drawActionButton(COL_X, BTN_RESTORE_Y, pksm ? "Receive" : "Restore", "R", false);
     }
     else {
         const char* emptyMsg = SaveKind::of(mSaveTypeFilter).emptyMsg;
-        u32 emptyW;
-        SDLH_GetTextDimensions(26, emptyMsg, &emptyW, NULL);
-        SDLH_DrawText(26, LEFT_SIDEBAR_w + (532 - emptyW) / 2, 360, COLOR_GREY_LIGHT, emptyMsg);
+        u32 emptyW, emptyH;
+        SDLH_GetTextDimensions(18, emptyMsg, &emptyW, &emptyH);
+        SDLH_DrawText(18, GRID_AREA_X + (GRID_AREA_W - (int)emptyW) / 2, (720 - (int)emptyH) / 2, COLOR_TEXT2, emptyMsg);
     }
 
-    if (wantInstructions && currentOverlay == nullptr) {
-        SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
-        SDLH_DrawText(28, (LEFT_SIDEBAR_w - ACCT_ICON_SIZE) / 2, 720 - ACCT_ICON_SIZE - 17, COLOR_WHITE, "\ue085\ue086");
-        SDLH_DrawText(24, 58 + LEFT_SIDEBAR_w, 69, COLOR_WHITE, "\ue058 Tap to select title");
-        SDLH_DrawText(24, 58 + LEFT_SIDEBAR_w, 109, COLOR_WHITE, ("\ue026 Sort: " + sortMode()).c_str());
-        SDLH_DrawText(24, 100 + LEFT_SIDEBAR_w, 270, COLOR_WHITE, "\ue006 \ue080 to scroll between titles");
-        SDLH_DrawText(24, 100 + LEFT_SIDEBAR_w, 300, COLOR_WHITE, "\ue004 \ue005 to scroll between pages");
-        SDLH_DrawText(24, 100 + LEFT_SIDEBAR_w, 330, COLOR_WHITE, "\ue000 to enter the selected title");
-        SDLH_DrawText(24, 100 + LEFT_SIDEBAR_w, 360, COLOR_WHITE, "\ue001 to exit the selected title");
-        SDLH_DrawText(24, 100 + LEFT_SIDEBAR_w, 390, COLOR_WHITE, "\ue002 to change sort mode");
-        SDLH_DrawText(24, 100 + LEFT_SIDEBAR_w, 420, COLOR_WHITE, "\ue003 to select multiple titles");
-        SDLH_DrawText(24, 100 + LEFT_SIDEBAR_w, 450, COLOR_WHITE, "Hold \ue003 to select all titles");
-        SDLH_DrawText(24, 100 + LEFT_SIDEBAR_w, 480, COLOR_WHITE, "\ue0a4 to cycle save type");
-        SDLH_DrawText(24, 100 + LEFT_SIDEBAR_w, 510, COLOR_WHITE, "\ue006 left to navigate save type filter");
-        SDLH_DrawText(24, 680, 510, COLOR_WHITE, "\ue002 to delete a backup");
-        if (Configuration::getInstance().isPKSMBridgeEnabled()) {
-            SDLH_DrawText(24, 100 + LEFT_SIDEBAR_w, 540, COLOR_WHITE, "\ue004 + \ue005 to enable PKSM bridge");
-        }
-        if (gethostid() != INADDR_LOOPBACK) {
-            if (g_ftpAvailable && Configuration::getInstance().isFTPEnabled()) {
-                SDLH_DrawText(24, 600, 642, COLOR_GOLD, StringUtils::format("FTP server running on %s:50000", getConsoleIP()).c_str());
-            }
-            SDLH_DrawText(24, 600, 672, COLOR_GOLD, StringUtils::format("Configuration server running on %s:8000", getConsoleIP()).c_str());
-        }
-    }
+    // ---- Hint bar ----
+    // Minus opens Settings (see the class note); no help overlay in this build.
+    UiKit::drawHintBar({
+        {"A", "Select"},
+        {"B", "Back"},
+        {"X", "Sort"},
+        {"Y", "Multi-select"},
+        {"-", "Settings"},
+    });
 
+    // ---- Transfer modal ----
     const TransferSnapshot transfer = TransferStatus::snapshot();
     if (transfer.active) {
-        SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
+        SDLH_DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
 
-        // An extra bar is shown to track the overall progress when backing up multiple saves at once
         const bool multiSelect = transfer.saveTotal > 1;
-
-        // Modal box centered on screen
         const int mx = 370, mw = 540;
         const int mh = multiSelect ? 290 : 230;
         const int my = multiSelect ? 230 : 260;
-        SDLH_DrawRect(mx, my, mw, mh, COLOR_BLACK_DARKERR);
-        drawOutline(mx, my, mw, mh, 3, COLOR_PURPLE_LIGHT);
+        Shapes::cardRound(mx, my, mw, mh, 16, COLOR_SURFACE, COLOR_STROKE2, 1);
 
-        // Title
         std::string titleStr = (transfer.mode.empty() ? "Copying files" : transfer.mode) + " in progress...";
         u32 title_w, title_h;
-        SDLH_GetTextDimensions(26, titleStr.c_str(), &title_w, &title_h);
-        SDLH_DrawText(26, mx + (mw - (int)title_w) / 2, my + 14, COLOR_WHITE, titleStr.c_str());
+        SDLH_GetTextDimensions(20, titleStr.c_str(), &title_w, &title_h);
+        SDLH_DrawText(20, mx + (mw - (int)title_w) / 2, my + 16, COLOR_TEXT, titleStr.c_str());
 
-        // Cancel is backup-only: a restore in flight cannot be aborted midway.
         if (transfer.mode == "Backup") {
-            const char* hint = " to cancel";
+            const char* hint = " to cancel";
             u32 hint_w;
-            SDLH_GetTextDimensions(18, hint, &hint_w, NULL);
-            SDLH_DrawText(18, mx + mw - (int)hint_w - 12, my + mh - 26, COLOR_GREY_LIGHT, hint);
+            SDLH_GetTextDimensions(14, hint, &hint_w, NULL);
+            SDLH_DrawText(14, mx + mw - (int)hint_w - 16, my + mh - 26, COLOR_TEXT2, hint);
         }
 
-        // Current filename
         u32 fname_w, fname_h;
-        std::string fname = trimToFit(transfer.currentFile, mw - 40, 22);
-        SDLH_GetTextDimensions(22, fname.c_str(), &fname_w, &fname_h);
-        SDLH_DrawText(22, mx + (mw - (int)fname_w) / 2, my + 14 + (int)title_h + 8, COLOR_GREY_LIGHT, fname.c_str());
+        std::string fname = trimToFit(transfer.currentFile, mw - 40, 15);
+        SDLH_GetTextDimensions(15, fname.c_str(), &fname_w, &fname_h);
+        SDLH_DrawText(15, mx + (mw - (int)fname_w) / 2, my + 16 + (int)title_h + 8, COLOR_TEXT2, fname.c_str());
 
-        const int barX = mx + 20, barW = mw - 40, barH = 18;
-
+        const int barX = mx + 20, barW = mw - 40, barH = 16;
         auto drawProgressBar = [&](int y, float frac, const char* leftLabel, const char* rightLabel) {
             if (frac > 1.0f)
                 frac = 1.0f;
-            SDLH_DrawRect(barX, y, barW, barH, COLOR_BLACK_MEDIUM);
+            Shapes::fillRound(barX, y, barW, barH, barH / 2, COLOR_FILL2);
             int fillW = (int)(barW * frac);
             if (fillW > 0) {
-                SDLH_DrawRect(barX, y, fillW, barH, COLOR_PURPLE_LIGHT);
+                Shapes::fillRound(barX, y, fillW, barH, barH / 2, COLOR_ACCENT);
             }
-            drawOutline(barX, y, barW, barH, 2, COLOR_GREY_LIGHT);
-
             u32 right_w;
-            SDLH_GetTextDimensions(20, rightLabel, &right_w, NULL);
-            SDLH_DrawText(20, barX, y + barH + 6, COLOR_GREY_LIGHT, leftLabel);
-            SDLH_DrawText(20, barX + barW - (int)right_w, y + barH + 6, COLOR_WHITE, rightLabel);
+            SDLH_GetTextDimensions(15, rightLabel, &right_w, NULL);
+            SDLH_DrawText(15, barX, y + barH + 6, COLOR_TEXT2, leftLabel);
+            SDLH_DrawText(15, barX + barW - (int)right_w, y + barH + 6, COLOR_TEXT, rightLabel);
         };
 
         int barY = my + 108;
-
-        // Overall progress bar across the selected saves (multi-selection only)
         if (multiSelect) {
             float overallProgress = (float)transfer.saveCount / (float)transfer.saveTotal;
             char overallCountStr[24];
@@ -350,7 +412,6 @@ void MainScreen::draw() const
             barY += 52;
         }
 
-        // Per-save progress bar
         float progress = (transfer.copyTotal > 0) ? (float)transfer.copyCount / (float)transfer.copyTotal : 0.0f;
         char countStr[24];
         snprintf(countStr, sizeof(countStr), "File %zu / %zu", transfer.copyCount, transfer.copyTotal);
@@ -359,7 +420,6 @@ void MainScreen::draw() const
         drawProgressBar(barY, progress, countStr, pctStr);
         barY += 52;
 
-        // Per-file progress bar
         float fileProgress = (transfer.currentFileSize > 0) ? (float)transfer.currentFileOffset / (float)transfer.currentFileSize : 0.0f;
         char kbStr[40];
         snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", transfer.currentFileOffset / 1024.0f, transfer.currentFileSize / 1024.0f);
@@ -378,6 +438,7 @@ void MainScreen::update(const InputState& input)
     if (auto result = TransferJob::get().takeResult()) {
         for (u64 id : result->refreshIds) {
             TitleCatalog::get().refreshDirectories(id);
+            BackupSizeCache::get().invalidate(id); // folders changed → recompute sizes
         }
         if (result->cancelled) {
             currentOverlay = std::make_shared<InfoOverlay>(*this, "Backup cancelled.");
@@ -426,7 +487,7 @@ void MainScreen::updateSelector(const InputState& input)
                 sidebarExitFrame = false;
             }
         }
-        else if ((input.kDown & HidNpadButton_Left) && hid.index() % collen == 0) {
+        else if ((input.kDown & HidNpadButton_Left) && hid.index() % GRID_COLS == 0) {
             sidebarFocused = true;
             sidebarCursor  = static_cast<int>(mSaveTypeFilter);
         }
@@ -435,16 +496,16 @@ void MainScreen::updateSelector(const InputState& input)
         }
 
         // loop through every rendered title
-        for (u8 row = 0; row < rowlen; row++) {
-            for (u8 col = 0; col < collen; col++) {
-                u8 index = row * collen + col;
+        for (u8 row = 0; row < GRID_ROWS; row++) {
+            for (u8 col = 0; col < GRID_COLS; col++) {
+                u8 index = row * GRID_COLS + col;
                 if (index > hid.maxEntries(count))
                     break;
 
                 u32 x = selectorX(index);
                 u32 y = selectorY(index);
-                if (input.touch.count > 0 && input.touch.touches[0].x >= x && input.touch.touches[0].x <= x + 128 && input.touch.touches[0].y >= y &&
-                    input.touch.touches[0].y <= y + 128) {
+                if (input.touch.count > 0 && input.touch.touches[0].x >= x && input.touch.touches[0].x <= x + TILE && input.touch.touches[0].y >= y &&
+                    input.touch.touches[0].y <= y + TILE) {
                     hid.index(index);
                 }
             }
@@ -503,9 +564,7 @@ void MainScreen::handleEvents(const InputState& input)
     const u64 kheld = input.kHeld;
     const u64 kdown = input.kDown;
 
-    wantInstructions = (kheld & HidNpadButton_Minus);
-
-    // handle filter button touches
+    // handle rail save-kind button touches
     for (int k = 0; k < 4; k++) {
         if (filterButtons[k]->released()) {
             setSaveTypeFilter(static_cast<saveTypeFilter_t>(k));
@@ -514,16 +573,31 @@ void MainScreen::handleEvents(const InputState& input)
         }
     }
 
-    // handle sidebar D-pad navigation
+    // Minus (or the rail gear) opens Settings. Guarded so you can't navigate
+    // away mid-copy; the swap itself is deferred to main() via g_pendingScreen.
+    if (((kdown & HidNpadButton_Minus) || settingsButton->released()) && !TransferJob::get().active()) {
+        g_pendingScreen = std::make_shared<SettingsScreen>(g_screen);
+        return;
+    }
+
+    // handle sidebar D-pad navigation. Cursor 0..3 = save-kind buttons, 4 =
+    // settings gear (so Down from SYSTEM reaches it, Up from USER wraps to it).
     if (sidebarFocused) {
         if (kdown & HidNpadButton_Up) {
-            sidebarCursor = sidebarCursor > 0 ? sidebarCursor - 1 : 3;
+            sidebarCursor = sidebarCursor > 0 ? sidebarCursor - 1 : 4;
         }
         else if (kdown & HidNpadButton_Down) {
-            sidebarCursor = sidebarCursor < 3 ? sidebarCursor + 1 : 0;
+            sidebarCursor = sidebarCursor < 4 ? sidebarCursor + 1 : 0;
         }
         if (kdown & HidNpadButton_A) {
-            setSaveTypeFilter(static_cast<saveTypeFilter_t>(sidebarCursor));
+            if (sidebarCursor == 4) {
+                if (!TransferJob::get().active()) {
+                    g_pendingScreen = std::make_shared<SettingsScreen>(g_screen);
+                }
+            }
+            else {
+                setSaveTypeFilter(static_cast<saveTypeFilter_t>(sidebarCursor));
+            }
         }
         // Right/B exit is handled in updateSelector to prevent double cursor movement
         return;
@@ -552,17 +626,14 @@ void MainScreen::handleEvents(const InputState& input)
             if ((kheld & HidNpadButton_L) && (kheld & HidNpadButton_R) && title.saveDataType() != FsSaveDataType_Bcat &&
                 title.saveDataType() != FsSaveDataType_Device && isPKSMBridgeTitle(title.id())) {
                 setPKSMBridgeFlag(true);
-                updateButtons();
             }
         }
     }
 
-    // handle account icon touch (only when filter is Saves)
+    // handle account avatar touch (only when filter is Saves)
     if (mSaveTypeFilter == FILTER_SAVES && !g_backupScrollEnabled && input.touch.count > 0) {
-        u32 acctIconX = (LEFT_SIDEBAR_w - ACCT_ICON_SIZE) / 2;
-        u32 acctIconY = 720 - ACCT_ICON_SIZE - 30;
-        if (input.touch.touches[0].x >= acctIconX && input.touch.touches[0].x <= acctIconX + ACCT_ICON_SIZE &&
-            input.touch.touches[0].y >= acctIconY && input.touch.touches[0].y <= acctIconY + ACCT_ICON_SIZE) {
+        if (input.touch.touches[0].x >= AVATAR_X && input.touch.touches[0].x <= AVATAR_X + AVATAR_SIZE && input.touch.touches[0].y >= AVATAR_Y &&
+            input.touch.touches[0].y <= AVATAR_Y + AVATAR_SIZE) {
             while ((g_currentUId = Account::selectAccount()) == 0)
                 ;
             this->index(TITLES, 0);
@@ -571,13 +642,12 @@ void MainScreen::handleEvents(const InputState& input)
         }
     }
 
-    // Handle touching the backup list
-    if (input.touch.count > 0 && input.touch.touches[0].x > 608 && input.touch.touches[0].x < 1008 && input.touch.touches[0].y > 316 &&
-        input.touch.touches[0].y < 720) {
+    // Handle touching the backup list / panel region
+    if (input.touch.count > 0 && input.touch.touches[0].x > COL_X && input.touch.touches[0].x < COL_X + COL_W && input.touch.touches[0].y > LIST_Y &&
+        input.touch.touches[0].y < BTN_BACKUP_Y) {
         // Activate backup list only if multiple selections are not enabled
         if (!MS::multipleSelectionEnabled()) {
             g_backupScrollEnabled = true;
-            updateButtons();
             entryType(CELLS);
         }
     }
@@ -621,21 +691,19 @@ void MainScreen::handleEvents(const InputState& input)
             // Activate backup list only if multiple selections are not enabled
             if (!MS::multipleSelectionEnabled()) {
                 g_backupScrollEnabled = true;
-                updateButtons();
                 entryType(CELLS);
             }
         }
     }
 
     // Handle pressing B
-    if ((kdown & HidNpadButton_B) || (input.touch.count > 0 && input.touch.touches[0].x >= (int)LEFT_SIDEBAR_w &&
-                                         input.touch.touches[0].x <= (int)(LEFT_SIDEBAR_w + 532) && input.touch.touches[0].y <= 664)) {
+    if ((kdown & HidNpadButton_B) || (input.touch.count > 0 && input.touch.touches[0].x >= GRID_AREA_X &&
+                                         input.touch.touches[0].x <= (GRID_AREA_X + GRID_AREA_W) && input.touch.touches[0].y <= 674)) {
         this->index(CELLS, 0);
         g_backupScrollEnabled = false;
         entryType(TITLES);
         MS::clearSelectedEntries();
         setPKSMBridgeFlag(false);
-        updateButtons(); // Do this last
     }
 
     // Handle pressing X
@@ -651,6 +719,7 @@ void MainScreen::handleEvents(const InputState& input)
                         std::string path = title.fullPath(index);
                         io::deleteFolderRecursively((path + "/").c_str());
                         TitleCatalog::get().refreshDirectories(title.id());
+                        BackupSizeCache::get().invalidate(title.id()); // a backup was removed
                         this->index(CELLS, index - 1);
                         this->removeOverlay();
                     },
@@ -674,7 +743,6 @@ void MainScreen::handleEvents(const InputState& input)
         entryType(TITLES);
         MS::addSelectedEntry(this->index(TITLES));
         setPKSMBridgeFlag(false);
-        updateButtons(); // Do this last
     }
 
     // Handle holding Y
@@ -708,7 +776,6 @@ void MainScreen::handleEvents(const InputState& input)
             }
             TransferJob::get().start();
             MS::clearSelectedEntries();
-            updateButtons();
         }
         else if (g_backupScrollEnabled) {
             if (getPKSMBridgeFlag()) {
@@ -815,49 +882,4 @@ bool MainScreen::getPKSMBridgeFlag(void) const
 void MainScreen::setPKSMBridgeFlag(bool f)
 {
     pksmBridge = f;
-    updateButtons();
-}
-
-void MainScreen::updateButtons(void)
-{
-    if (MS::multipleSelectionEnabled()) {
-        buttonRestore->canChangeColorWhenSelected(true);
-        buttonRestore->canChangeColorWhenSelected(false);
-        buttonBackup->setColors(COLOR_BLACK_DARKER, COLOR_WHITE);
-        buttonRestore->setColors(COLOR_BLACK_DARKER, COLOR_GREY_LIGHT);
-    }
-    else if (g_backupScrollEnabled) {
-        buttonBackup->canChangeColorWhenSelected(true);
-        buttonRestore->canChangeColorWhenSelected(true);
-        buttonBackup->setColors(COLOR_BLACK_DARKER, COLOR_WHITE);
-        buttonRestore->setColors(COLOR_BLACK_DARKER, COLOR_WHITE);
-    }
-    else {
-        buttonBackup->setColors(COLOR_BLACK_DARKER, COLOR_GREY_LIGHT);
-        buttonRestore->setColors(COLOR_BLACK_DARKER, COLOR_GREY_LIGHT);
-    }
-
-    if (getPKSMBridgeFlag() && mSaveTypeFilter == FILTER_SAVES) {
-        buttonBackup->text("Send \ue004");
-        buttonRestore->text("Receive \ue005");
-    }
-    else {
-        buttonBackup->text("Backup \ue004");
-        buttonRestore->text("Restore \ue005");
-    }
-}
-
-std::string MainScreen::sortMode() const
-{
-    switch (TitleCatalog::get().sortMode()) {
-        case SORT_LAST_PLAYED:
-            return "Last played";
-        case SORT_PLAY_TIME:
-            return "Play time";
-        case SORT_ALPHA:
-            return "Alphabetical";
-        default:
-            break;
-    }
-    return "";
 }

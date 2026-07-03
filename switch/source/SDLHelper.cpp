@@ -41,16 +41,39 @@ static FallbackFontData s_fallbackData[4];
 static int s_numFallbacks = 0;
 static std::unordered_map<int, FC_Font*> s_fonts;
 
+// Bundled Space Mono (OFL), read once into memory at init. Backup names,
+// title IDs and paths draw through this instead of the shared system font,
+// which has no monospace variant. Left null (falls back to Sans) if the
+// romfs asset failed to load.
+struct MonoFontData {
+    void* address = nullptr;
+    size_t size   = 0;
+};
+static MonoFontData s_monoData;
+static std::unordered_map<int, FC_Font*> s_monoFonts;
+
+// Every call site asks for a size in the redesign's type scale; we
+// render each one a touch larger for legibility on a handheld screen. Because
+// both drawing and measurement (SDLH_GetTextDimensions) resolve through the
+// same enlarged FC_Font, layouts that centre/measure text stay consistent —
+// only the glyphs grow. Keyed by the requested size, so the scale is invisible
+// to callers.
+static int scaledFontPx(int size)
+{
+    return (size * 9 + 4) / 8; // ~1.125x, rounded
+}
+
 static FC_Font* getFontFromMap(int size)
 {
     std::unordered_map<int, FC_Font*>::const_iterator got = s_fonts.find(size);
     if (got == s_fonts.end() || got->second == NULL) {
-        FC_Font* f = FC_CreateFont();
+        const int px = scaledFontPx(size);
+        FC_Font* f   = FC_CreateFont();
         FC_LoadFont_RW(f, s_renderer, SDL_RWFromMem((void*)fontData.address, fontData.size),
-            SDL_RWFromMem((void*)fontExtData.address, fontExtData.size), 1, size, COLOR_BLACK, TTF_STYLE_NORMAL);
+            SDL_RWFromMem((void*)fontExtData.address, fontExtData.size), 1, px, COLOR_BLACK, TTF_STYLE_NORMAL);
         // Register CJK/Korean fallback fonts for this size
         for (int i = 0; i < s_numFallbacks; i++) {
-            TTF_Font* fallback = TTF_OpenFontRW(SDL_RWFromMem(s_fallbackData[i].address, s_fallbackData[i].size), 1, size);
+            TTF_Font* fallback = TTF_OpenFontRW(SDL_RWFromMem(s_fallbackData[i].address, s_fallbackData[i].size), 1, px);
             if (fallback != NULL) {
                 FC_AddFallbackFont(f, fallback);
             }
@@ -59,6 +82,30 @@ static FC_Font* getFontFromMap(int size)
         return f;
     }
     return got->second;
+}
+
+static FC_Font* getMonoFontFromMap(int size)
+{
+    if (s_monoData.address == NULL) {
+        return getFontFromMap(size); // romfs asset missing: degrade to Sans rather than draw nothing
+    }
+
+    std::unordered_map<int, FC_Font*>::const_iterator got = s_monoFonts.find(size);
+    if (got == s_monoFonts.end() || got->second == NULL) {
+        FC_Font* f = FC_CreateFont();
+        // FC_LoadFont_RW requires a valid "ext" font too; Space Mono has no
+        // separate glyph-extension file, so it is passed as its own ext.
+        FC_LoadFont_RW(f, s_renderer, SDL_RWFromMem(s_monoData.address, s_monoData.size), SDL_RWFromMem(s_monoData.address, s_monoData.size), 1,
+            scaledFontPx(size), COLOR_BLACK, TTF_STYLE_NORMAL);
+        s_monoFonts.insert({size, f});
+        return f;
+    }
+    return got->second;
+}
+
+static FC_Font* fontFor(int size, FontFamily family)
+{
+    return family == FontFamily::Mono ? getMonoFontFromMap(size) : getFontFromMap(size);
 }
 
 bool SDLH_Init(void)
@@ -87,10 +134,36 @@ bool SDLH_Init(void)
     }
     SDLH_LoadImage(&s_star, "romfs:/star.png");
     SDLH_LoadImage(&s_checkbox, "romfs:/checkbox.png");
-    SDL_SetTextureColorMod(s_checkbox, COLOR_BLACK_DARKERR.r, COLOR_BLACK_DARKERR.g, COLOR_BLACK_DARKERR.b);
+    // The multi-select badge is accent-filled with a white check on top (new
+    // design); the checkbox asset itself is a black-on-transparent checkmark.
+    SDL_SetTextureColorMod(s_checkbox, COLOR_WHITE.r, COLOR_WHITE.g, COLOR_WHITE.b);
 
     plGetSharedFontByType(&fontData, PlSharedFontType_Standard);
     plGetSharedFontByType(&fontExtData, PlSharedFontType_NintendoExt);
+
+    // Bundled monospace font (romfs, not a shared-font handle): read the whole
+    // file into memory once; getMonoFontFromMap() re-wraps it in a fresh
+    // SDL_RWops per size, the same pattern the shared font uses.
+    FILE* monoFile = fopen("romfs:/fonts/SpaceMono-Regular.ttf", "rb");
+    if (monoFile != NULL) {
+        fseek(monoFile, 0, SEEK_END);
+        long monoSize = ftell(monoFile);
+        fseek(monoFile, 0, SEEK_SET);
+        if (monoSize > 0) {
+            void* buf = malloc((size_t)monoSize);
+            if (buf != NULL && fread(buf, 1, (size_t)monoSize, monoFile) == (size_t)monoSize) {
+                s_monoData.address = buf;
+                s_monoData.size    = (size_t)monoSize;
+            }
+            else {
+                free(buf);
+            }
+        }
+        fclose(monoFile);
+    }
+    if (s_monoData.address == NULL) {
+        Logging::error("Failed to load romfs:/fonts/SpaceMono-Regular.ttf, falling back to the system font.");
+    }
 
     // Load CJK/Korean fallback fonts
     static const PlSharedFontType fallbackTypes[] = {
@@ -120,6 +193,10 @@ void SDLH_Exit(void)
     for (auto& value : s_fonts) {
         FC_FreeFont(value.second);
     }
+    for (auto& value : s_monoFonts) {
+        FC_FreeFont(value.second);
+    }
+    free(s_monoData.address);
 
     TTF_Quit();
     SDL_DestroyTexture(s_star);
@@ -153,16 +230,16 @@ void SDLH_DrawRect(int x, int y, int w, int h, SDL_Color color)
     SDL_RenderFillRect(s_renderer, &rect);
 }
 
-void SDLH_DrawText(int size, int x, int y, SDL_Color color, const char* text)
+void SDLH_DrawText(int size, int x, int y, SDL_Color color, const char* text, FontFamily family)
 {
-    FC_DrawColor(getFontFromMap(size), s_renderer, x, y, color, text);
+    FC_DrawColor(fontFor(size, family), s_renderer, x, y, color, text);
 }
 
-void SDLH_DrawTextBox(int size, int x, int y, SDL_Color color, int max, const char* text)
+void SDLH_DrawTextBox(int size, int x, int y, SDL_Color color, int max, const char* text, FontFamily family)
 {
     u32 h;
-    FC_Font* font = getFontFromMap(size);
-    SDLH_GetTextDimensions(size, text, NULL, &h);
+    FC_Font* font = fontFor(size, family);
+    SDLH_GetTextDimensions(size, text, NULL, &h, family);
     FC_Rect rect = FC_MakeRect(x, y, max, h);
     FC_DrawBoxColor(font, s_renderer, rect, color, text);
 }
@@ -214,29 +291,23 @@ void SDLH_DrawImageScale(SDL_Texture* texture, int x, int y, int w, int h)
     SDL_RenderCopy(s_renderer, texture, NULL, &position);
 }
 
-void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h)
+void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family)
 {
-    FC_Font* f = getFontFromMap(size);
+    FC_Font* f = fontFor(size, family);
     if (w != NULL)
         *w = FC_GetWidth(f, text);
     if (h != NULL)
         *h = FC_GetHeight(f, text);
 }
 
-void SDLH_DrawIcon(std::string icon, int x, int y)
+SDL_Texture* SDLH_StarTexture(void)
 {
-    SDL_Texture* t = nullptr;
-    if (icon.compare("checkbox") == 0) {
-        t = s_checkbox;
-        SDLH_DrawRect(x + 8, y + 8, 24, 24, COLOR_WHITE);
-    }
-    else if (icon.compare("star") == 0) {
-        t = s_star;
-    }
+    return s_star;
+}
 
-    if (t != nullptr) {
-        SDLH_DrawImage(t, x, y);
-    }
+SDL_Texture* SDLH_CheckboxTexture(void)
+{
+    return s_checkbox;
 }
 
 void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
@@ -255,7 +326,7 @@ void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
     drawOutline(x, y, w, h, size, color);
 }
 
-std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize)
+std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize, FontFamily family)
 {
     u32 width;
     std::string newtext = "";
@@ -265,7 +336,7 @@ std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize)
         if (charsize < 1)
             break;
         std::string candidate = newtext + std::string(src, charsize);
-        SDLH_GetTextDimensions(textsize, candidate.c_str(), &width, NULL);
+        SDLH_GetTextDimensions(textsize, candidate.c_str(), &width, NULL, family);
         if (width >= maxsize) {
             newtext += "...";
             break;

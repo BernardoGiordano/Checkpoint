@@ -25,11 +25,15 @@
  */
 
 #include "titlecatalog.hpp"
+#include "configuration.hpp"
 #include "savekind.hpp"
+#include "sortmode.hpp"
 #include "titleprobe.hpp"
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+
+TitleCatalog::TitleCatalog(void) : mSortMode(Configuration::getInstance().sortMode()) {}
 
 void TitleCatalog::loadTitles(void)
 {
@@ -141,6 +145,9 @@ void TitleCatalog::rebuildFilterIndex(AccountUid uid)
     }
 
     for (size_t j = 0; j < it->second.size(); j++) {
+        if (Configuration::getInstance().filter(it->second[j].id())) {
+            continue; // hidden through Settings > Library
+        }
         u8 type = it->second[j].saveDataType();
         for (const SaveKind& kind : SaveKind::all()) {
             if (kind.saveDataType == type) {
@@ -151,18 +158,41 @@ void TitleCatalog::rebuildFilterIndex(AccountUid uid)
     }
 }
 
+void TitleCatalog::refreshHiddenFilter(void)
+{
+    for (auto& pair : mTitles) {
+        rebuildFilterIndex(pair.first);
+    }
+    mGeneration++;
+}
+
+namespace {
+    // saves() always carries a synthetic leading "New..." entry (see
+    // Title::refreshDirectories), so the real backup count is one less.
+    size_t backupCount(Title& t)
+    {
+        size_t n = t.saves().size();
+        return n > 0 ? n - 1 : 0;
+    }
+}
+
 void TitleCatalog::sortTitles(void)
 {
     for (auto& vect : mTitles) {
         std::sort(vect.second.begin(), vect.second.end(), [this](Title& l, Title& r) {
-            if (Configuration::getInstance().favorite(l.id()) != Configuration::getInstance().favorite(r.id())) {
-                return Configuration::getInstance().favorite(l.id());
-            }
             switch (mSortMode) {
+                case SORT_FAVORITES_FIRST: {
+                    bool lf = Configuration::getInstance().favorite(l.id());
+                    bool rf = Configuration::getInstance().favorite(r.id());
+                    if (lf != rf) {
+                        return lf;
+                    }
+                    return l.name() < r.name();
+                }
                 case SORT_LAST_PLAYED:
                     return l.lastPlayedTimestamp() > r.lastPlayedTimestamp();
-                case SORT_PLAY_TIME:
-                    return l.playTimeNanoseconds() > r.playTimeNanoseconds();
+                case SORT_MOST_BACKUPS:
+                    return backupCount(l) > backupCount(r);
                 case SORT_ALPHA:
                 default:
                     return l.name() < r.name();
@@ -180,7 +210,13 @@ void TitleCatalog::sortTitles(void)
 
 void TitleCatalog::rotateSortMode(void)
 {
-    mSortMode = static_cast<sort_t>((mSortMode + 1) % SORT_MODES_COUNT);
+    setSortMode(SortMode::next(mSortMode));
+}
+
+void TitleCatalog::setSortMode(sort_t mode)
+{
+    mSortMode = mode;
+    Configuration::getInstance().setSortMode(mode);
     sortTitles();
 }
 

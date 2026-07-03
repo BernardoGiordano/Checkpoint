@@ -71,17 +71,17 @@ void Scrollable::draw(bool condition)
     const size_t baseIndex = mVisibleEntries * mPage;
     const size_t sz        = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
-        mCells.at(i)->draw(20, g_backupScrollEnabled && mCells.at(i)->selected() ? COLOR_PURPLE_LIGHT : COLOR_BLACK);
+        mCells.at(i)->draw(20, g_backupScrollEnabled && mCells.at(i)->selected() ? COLOR_ACCENT : COLOR_BLACK);
     }
 
     size_t blankRows = mVisibleEntries - sz;
     size_t rowHeight = mh / mVisibleEntries;
-    SDLH_DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, COLOR_BLACK_DARKER);
+    SDLH_DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, COLOR_SURFACE2);
 
     // draw selector
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
         if (mCells.at(i)->selected()) {
-            mCells.at(i)->drawOutline(condition ? COLOR_PURPLE_DARK : COLOR_GREY_LIGHT);
+            mCells.at(i)->drawOutline(condition ? COLOR_ACCENT : COLOR_TEXT2);
             break;
         }
     }

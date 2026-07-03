@@ -68,13 +68,23 @@ public:
     // Big icon of the title with this id (the selected title in the side panel).
     SDL_Texture* iconFor(u64 id);
 
-    // Sort the lists in place; rotate to the next sort mode and re-sort.
+    // Sort the lists in place; rotate to the next sort mode and re-sort. Both
+    // persist the new mode through Configuration::setSortMode so the grid's
+    // X-button cycle and Settings' "Default sort" spinner — the same setting
+    // — survive a relaunch.
     void sortTitles(void);
     void rotateSortMode(void);
+    void setSortMode(sort_t mode);
     sort_t sortMode(void) const { return mSortMode; }
 
     // Re-scan the backup folders of the title with this id (after a backup).
     void refreshDirectories(u64 id);
+
+    // Re-applies Configuration's hidden-id set to every user's filter
+    // buckets. Called by Settings > Library after hiding/unhiding a title —
+    // hiding is a global (by id) setting, not scoped to one user, so every
+    // uid's buckets need rebuilding, not just the currently active one.
+    void refreshHiddenFilter(void);
 
     // Bumped whenever a load/sort/directory-refresh changes what a raw or
     // filtered index refers to, or what backups exist for it. Cache holders
@@ -89,7 +99,8 @@ public:
     std::unordered_map<std::string, std::string> getCompleteTitleList(void);
 
 private:
-    TitleCatalog(void)                           = default;
+    // Seeds mSortMode from Configuration's persisted setting.
+    TitleCatalog(void);
     ~TitleCatalog(void)                          = default;
     TitleCatalog(const TitleCatalog&)            = delete;
     TitleCatalog& operator=(const TitleCatalog&) = delete;
@@ -100,7 +111,10 @@ private:
     // saveTypeFilter_t row, so a filtered query stops being an O(n) scan over
     // the raw list. Called once per user whenever a load or a sort changes
     // what a raw index refers to (membership or order); refreshDirectories
-    // touches neither, so it does not need to rebuild.
+    // touches neither, so it does not need to rebuild. Titles hidden through
+    // Configuration::filter() are left out of every bucket — hiding/unhiding
+    // from Settings > Library calls this again (via a generation bump) to
+    // apply the change.
     void rebuildFilterIndex(AccountUid uid);
 
     static constexpr size_t FILTER_COUNT = 4; // one row per SaveKind::all() entry
@@ -108,8 +122,8 @@ private:
     std::unordered_map<AccountUid, std::vector<Title>> mTitles;
     std::unordered_map<AccountUid, std::array<std::vector<size_t>, FILTER_COUNT>> mFilterIndex;
     TextureIconStore mIcons;
-    sort_t mSortMode = SORT_ALPHA;
-    u32 mGeneration  = 0;
+    sort_t mSortMode;
+    u32 mGeneration = 0;
 };
 
 #endif // TITLECATALOG_HPP

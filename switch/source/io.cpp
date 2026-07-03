@@ -52,6 +52,32 @@ size_t io::countFiles(const std::string& path)
     return count;
 }
 
+u64 io::directorySize(const std::string& path)
+{
+    u64 total = 0;
+    Directory items(path);
+    if (!items.good()) {
+        return 0;
+    }
+    std::string base = path;
+    if (!base.empty() && base.back() != '/') {
+        base += "/";
+    }
+    for (size_t i = 0, sz = items.size(); i < sz; i++) {
+        const std::string child = base + items.entry(i);
+        if (items.folder(i)) {
+            total += io::directorySize(child + "/");
+        }
+        else {
+            struct stat st;
+            if (stat(child.c_str(), &st) == 0) {
+                total += (u64)st.st_size;
+            }
+        }
+    }
+    return total;
+}
+
 void io::copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink)
 {
     FILE* src = fopen(srcPath.c_str(), "rb");

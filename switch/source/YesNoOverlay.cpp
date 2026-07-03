@@ -34,25 +34,25 @@ YesNoOverlay::YesNoOverlay(
     yesFunc = callbackYes;
     noFunc  = callbackNo;
     SDLH_GetTextDimensions(28, text.c_str(), &textw, &texth);
-    buttonYes = std::make_unique<Clickable>(322, 462, 316, 56, COLOR_BLACK_DARK, COLOR_WHITE, "Yes", true);
-    buttonNo  = std::make_unique<Clickable>(642, 462, 316, 56, COLOR_BLACK_DARK, COLOR_WHITE, "No", true);
+    buttonYes = std::make_unique<Clickable>(322, 462, 316, 56, COLOR_SURFACE, COLOR_WHITE, "Yes", true);
+    buttonNo  = std::make_unique<Clickable>(642, 462, 316, 56, COLOR_SURFACE, COLOR_WHITE, "No", true);
 }
 
 void YesNoOverlay::draw(void) const
 {
-    SDLH_DrawRect(0, 0, 1280, 720, COLOR_OVERLAY);
-    SDLH_DrawRect(320, 200, 640, 260, COLOR_BLACK_DARK);
+    SDLH_DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
+    SDLH_DrawRect(320, 200, 640, 260, COLOR_SURFACE);
     SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), COLOR_WHITE, text.c_str());
-    drawOutline(322, 462, 316, 56, 2, COLOR_GREY_LIGHT);
-    drawOutline(642, 462, 316, 56, 2, COLOR_GREY_LIGHT);
-    buttonYes->draw(28, COLOR_PURPLE_DARK);
-    buttonNo->draw(28, COLOR_PURPLE_DARK);
+    drawOutline(322, 462, 316, 56, 2, COLOR_TEXT2);
+    drawOutline(642, 462, 316, 56, 2, COLOR_TEXT2);
+    buttonYes->draw(28, COLOR_ACCENT);
+    buttonNo->draw(28, COLOR_ACCENT);
 
     if (hid.index() == 0) {
-        drawPulsingOutline(324, 464, 312, 52, 4, COLOR_PURPLE_DARK);
+        drawPulsingOutline(324, 464, 312, 52, 4, COLOR_ACCENT);
     }
     else {
-        drawPulsingOutline(644, 464, 312, 52, 4, COLOR_PURPLE_DARK);
+        drawPulsingOutline(644, 464, 312, 52, 4, COLOR_ACCENT);
     }
 }
 
