@@ -66,7 +66,6 @@ void TitleCatalog::getTitle(Title& dst, int i, BackupKind kind)
     }
     else {
         dst.load();
-        dst.setIcon(Gui::noIcon());
     }
 }
 
@@ -119,10 +118,12 @@ int TitleCatalog::getTitleCount(BackupKind kind)
 
 C2D_Image TitleCatalog::icon(int i, BackupKind kind)
 {
+    // Runs on the UI/draw thread, so this is where the icon's texture is created
+    // (lazily, by IconStore::get) — the loader worker only ever stored raw bytes.
     std::lock_guard<std::mutex> lock(mMutex);
     auto& vec = kind == BackupKind::Save ? mSaves : mExtdatas;
     if (i >= 0 && i < (int)vec.size()) {
-        return vec.at(i).icon();
+        return mIcons.get(vec.at(i).id());
     }
     return Gui::noIcon();
 }
@@ -192,7 +193,7 @@ void TitleCatalog::exportTitleListCache(std::vector<Title>& list, const std::u16
     output.close();
 }
 
-void TitleCatalog::importTitleListCache(std::vector<Title>& saves, std::vector<Title>& extdatas)
+void TitleCatalog::importTitleListCache(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons)
 {
     FSStream inputsaves(Archive::sdmc(), saveCachePath, FS_OPEN_READ);
     u32 sizesaves = inputsaves.size() / TitleCache::ENTRY_SIZE;
@@ -228,7 +229,7 @@ void TitleCatalog::importTitleListCache(std::vector<Title>& saves, std::vector<T
 
     for (size_t i = 0; i < sizesaves; i++) {
         const u8* titleData = cachesaves.get() + i * TitleCache::ENTRY_SIZE;
-        saves.at(i)         = TitleCache::decode(titleData);
+        saves.at(i)         = TitleCache::decode(titleData, icons);
         alreadystored.push_back(TitleCache::readId(titleData));
 
         mCounter++;
@@ -240,7 +241,7 @@ void TitleCatalog::importTitleListCache(std::vector<Title>& saves, std::vector<T
         u64 id                        = TitleCache::readId(titleData);
         std::vector<u64>::iterator it = find(alreadystored.begin(), alreadystored.end(), id);
         if (it == alreadystored.end()) {
-            extdatas.at(i) = TitleCache::decode(titleData);
+            extdatas.at(i) = TitleCache::decode(titleData, icons);
 
             mCounter++;
         }
@@ -286,17 +287,20 @@ bool TitleCatalog::scanCard(void)
                 res = AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, &id);
                 if (validId(id)) {
                     Title title;
-                    if (TitleProbe::probe(title, id, MEDIATYPE_GAME_CARD, cardType)) {
+                    IconStore cardIcons;
+                    if (TitleProbe::probe(title, id, MEDIATYPE_GAME_CARD, cardType, cardIcons)) {
                         ret = true;
                         if (title.accessibleSave()) {
                             std::lock_guard<std::mutex> lock(mMutex);
                             if (mSaves.empty() || mSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
+                                mIcons.mergeFrom(cardIcons);
                                 mSaves.insert(mSaves.begin(), title);
                             }
                         }
                         if (title.accessibleExtdata()) {
                             std::lock_guard<std::mutex> lock(mMutex);
                             if (mExtdatas.empty() || mExtdatas.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
+                                mIcons.mergeFrom(cardIcons);
                                 mExtdatas.insert(mExtdatas.begin(), title);
                             }
                         }
@@ -306,10 +310,12 @@ bool TitleCatalog::scanCard(void)
         }
         else {
             Title title;
-            if (TitleProbe::probe(title, 0, MEDIATYPE_GAME_CARD, cardType)) {
+            IconStore cardIcons;
+            if (TitleProbe::probe(title, 0, MEDIATYPE_GAME_CARD, cardType, cardIcons)) {
                 ret = true;
                 std::lock_guard<std::mutex> lock(mMutex);
                 if (mSaves.empty() || mSaves.at(0).mediaType() != MEDIATYPE_GAME_CARD) {
+                    mIcons.mergeFrom(cardIcons);
                     mSaves.insert(mSaves.begin(), title);
                 }
             }
@@ -353,10 +359,10 @@ bool TitleCatalog::isCacheFresh(void)
     return false;
 }
 
-void TitleCatalog::loadFromCache(std::vector<Title>& saves, std::vector<Title>& extdatas)
+void TitleCatalog::loadFromCache(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons)
 {
     mCounter = 0;
-    importTitleListCache(saves, extdatas);
+    importTitleListCache(saves, extdatas, icons);
     mCounter = saves.size() + extdatas.size();
 
     for (auto& title : saves) {
@@ -367,7 +373,7 @@ void TitleCatalog::loadFromCache(std::vector<Title>& saves, std::vector<Title>& 
     }
 }
 
-void TitleCatalog::scanInstalledTitles(std::vector<Title>& saves, std::vector<Title>& extdatas)
+void TitleCatalog::scanInstalledTitles(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons)
 {
     u32 count     = 0;
     u32 nandCount = 0;
@@ -392,7 +398,7 @@ void TitleCatalog::scanInstalledTitles(std::vector<Title>& saves, std::vector<Ti
         for (u32 i = 0; i < count; i++) {
             if (validId(ids_nand[i])) {
                 Title title;
-                if (TitleProbe::probe(title, ids_nand[i], MEDIATYPE_NAND, CARD_CTR)) {
+                if (TitleProbe::probe(title, ids_nand[i], MEDIATYPE_NAND, CARD_CTR, icons)) {
                     if (title.accessibleSave()) {
                         saves.push_back(title);
                     }
@@ -415,7 +421,7 @@ void TitleCatalog::scanInstalledTitles(std::vector<Title>& saves, std::vector<Ti
     for (u32 i = 0; i < count; i++) {
         if (validId(ids[i])) {
             Title title;
-            if (TitleProbe::probe(title, ids[i], MEDIATYPE_SD, CARD_CTR)) {
+            if (TitleProbe::probe(title, ids[i], MEDIATYPE_SD, CARD_CTR, icons)) {
                 if (title.accessibleSave() || title.isGBAVC()) {
                     saves.push_back(title);
                 }
@@ -439,7 +445,7 @@ void TitleCatalog::scanInstalledTitles(std::vector<Title>& saves, std::vector<Ti
     }
     if (!isPKSMIdAlreadyHere) {
         Title title;
-        if (TitleProbe::probe(title, TID_PKSM, MEDIATYPE_SD, CARD_CTR)) {
+        if (TitleProbe::probe(title, TID_PKSM, MEDIATYPE_SD, CARD_CTR, icons)) {
             if (title.accessibleExtdata()) {
                 extdatas.push_back(title);
             }
@@ -470,7 +476,7 @@ void TitleCatalog::exportCaches(std::vector<Title>& saves, std::vector<Title>& e
     exportTitleListCache(extdatas, extdataCachePath);
 }
 
-void TitleCatalog::appendCartTitle(std::vector<Title>& saves, std::vector<Title>& extdatas)
+void TitleCatalog::appendCartTitle(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons)
 {
     FS_CardType cardType;
     Result res = FSUSER_GetCardType(&cardType);
@@ -486,7 +492,7 @@ void TitleCatalog::appendCartTitle(std::vector<Title>& saves, std::vector<Title>
             AM_GetTitleList(NULL, MEDIATYPE_GAME_CARD, count, ids.get());
             if (validId(ids[0])) {
                 Title title;
-                if (TitleProbe::probe(title, ids[0], MEDIATYPE_GAME_CARD, cardType)) {
+                if (TitleProbe::probe(title, ids[0], MEDIATYPE_GAME_CARD, cardType, icons)) {
                     if (title.accessibleSave()) {
                         saves.insert(saves.begin(), title);
                     }
@@ -501,7 +507,7 @@ void TitleCatalog::appendCartTitle(std::vector<Title>& saves, std::vector<Title>
     }
     else {
         Title title;
-        if (TitleProbe::probe(title, 0, MEDIATYPE_GAME_CARD, cardType)) {
+        if (TitleProbe::probe(title, 0, MEDIATYPE_GAME_CARD, cardType, icons)) {
             saves.insert(saves.begin(), title);
         }
         mCounter++;
@@ -516,6 +522,10 @@ void TitleCatalog::loadTitles(bool forceRefreshParam)
     // SMDH/FS IO; readers keep seeing the previous catalog until the swap.
     std::vector<Title> saves;
     std::vector<Title> extdatas;
+    // Icons for the new catalog are built into a local store too: only raw pixel
+    // bytes are stored here (no GPU calls off the UI thread), and the swap below
+    // hands ownership to mIcons so the outgoing store frees the old textures.
+    IconStore icons;
     saves.reserve(128);
     extdatas.reserve(128);
 
@@ -523,10 +533,10 @@ void TitleCatalog::loadTitles(bool forceRefreshParam)
         const bool optimizedLoad = isCacheFresh();
 
         if (optimizedLoad && !forceRefreshParam) {
-            loadFromCache(saves, extdatas);
+            loadFromCache(saves, extdatas, icons);
         }
         else {
-            scanInstalledTitles(saves, extdatas);
+            scanInstalledTitles(saves, extdatas, icons);
         }
 
         sortLists(saves, extdatas);
@@ -535,7 +545,7 @@ void TitleCatalog::loadTitles(bool forceRefreshParam)
             exportCaches(saves, extdatas);
         }
 
-        appendCartTitle(saves, extdatas);
+        appendCartTitle(saves, extdatas, icons);
     }
     catch (const std::exception& e) {
         Logging::error("Exception in loadTitles: {}", e.what());
@@ -544,12 +554,13 @@ void TitleCatalog::loadTitles(bool forceRefreshParam)
         Logging::error("Unknown exception in loadTitles");
     }
 
-    // Publish atomically: short critical section, old lists land in the
-    // locals and are destroyed after the lock is released.
+    // Publish atomically: short critical section, old lists and icon textures
+    // land in the locals and are destroyed after the lock is released.
     {
         std::lock_guard<std::mutex> lock(mMutex);
         mSaves.swap(saves);
         mExtdatas.swap(extdatas);
+        mIcons.swap(icons);
     }
 
     auto totalEnd      = std::chrono::high_resolution_clock::now();
@@ -610,9 +621,11 @@ void TitleCatalog::cartScan(void)
                     {
                         std::lock_guard<std::mutex> lock(self.mMutex);
                         if (!self.mSaves.empty() && self.mSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+                            self.mIcons.erase(self.mSaves.at(0).id());
                             self.mSaves.erase(self.mSaves.begin());
                         }
                         if (!self.mExtdatas.empty() && self.mExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+                            self.mIcons.erase(self.mExtdatas.at(0).id());
                             self.mExtdatas.erase(self.mExtdatas.begin());
                         }
                     }

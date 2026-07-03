@@ -30,27 +30,6 @@
 #include "titlequirks.hpp"
 #include <chrono>
 
-C2D_Image loadTextureFromBytes(u16* bigIconData)
-{
-    C3D_Tex* tex                          = (C3D_Tex*)malloc(sizeof(C3D_Tex));
-    static const Tex3DS_SubTexture subt3x = {48, 48, 0.0f, 48 / 64.0f, 48 / 64.0f, 0.0f};
-    C2D_Image image                       = (C2D_Image){tex, &subt3x};
-    C3D_TexInit(image.tex, 64, 64, GPU_RGB565);
-    // Bilinear filtering: the grid tile scales this 48px icon down to 44px, and
-    // the default nearest filter makes that shrink look like a bad downsample.
-    C3D_TexSetFilter(image.tex, GPU_LINEAR, GPU_LINEAR);
-
-    u16* dest = (u16*)image.tex->data + (64 - 48) * 64;
-    u16* src  = bigIconData;
-    for (int j = 0; j < 48; j += 8) {
-        memcpy(dest, src, 48 * 8 * sizeof(u16));
-        src += 48 * 8;
-        dest += 64 * 8;
-    }
-
-    return image;
-}
-
 void Title::load(void)
 {
     mId    = 0xFFFFFFFFFFFFFFFF;
@@ -268,16 +247,6 @@ FS_CardType Title::cardType(void)
 CardType Title::SPICardType(void)
 {
     return mCardType;
-}
-
-C2D_Image Title::icon(void)
-{
-    return mIcon;
-}
-
-void Title::setIcon(C2D_Image icon)
-{
-    mIcon = icon;
 }
 
 bool Title::isActivityLog(void)

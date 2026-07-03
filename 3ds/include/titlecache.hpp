@@ -27,6 +27,7 @@
 #ifndef TITLECACHE_HPP
 #define TITLECACHE_HPP
 
+#include "iconstore.hpp"
 #include "title.hpp"
 #include <3ds.h>
 #include <cstddef>
@@ -42,8 +43,9 @@ namespace TitleCache {
     // fresh from the title's SMDH. Zero-fills the entry first.
     void encode(u8* dst, Title& title);
 
-    // Reads one entry at src into a fully-formed Title, including its icon.
-    Title decode(const u8* src);
+    // Reads one entry at src into a fully-formed Title, storing its icon bytes
+    // into `icons` under the title's id.
+    Title decode(const u8* src, IconStore& icons);
 
     // Peeks the title id of an entry without decoding the rest (used to dedup the
     // save and extdata caches, which share entries).

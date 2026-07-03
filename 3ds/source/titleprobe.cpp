@@ -31,14 +31,6 @@
 #include <cstring>
 
 namespace {
-    Tex3DS_SubTexture dsIconSubt3x = {32, 32, 0.0f, 1.0f, 1.0f, 0.0f};
-    C2D_Image dsIcon               = {nullptr, &dsIconSubt3x};
-
-    C2D_Image loadTextureIcon(smdh_s* smdh)
-    {
-        return loadTextureFromBytes(smdh->bigIconData);
-    }
-
     // Some titles (notably malformed VC injects) don't null-terminate SMDH title
     // fields; reading them as raw char16_t* would run past the fixed-size array
     // into whatever struct data follows, producing a huge garbage string that can
@@ -52,51 +44,11 @@ namespace {
         return std::u16string((const char16_t*)data, len);
     }
 
-    void loadDSIcon(u8* banner)
-    {
-        static constexpr int WIDTH_POW2  = 32;
-        static constexpr int HEIGHT_POW2 = 32;
-        if (!dsIcon.tex) {
-            dsIcon.tex = new C3D_Tex;
-            C3D_TexInit(dsIcon.tex, WIDTH_POW2, HEIGHT_POW2, GPU_RGB565);
-        }
-
-        struct bannerData {
-            u16 version;
-            u16 crc;
-            u8 reserved[28];
-            u8 data[512];
-            u16 palette[16];
-        };
-        bannerData* iconData = (bannerData*)banner;
-
-        u16* output = (u16*)dsIcon.tex->data;
-        for (size_t x = 0; x < 32; x++) {
-            for (size_t y = 0; y < 32; y++) {
-                u32 srcOff   = (((y >> 3) * 4 + (x >> 3)) * 8 + (y & 7)) * 4 + ((x & 7) >> 1);
-                u32 srcShift = (x & 1) * 4;
-
-                u16 pIndex = (iconData->data[srcOff] >> srcShift) & 0xF;
-                u16 color  = 0xFFFF;
-                if (pIndex != 0) {
-                    u16 r = iconData->palette[pIndex] & 0x1F;
-                    u16 g = (iconData->palette[pIndex] >> 5) & 0x1F;
-                    u16 b = (iconData->palette[pIndex] >> 10) & 0x1F;
-                    color = (r << 11) | (g << 6) | (g >> 4) | (b);
-                }
-
-                u32 dst     = ((((y >> 3) * (32 >> 3) + (x >> 3)) << 6) +
-                           ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3)));
-                output[dst] = color;
-            }
-        }
-    }
-
     // Probe a CTR (3DS) title: SMDH metadata, save/extdata accessibility, and
-    // backup-directory creation. Fills the out-params; returns true when usable.
+    // backup-directory creation. Fills the out-params and stores the icon bytes
+    // under `id`; returns true when usable.
     bool probeCtr(u64 id, FS_MediaType media, u8* productCode, bool& accessibleSave, bool& gba, bool& accessibleExtdata,
-        std::u16string& shortDescription, std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, C2D_Image& icon,
-        bool& hasIcon)
+        std::u16string& shortDescription, std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, IconStore& icons)
     {
         const u32 low    = (u32)id;
         const u32 high   = (u32)(id >> 32);
@@ -145,8 +97,7 @@ namespace {
         }
 
         if (loadTitle) {
-            icon    = loadTextureIcon(smdh);
-            hasIcon = true;
+            icons.storeCtrIcon(id, smdh->bigIconData);
         }
 
         delete smdh;
@@ -154,8 +105,9 @@ namespace {
     }
 
     // Probe a legacy DS card title: rom header, banner icon, SPI card type.
-    bool probeCard(FS_MediaType media, u8* productCode, bool& accessibleSave, bool& gba, bool& accessibleExtdata, std::u16string& shortDescription,
-        std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, CardType& spiCard, C2D_Image& icon, bool& hasIcon)
+    bool probeCard(u64 id, FS_MediaType media, u8* productCode, bool& accessibleSave, bool& gba, bool& accessibleExtdata,
+        std::u16string& shortDescription, std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, CardType& spiCard,
+        IconStore& icons)
     {
         u8* headerData = new u8[0x3B4];
         Result res     = FSUSER_GetLegacyRomHeader(media, 0LL, headerData);
@@ -176,9 +128,7 @@ namespace {
         delete[] headerData;
         headerData = new u8[0x23C0];
         FSUSER_GetLegacyBannerData(media, 0LL, headerData);
-        loadDSIcon(headerData);
-        icon    = dsIcon;
-        hasIcon = true;
+        icons.storeDsIcon(id, headerData);
         delete[] headerData;
 
         res = SPIGetCardType(&spiCard, (gameCode[0] == 'I') ? 1 : 0);
@@ -213,23 +163,21 @@ namespace {
     }
 }
 
-bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType card)
+bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType card, IconStore& icons)
 {
     u8 productCode[16]  = {0};
     bool accessibleSave = false, gba = false, accessibleExtdata = false;
     std::u16string shortDescription, longDescription, savePath, extdataPath;
     CardType spiCard = NO_CHIP;
-    C2D_Image icon{};
-    bool hasIcon = false;
 
     bool loadTitle;
     if (card == CARD_CTR) {
-        loadTitle = probeCtr(
-            id, media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, icon, hasIcon);
+        loadTitle =
+            probeCtr(id, media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, icons);
     }
     else {
-        loadTitle = probeCard(media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath,
-            spiCard, icon, hasIcon);
+        loadTitle = probeCard(
+            id, media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, spiCard, icons);
     }
 
     // On a hard failure (smdh == NULL, header/SPI error) probeCtr/probeCard
@@ -237,9 +185,6 @@ bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType car
     // the caller discards it on a false return, exactly as the old load() did.
     title.load(id, productCode, accessibleSave, gba, accessibleExtdata, StringUtils::UTF16toUTF8(shortDescription),
         StringUtils::UTF16toUTF8(longDescription), savePath, extdataPath, media, card, spiCard);
-    if (hasIcon) {
-        title.setIcon(icon);
-    }
     title.refreshDirectories();
     return loadTitle;
 }

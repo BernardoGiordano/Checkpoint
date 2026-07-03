@@ -27,6 +27,7 @@
 #ifndef LOADER_HPP
 #define LOADER_HPP
 
+#include "iconstore.hpp"
 #include "title.hpp"
 #include <atomic>
 #include <mutex>
@@ -97,18 +98,21 @@ private:
     // works on caller-owned vectors so the whole load runs lock-free on
     // locals; loadTitles publishes the result with a swap under mMutex.
     void loadTitles(bool forceRefreshParam);
-    bool isCacheFresh(void);                                                           // hash check; (re)writes the hash file as a side effect
-    void loadFromCache(std::vector<Title>& saves, std::vector<Title>& extdatas);       // fast path: deserialize the cache + refresh dirs
-    void scanInstalledTitles(std::vector<Title>& saves, std::vector<Title>& extdatas); // slow path: enumerate NAND / SD / PKSM
-    void appendCartTitle(std::vector<Title>& saves, std::vector<Title>& extdatas);     // prepend the inserted game-card title, if any
-    void sortLists(std::vector<Title>& saves, std::vector<Title>& extdatas);           // favorites-first, then by name
-    void exportCaches(std::vector<Title>& saves, std::vector<Title>& extdatas);        // serialize both lists to the SD cache
+    bool isCacheFresh(void); // hash check; (re)writes the hash file as a side effect
+    void loadFromCache(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons);       // fast path: cache + refresh dirs
+    void scanInstalledTitles(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons); // slow path: NAND / SD / PKSM
+    void appendCartTitle(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons);     // prepend inserted game-card title
+    void sortLists(std::vector<Title>& saves, std::vector<Title>& extdatas);                             // favorites-first, then by name
+    void exportCaches(std::vector<Title>& saves, std::vector<Title>& extdatas);                          // serialize both lists to SD
 
     void exportTitleListCache(std::vector<Title>& list, const std::u16string& path);
-    void importTitleListCache(std::vector<Title>& saves, std::vector<Title>& extdatas);
+    void importTitleListCache(std::vector<Title>& saves, std::vector<Title>& extdatas, IconStore& icons);
 
     std::vector<Title> mSaves;
     std::vector<Title> mExtdatas;
+    // Owns every icon texture for the titles currently in mSaves/mExtdatas.
+    // Guarded by mMutex like the lists: swapped in loadTitles, read by icon().
+    IconStore mIcons;
     std::mutex mMutex;
 
     bool mForceRefresh           = false;

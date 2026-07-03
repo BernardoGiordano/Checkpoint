@@ -25,7 +25,6 @@
  */
 
 #include "titlecache.hpp"
-#include "gui.hpp"
 #include "smdh.hpp"
 #include <cstring>
 
@@ -88,7 +87,7 @@ void TitleCache::encode(u8* dst, Title& title)
     std::memcpy(dst + OFF_CARD, &card, sizeof(u8));
 }
 
-Title TitleCache::decode(const u8* src)
+Title TitleCache::decode(const u8* src, IconStore& icons)
 {
     u64 id;
     u8 productCode[16];
@@ -122,13 +121,11 @@ Title TitleCache::decode(const u8* src)
         StringUtils::UTF8toUTF16(extdataPath), media, cardType, card);
 
     if (cardType == CARD_CTR) {
+        // OFF_ICON is not u16-aligned in the packed entry; copy into an aligned
+        // buffer before handing the pixels to the store.
         u16 bigIconData[0x900];
         std::memcpy(bigIconData, src + OFF_ICON, ICON_BYTES);
-        title.setIcon(loadTextureFromBytes(bigIconData));
-    }
-    else {
-        // this cannot happen
-        title.setIcon(Gui::noIcon());
+        icons.storeCtrIcon(id, bigIconData);
     }
 
     return title;
