@@ -27,6 +27,7 @@
 #ifndef MAINSCREEN_HPP
 #define MAINSCREEN_HPP
 
+#include "BackupList.hpp"
 #include "ErrorOverlay.hpp"
 #include "InfoOverlay.hpp"
 #include "Screen.hpp"
@@ -38,7 +39,6 @@
 #include "multiselection.hpp"
 #include "pksmbridge.hpp"
 #include "savekind.hpp"
-#include "scrollable.hpp"
 #include "title.hpp"
 #include "transferstatus.hpp"
 #include <array>
@@ -47,7 +47,6 @@
 typedef enum { TITLES, CELLS } entryType_t;
 
 class Clickable;
-class Scrollable;
 
 class MainScreen : public Screen {
 public:
@@ -85,7 +84,7 @@ private:
     int sidebarCursor                = 0;
     saveTypeFilter_t mSaveTypeFilter = FILTER_SAVES;
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
-    std::unique_ptr<Scrollable> backupList;
+    std::unique_ptr<BackupList> backupList;
     std::unique_ptr<Clickable> buttonBackup, buttonRestore;
     // Filter buttons in UI order, indexed by saveTypeFilter_t.
     std::array<std::unique_ptr<Clickable>, 4> filterButtons;

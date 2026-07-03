@@ -143,6 +143,7 @@ void TitleCatalog::sortTitles(void)
             }
         });
     }
+    mGeneration++;
 }
 
 void TitleCatalog::rotateSortMode(void)
@@ -182,6 +183,7 @@ void TitleCatalog::refreshDirectories(u64 id)
             }
         }
     }
+    mGeneration++;
 }
 
 SDL_Texture* TitleCatalog::iconFor(u64 id)

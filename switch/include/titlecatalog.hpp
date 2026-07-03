@@ -74,6 +74,12 @@ public:
     // Re-scan the backup folders of the title with this id (after a backup).
     void refreshDirectories(u64 id);
 
+    // Bumped whenever a load/sort/directory-refresh changes what a raw or
+    // filtered index refers to, or what backups exist for it. Cache holders
+    // (BackupList) compare this against a stored value to know a rebuild is
+    // needed instead of unconditionally rebuilding every frame.
+    u32 generation(void) const { return mGeneration; }
+
     // Destroy every owned icon texture (called on exit).
     void freeIcons(void);
 
@@ -91,6 +97,7 @@ private:
     std::unordered_map<AccountUid, std::vector<Title>> mTitles;
     TextureIconStore mIcons;
     sort_t mSortMode = SORT_ALPHA;
+    u32 mGeneration  = 0;
 };
 
 #endif // TITLECATALOG_HPP

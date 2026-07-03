@@ -39,49 +39,6 @@ static constexpr int FILTER_BTN_SPACING = 64;
 static constexpr int ACCT_ICON_SIZE     = 56;
 
 namespace {
-    // The date-stamped folder name suggested for a new backup. Account saves also
-    // append the (ASCII-folded) user name; the special save kinds use the bare date.
-    std::string backupSuggestion(Title& title)
-    {
-        if (!SaveDataSource(title.saveDataType()).isUserAccount()) {
-            return DateTime::dateTimeStr();
-        }
-        return DateTime::dateTimeStr() + " " +
-               (StringUtils::containsInvalidChar(Account::username(title.userId()))
-                       ? ""
-                       : StringUtils::removeNotAscii(StringUtils::removeAccents(Account::username(title.userId()))));
-    }
-
-    // Picks the destination folder for a backup. cellIndex 0 = a new folder (named
-    // by the keyboard, or the date-time stamp during a multi-selection); cellIndex
-    // > 0 = overwrite the chosen existing backup. Returns nullopt if the keyboard
-    // prompt was cancelled. Sets usedKeyboardFallback when the system keyboard was
-    // unavailable and the suggested name was used instead.
-    std::optional<std::string> chooseBackupDst(Title& title, size_t cellIndex, bool& usedKeyboardFallback)
-    {
-        usedKeyboardFallback = false;
-        if (cellIndex != 0) {
-            return title.fullPath(cellIndex);
-        }
-        std::string suggestion = backupSuggestion(title);
-        std::string name;
-        if (MS::multipleSelectionEnabled()) {
-            name = suggestion;
-        }
-        else if (KeyboardManager::get().isSystemKeyboardAvailable().first) {
-            std::pair<bool, std::string> response = KeyboardManager::get().keyboard(suggestion);
-            if (!response.first) {
-                return std::nullopt;
-            }
-            name = StringUtils::removeForbiddenCharacters(response.second);
-        }
-        else {
-            name                 = suggestion;
-            usedKeyboardFallback = true;
-        }
-        return title.path() + "/" + name;
-    }
-
     std::string backupErrorMessage(io::BackupStage stage)
     {
         switch (stage) {
@@ -117,7 +74,7 @@ MainScreen::MainScreen(const InputState& input) : hid(rowlen * collen, collen, i
     wantInstructions = false;
     selectionTimer   = 0;
     sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
-    backupList    = std::make_unique<Scrollable>(608, 316, 400, 408, rows);
+    backupList    = std::make_unique<BackupList>(608, 316, 400, 408, rows);
     buttonBackup  = std::make_unique<Clickable>(1012, 316, 260, 64, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Backup \ue004", true);
     buttonRestore = std::make_unique<Clickable>(1012, 384, 260, 64, COLOR_BLACK_DARKER, COLOR_GREY_LIGHT, "Restore \ue005", true);
     buttonBackup->canChangeColorWhenSelected(true);
@@ -253,16 +210,11 @@ void MainScreen::draw() const
     SDLH_DrawText(
         20, 8 + checkpoint_w + 8 + ver_w + 32, (TOPBAR_h - checkpoint_h) / 2 + checkpoint_h - ver_h + 2, COLOR_GREY_LIGHT, "\ue046 Instructions");
 
-    backupList->flush();
     if (filteredCnt > 0) {
-        Title title;
-        TitleCatalog::get().getFilteredTitle(title, g_currentUId, mSaveTypeFilter, hid.fullIndex());
-
-        std::vector<std::string> dirs = title.saves();
-
-        for (size_t i = 0; i < dirs.size(); i++) {
-            backupList->push_back(COLOR_BLACK_DARKER, COLOR_WHITE, dirs.at(i), i == backupList->index());
-        }
+        // No-op unless the selected user/filter/index or the catalog itself
+        // (a backup/restore/delete/sort) moved since the last frame.
+        backupList->refreshSelected(g_currentUId, mSaveTypeFilter, hid.fullIndex(), TitleCatalog::get().generation());
+        Title& title = backupList->title();
 
         if (TitleCatalog::get().iconFor(title.id()) != NULL) {
             drawOutline(1012, 52, 256, 256, 4, COLOR_BLACK_DARK);
@@ -507,7 +459,7 @@ void MainScreen::doBackup(size_t rawIdx, size_t cellIndex)
     // once all saves are enqueued. blinkLed and the result overlay are raised by
     // update() when the batch finishes.
     bool usedKeyboardFallback      = false;
-    std::optional<std::string> dst = chooseBackupDst(title, cellIndex, usedKeyboardFallback);
+    std::optional<std::string> dst = BackupList::chooseDst(title, cellIndex, usedKeyboardFallback);
     removeOverlay();
     if (!dst) { // keyboard prompt cancelled
         return;
