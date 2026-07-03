@@ -30,6 +30,7 @@
 #include "server.hpp"
 #include "thread.hpp"
 #include "title.hpp"
+#include "titlecache.hpp"
 #include <malloc.h>
 
 #define SOC_ALIGN 0x1000
@@ -148,19 +149,23 @@ void calculateTitleDBHash(u8* hash)
 {
     u32 titleCount, nandCount, titlesRead, nandTitlesRead;
     AM_GetTitleCount(MEDIATYPE_SD, &titleCount);
+    // Append the cache format version so a format change invalidates every
+    // existing hash and forces the caches to regenerate.
     if (Configuration::getInstance().nandSaves()) {
         AM_GetTitleCount(MEDIATYPE_NAND, &nandCount);
         std::vector<u64> ordered(titleCount + nandCount);
         AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
         AM_GetTitleList(&nandTitlesRead, MEDIATYPE_NAND, nandCount, ordered.data() + titlesRead);
         sort(ordered.begin(), ordered.end());
-        sha256(hash, (u8*)ordered.data(), (titleCount + nandCount) * sizeof(u64));
+        ordered.push_back(TitleCache::FORMAT_VERSION);
+        sha256(hash, (u8*)ordered.data(), ordered.size() * sizeof(u64));
     }
     else {
         std::vector<u64> ordered(titleCount);
         AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
         sort(ordered.begin(), ordered.end());
-        sha256(hash, (u8*)ordered.data(), titleCount * sizeof(u64));
+        ordered.push_back(TitleCache::FORMAT_VERSION);
+        sha256(hash, (u8*)ordered.data(), ordered.size() * sizeof(u64));
     }
 }
 

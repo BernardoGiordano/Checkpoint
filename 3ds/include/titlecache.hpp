@@ -39,6 +39,11 @@ namespace TitleCache {
     // Size of one serialized title entry, in bytes.
     constexpr std::size_t ENTRY_SIZE = 5341;
 
+    // Bump whenever the on-SD byte format changes so stale caches (e.g. ones
+    // written before the encode() field clamp) are treated as fresh-miss and
+    // regenerated. Folded into the title-DB hash by calculateTitleDBHash().
+    constexpr u32 FORMAT_VERSION = 2;
+
     // Writes one entry (ENTRY_SIZE bytes) at dst, including the CTR icon pulled
     // fresh from the title's SMDH. Zero-fills the entry first.
     void encode(u8* dst, Title& title);

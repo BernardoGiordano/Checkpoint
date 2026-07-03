@@ -26,6 +26,7 @@
 
 #include "titlecache.hpp"
 #include "smdh.hpp"
+#include <algorithm>
 #include <cstring>
 
 namespace {
@@ -48,6 +49,23 @@ namespace {
     constexpr size_t LONG_LEN   = 0x80;
     constexpr size_t PATH_LEN   = 256;
     constexpr size_t ICON_BYTES = 0x900 * 2; // bigIconData: 0x900 u16 pixels
+
+    // Copies a UTF-8 string into a fixed field of `fieldLen` bytes, always leaving
+    // room for a terminating NUL. The SMDH short/long descriptions are 0x40/0x80
+    // UTF-16 units, which can expand to more UTF-8 bytes than the field holds
+    // (Japanese/emoji titles), so the copy MUST be clamped or it overruns the
+    // packed entry. When the clamp lands mid-sequence we back off to the previous
+    // codepoint boundary so a partial UTF-8 sequence is never written. The entry
+    // is memset to 0 up front, so the unwritten tail is already the NUL padding.
+    void copyClamped(u8* dst, size_t offset, const std::string& src, size_t fieldLen)
+    {
+        size_t n = std::min(src.length(), fieldLen - 1);
+        // back off out of the middle of a multibyte sequence
+        while (n > 0 && (static_cast<u8>(src[n]) & 0xC0) == 0x80) {
+            n--;
+        }
+        std::memcpy(dst + offset, src.data(), n);
+    }
 }
 
 void TitleCache::encode(u8* dst, Title& title)
@@ -78,10 +96,10 @@ void TitleCache::encode(u8* dst, Title& title)
     std::memcpy(dst + OFF_PRODUCT, title.productCode, 16);
     std::memcpy(dst + OFF_ACCESS, &accessibleSaveRaw, sizeof(u8));
     std::memcpy(dst + OFF_ACCESS_EXT, &accessibleExtdata, sizeof(u8));
-    std::memcpy(dst + OFF_SHORT, shortDescription.c_str(), shortDescription.length());
-    std::memcpy(dst + OFF_LONG, longDescription.c_str(), longDescription.length());
-    std::memcpy(dst + OFF_SAVE_PATH, savePath.c_str(), savePath.length());
-    std::memcpy(dst + OFF_EXT_PATH, extdataPath.c_str(), extdataPath.length());
+    copyClamped(dst, OFF_SHORT, shortDescription, SHORT_LEN);
+    copyClamped(dst, OFF_LONG, longDescription, LONG_LEN);
+    copyClamped(dst, OFF_SAVE_PATH, savePath, PATH_LEN);
+    copyClamped(dst, OFF_EXT_PATH, extdataPath, PATH_LEN);
     std::memcpy(dst + OFF_MEDIA, &media, sizeof(u8));
     std::memcpy(dst + OFF_FS_CARD, &cardType, sizeof(u8));
     std::memcpy(dst + OFF_CARD, &card, sizeof(u8));
@@ -112,6 +130,14 @@ Title TitleCache::decode(const u8* src, IconStore& icons)
     std::memcpy(&media, src + OFF_MEDIA, sizeof(u8));
     std::memcpy(&cardType, src + OFF_FS_CARD, sizeof(u8));
     std::memcpy(&card, src + OFF_CARD, sizeof(u8));
+
+    // encode() clamps to FIELD_LEN-1 and zero-fills, but a stale/corrupt cache
+    // could carry an unterminated field; force NUL so the char[] -> string
+    // constructions below can't run off the end.
+    shortDescription[SHORT_LEN - 1] = 0;
+    longDescription[LONG_LEN - 1]   = 0;
+    savePath[PATH_LEN - 1]          = 0;
+    extdataPath[PATH_LEN - 1]       = 0;
 
     bool accessibleSave = accessibleSaveRaw & 1;
     bool saveIsGBA      = accessibleSaveRaw & 2;
