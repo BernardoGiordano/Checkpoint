@@ -27,6 +27,8 @@
 #include "main.hpp"
 #include "MainScreenV4.hpp"
 #include "backupsize.hpp"
+#include "colors.hpp"
+#include "configuration.hpp"
 #include "loader.hpp"
 #include "server.hpp"
 #include "textpool.hpp"
@@ -58,6 +60,9 @@ int main()
     }
 
     try {
+        // Match the color tokens to the persisted theme before any screen draws.
+        Colors::apply(Configuration::getInstance().theme());
+
         g_screen       = std::make_unique<MainScreenV4>();
         auto uiIsReady = std::chrono::high_resolution_clock::now();
         Logging::info("Loading took {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(uiIsReady - start).count());

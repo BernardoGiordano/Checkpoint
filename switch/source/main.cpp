@@ -27,6 +27,7 @@
 #include "main.hpp"
 #include "MainScreen.hpp"
 #include "backupsize.hpp"
+#include "colors.hpp"
 #include "titlecatalog.hpp"
 #include "transferjob.hpp"
 extern "C" {
@@ -49,6 +50,9 @@ int main(void)
         servicesExit();
         exit(res);
     }
+
+    // Match the color tokens to the persisted theme before any screen draws.
+    Colors::apply(Configuration::getInstance().theme());
 
     InputState input;
     g_input = &input;

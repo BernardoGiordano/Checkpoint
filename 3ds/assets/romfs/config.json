@@ -15,5 +15,6 @@
   "scan_cart": false,
   "transfer_enabled": false,
   "confirm_restore": true,
+  "theme": "dark",
   "version": 5
 }

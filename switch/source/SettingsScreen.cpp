@@ -130,6 +130,7 @@ void SettingsScreen::rebuildRows(void)
             // not change it, so an accidental horizontal press can't swap themes.
             theme.onActivate = [this, &cfg]() {
                 cfg.setTheme(cfg.theme() == "light" ? "dark" : "light");
+                Colors::apply(cfg.theme());
                 flashSaved();
             };
             mRows.push_back(std::move(theme));

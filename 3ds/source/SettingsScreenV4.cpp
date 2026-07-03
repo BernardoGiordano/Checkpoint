@@ -74,12 +74,13 @@ namespace {
 
     // General section rows, in draw order. Row index maps 1:1 to the mutators
     // used in update(): 0 scan_cart, 1 nand_saves, 2 transfer_enabled,
-    // 3 confirm_restore.
+    // 3 confirm_restore, 4 light theme.
     const ToggleRow GENERAL_ROWS[] = {
         {"Scan game cartridge", "Detect the inserted cart on launch"},
         {"Show system (NAND) saves", "Include system & DSiWare titles"},
         {"Enable Wi-Fi transfer", "Send / receive backups over network"},
         {"Confirm before restore", "Ask before overwriting a save"},
+        {"Light theme", "Use the light color palette"},
     };
     constexpr size_t GENERAL_COUNT = sizeof(GENERAL_ROWS) / sizeof(GENERAL_ROWS[0]);
 
@@ -286,7 +287,7 @@ void SettingsScreenV4::drawTop(void) const
 void SettingsScreenV4::drawGeneral(void) const
 {
     Configuration& cfg             = Configuration::getInstance();
-    const bool vals[GENERAL_COUNT] = {cfg.shouldScanCard(), cfg.nandSaves(), cfg.transferEnabled(), cfg.confirmRestore()};
+    const bool vals[GENERAL_COUNT] = {cfg.shouldScanCard(), cfg.nandSaves(), cfg.transferEnabled(), cfg.confirmRestore(), cfg.theme() == "light"};
     for (size_t i = 0; i < GENERAL_COUNT; i++) {
         const int rowY = 30 + (int)i * 34;
         drawToggleRow(rowY, GENERAL_ROWS[i].name, GENERAL_ROWS[i].sub, vals[i], contentFocus && contentCursor == (int)i);
@@ -485,6 +486,10 @@ void SettingsScreenV4::update(const InputState& input)
                         break;
                     case 3:
                         cfg.setConfirmRestore(!cfg.confirmRestore());
+                        break;
+                    case 4:
+                        cfg.setTheme(cfg.theme() == "light" ? "dark" : "light");
+                        Colors::apply(cfg.theme());
                         break;
                 }
                 // Cart scan and NAND saves change which titles the grid loads.

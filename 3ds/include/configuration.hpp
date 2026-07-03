@@ -51,6 +51,8 @@ public:
     bool shouldScanCard(void);
     bool transferEnabled(void);
     bool confirmRestore(void);
+    // "dark" (default) or "light". Selects the color palette; see Colors::apply.
+    std::string theme(void);
     std::vector<std::u16string> additionalSaveFolders(u64 id);
     std::vector<std::u16string> additionalExtdataFolders(u64 id);
 
@@ -66,6 +68,7 @@ public:
     void setScanCard(bool v);
     void setTransferEnabled(bool v);
     void setConfirmRestore(bool v);
+    void setTheme(const std::string& v);
 
     // Library / Folders list mutators (same save-on-change contract).
     void addFavorite(u64 id);
@@ -92,6 +95,7 @@ private:
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::u16string>> mAdditionalSaveFolders, mAdditionalExtdataFolders;
     bool mNandSaves = false, mScanCard = false, mTransferEnabled = false, mConfirmRestore = true;
+    std::string mTheme   = "dark";
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
     size_t oldSize       = 0;
 };

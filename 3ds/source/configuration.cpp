@@ -75,6 +75,10 @@ Configuration::Configuration(void)
                     (*mJson)["confirm_restore"] = true;
                     updateJson                  = true;
                 }
+                if (!(mJson->contains("theme") && (*mJson)["theme"].is_string())) {
+                    (*mJson)["theme"] = "dark";
+                    updateJson        = true;
+                }
                 if (!(mJson->contains("filter") && (*mJson)["filter"].is_array())) {
                     (*mJson)["filter"] = nlohmann::json::array();
                     updateJson         = true;
@@ -143,6 +147,7 @@ Configuration::Configuration(void)
             mScanCard        = (*mJson)["scan_cart"];
             mTransferEnabled = (*mJson)["transfer_enabled"];
             mConfirmRestore  = (*mJson)["confirm_restore"];
+            mTheme           = (*mJson)["theme"];
 
             // parse additional save folders
             auto js = (*mJson)["additional_save_folders"];
@@ -242,6 +247,11 @@ bool Configuration::confirmRestore(void)
     return mConfirmRestore;
 }
 
+std::string Configuration::theme(void)
+{
+    return mTheme;
+}
+
 void Configuration::setNandSaves(bool v)
 {
     mNandSaves             = v;
@@ -267,6 +277,13 @@ void Configuration::setConfirmRestore(bool v)
 {
     mConfirmRestore             = v;
     (*mJson)["confirm_restore"] = v;
+    save();
+}
+
+void Configuration::setTheme(const std::string& v)
+{
+    mTheme            = v;
+    (*mJson)["theme"] = v;
     save();
 }
 
