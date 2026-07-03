@@ -38,18 +38,21 @@ Directory::Directory(FS_Archive archive, const std::u16string& root)
         return;
     }
 
+    // Read entries in batches to amortize the FS service round-trip: one IPC call
+    // per BATCH entries instead of one per entry.
+    static constexpr u32 BATCH = 32;
+    FS_DirectoryEntry batch[BATCH];
     u32 result;
     do {
-        FS_DirectoryEntry item;
-        mError = FSDIR_Read(handle, &result, 1, &item);
+        mError = FSDIR_Read(handle, &result, BATCH, batch);
         if (R_FAILED(mError)) {
             Logging::error("FSDIR_Read failed with result 0x{:08X} for path {}", mError, StringUtils::UTF16toUTF8(root));
             break;
         }
-        if (result == 1) {
-            mList.push_back(item);
+        for (u32 i = 0; i < result; i++) {
+            mList.push_back(batch[i]);
         }
-    } while (result);
+    } while (result == BATCH);
 
     Result readError = mError;
     mError           = FSDIR_Close(handle);

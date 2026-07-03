@@ -34,6 +34,7 @@
 #include "title.hpp"
 #include "util.hpp"
 #include <3ds.h>
+#include <vector>
 
 #define BUFFER_SIZE 0x50000
 
@@ -56,9 +57,23 @@ namespace io {
     // Restores `target` from the already-resolved backup folder `srcPath`.
     IoOutcome restore(const BackupTarget& target, const std::u16string& srcPath, ProgressSink& sink);
 
-    size_t countFiles(FS_Archive arch, const std::u16string& path);
-    Result copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink);
-    Result copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink);
+    // One entry of a copy tree: `rel` is the path relative to the copy root, `folder`
+    // distinguishes a directory to create from a file to copy.
+    struct TreeEntry {
+        std::u16string rel;
+        bool folder;
+    };
+    // Enumerate the whole tree under `path` in a single walk, pre-order (a folder
+    // precedes its contents), so callers get both the progress total and the copy
+    // plan without walking the tree twice.
+    Result collectTree(FS_Archive arch, const std::u16string& path, std::vector<TreeEntry>& out);
+    // Copy a tree previously enumerated by collectTree, reusing one heap buffer for
+    // every file. Stops on the first failure.
+    Result copyTree(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcRoot, const std::u16string& dstRoot,
+        const std::vector<TreeEntry>& entries, ProgressSink& sink);
+    // Copies a single file using the caller-provided BUFFER_SIZE scratch buffer.
+    Result copyFile(
+        FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink, u8* buffer);
     // Copies a GBA VC raw save between the FSPXI archive and an SD-card file (fromPxi selects the direction).
     Result copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const std::u16string& path, bool fromPxi, ProgressSink& sink);
     Result createDirectory(FS_Archive archive, const std::u16string& path);

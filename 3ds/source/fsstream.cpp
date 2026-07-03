@@ -108,7 +108,10 @@ Result FSStream::close(void)
         mResult = FSPXI_CloseFile(FsPxiHandle, std::get<FSPXI_File>(mHandle));
     }
     else {
-        mResult = FSFILE_Close(std::get<Handle>(mHandle));
+        // Writes no longer flush per-call (see write()); flush once here before close.
+        Handle h = std::get<Handle>(mHandle);
+        FSFILE_Flush(h);
+        mResult = FSFILE_Close(h);
     }
     return mResult;
 }
@@ -150,10 +153,12 @@ u32 FSStream::write(const void* buf, u32 sz)
 {
     u32 wt = 0;
     if (isPxi()) {
+        // PXI has no flush-on-close; keep the per-write flush for the single GBA save file.
         mResult = FSPXI_WriteFile(FsPxiHandle, std::get<FSPXI_File>(mHandle), &wt, mOffset, buf, sz, FS_WRITE_FLUSH);
     }
     else {
-        mResult = FSFILE_Write(std::get<Handle>(mHandle), &wt, mOffset, buf, sz, FS_WRITE_FLUSH);
+        // Skip the per-write flush; close() flushes once. Avoids a flush per 16 KB chunk and per tiny header write.
+        mResult = FSFILE_Write(std::get<Handle>(mHandle), &wt, mOffset, buf, sz, 0);
     }
     mOffset += wt;
     return wt;

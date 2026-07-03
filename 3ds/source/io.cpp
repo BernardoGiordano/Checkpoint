@@ -34,6 +34,13 @@
 // R_FAILED() is true; the exact value is opaque, the BackupStage carries meaning.
 static const Result RES_SHORT_WRITE = MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_FS, RD_TOO_LARGE);
 
+// FS returns this (FS module, WrongArgument) when a read runs past the real,
+// allocated data of a sparse / partly-populated extdata file — FSFILE_Read
+// rejects the whole request instead of short-reading. It is not a hard failure:
+// it marks the true end of readable data, which can fall short of the size
+// FSFILE_GetSize reports. See copyFile's shrink-and-stop handling.
+static const u32 RES_FS_PAST_DATA = 0xD900458B;
+
 bool io::fileExists(const std::string& path)
 {
     struct stat buffer;
@@ -48,26 +55,35 @@ bool io::fileExists(FS_Archive archive, const std::u16string& path)
     return exist;
 }
 
-size_t io::countFiles(FS_Archive arch, const std::u16string& path)
+static Result collectTreeImpl(FS_Archive arch, const std::u16string& root, const std::u16string& sub, std::vector<io::TreeEntry>& out)
 {
-    size_t count = 0;
-    Directory items(arch, path);
+    Directory items(arch, root + sub);
     if (!items.good()) {
-        return 0;
+        return items.error();
     }
     for (size_t i = 0, sz = items.size(); i < sz; i++) {
+        std::u16string rel = sub + items.entry(i);
         if (items.folder(i)) {
-            std::u16string subdir = path + items.entry(i) + StringUtils::UTF8toUTF16("/");
-            count += io::countFiles(arch, subdir);
+            out.push_back({rel, true});
+            Result res = collectTreeImpl(arch, root, rel + StringUtils::UTF8toUTF16("/"), out);
+            if (R_FAILED(res)) {
+                return res;
+            }
         }
         else {
-            count++;
+            out.push_back({rel, false});
         }
     }
-    return count;
+    return 0;
 }
 
-Result io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink)
+Result io::collectTree(FS_Archive arch, const std::u16string& path, std::vector<TreeEntry>& out)
+{
+    return collectTreeImpl(arch, path, StringUtils::UTF8toUTF16(""), out);
+}
+
+Result io::copyFile(
+    FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink, u8* buffer)
 {
     u32 size = 0;
     FSStream input(srcArch, srcPath, FS_OPEN_READ);
@@ -91,21 +107,34 @@ Result io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string
 
     Result res = 0;
     u32 offset = 0;
-    u8* buf    = new u8[size];
+    u32 chunk  = size; // shrinks toward the readable-data boundary on RES_FS_PAST_DATA
     do {
-        u32 rd = input.read(buf, size);
+        u32 rd = input.read(buffer, chunk);
         if (R_FAILED(input.result())) {
+            // Sparse extdata: this offset+chunk runs past the file's real data. Halve
+            // the request to recover any readable prefix at this offset; once even a
+            // single byte can't be read here, we've hit the true end of data — stop
+            // this file cleanly and keep the backup going.
+            if ((u32)input.result() == RES_FS_PAST_DATA) {
+                if (chunk > 1) {
+                    chunk /= 2;
+                    continue;
+                }
+                Logging::info("Reached end of readable data for {} at offset {} (sparse extdata); backing up {} bytes.",
+                    StringUtils::UTF16toUTF8(srcPath), offset, offset);
+                break;
+            }
             res = input.result();
-            Logging::error("Read failure during copy of {} with result 0x{:08X}.", StringUtils::UTF16toUTF8(srcPath), res);
+            Logging::error("Read failure during copy of {} with result 0x{:08X}.", StringUtils::UTF16toUTF8(srcPath), (u32)res);
             break;
         }
         if (rd == 0) {
             break;
         }
-        u32 wt = output.write(buf, rd);
+        u32 wt = output.write(buffer, rd);
         if (R_FAILED(output.result())) {
             res = output.result();
-            Logging::error("Write failure during copy of {} with result 0x{:08X}.", StringUtils::UTF16toUTF8(dstPath), res);
+            Logging::error("Write failure during copy of {} with result 0x{:08X}.", StringUtils::UTF16toUTF8(dstPath), (u32)res);
             break;
         }
         if (wt != rd) {
@@ -116,7 +145,6 @@ Result io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string
         offset += rd;
         sink.advanceBytes(offset);
     } while (!input.eof());
-    delete[] buf;
     sink.finishFile();
 
     input.close();
@@ -155,7 +183,7 @@ Result io::copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const 
         u32 rd = input.read(buf.get(), size);
         if (R_FAILED(input.result())) {
             res = input.result();
-            Logging::error("Read failure during GBA save copy with result 0x{:08X}.", res);
+            Logging::error("Read failure during GBA save copy with result 0x{:08X}.", (u32)res);
             break;
         }
         if (rd == 0) {
@@ -164,7 +192,7 @@ Result io::copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const 
         u32 wt = output.write(buf.get(), rd);
         if (R_FAILED(output.result())) {
             res = output.result();
-            Logging::error("Write failure during GBA save copy with result 0x{:08X}.", res);
+            Logging::error("Write failure during GBA save copy with result 0x{:08X}.", (u32)res);
             break;
         }
         if (wt != rd) {
@@ -183,35 +211,27 @@ Result io::copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const 
     return res;
 }
 
-Result io::copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink)
+Result io::copyTree(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcRoot, const std::u16string& dstRoot,
+    const std::vector<TreeEntry>& entries, ProgressSink& sink)
 {
+    // One scratch buffer for every file in the tree instead of a per-file new/delete.
+    auto buf   = std::make_unique<u8[]>(BUFFER_SIZE);
     Result res = 0;
-    bool quit  = false;
-    Directory items(srcArch, srcPath);
 
-    if (!items.good()) {
-        return items.error();
-    }
-
-    for (size_t i = 0, sz = items.size(); i < sz && !quit; i++) {
-        std::u16string newsrc = srcPath + items.entry(i);
-        std::u16string newdst = dstPath + items.entry(i);
-
-        if (items.folder(i)) {
-            res = io::createDirectory(dstArch, newdst);
-            if (R_SUCCEEDED(res) || (u32)res == 0xC82044B9) {
-                newsrc += StringUtils::UTF8toUTF16("/");
-                newdst += StringUtils::UTF8toUTF16("/");
-                res = io::copyDirectory(srcArch, dstArch, newsrc, newdst, sink);
+    for (const auto& entry : entries) {
+        std::u16string dst = dstRoot + entry.rel;
+        if (entry.folder) {
+            res = io::createDirectory(dstArch, dst);
+            // 0xC82044B9 == directory already exists; treat as success.
+            if (R_FAILED(res) && (u32)res != 0xC82044B9) {
+                return res;
             }
-            else {
-                quit = true;
-            }
+            res = 0;
         }
         else {
-            res = io::copyFile(srcArch, dstArch, newsrc, newdst, sink);
+            res = io::copyFile(srcArch, dstArch, srcRoot + entry.rel, dst, sink, buf.get());
             if (R_FAILED(res)) {
-                quit = true;
+                return res;
             }
         }
     }
@@ -273,7 +293,7 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
     if (title.cardType() == CARD_CTR) {
         ArchiveHandle handle = target.open(res);
         if (R_FAILED(res)) {
-            Logging::error("Failed to open save archive with result 0x{:08X}.", res);
+            Logging::error("Failed to open save archive with result 0x{:08X}.", (u32)res);
             return {false, res, BackupStage::OpenArchive};
         }
 
@@ -281,7 +301,7 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
         if (io::directoryExists(Archive::sdmc(), dstPath)) {
             res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
             if (R_FAILED(res)) {
-                Logging::error("Failed to delete the existing backup directory recursively with result 0x{:08X}.", res);
+                Logging::error("Failed to delete the existing backup directory recursively with result 0x{:08X}.", (u32)res);
                 return {false, res, BackupStage::DeleteDst};
             }
         }
@@ -307,8 +327,23 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
         else {
             std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/");
 
-            sink.begin("Backup", io::countFiles(handle.fs(), StringUtils::UTF8toUTF16("/")));
-            res = io::copyDirectory(handle.fs(), Archive::sdmc(), StringUtils::UTF8toUTF16("/"), copyPath, sink);
+            std::vector<io::TreeEntry> entries;
+            res = io::collectTree(handle.fs(), StringUtils::UTF8toUTF16("/"), entries);
+            if (R_FAILED(res)) {
+                FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
+                Logging::error("Failed to enumerate {} for backup. Result {}.", target.dataTypeName(), res);
+                return {false, res, BackupStage::Copy};
+            }
+
+            size_t fileCount = 0;
+            for (const auto& e : entries) {
+                if (!e.folder) {
+                    fileCount++;
+                }
+            }
+
+            sink.begin("Backup", fileCount);
+            res = io::copyTree(handle.fs(), Archive::sdmc(), StringUtils::UTF8toUTF16("/"), copyPath, entries, sink);
             sink.end();
             if (R_FAILED(res)) {
                 FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
@@ -328,14 +363,14 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
         if (io::directoryExists(Archive::sdmc(), dstPath)) {
             res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
             if (R_FAILED(res)) {
-                Logging::error("Failed to delete the existing backup directory recursively with result 0x{:08X}.", res);
+                Logging::error("Failed to delete the existing backup directory recursively with result 0x{:08X}.", (u32)res);
                 return {false, res, BackupStage::DeleteDst};
             }
         }
 
         res = io::createDirectory(Archive::sdmc(), dstPath);
         if (R_FAILED(res)) {
-            Logging::error("Failed to create destination directory with result 0x{:08X}.", res);
+            Logging::error("Failed to create destination directory with result 0x{:08X}.", (u32)res);
             return {false, res, BackupStage::CreateDst};
         }
 
@@ -353,7 +388,7 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
                 delete[] saveFile;
                 sink.end();
                 FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-                Logging::error("Failed to read save data from SPI with result 0x{:08X}.", res);
+                Logging::error("Failed to read save data from SPI with result 0x{:08X}.", (u32)res);
                 return {false, res, BackupStage::ReadSpi};
             }
             sink.advanceBytes(sectorSize * (i + 1));
@@ -369,7 +404,7 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
             stream.close();
             sink.end();
             FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-            Logging::error("Failed to write save to the sd card with result 0x{:08X}.", streamRes);
+            Logging::error("Failed to write save to the sd card with result 0x{:08X}.", (u32)streamRes);
             return {false, streamRes, BackupStage::WriteFile};
         }
 
@@ -394,7 +429,7 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
     if (title.cardType() == CARD_CTR) {
         ArchiveHandle handle = target.open(res);
         if (R_FAILED(res)) {
-            Logging::error("Failed to open save archive with result 0x{:08X}.", res);
+            Logging::error("Failed to open save archive with result 0x{:08X}.", (u32)res);
             return {false, res, BackupStage::OpenArchive};
         }
 
@@ -421,8 +456,22 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
                 deleteFolderRecursively(handle.fs(), dstPath);
             }
 
-            sink.begin("Restore", io::countFiles(Archive::sdmc(), fullSrc));
-            res = io::copyDirectory(Archive::sdmc(), handle.fs(), fullSrc, dstPath, sink);
+            std::vector<io::TreeEntry> entries;
+            res = io::collectTree(Archive::sdmc(), fullSrc, entries);
+            if (R_FAILED(res)) {
+                Logging::error("Failed to enumerate backup of {} for restore. Result {}.", target.dataTypeName(), res);
+                return {false, res, BackupStage::Copy};
+            }
+
+            size_t fileCount = 0;
+            for (const auto& e : entries) {
+                if (!e.folder) {
+                    fileCount++;
+                }
+            }
+
+            sink.begin("Restore", fileCount);
+            res = io::copyTree(Archive::sdmc(), handle.fs(), fullSrc, dstPath, entries, sink);
             sink.end();
             if (R_FAILED(res)) {
                 Logging::error("Failed to restore {}. Result {}.", target.dataTypeName(), res);
@@ -432,7 +481,7 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
             if (target.kind() == BackupKind::Save) {
                 res = FSUSER_ControlArchive(handle.fs(), ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
                 if (R_FAILED(res)) {
-                    Logging::error("Failed to commit save data with result 0x{:08X}.", res);
+                    Logging::error("Failed to commit save data with result 0x{:08X}.", (u32)res);
                     return {false, res, BackupStage::Commit};
                 }
 
@@ -440,7 +489,7 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
                 u64 secureValue = ((u64)SECUREVALUE_SLOT_SD << 32) | (title.uniqueId() << 8);
                 res             = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &secureValue, 8, &out, 1);
                 if (R_FAILED(res)) {
-                    Logging::error("Failed to fix secure value with result 0x{:08X}.", res);
+                    Logging::error("Failed to fix secure value with result 0x{:08X}.", (u32)res);
                     return {false, res, BackupStage::SecureValue};
                 }
             }
@@ -465,7 +514,7 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
 
         if (R_FAILED(res)) {
             delete[] saveFile;
-            Logging::error("Failed to read save file backup with result 0x{:08X}.", res);
+            Logging::error("Failed to read save file backup with result 0x{:08X}.", (u32)res);
             return {false, res, BackupStage::ReadFile};
         }
 
@@ -485,7 +534,7 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
             if (R_FAILED(res)) {
                 delete[] saveFile;
                 sink.end();
-                Logging::error("Failed to write save data to SPI with result 0x{:08X}.", res);
+                Logging::error("Failed to write save data to SPI with result 0x{:08X}.", (u32)res);
                 return {false, res, BackupStage::WriteFile};
             }
             sink.advanceBytes(pageSize * (i + 1));
@@ -504,6 +553,6 @@ void io::deleteBackupFolder(const std::u16string& path)
 {
     Result res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, path.data()));
     if (R_FAILED(res)) {
-        Logging::info("Failed to delete backup folder with result 0x{:08X}.", res);
+        Logging::info("Failed to delete backup folder with result 0x{:08X}.", (u32)res);
     }
 }
