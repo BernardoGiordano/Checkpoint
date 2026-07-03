@@ -27,10 +27,11 @@
 #ifndef HID_HPP
 #define HID_HPP
 
+#include "ListCursor.hpp"
 #include "ihid.hpp"
 #include <3ds.h>
 
-#define DELAY_TICKS 50000000
+#define DELAY_TICKS ListCursor::REPEAT_DELAY_TICKS
 
 template <HidDirection ListDirection, HidDirection PageDirection>
 class Hid : public IHid<ListDirection, PageDirection, DELAY_TICKS> {

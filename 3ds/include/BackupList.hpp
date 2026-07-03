@@ -27,6 +27,7 @@
 #ifndef BACKUPLIST_HPP
 #define BACKUPLIST_HPP
 
+#include "ListCursor.hpp"
 #include <citro2d.h>
 #include <string>
 #include <vector>
@@ -54,7 +55,7 @@ public:
     void push_back(const std::string& name, const std::string& meta, bool isNew) { mRows.push_back({name, meta, isNew}); }
 
     size_t size(void) const { return mRows.size(); }
-    size_t index(void) const { return mIndex; }
+    size_t index(void) const { return mCursor.index(); }
     std::string name(size_t i) const { return i < mRows.size() ? mRows[i].name : std::string(); }
 
     void setIndex(size_t i);
@@ -68,14 +69,10 @@ public:
     void draw(bool focused) const;
 
 private:
-    void clampOffset(void);
-
     int mx, my, mw, mh;
     size_t mVisibleRows;
     int mRowH;
-    size_t mIndex  = 0;
-    size_t mOffset = 0; // index of the first visible row
-    u64 mLastTick  = 0;
+    ListCursor mCursor; // owns selection, scroll window and D-Pad repeat timing
     std::vector<Row> mRows;
 };
 

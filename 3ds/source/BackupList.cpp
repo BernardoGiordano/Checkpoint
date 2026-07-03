@@ -31,48 +31,20 @@
 #include <3ds.h>
 #include <algorithm>
 
-// D-Pad auto-repeat delay, matching the Hid component used elsewhere.
-static constexpr u64 REPEAT_DELAY = 50000000;
-
-BackupList::BackupList(int x, int y, int w, int h, size_t visibleRows) : mx(x), my(y), mw(w), mh(h), mVisibleRows(visibleRows)
+BackupList::BackupList(int x, int y, int w, int h, size_t visibleRows) : mx(x), my(y), mw(w), mh(h), mVisibleRows(visibleRows), mCursor(visibleRows)
 {
     mRowH = mh / (int)mVisibleRows;
 }
 
 void BackupList::setIndex(size_t i)
 {
-    mIndex = i;
-    clampOffset();
+    mCursor.setCount(mRows.size());
+    mCursor.setIndex(i);
 }
 
 void BackupList::resetIndex(void)
 {
-    mIndex  = 0;
-    mOffset = 0;
-}
-
-void BackupList::clampOffset(void)
-{
-    if (mRows.empty()) {
-        mIndex  = 0;
-        mOffset = 0;
-        return;
-    }
-    if (mIndex >= mRows.size()) {
-        mIndex = mRows.size() - 1;
-    }
-    // Keep the selection inside the viewport.
-    if (mIndex < mOffset) {
-        mOffset = mIndex;
-    }
-    else if (mIndex >= mOffset + mVisibleRows) {
-        mOffset = mIndex - mVisibleRows + 1;
-    }
-    // Never leave a trailing gap when the list could fill the viewport.
-    const size_t maxOffset = mRows.size() > mVisibleRows ? mRows.size() - mVisibleRows : 0;
-    if (mOffset > maxOffset) {
-        mOffset = maxOffset;
-    }
+    mCursor.reset();
 }
 
 void BackupList::update(void)
@@ -81,54 +53,38 @@ void BackupList::update(void)
         return;
     }
 
-    const u64 now  = svcGetSystemTick();
-    const u32 down = hidKeysDown();
-    const u32 held = hidKeysHeld();
+    // Offset used to resolve a touch is the one currently on screen, before the
+    // D-Pad move reclamps it — matching the original single-clamp-at-end order.
+    const size_t touchOffset = mCursor.offset();
 
-    auto moveDown = [&]() { mIndex = (mIndex + 1 < mRows.size()) ? mIndex + 1 : 0; };
-    auto moveUp   = [&]() { mIndex = (mIndex > 0) ? mIndex - 1 : mRows.size() - 1; };
+    // Rows are rebuilt every frame, so hand the current count to the cursor before
+    // it navigates; this is where the selection is clamped, as clampOffset used to.
+    mCursor.setCount(mRows.size());
+    mCursor.update(hidKeysDown(), hidKeysHeld(), svcGetSystemTick());
 
-    // Edge presses move immediately; a held direction repeats after the delay.
-    if (down & KEY_DOWN) {
-        moveDown();
-        mLastTick = now;
-    }
-    else if (down & KEY_UP) {
-        moveUp();
-        mLastTick = now;
-    }
-    else if ((held & KEY_DOWN) && now > mLastTick + REPEAT_DELAY) {
-        moveDown();
-        mLastTick = now;
-    }
-    else if ((held & KEY_UP) && now > mLastTick + REPEAT_DELAY) {
-        moveUp();
-        mLastTick = now;
-    }
-
-    // Touch picks a visible row directly.
-    if (held & KEY_TOUCH) {
+    // Touch picks a visible row directly (BackupList owns the row geometry).
+    if (hidKeysHeld() & KEY_TOUCH) {
         touchPosition touch;
         hidTouchRead(&touch);
         if ((int)touch.px >= mx && (int)touch.px < mx + mw && (int)touch.py >= my && (int)touch.py < my + mh) {
-            const size_t row = mOffset + (size_t)((touch.py - my) / mRowH);
+            const size_t row = touchOffset + (size_t)((touch.py - my) / mRowH);
             if (row < mRows.size()) {
-                mIndex = row;
+                mCursor.setIndex(row);
             }
         }
     }
-
-    clampOffset();
 }
 
 void BackupList::draw(bool focused) const
 {
-    TextPool& text    = TextPool::get();
-    const size_t last = std::min(mOffset + mVisibleRows, mRows.size());
-    for (size_t i = mOffset; i < last; i++) {
+    TextPool& text      = TextPool::get();
+    const size_t offset = mCursor.offset();
+    const size_t index  = mCursor.index();
+    const size_t last   = std::min(offset + mVisibleRows, mRows.size());
+    for (size_t i = offset; i < last; i++) {
         const Row& r   = mRows[i];
-        const int rowY = my + (int)(i - mOffset) * mRowH;
-        const bool sel = i == mIndex;
+        const int rowY = my + (int)(i - offset) * mRowH;
+        const bool sel = i == index;
 
         if (sel) {
             C2D_DrawRectSolid(mx, rowY, 0.5f, mw, mRowH, focused ? C2D_Color32(122, 66, 196, 70) : C2D_Color32(122, 66, 196, 40));
@@ -166,7 +122,7 @@ void BackupList::draw(bool focused) const
         if (thumbH < 12) {
             thumbH = 12;
         }
-        const float posFrac = (float)mOffset / (float)(mRows.size() - mVisibleRows);
+        const float posFrac = (float)offset / (float)(mRows.size() - mVisibleRows);
         const int thumbY    = my + (int)((mh - thumbH) * posFrac);
         C2D_DrawRectSolid(trackX, thumbY, 0.5f, 3, thumbH, COLOR_V4_ACCENT);
     }
