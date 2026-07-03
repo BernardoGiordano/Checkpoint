@@ -891,18 +891,17 @@ void MainScreen::startTransferSend(void)
         return;
     }
 
-    std::string error;
-    std::string dataType = target.dataTypeName();
-    bool ok              = Transfer::sendBackup(title, backupPath, backupName, dataType, ip, (u16)port, pin, error);
-    if (ok) {
+    // Legacy screen (slated for deletion): still sends synchronously on the UI
+    // thread, now through the typed outcome.
+    std::string dataType         = target.dataTypeName();
+    Transfer::SendOutcome result = Transfer::sendBackup(title, backupPath, backupName, dataType, ip, (u16)port, pin);
+    if (result.ok) {
         currentOverlay = std::make_shared<InfoOverlay>(*this, "Transfer completed.");
     }
+    else if (result.stage == Transfer::SendStage::EmptyBackup) {
+        currentOverlay = std::make_shared<InfoOverlay>(*this, "Selected backup is empty.");
+    }
     else {
-        if (error == "Selected backup is empty.") {
-            currentOverlay = std::make_shared<InfoOverlay>(*this, error);
-        }
-        else {
-            currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, error.empty() ? "Transfer failed." : error);
-        }
+        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, result.detail.empty() ? "Transfer failed." : result.detail);
     }
 }

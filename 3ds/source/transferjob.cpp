@@ -29,18 +29,36 @@
 #include "io.hpp"
 #include "progress.hpp"
 #include "thread.hpp"
+#include "transfer.hpp"
 #include "transferstatus.hpp"
 
 void TransferJob::enqueueBackup(Title title, BackupKind kind, std::u16string dstPath, std::string dataType)
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    mQueue.push_back(WorkItem{false, std::move(title), kind, std::move(dstPath), std::move(dataType), "Progress correctly saved to disk."});
+    mQueue.push_back(WorkItem{Kind::Backup, std::move(title), kind, std::move(dstPath), std::move(dataType), "Progress correctly saved to disk."});
 }
 
 void TransferJob::enqueueRestore(Title title, BackupKind kind, std::u16string srcPath, std::string dataType, std::string successMsg)
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    mQueue.push_back(WorkItem{true, std::move(title), kind, std::move(srcPath), std::move(dataType), std::move(successMsg)});
+    mQueue.push_back(WorkItem{Kind::Restore, std::move(title), kind, std::move(srcPath), std::move(dataType), std::move(successMsg)});
+}
+
+void TransferJob::enqueueSend(
+    Title title, std::u16string backupPath, std::string backupName, std::string dataType, std::string ip, u16 port, std::string token)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    WorkItem item;
+    item.op         = Kind::Send;
+    item.title      = std::move(title);
+    item.path       = std::move(backupPath);
+    item.dataType   = std::move(dataType);
+    item.successMsg = "Transfer completed.";
+    item.backupName = std::move(backupName);
+    item.ip         = std::move(ip);
+    item.port       = port;
+    item.token      = std::move(token);
+    mQueue.push_back(std::move(item));
 }
 
 void TransferJob::start(void)
@@ -50,15 +68,25 @@ void TransferJob::start(void)
     }
 
     size_t total;
+    bool anyLocal = false;
     {
         std::lock_guard<std::mutex> lock(mMutex);
         total = mQueue.size();
+        for (const auto& item : mQueue) {
+            if (item.op != Kind::Send) {
+                anyLocal = true;
+            }
+        }
     }
     if (total == 0) {
         return;
     }
 
-    TransferStatus::beginLocalBatch(total);
+    // Sends drive TransferStatus themselves (beginNetwork inside sendBackup);
+    // only local copies use the batch counter / bottom modal.
+    if (anyLocal) {
+        TransferStatus::beginLocalBatch(total);
+    }
     mState.store(State::Running);
     Threads::executeTask(TransferJob::runThread);
 }
@@ -84,14 +112,20 @@ void TransferJob::run(void)
             mQueue.pop_front();
         }
 
-        TransferStatus::setSaveCount(done);
-
-        BackupTarget target = item.title.backup(item.kind);
-        io::IoOutcome out   = item.isRestore ? io::restore(target, item.path, sink) : io::backup(target, item.path, sink);
-
-        {
+        if (item.op == Kind::Send) {
+            Transfer::SendOutcome out = Transfer::sendBackup(item.title, item.path, item.backupName, item.dataType, item.ip, item.port, item.token);
             std::lock_guard<std::mutex> lock(mMutex);
-            mResult = JobResult{item.isRestore, out.ok, out.res, out.stage, item.successMsg, item.dataType};
+            mResult      = JobResult{false, out.ok, 0, io::BackupStage::Copy, item.successMsg, item.dataType};
+            mResult.send = out;
+        }
+        else {
+            TransferStatus::setSaveCount(done);
+
+            BackupTarget target = item.title.backup(item.kind);
+            io::IoOutcome out   = item.op == Kind::Restore ? io::restore(target, item.path, sink) : io::backup(target, item.path, sink);
+
+            std::lock_guard<std::mutex> lock(mMutex);
+            mResult = JobResult{item.op == Kind::Restore, out.ok, out.res, out.stage, item.successMsg, item.dataType};
         }
         done++;
     }

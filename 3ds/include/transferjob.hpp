@@ -28,6 +28,7 @@
 #define TRANSFERJOB_HPP
 
 #include "title.hpp"
+#include "transfer.hpp"
 #include <atomic>
 #include <deque>
 #include <mutex>
@@ -57,6 +58,9 @@ public:
         io::BackupStage stage = io::BackupStage::Copy;
         std::string successMsg; // shown on success (already resolved, e.g. the restored name)
         std::string dataType;   // "save" | "extdata", used to build the failure message
+        // Set only for network sends; when present the screen maps
+        // SendOutcome::stage to a message instead of the io fields above.
+        std::optional<Transfer::SendOutcome> send;
     };
 
     static TransferJob& get(void)
@@ -70,6 +74,11 @@ public:
     // it was copied from. `dstPath`/`srcPath` are already fully resolved.
     void enqueueBackup(Title title, BackupKind kind, std::u16string dstPath, std::string dataType);
     void enqueueRestore(Title title, BackupKind kind, std::u16string srcPath, std::string dataType, std::string successMsg);
+
+    // Network send of an existing backup. Runs Transfer::sendBackup on the
+    // worker; progress reaches the top-screen modal via TransferStatus.
+    void enqueueSend(
+        Title title, std::u16string backupPath, std::string backupName, std::string dataType, std::string ip, u16 port, std::string token);
 
     // Drains the queue on a worker thread, if there is work and none is already
     // running. Idempotent and safe to call with an empty queue.
@@ -91,13 +100,20 @@ private:
 
     void run(void);
 
+    enum class Kind { Backup, Restore, Send };
+
     struct WorkItem {
-        bool isRestore;
+        Kind op = Kind::Backup;
         Title title;
-        BackupKind kind;
+        BackupKind kind = BackupKind::Save; // unused for Send
         std::u16string path;
         std::string dataType;
         std::string successMsg;
+        // Send-only fields
+        std::string backupName;
+        std::string ip;
+        u16 port = 0;
+        std::string token;
     };
 
     enum class State { Idle, Running, Done };

@@ -28,12 +28,10 @@
 #include "common.hpp"
 #include "directory.hpp"
 #include "fsstream.hpp"
-#include "gui.hpp"
 #include "io.hpp"
 #include "json.hpp"
 #include "loader.hpp"
 #include "logging.hpp"
-#include "main.hpp"
 #include "server.hpp"
 #include "transferstatus.hpp"
 #include "util.hpp"
@@ -96,15 +94,6 @@ namespace {
 
     u32 crcTable[256];
     bool crcInit = false;
-
-    void renderTransferFrame(void)
-    {
-        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        g_screen->drawTop();
-        C2D_SceneBegin(g_bottom);
-        g_screen->drawBottom();
-        Gui::frameEnd();
-    }
 
     void initCrc(void)
     {
@@ -290,7 +279,6 @@ namespace {
                 crc = updateCrc(crc, buf.get(), rd);
                 output.write(buf.get(), rd);
                 TransferStatus::addBytesDone(rd);
-                renderTransferFrame();
             }
             input.close();
             crc ^= 0xFFFFFFFFu;
@@ -908,23 +896,37 @@ void Transfer::clearReceiverCompletion(void)
     g_receiverCompleted.store(false);
 }
 
-bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, const std::string& backupName, const std::string& dataType,
-    const std::string& ip, u16 port, const std::string& token, std::string& outError)
+Transfer::SendOutcome Transfer::sendBackup(const Title& title, const std::u16string& backupPath, const std::string& backupName,
+    const std::string& dataType, const std::string& ip, u16 port, const std::string& token)
 {
+    // Every exit path must clear the transfer modal and remove the temp zip;
+    // scope guards make that hold for each early return below.
+    struct StatusGuard {
+        ~StatusGuard() { TransferStatus::end(); }
+    } statusGuard;
+
+    struct ZipGuard {
+        std::u16string path;
+        bool armed = false;
+        ~ZipGuard()
+        {
+            if (armed) {
+                FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, path.data()));
+            }
+        }
+    } zipGuard;
+
     std::vector<FileEntry> files;
     std::vector<std::string> dirs;
     collectFiles(Archive::sdmc(), backupPath, StringUtils::UTF8toUTF16(""), files, &dirs);
     if (files.empty() && dirs.empty()) {
-        outError = "Selected backup is empty.";
-        return false;
+        return SendOutcome{false, SendStage::EmptyBackup, ""};
     }
 
     bool isZip = files.size() != 1 || !dirs.empty();
     std::u16string payloadPath;
     std::string payloadName;
     u32 payloadSize = 0;
-
-    auto clearTransferState = []() { TransferStatus::end(); };
 
     if (isZip) {
         TransferStatus::beginNetwork("Preparing backup package", totalFileBytes(files));
@@ -940,11 +942,11 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
         if (io::fileExists(Archive::sdmc(), zipPath)) {
             FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, zipPath.data()));
         }
+        zipGuard.path  = zipPath;
+        zipGuard.armed = true;
         std::string zipError;
         if (!writeZip(backupPath, zipPath, zipEntries, zipSize, zipError)) {
-            clearTransferState();
-            outError = zipError.empty() ? "Failed to create backup package." : zipError;
-            return false;
+            return SendOutcome{false, SendStage::Zip, ""};
         }
         payloadPath = zipPath;
         payloadName = "backup.zip";
@@ -999,35 +1001,23 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
 
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (sock < 0) {
-        if (isZip) {
-            FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, payloadPath.data()));
-        }
-        clearTransferState();
-        outError = "Failed to open socket.";
-        return false;
+        return SendOutcome{false, SendStage::Socket, ""};
     }
+
+    struct SockGuard {
+        int fd;
+        ~SockGuard() { close(fd); }
+    } sockGuard{sock};
 
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     addr.sin_port   = htons(port);
     if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) != 1) {
-        close(sock);
-        if (isZip) {
-            FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, payloadPath.data()));
-        }
-        clearTransferState();
-        outError = "Invalid IP address.";
-        return false;
+        return SendOutcome{false, SendStage::Resolve, ""};
     }
     if (connect(sock, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
-        close(sock);
-        if (isZip) {
-            FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, payloadPath.data()));
-        }
-        clearTransferState();
-        outError = "Failed to connect.";
-        return false;
+        return SendOutcome{false, SendStage::Connect, ""};
     }
 
     std::string header = StringUtils::format("POST /transfer/upload HTTP/1.1\r\nHost: %s:%d\r\nConnection: close\r\n", ip.c_str(), port);
@@ -1056,7 +1046,6 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
                     break;
                 }
                 TransferStatus::addBytesDone(rd);
-                renderTransferFrame();
             }
             input.close();
         }
@@ -1078,45 +1067,29 @@ bool Transfer::sendBackup(const Title& title, const std::u16string& backupPath, 
         }
     }
 
-    close(sock);
-
-    if (isZip) {
-        FSUSER_DeleteFile(Archive::sdmc(), fsMakePath(PATH_UTF16, payloadPath.data()));
-    }
-
-    clearTransferState();
-
     if (!ok) {
-        outError = "Transfer failed.";
-        return false;
+        return SendOutcome{false, SendStage::Send, ""};
     }
 
     bool httpOk = response.rfind("HTTP/1.1 200", 0) == 0 || response.rfind("HTTP/1.0 200", 0) == 0;
     if (!httpOk) {
-        if (response.empty()) {
-            outError = "Receiver returned no response.";
-        }
-        else {
-            std::string receiverError;
+        std::string detail;
+        if (!response.empty()) {
             size_t bodyPos = response.find("\r\n\r\n");
             if (bodyPos != std::string::npos && bodyPos + 4 < response.size()) {
                 std::string body = response.substr(bodyPos + 4);
                 auto j           = nlohmann::json::parse(body, nullptr, false);
                 if (!j.is_discarded() && j.contains("error") && j["error"].is_string()) {
-                    receiverError = j["error"].get<std::string>();
+                    detail = j["error"].get<std::string>();
                 }
             }
-            size_t lineEnd         = response.find("\r\n");
-            std::string statusLine = lineEnd == std::string::npos ? response : response.substr(0, lineEnd);
-            if (!receiverError.empty()) {
-                outError = "Receiver error: " + receiverError;
-            }
-            else {
-                outError = "Receiver rejected upload: " + statusLine;
+            if (detail.empty()) {
+                size_t lineEnd = response.find("\r\n");
+                detail         = lineEnd == std::string::npos ? response : response.substr(0, lineEnd);
             }
         }
-        return false;
+        return SendOutcome{false, SendStage::Response, detail};
     }
 
-    return true;
+    return SendOutcome{true, SendStage::Response, ""};
 }

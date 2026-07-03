@@ -95,6 +95,24 @@ namespace {
         }
     }
 
+    std::string sendErrorMessage(const Transfer::SendOutcome& outcome)
+    {
+        switch (outcome.stage) {
+            case Transfer::SendStage::Zip:
+                return "Failed to create backup package.";
+            case Transfer::SendStage::Socket:
+                return "Failed to open socket.";
+            case Transfer::SendStage::Resolve:
+                return "Invalid IP address.";
+            case Transfer::SendStage::Connect:
+                return "Failed to connect.";
+            case Transfer::SendStage::Response:
+                return outcome.detail.empty() ? "Receiver returned no response." : "Receiver error: " + outcome.detail;
+            default:
+                return "Transfer failed.";
+        }
+    }
+
     std::string rawKeyboard(const std::string& suggestion, const std::string& hint, size_t maxLen)
     {
         SwkbdState swkbd;
@@ -515,6 +533,14 @@ void MainScreenV4::update(const InputState& input)
         if (result->ok) {
             currentOverlay = std::make_shared<InfoOverlay>(*this, result->successMsg);
         }
+        else if (result->send) {
+            if (result->send->stage == Transfer::SendStage::EmptyBackup) {
+                currentOverlay = std::make_shared<InfoOverlay>(*this, "Selected backup is empty.");
+            }
+            else {
+                currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, sendErrorMessage(*result->send));
+            }
+        }
         else {
             std::string message = result->isRestore ? restoreErrorMessage(result->stage, result->dataType.c_str())
                                                     : backupErrorMessage(result->stage, result->dataType.c_str());
@@ -860,18 +886,11 @@ void MainScreenV4::startTransferSend(void)
         return;
     }
 
-    std::string error;
+    // Keyboard + validation happened above on the UI thread; the blocking IO
+    // (zip + socket) runs on the TransferJob worker. Title and params go by
+    // value so nothing here needs to outlive this frame.
     std::string dataType = target.dataTypeName();
-    bool ok              = Transfer::sendBackup(title, backupPath, backupName, dataType, ip, (u16)port, pin, error);
-    if (ok) {
-        currentOverlay = std::make_shared<InfoOverlay>(*this, "Transfer completed.");
-    }
-    else {
-        if (error == "Selected backup is empty.") {
-            currentOverlay = std::make_shared<InfoOverlay>(*this, error);
-        }
-        else {
-            currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, error.empty() ? "Transfer failed." : error);
-        }
-    }
+    TransferJob::get().enqueueSend(
+        std::move(title), std::move(backupPath), std::move(backupName), std::move(dataType), std::move(ip), (u16)port, std::move(pin));
+    TransferJob::get().start();
 }

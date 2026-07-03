@@ -44,8 +44,21 @@ namespace Transfer {
     void clearReceiverNotice(void);
     void clearReceiverCompletion(void);
 
-    bool sendBackup(const Title& title, const std::u16string& backupPath, const std::string& backupName, const std::string& dataType,
-        const std::string& ip, u16 port, const std::string& token, std::string& outError);
+    // Where a send stopped. The screen owns the user-facing message for each
+    // stage; `detail` carries only receiver-echoed text (HTTP error body or
+    // status line), never Checkpoint-authored prose.
+    enum class SendStage { EmptyBackup, Zip, Socket, Resolve, Connect, Send, Response };
+
+    struct SendOutcome {
+        bool ok         = false;
+        SendStage stage = SendStage::Send;
+        std::string detail;
+    };
+
+    // Blocking; runs on the TransferJob worker. Progress flows through
+    // TransferStatus (beginNetwork/addBytesDone) and is drawn by the main loop.
+    SendOutcome sendBackup(const Title& title, const std::u16string& backupPath, const std::string& backupName, const std::string& dataType,
+        const std::string& ip, u16 port, const std::string& token);
 }
 
 #endif
