@@ -31,6 +31,7 @@
 #include "server.hpp"
 #include "textpool.hpp"
 #include "thread.hpp"
+#include "transferjob.hpp"
 #include "util.hpp"
 #include <chrono>
 
@@ -67,7 +68,7 @@ int main()
             hidTouchRead(&touch);
 
             if (hidKeysDown() & KEY_START) {
-                if (!TitleCatalog::get().progress().active) {
+                if (!TitleCatalog::get().progress().active && !TransferJob::get().active()) {
                     break;
                 }
             }
