@@ -80,6 +80,7 @@ void BackupSizeCache::invalidate(u64 id, BackupKind kind, const std::u16string& 
             ++it;
         }
     }
+    mGeneration.fetch_add(1);
 }
 
 void BackupSizeCache::invalidateAll(void)
@@ -87,6 +88,7 @@ void BackupSizeCache::invalidateAll(void)
     std::lock_guard<std::mutex> lock(mMutex);
     mTotals.clear();
     mBackupSizes.clear();
+    mGeneration.fetch_add(1);
 }
 
 void BackupSizeCache::shutdown(void)
@@ -164,4 +166,5 @@ void BackupSizeCache::compute(u64 cacheKey, std::u16string rootPath)
     for (auto& pb : perBackup) {
         mBackupSizes[pb.first] = pb.second;
     }
+    mGeneration.fetch_add(1);
 }

@@ -72,6 +72,11 @@ public:
     // Drop everything (e.g. after a multi-title batch that touched many folders).
     void invalidateAll(void);
 
+    // Monotonic counter bumped whenever cached sizes change (a compute lands or
+    // an invalidation drops entries). The UI compares it against the value it
+    // snapshotted to know when its size labels went stale.
+    u32 generation(void) const { return mGeneration.load(); }
+
     // Cooperative abort for application shutdown: any in-flight walk returns
     // promptly so the worker pool can be joined without waiting on a long scan.
     void shutdown(void);
@@ -96,6 +101,7 @@ private:
     std::map<std::u16string, u64> mBackupSizes; // backup full path -> bytes
     std::set<u64> mPending;                     // keys with a compute in flight
     std::atomic<bool> mAbort{false};
+    std::atomic<u32> mGeneration{1};
 };
 
 #endif // BACKUPSIZE_HPP

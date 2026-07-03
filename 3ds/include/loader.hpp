@@ -72,6 +72,11 @@ public:
     // Loading-state snapshot for the UI.
     LoadProgress progress(void);
 
+    // Monotonic counter bumped whenever the catalog's contents change (full
+    // load, directory refresh, cart insert/remove). The UI compares it against
+    // the value it snapshotted to know when cached title data went stale.
+    u32 generation(void) const { return mGeneration.load(); }
+
     // Function-pointer entry points for Threads:: / ATEXIT. Static so they stay
     // plain void(*)() pointers; each forwards to get().
     static void loadTitlesThread(void);
@@ -110,6 +115,7 @@ private:
     std::atomic<bool> mLoading{false};
     std::atomic<int> mCounter{0};
     std::atomic<int> mLimit{0};
+    std::atomic<u32> mGeneration{1};
 };
 
 #endif // LOADER_HPP

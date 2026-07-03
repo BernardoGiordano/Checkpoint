@@ -143,28 +143,34 @@ bool TitleCatalog::favorite(int i, BackupKind kind)
 
 void TitleCatalog::refreshDirectories(u64 id)
 {
-    std::lock_guard<std::mutex> lock(mMutex);
-    for (size_t i = 0; i < mSaves.size(); i++) {
-        if (mSaves.at(i).id() == id) {
-            mSaves.at(i).refreshDirectories();
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        for (size_t i = 0; i < mSaves.size(); i++) {
+            if (mSaves.at(i).id() == id) {
+                mSaves.at(i).refreshDirectories();
+            }
+        }
+        for (size_t i = 0; i < mExtdatas.size(); i++) {
+            if (mExtdatas.at(i).id() == id) {
+                mExtdatas.at(i).refreshDirectories();
+            }
         }
     }
-    for (size_t i = 0; i < mExtdatas.size(); i++) {
-        if (mExtdatas.at(i).id() == id) {
-            mExtdatas.at(i).refreshDirectories();
-        }
-    }
+    mGeneration.fetch_add(1);
 }
 
 void TitleCatalog::refreshAllDirectories(void)
 {
-    std::lock_guard<std::mutex> lock(mMutex);
-    for (auto& title : mSaves) {
-        title.refreshDirectories();
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        for (auto& title : mSaves) {
+            title.refreshDirectories();
+        }
+        for (auto& title : mExtdatas) {
+            title.refreshDirectories();
+        }
     }
-    for (auto& title : mExtdatas) {
-        title.refreshDirectories();
-    }
+    mGeneration.fetch_add(1);
 }
 
 LoadProgress TitleCatalog::progress(void)
@@ -308,6 +314,9 @@ bool TitleCatalog::scanCard(void)
                 }
             }
         }
+    }
+    if (ret) {
+        mGeneration.fetch_add(1);
     }
     isScanning = false;
     return ret;
@@ -552,7 +561,8 @@ void TitleCatalog::loadTitlesThread(void)
 
     self.loadTitles(self.mForceRefresh);
     self.mForceRefresh = true;
-    self.mLoading      = false;
+    self.mGeneration.fetch_add(1);
+    self.mLoading = false;
 }
 
 void TitleCatalog::cartScan(void)
@@ -586,13 +596,16 @@ void TitleCatalog::cartScan(void)
             else {
                 FSUSER_CardSlotPowerOff(&power);
                 if (!self.mLoading) {
-                    std::lock_guard<std::mutex> lock(self.mMutex);
-                    if (!self.mSaves.empty() && self.mSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
-                        self.mSaves.erase(self.mSaves.begin());
+                    {
+                        std::lock_guard<std::mutex> lock(self.mMutex);
+                        if (!self.mSaves.empty() && self.mSaves.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+                            self.mSaves.erase(self.mSaves.begin());
+                        }
+                        if (!self.mExtdatas.empty() && self.mExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
+                            self.mExtdatas.erase(self.mExtdatas.begin());
+                        }
                     }
-                    if (!self.mExtdatas.empty() && self.mExtdatas.at(0).mediaType() == MEDIATYPE_GAME_CARD) {
-                        self.mExtdatas.erase(self.mExtdatas.begin());
-                    }
+                    self.mGeneration.fetch_add(1);
                 }
                 oldCardIn = false;
             }

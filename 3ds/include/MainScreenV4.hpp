@@ -40,7 +40,10 @@
 #include "thread.hpp"
 #include <algorithm>
 #include <memory>
+#include <optional>
+#include <string>
 #include <tuple>
+#include <vector>
 
 class Title;
 
@@ -66,6 +69,10 @@ protected:
     void refreshTitlesFull(void);
     std::string nameFromCell(size_t index) const;
     void startTransferSend(void);
+    // Rebuilds the SelectedTitle snapshot (and the grid favorite pips) when the
+    // selection, backup kind, catalog generation, or size-cache generation moved
+    // since the last frame; no-op otherwise. Also rebuilds directoryList's rows.
+    void refreshSelected(void);
     void doBackup(size_t fullIndex, size_t cellIndex);
     void doRestore(size_t fullIndex, size_t cellIndex);
     // Runs a restore of the current title's cellIndex backup, gated by the
@@ -89,12 +96,28 @@ private:
     bool transferEnabled;
     BackupKind backupKind = BackupKind::Save;
 
-    // The drawn title's identity + backup root, stashed by drawBottom so update()
-    // can ask BackupSizeCache for its size without copying a Title again. The
-    // async cache owns the SD walk and the memoized results.
-    mutable u64 selectedId = 0;
-    mutable std::u16string selectedRoot;
-    mutable bool selectedValid = false;
+    // Value snapshot of everything the detail card (and the grid favorite pips)
+    // needs, rebuilt by refreshSelected() in update() only when its inputs move.
+    // draw*() read this and never query TitleCatalog/BackupSizeCache themselves,
+    // so drawing takes no locks and copies no Title.
+    struct SelectedTitle {
+        bool valid       = false;
+        size_t fullIndex = 0;
+        BackupKind kind  = BackupKind::Save;
+        u32 catalogGen   = 0; // TitleCatalog::generation() at snapshot time
+        u32 sizeGen      = 0; // BackupSizeCache::generation() at snapshot time
+        u64 id           = 0;
+        std::u16string rootPath; // backup root, for the async size-walk request
+        std::string name;        // shortDescription
+        std::string cartId;      // productCode or "System title"
+        std::string mediaType;
+        bool favorite      = false;
+        bool activityLog   = false;
+        size_t backupCount = 0;       // existing backups (entry 0 "New..." excluded)
+        std::optional<u64> totalSize; // async total; nullopt while computing
+    };
+    SelectedTitle selected;
+    std::vector<u8> gridFavorites; // favorite pip per title of the current kind
 };
 
 #endif

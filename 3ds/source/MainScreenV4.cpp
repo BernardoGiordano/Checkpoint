@@ -293,7 +293,7 @@ void MainScreenV4::drawTop(void) const
             C2D_SpriteSetPos(&checkbox, x + TILE - 18, y + 1);
             C2D_DrawSpriteTinted(&checkbox, &checkboxTint);
         }
-        if (TitleCatalog::get().favorite(k, backupKind)) {
+        if (k < gridFavorites.size() && gridFavorites[k]) {
             C2D_DrawRectSolid(x + TILE - 14, y - 3, 0.5f, 15, 15, COLOR_V4_GOLD);
             C2D_SpriteSetPos(&star, x + TILE - 15, y - 4);
             C2D_DrawSpriteTinted(&star, &starTint);
@@ -354,15 +354,7 @@ void MainScreenV4::drawBottom(void) const
     TextPool& text = TextPool::get();
     C2D_SceneBegin(g_bottom);
 
-    LoadProgress loadProgress = TitleCatalog::get().progress();
-    const size_t count        = TitleCatalog::get().getTitleCount(backupKind);
-
-    selectedValid = false; // re-armed below only when a title is actually drawn
-
-    if (!loadProgress.active && count > 0) {
-        Title title;
-        TitleCatalog::get().getTitle(title, hid.fullIndex(), backupKind);
-
+    if (selected.valid) {
         // Header: title name, Save/Extdata segmented control.
         C2D_DrawRectSolid(0, 0, 0.5f, 320, HEADER_H, COLOR_V4_SURFACE);
         C2D_DrawRectSolid(0, HEADER_H, 0.5f, 320, 1, COLOR_V4_LINE);
@@ -382,54 +374,33 @@ void MainScreenV4::drawBottom(void) const
             text.draw("Extdata", segX + cellSaveW + pad, segY + 2, 0.4f, onSave ? COLOR_V4_MUTED : COLOR_WHITE);
         }
 
-        std::string name = text.truncate(title.shortDescription(), segX - 8 - 8, 0.5f);
+        std::string name = text.truncate(selected.name, segX - 8 - 8, 0.5f);
         text.draw(name, 8, 4, 0.5f, COLOR_V4_TEXT);
 
         // Thin info line: cart identifier, media type, favorite.
         {
-            float x            = 8;
-            const float y      = 28;
-            const float sep    = 6;
-            std::string cartId = title.productCode[0] != '\0' ? std::string(title.productCode) : std::string("System title");
-            x += text.draw(cartId, x, y, 0.42f, COLOR_V4_MUTED) + sep;
-            x += text.draw("·  " + title.mediaTypeString(), x, y, 0.42f, COLOR_V4_MUTED) + sep;
-            if (TitleCatalog::get().favorite(hid.fullIndex(), backupKind)) {
+            float x         = 8;
+            const float y   = 28;
+            const float sep = 6;
+            x += text.draw(selected.cartId, x, y, 0.42f, COLOR_V4_MUTED) + sep;
+            x += text.draw("·  " + selected.mediaType, x, y, 0.42f, COLOR_V4_MUTED) + sep;
+            if (selected.favorite) {
                 text.draw("·  ★ Favorite", x, y, 0.42f, COLOR_V4_GOLD);
             }
         }
 
-        // Backups card. Build the rows: entry 0 is the "New backup" affordance,
-        // the rest are existing backups labelled with their (async) size.
-        BackupTarget target              = title.backup(backupKind);
-        std::vector<std::u16string> dirs = target.backups();
-        directoryList->clear();
-        for (size_t i = 0; i < dirs.size(); i++) {
-            if (i == 0) {
-                directoryList->push_back("New backup", backupKind == BackupKind::Save ? "From current save" : "From current extdata", true);
-            }
-            else {
-                std::optional<u64> bs = BackupSizeCache::get().backupSize(target.fullPath(i));
-                directoryList->push_back(StringUtils::UTF16toUTF8(dirs.at(i)), bs.has_value() ? humanSize(*bs) : std::string("…"), false);
-            }
-        }
-        const size_t backupCount = dirs.empty() ? 0 : dirs.size() - 1; // entry 0 is "New..."
-
-        // Stash identity so update() can ask the async size cache without copying
-        // the Title again; the worker walks the SD off the UI thread.
-        selectedId    = title.id();
-        selectedRoot  = target.rootPath();
-        selectedValid = true;
-
+        // Backups card. Rows (entry 0 "New backup", then existing backups with
+        // their async sizes) were rebuilt by refreshSelected() when they changed.
         C2D_DrawRectSolid(8, 46, 0.5f, 304, 132, COLOR_V4_CARD);
         C2D_DrawRectSolid(8, 67, 0.5f, 304, 1, COLOR_V4_LINE);
         text.draw("Backups", 16, 49, 0.45f, COLOR_V4_MUTED);
         {
             // Total: shown once the worker has resolved it; until then a "…" placeholder.
-            std::optional<u64> sz = BackupSizeCache::get().total(selectedId, backupKind);
-            std::string meta      = backupCount == 0 ? std::string("No backups")
-                                    : sz.has_value() ? StringUtils::format("%zu saved  ·  %s", backupCount, humanSize(*sz).c_str())
-                                                     : StringUtils::format("%zu saved  ·  …", backupCount);
-            float w               = text.width(meta, 0.42f);
+            std::string meta = selected.backupCount == 0 ? std::string("No backups")
+                               : selected.totalSize
+                                   ? StringUtils::format("%zu saved  ·  %s", selected.backupCount, humanSize(*selected.totalSize).c_str())
+                                   : StringUtils::format("%zu saved  ·  …", selected.backupCount);
+            float w          = text.width(meta, 0.42f);
             text.draw(meta, 312 - 8 - w, 50, 0.42f, COLOR_V4_FAINT);
         }
         directoryList->draw(g_bottomScrollEnabled);
@@ -440,7 +411,7 @@ void MainScreenV4::drawBottom(void) const
             buttonBackupAll->text(StringUtils::format("Backup %zu selected", MS::selectedEntries().size()));
             buttonBackupAll->draw(0.6f, COLOR_V4_RING);
         }
-        else if (title.isActivityLog()) {
+        else if (selected.activityLog) {
             buttonBackupAL->draw(0.6f, COLOR_V4_RING);
             buttonPlayCoins->draw(0.6f, COLOR_V4_ACCENT);
             buttonRestoreAL->draw(0.6f, COLOR_V4_RING);
@@ -560,12 +531,86 @@ void MainScreenV4::update(const InputState& input)
     updateSelector();
     handleEvents(input);
 
-    // Kick off (or no-op) an off-thread size walk for the title drawn this frame.
-    // drawBottom stashed its identity + backup root; the cache coalesces repeats
-    // and the draw reads the memoized total once the worker lands it.
-    if (selectedValid) {
-        BackupSizeCache::get().request(selectedId, backupKind, selectedRoot);
+    // Refresh the snapshot last so the frame drawn right after already shows the
+    // selection/kind changes the handlers above made.
+    refreshSelected();
+
+    // Kick off (or no-op) an off-thread size walk for the selected title; the
+    // cache coalesces repeats and refreshSelected() picks the total up through
+    // the generation bump once the worker lands it.
+    if (selected.valid) {
+        BackupSizeCache::get().request(selected.id, backupKind, selected.rootPath);
     }
+}
+
+void MainScreenV4::refreshSelected(void)
+{
+    TitleCatalog& catalog = TitleCatalog::get();
+
+    // While the catalog reloads, show no detail card; the generation bump at the
+    // end of the load triggers the rebuild.
+    if (catalog.progress().active) {
+        if (selected.valid) {
+            selected.valid = false;
+            directoryList->clear();
+        }
+        return;
+    }
+
+    const u32 catalogGen = catalog.generation();
+    const u32 sizeGen    = BackupSizeCache::get().generation();
+    const size_t count   = (size_t)catalog.getTitleCount(backupKind);
+
+    if (selected.valid == (count > 0) && selected.fullIndex == hid.fullIndex() && selected.kind == backupKind && selected.catalogGen == catalogGen &&
+        selected.sizeGen == sizeGen) {
+        return; // snapshot still describes what is on screen
+    }
+
+    if (!selected.valid || selected.kind != backupKind || selected.catalogGen != catalogGen) {
+        gridFavorites.assign(count, 0);
+        for (size_t i = 0; i < count; i++) {
+            gridFavorites[i] = catalog.favorite(i, backupKind) ? 1 : 0;
+        }
+    }
+
+    selected.valid      = count > 0;
+    selected.fullIndex  = hid.fullIndex();
+    selected.kind       = backupKind;
+    selected.catalogGen = catalogGen;
+    selected.sizeGen    = sizeGen;
+
+    if (!selected.valid) {
+        directoryList->clear();
+        return;
+    }
+
+    Title title;
+    catalog.getTitle(title, selected.fullIndex, backupKind);
+    BackupTarget target = title.backup(backupKind);
+
+    selected.id          = title.id();
+    selected.rootPath    = target.rootPath();
+    selected.name        = title.shortDescription();
+    selected.cartId      = title.productCode[0] != '\0' ? std::string(title.productCode) : std::string("System title");
+    selected.mediaType   = title.mediaTypeString();
+    selected.favorite    = catalog.favorite(selected.fullIndex, backupKind);
+    selected.activityLog = title.isActivityLog();
+    selected.totalSize   = BackupSizeCache::get().total(selected.id, backupKind);
+
+    // Rows: entry 0 is the "New backup" affordance, the rest are existing
+    // backups labelled with their (async) size.
+    std::vector<std::u16string> dirs = target.backups();
+    directoryList->clear();
+    for (size_t i = 0; i < dirs.size(); i++) {
+        if (i == 0) {
+            directoryList->push_back("New backup", backupKind == BackupKind::Save ? "From current save" : "From current extdata", true);
+        }
+        else {
+            std::optional<u64> bs = BackupSizeCache::get().backupSize(target.fullPath(i));
+            directoryList->push_back(StringUtils::UTF16toUTF8(dirs.at(i)), bs.has_value() ? humanSize(*bs) : std::string("…"), false);
+        }
+    }
+    selected.backupCount = dirs.empty() ? 0 : dirs.size() - 1; // entry 0 is "New..."
 }
 
 void MainScreenV4::refreshTitlesFull(void)
@@ -760,12 +805,9 @@ void MainScreenV4::handleEvents(const InputState& input)
             });
     }
 
-    bool activityLog = false;
-    if (TitleCatalog::get().getTitleCount(backupKind) > 0) {
-        Title title;
-        TitleCatalog::get().getTitle(title, hid.fullIndex(), backupKind);
-        activityLog = title.isActivityLog();
-    }
+    // From the snapshot the current frame was drawn from, so input maps to the
+    // buttons the user actually sees.
+    const bool activityLog = selected.valid && selected.activityLog;
 
     if (MS::multipleSelectionEnabled()) {
         // One large Backup button (touch or A) backs up the whole tagged batch;
