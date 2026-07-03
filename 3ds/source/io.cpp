@@ -29,6 +29,11 @@
 #include "csvc.hpp"
 #include "loader.hpp"
 
+// Synthetic failure Result for a short write (FSFILE_Write reported success but
+// committed fewer bytes than requested — typically a full archive). Negative so
+// R_FAILED() is true; the exact value is opaque, the BackupStage carries meaning.
+static const Result RES_SHORT_WRITE = MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_FS, RD_TOO_LARGE);
+
 bool io::fileExists(const std::string& path)
 {
     struct stat buffer;
@@ -62,7 +67,7 @@ size_t io::countFiles(FS_Archive arch, const std::u16string& path)
     return count;
 }
 
-void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink)
+Result io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink)
 {
     u32 size = 0;
     FSStream input(srcArch, srcPath, FS_OPEN_READ);
@@ -70,37 +75,53 @@ void io::copyFile(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& 
         size = input.size() > BUFFER_SIZE ? BUFFER_SIZE : input.size();
     }
     else {
-        Logging::error("Failed to open source file {} during copy with result {}. Skipping...", StringUtils::UTF16toUTF8(srcPath), input.result());
-        return;
+        Logging::error("Failed to open source file {} during copy with result {}.", StringUtils::UTF16toUTF8(srcPath), input.result());
+        return input.result();
     }
 
     FSStream output(dstArch, dstPath, FS_OPEN_WRITE, input.size());
-    if (output.good()) {
-        size_t slashpos = srcPath.rfind(StringUtils::UTF8toUTF16("/"));
-        sink.startFile(srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1), input.size());
+    if (!output.good()) {
+        Logging::error("Failed to open destination file {} during copy with result {}.", StringUtils::UTF16toUTF8(dstPath), output.result());
+        input.close();
+        return output.result();
+    }
 
-        u32 rd;
-        u32 offset = 0;
-        u8* buf    = new u8[size];
-        do {
-            rd = input.read(buf, size);
-            if (rd == 0) {
-                break;
-            }
-            output.write(buf, rd);
-            offset += rd;
-            sink.advanceBytes(offset);
-        } while (!input.eof());
-        delete[] buf;
-        sink.finishFile();
-    }
-    else {
-        Logging::error(
-            "Failed to open destination file {} during copy with result {}. Skipping...", StringUtils::UTF16toUTF8(dstPath), output.result());
-    }
+    size_t slashpos = srcPath.rfind(StringUtils::UTF8toUTF16("/"));
+    sink.startFile(srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1), input.size());
+
+    Result res = 0;
+    u32 offset = 0;
+    u8* buf    = new u8[size];
+    do {
+        u32 rd = input.read(buf, size);
+        if (R_FAILED(input.result())) {
+            res = input.result();
+            Logging::error("Read failure during copy of {} with result 0x{:08X}.", StringUtils::UTF16toUTF8(srcPath), res);
+            break;
+        }
+        if (rd == 0) {
+            break;
+        }
+        u32 wt = output.write(buf, rd);
+        if (R_FAILED(output.result())) {
+            res = output.result();
+            Logging::error("Write failure during copy of {} with result 0x{:08X}.", StringUtils::UTF16toUTF8(dstPath), res);
+            break;
+        }
+        if (wt != rd) {
+            res = RES_SHORT_WRITE;
+            Logging::error("Short write during copy of {}: wrote {} of {} bytes.", StringUtils::UTF16toUTF8(dstPath), wt, rd);
+            break;
+        }
+        offset += rd;
+        sink.advanceBytes(offset);
+    } while (!input.eof());
+    delete[] buf;
+    sink.finishFile();
 
     input.close();
     output.close();
+    return res;
 }
 
 Result io::copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const std::u16string& path, bool fromPxi, ProgressSink& sink)
@@ -117,33 +138,49 @@ Result io::copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const 
     }
 
     FSStream output = fromPxi ? FSStream(regularArch, path, FS_OPEN_WRITE, input.size()) : FSStream(pxiArch, FS_OPEN_WRITE, input.size());
-    if (output.good()) {
-        size_t slashpos = path.rfind(StringUtils::UTF8toUTF16("/"));
-        sink.startFile(path.substr(slashpos + 1, path.length() - slashpos - 1), input.size());
-
-        u32 rd;
-        u32 offset = 0;
-        auto buf   = std::make_unique<u8[]>(size);
-        do {
-            rd = input.read(buf.get(), size);
-            if (rd == 0) {
-                break;
-            }
-            output.write(buf.get(), rd);
-            offset += rd;
-            sink.advanceBytes(offset);
-        } while (!input.eof());
-        sink.finishFile();
-    }
-    else {
+    if (!output.good()) {
         Logging::error("Failed to open destination {} during GBA save copy with result {}.",
             fromPxi ? StringUtils::UTF16toUTF8(path) : std::string("GBA save"), output.result());
+        input.close();
+        return output.result();
     }
+
+    size_t slashpos = path.rfind(StringUtils::UTF8toUTF16("/"));
+    sink.startFile(path.substr(slashpos + 1, path.length() - slashpos - 1), input.size());
+
+    Result res = 0;
+    u32 offset = 0;
+    auto buf   = std::make_unique<u8[]>(size);
+    do {
+        u32 rd = input.read(buf.get(), size);
+        if (R_FAILED(input.result())) {
+            res = input.result();
+            Logging::error("Read failure during GBA save copy with result 0x{:08X}.", res);
+            break;
+        }
+        if (rd == 0) {
+            break;
+        }
+        u32 wt = output.write(buf.get(), rd);
+        if (R_FAILED(output.result())) {
+            res = output.result();
+            Logging::error("Write failure during GBA save copy with result 0x{:08X}.", res);
+            break;
+        }
+        if (wt != rd) {
+            res = RES_SHORT_WRITE;
+            Logging::error("Short write during GBA save copy: wrote {} of {} bytes.", wt, rd);
+            break;
+        }
+        offset += rd;
+        sink.advanceBytes(offset);
+    } while (!input.eof());
+    sink.finishFile();
 
     input.close();
     output.close();
 
-    return output.result();
+    return res;
 }
 
 Result io::copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink)
@@ -172,7 +209,10 @@ Result io::copyDirectory(FS_Archive srcArch, FS_Archive dstArch, const std::u16s
             }
         }
         else {
-            io::copyFile(srcArch, dstArch, newsrc, newdst, sink);
+            res = io::copyFile(srcArch, dstArch, newsrc, newdst, sink);
+            if (R_FAILED(res)) {
+                quit = true;
+            }
         }
     }
 
