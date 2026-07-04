@@ -239,16 +239,25 @@ void SettingsScreen::rebuildRows(void)
                 return r;
             };
 
-            const bool ftpOn      = cfg.isFTPEnabled();
-            const std::string& ip = consoleIp();
-            mRows.push_back(info("FTP server", ftpOn ? "Enabled" : "Disabled", "CONNECTIVITY"));
-            mRows.push_back(info("This console's address", ip.empty() ? "Unavailable" : ip + ":50000"));
+            // FTP row keeps the General-tab subtitle; the reachable address is
+            // shown as the green status suffix when the server is running.
+            Row ftp = info("FTP server", "Browse backups from a computer", "CONNECTIVITY");
+            ftp.statusSuffix = [&cfg]() -> std::string {
+                if (!cfg.isFTPEnabled())
+                    return "";
+                const std::string& ip = consoleIp();
+                return ip.empty() ? "· running" : "· running on " + ip + ":50000";
+            };
+            mRows.push_back(std::move(ftp));
             mRows.push_back(info("PKSM bridge", cfg.isPKSMBridgeEnabled() ? "Enabled" : "Disabled"));
 
             // Address of the built-in HTTP log server (parity with the 3DS build).
             // Open it from any browser on the same network to read the logs.
             const std::string addr = Server::getAddress();
             mRows.push_back(info("Log server", addr.empty() ? "Unavailable" : addr + "/logs/memory", "LOGS"));
+            if (!addr.empty()) {
+                mRows.push_back(info("Full log file", addr + "/logs/file"));
+            }
             mRows.push_back(info("Send / receive", "Turn FTP server or PKSM bridge on from the General tab."));
             break;
         }

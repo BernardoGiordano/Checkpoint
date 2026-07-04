@@ -357,7 +357,10 @@ void SettingsScreen::drawNetwork(void) const
     field("Wi-Fi transfer", on ? "Enabled" : "Disabled", on ? COLOR_TEAL : COLOR_MUTED);
 
     std::string address = Server::getAddress();
-    field("This console's address", address.empty() ? "Unavailable" : address, address.empty() ? COLOR_MUTED : COLOR_TEXT);
+
+    field("In memory logs", address.empty() ? "Unavailable" : address + "/logs/memory", address.empty() ? COLOR_MUTED : COLOR_TEXT);
+
+    field("Complete logs", address.empty() ? "Unavailable" : address + "/logs/file", address.empty() ? COLOR_MUTED : COLOR_TEXT);
 
     TextPool::get().draw("Send / receive", 20, y, 0.4f, COLOR_FAINT);
     TextPool::get().drawWrapped(
