@@ -75,7 +75,7 @@ void UiKit::drawHintCircle(int x, int y, const std::string& glyph)
     // The system glyph already includes the circle; draw it centered in the
     // 20px-tall hint slot rather than compositing a circle + letter by hand.
     const std::string g  = buttonGlyph(glyph);
-    SDL_Color glyphColor = FC_MakeColor(232, 232, 240, 255);
+    SDL_Color glyphColor = COLOR_TEXT;
     u32 tw, th;
     SDLH_GetTextDimensions(HINT_GLYPH_SIZE, g.c_str(), &tw, &th);
     SDLH_DrawText(HINT_GLYPH_SIZE, x, y + (20 - (int)th) / 2, glyphColor, g.c_str());
