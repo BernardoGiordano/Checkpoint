@@ -28,6 +28,10 @@
 #include "savedatasource.hpp"
 #include "titlecatalog.hpp"
 
+// Errno-domain copy failures (fopen/fread/fwrite/mkdir) folded into the Result
+// channel that IoOutcome carries; the exact cause is in the log.
+static const Result RES_COPY_FAILED = MAKERESULT(Module_Libnx, LibnxError_IoError);
+
 bool io::fileExists(const std::string& path)
 {
     struct stat buffer;
@@ -78,18 +82,18 @@ u64 io::directorySize(const std::string& path)
     return total;
 }
 
-void io::copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink)
+Result io::copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink)
 {
     FILE* src = fopen(srcPath.c_str(), "rb");
     if (src == NULL) {
-        Logging::error("Failed to open source file {} during copy with errno {}. Skipping...", srcPath, errno);
-        return;
+        Logging::error("Failed to open source file {} during copy with errno {}.", srcPath, errno);
+        return RES_COPY_FAILED;
     }
     FILE* dst = fopen(dstPath.c_str(), "wb");
     if (dst == NULL) {
-        Logging::error("Failed to open destination file {} during copy with errno {}. Skipping...", dstPath, errno);
+        Logging::error("Failed to open destination file {} during copy with errno {}.", dstPath, errno);
         fclose(src);
-        return;
+        return RES_COPY_FAILED;
     }
 
     fseek(src, 0, SEEK_END);
@@ -98,6 +102,7 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath, Progre
 
     u8* buf    = new u8[BUFFER_SIZE];
     u64 offset = 0;
+    Result res = 0;
 
     size_t slashpos = srcPath.rfind("/");
     sink.startFile(srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1), sz);
@@ -107,39 +112,50 @@ void io::copyFile(const std::string& srcPath, const std::string& dstPath, Progre
             break;
         }
 
-        u32 count = fread((char*)buf, 1, BUFFER_SIZE, src);
+        size_t count = fread((char*)buf, 1, BUFFER_SIZE, src);
         if (count == 0) {
             Logging::error("fread returned 0 for file {} at offset {}/{} with errno {}. Aborting copy.", srcPath, offset, sz, errno);
+            res = RES_COPY_FAILED;
             break;
         }
-        fwrite((char*)buf, 1, count, dst);
+        if (fwrite((char*)buf, 1, count, dst) != count) {
+            Logging::error("fwrite failed for file {} at offset {}/{} with errno {}. Aborting copy.", dstPath, offset, sz, errno);
+            res = RES_COPY_FAILED;
+            break;
+        }
         offset += count;
         sink.advanceBytes(offset);
     }
 
     delete[] buf;
     fclose(src);
-    fclose(dst);
+    if (fclose(dst) != 0 && R_SUCCEEDED(res)) {
+        Logging::error("fclose failed for file {} with errno {}.", dstPath, errno);
+        res = RES_COPY_FAILED;
+    }
     sink.finishFile();
 
-    // commit each file to the save
-    if (dstPath.rfind("save:/", 0) == 0) {
-        Logging::error("Committing file {} to the save archive.", dstPath);
-        fsdevCommitDevice("save");
+    // commit each file to the save, so a huge restore doesn't accumulate one
+    // giant uncommitted journal
+    if (R_SUCCEEDED(res) && dstPath.rfind("save:/", 0) == 0) {
+        res = fsdevCommitDevice("save");
+        if (R_FAILED(res)) {
+            Logging::error("Failed to commit file {} to the save archive with result 0x{:08X}.", dstPath, (u32)res);
+        }
     }
+    return res;
 }
 
 Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink)
 {
     Result res = 0;
-    bool quit  = false;
     Directory items(srcPath);
 
     if (!items.good()) {
         return items.error();
     }
 
-    for (size_t i = 0, sz = items.size(); i < sz && !quit; i++) {
+    for (size_t i = 0, sz = items.size(); i < sz && R_SUCCEEDED(res); i++) {
         if (sink.cancelled()) {
             break;
         }
@@ -154,21 +170,21 @@ Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath,
                 newdst += "/";
                 res = io::copyDirectory(newsrc, newdst, sink);
             }
-            else {
-                quit = true;
-            }
         }
         else {
-            io::copyFile(newsrc, newdst, sink);
+            res = io::copyFile(newsrc, newdst, sink);
         }
     }
 
-    return 0;
+    return res;
 }
 
 Result io::createDirectory(const std::string& path)
 {
-    mkdir(path.c_str(), 777);
+    if (mkdir(path.c_str(), 0777) != 0 && errno != EEXIST) {
+        Logging::error("Failed to create directory {} with errno {}.", path, errno);
+        return RES_COPY_FAILED;
+    }
     return 0;
 }
 
@@ -222,7 +238,12 @@ io::IoOutcome io::backup(Title& title, const std::string& dstPath, ProgressSink&
         }
     }
 
-    io::createDirectory(dstPath);
+    res = io::createDirectory(dstPath);
+    if (R_FAILED(res)) {
+        FileSystem::unmountDevice();
+        Logging::error("Failed to create directory {} with result 0x{:08X}.", dstPath, (u32)res);
+        return {false, res, io::BackupStage::CreateDst};
+    }
     sink.begin("Backup", io::countFiles("save:/"));
     res = io::copyDirectory("save:/", dstPath + "/", sink);
     sink.end();

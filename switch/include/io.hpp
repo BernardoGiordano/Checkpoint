@@ -67,7 +67,7 @@ namespace io {
     // Total byte size of everything under `path`, recursively (0 if unreadable).
     u64 directorySize(const std::string& path);
     Result copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
-    void copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
+    Result copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
     Result createDirectory(const std::string& path);
     Result deleteFolderRecursively(const std::string& path);
     bool directoryExists(const std::string& path);
