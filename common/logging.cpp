@@ -96,19 +96,27 @@ void Logging::init()
         std::lock_guard<std::mutex> lock(logMutex);
         flushLogBuffer();
 
-        FILE* readFile = fopen(logFilePath.c_str(), "r");
-        if (readFile == nullptr) {
+        // Read through the already-open append handle instead of a second fopen():
+        // Switch's FS sysmodule refuses opening a file for read while it is open
+        // for write, so a separate read handle returns null there and 404s. The
+        // handle is opened "a+", so reads are non-destructive and writes still
+        // append; we fflush + rewind, read, then seek back to end.
+        if (logFile == nullptr) {
             return {404, "text/plain", "Log file not found"};
         }
 
-        fseek(readFile, 0, SEEK_END);
-        long fileSize = ftell(readFile);
-        fseek(readFile, 0, SEEK_SET);
+        fflush(logFile);
+        fseek(logFile, 0, SEEK_END);
+        long fileSize = ftell(logFile);
+        fseek(logFile, 0, SEEK_SET);
 
         std::string logData;
-        logData.resize(fileSize);
-        fread(logData.data(), 1, fileSize, readFile);
-        fclose(readFile);
+        if (fileSize > 0) {
+            logData.resize(fileSize);
+            size_t read = fread(logData.data(), 1, fileSize, logFile);
+            logData.resize(read);
+        }
+        fseek(logFile, 0, SEEK_END);
 
         return {200, "text/plain", logData};
     });
@@ -190,7 +198,7 @@ void Logging::log(LogLevel level, const std::string& message)
 
 void Logging::initFileLogging()
 {
-    logFile = fopen(logFilePath.c_str(), "a");
+    logFile = fopen(logFilePath.c_str(), "a+");
 }
 
 void Logging::exit()
