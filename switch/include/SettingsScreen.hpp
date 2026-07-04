@@ -89,6 +89,10 @@ private:
     // page long lists (Library / Save folders) instead of letting rows spill
     // past the hint bar where they can't be reached.
     int lastVisibleRow(int scroll) const;
+    // The section row `i` belongs to: its own `section`, or the nearest one set
+    // on an earlier row (group headers are only stored on the first row of a
+    // group). Empty if none. Backs the sticky top-of-list header.
+    const std::string& sectionAt(int i) const;
     // Nudge mScroll so mCursor is on screen (called after the cursor moves or
     // the row set is rebuilt).
     void ensureCursorVisible(void);

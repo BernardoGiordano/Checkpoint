@@ -66,15 +66,24 @@ namespace {
 
     const std::array<const char*, 5> kCategoryLabels = {"General", "Library", "Save folders", "Connectivity", "About"};
 
-    // Vertical space a row's section label occupies above its rect. `atTop`
-    // drops the gap the label reserves above itself (the row is first on screen).
-    int sectionExtra(const std::string& section, bool atTop)
+    // Height of one section-label slot (label + 8px breathing room below it).
+    int labelSlotH(void)
+    {
+        u32 sh;
+        SDLH_GetTextDimensions(11, "Ag", NULL, &sh);
+        return (int)sh + 8;
+    }
+
+    // Vertical space the section label of a NON-first row reserves above its
+    // rect. The very first drawn row always reserves labelSlotH() unconditionally
+    // (a sticky header slot), so its space never depends on whether it happens to
+    // carry a section — that constant top slot is what keeps scrolling from
+    // jumping when a group's header row scrolls off.
+    int inlineSectionExtra(const std::string& section)
     {
         if (section.empty())
             return 0;
-        u32 sh;
-        SDLH_GetTextDimensions(11, "Ag", NULL, &sh);
-        return (atTop ? 0 : SECTION_GAP_ABOVE) + (int)sh + 8;
+        return SECTION_GAP_ABOVE + labelSlotH();
     }
 
     // The console's LAN address, matching how ftp.c binds gethostid(). Bytes are
@@ -150,9 +159,7 @@ void SettingsScreen::rebuildRows(void)
                 flashSaved();
             };
             mRows.push_back(std::move(sort));
-            break;
-        }
-        case Category::Connectivity: {
+
             Row ftp;
             ftp.title      = "FTP server";
             ftp.subtitle   = "Browse backups from a computer";
@@ -181,6 +188,27 @@ void SettingsScreen::rebuildRows(void)
                 flashSaved();
             };
             mRows.push_back(std::move(pksm));
+            break;
+        }
+        case Category::Connectivity: {
+            // Read-only status mirror of the toggles that live on the General
+            // tab, matching the 3DS Connectivity page. Info rows: no controls,
+            // not focusable (nothing to operate here).
+            auto info = [](const char* title, std::string subtitle, const char* section = "") {
+                Row r;
+                r.title     = title;
+                r.subtitle  = std::move(subtitle);
+                r.section   = section;
+                r.focusable = false;
+                return r;
+            };
+
+            const bool ftpOn      = cfg.isFTPEnabled();
+            const std::string& ip = consoleIp();
+            mRows.push_back(info("FTP server", ftpOn ? "Enabled" : "Disabled", "CONNECTIVITY"));
+            mRows.push_back(info("This console's address", ip.empty() ? "Unavailable" : ip + ":50000"));
+            mRows.push_back(info("PKSM bridge", cfg.isPKSMBridgeEnabled() ? "Enabled" : "Disabled"));
+            mRows.push_back(info("Send / receive", "Turn FTP server or PKSM bridge on from the General tab."));
             break;
         }
         case Category::Library: {
@@ -462,19 +490,23 @@ void SettingsScreen::draw(void) const
     int y                = ROWS_Y0;
     for (int i = mScroll; i < (int)mRows.size(); i++) {
         const Row& row = mRows[i];
-        u32 sh         = 0;
-        int labelGap   = 0;
-        if (!row.section.empty()) {
-            SDLH_GetTextDimensions(11, row.section.c_str(), NULL, &sh);
-            labelGap = (i == mScroll ? 0 : SECTION_GAP_ABOVE);
-        }
-        // The row rect starts below any section label; bail before drawing it (or
-        // its label) if it no longer fits the viewport.
-        const int rectTop = y + labelGap + (sh ? (int)sh + 8 : 0);
+        // The first drawn row always reserves a sticky header slot, showing the
+        // section it belongs to (inherited when the group's header row itself has
+        // scrolled above the fold). Later rows only reserve when they start a new
+        // group. The row rect starts below whatever slot was reserved; bail before
+        // drawing it (or its label) if it no longer fits the viewport.
+        const bool atTop  = (i == mScroll);
+        const int extra   = atTop ? labelSlotH() : inlineSectionExtra(row.section);
+        const int rectTop = y + extra;
         if (i > mScroll && rectTop + ROW_H > viewBottom)
             break;
-        if (sh) {
-            UiKit::drawSectionLabel(ROW_X + 4, y + labelGap, row.section);
+        if (atTop) {
+            const std::string& sec = sectionAt(i);
+            if (!sec.empty())
+                UiKit::drawSectionLabel(ROW_X + 4, y, sec);
+        }
+        else if (!row.section.empty()) {
+            UiKit::drawSectionLabel(ROW_X + 4, y + SECTION_GAP_ABOVE, row.section);
         }
         y = rectTop;
 
@@ -609,13 +641,23 @@ bool SettingsScreen::hasFocusableRow(void) const
     return false;
 }
 
+const std::string& SettingsScreen::sectionAt(int i) const
+{
+    static const std::string empty;
+    for (; i >= 0; i--) {
+        if (!mRows[i].section.empty())
+            return mRows[i].section;
+    }
+    return empty;
+}
+
 int SettingsScreen::lastVisibleRow(int scroll) const
 {
     const int viewBottom = UiKit::HINTBAR_Y;
     int y                = ROWS_Y0;
     int last             = scroll;
     for (int i = scroll; i < (int)mRows.size(); i++) {
-        const int rectTop = y + sectionExtra(mRows[i].section, i == scroll);
+        const int rectTop = y + (i == scroll ? labelSlotH() : inlineSectionExtra(mRows[i].section));
         // Always keep the first row; past that, stop before one overruns the bar.
         if (i > scroll && rectTop + ROW_H > viewBottom)
             break;
