@@ -67,11 +67,12 @@ namespace {
 
     // General section rows, in draw order. Row index maps 1:1 to the mutators
     // used in update(): 0 light theme, 1 scan_cart, 2 nand_saves,
-    // 3 transfer_enabled, 4 confirm_restore.
+    // 3 dsiware_saves, 4 transfer_enabled, 5 confirm_restore.
     const ToggleRow GENERAL_ROWS[] = {
         {"Light theme", "Use the light color palette"},
         {"Scan game cartridge", "Detect the inserted cart on launch"},
-        {"Show system (NAND) saves", "Include system & DSiWare titles"},
+        {"Show system (NAND) saves", "Include system titles"},
+        {"Show DSiWare saves", "Include DSiWare titles from NAND"},
         {"Enable Wi-Fi transfer", "Send / receive backups over network"},
         {"Confirm before restore", "Ask before overwriting a save"},
     };
@@ -281,9 +282,11 @@ void SettingsScreen::drawTop(void) const
 void SettingsScreen::drawGeneral(void) const
 {
     Configuration& cfg             = Configuration::getInstance();
-    const bool vals[GENERAL_COUNT] = {cfg.theme() == "light", cfg.shouldScanCard(), cfg.nandSaves(), cfg.transferEnabled(), cfg.confirmRestore()};
+    const bool vals[GENERAL_COUNT] = {
+        cfg.theme() == "light", cfg.shouldScanCard(), cfg.nandSaves(), cfg.dsiwareSaves(), cfg.transferEnabled(), cfg.confirmRestore()};
     for (size_t i = 0; i < GENERAL_COUNT; i++) {
-        const int rowY = 30 + (int)i * 34;
+        // Stride 32 (== row height): six rows must fit above the hint line.
+        const int rowY = 26 + (int)i * 32;
         drawToggleRow(rowY, GENERAL_ROWS[i].name, GENERAL_ROWS[i].sub, vals[i], contentFocus && contentCursor == (int)i);
     }
     if (contentFocus) {
@@ -456,14 +459,17 @@ void SettingsScreen::toggleGeneral(int idx)
             cfg.setNandSaves(!cfg.nandSaves());
             break;
         case 3:
-            cfg.setTransferEnabled(!cfg.transferEnabled());
+            cfg.setDSiWareSaves(!cfg.dsiwareSaves());
             break;
         case 4:
+            cfg.setTransferEnabled(!cfg.transferEnabled());
+            break;
+        case 5:
             cfg.setConfirmRestore(!cfg.confirmRestore());
             break;
     }
-    // Cart scan and NAND saves change which titles the grid loads.
-    if (idx == 1 || idx == 2) {
+    // Cart scan, NAND saves and DSiWare saves change which titles the grid loads.
+    if (idx == 1 || idx == 2 || idx == 3) {
         g_titlesDirty = true;
     }
     savedTimer = SAVED_FLASH_FRAMES;
@@ -477,7 +483,7 @@ void SettingsScreen::update(const InputState& input)
     // Touch toggles a General row directly, from either focus state.
     if (sel == SEC_GENERAL && (kDown & KEY_TOUCH)) {
         for (int i = 0; i < (int)GENERAL_COUNT; i++) {
-            const int rowY = 30 + i * 34;
+            const int rowY = 26 + i * 32;
             if (input.py >= rowY && input.py < rowY + 32 && input.px >= 6 && input.px < 314) {
                 contentFocus  = true;
                 contentCursor = i;

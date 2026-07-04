@@ -42,7 +42,7 @@ namespace TitleCache {
     // Bump whenever the on-SD byte format changes so stale caches (e.g. ones
     // written before the encode() field clamp) are treated as fresh-miss and
     // regenerated. Folded into the title-DB hash by calculateTitleDBHash().
-    constexpr u32 FORMAT_VERSION = 2;
+    constexpr u32 FORMAT_VERSION = 3; // 3: TWL (DSiWare) entries carry a decoded DS icon
 
     // Writes one entry (ENTRY_SIZE bytes) at dst, including the CTR icon bytes
     // reused from `icons` (the probe already read them from the SMDH; a cache

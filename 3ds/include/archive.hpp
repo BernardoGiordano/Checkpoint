@@ -104,12 +104,13 @@ public:
     static SaveDataSource ctrSave(FS_MediaType media, u32 lowid, u32 highid);
     static SaveDataSource rawGba(FS_MediaType media, u32 lowid, u32 highid);
     static SaveDataSource extdata(u32 extdataId);
+    static SaveDataSource twlSave(u32 lowid, u32 highid);
 
     ArchiveHandle open(Result& res) const;
     bool accessible(void) const;
 
 private:
-    enum class Kind { CtrSave, RawGbaSave, Extdata };
+    enum class Kind { CtrSave, RawGbaSave, Extdata, TwlSave };
     SaveDataSource(Kind kind, FS_MediaType media, u32 a, u32 b) : mKind(kind), mMedia(media), mA(a), mB(b) {}
 
     Kind mKind;
@@ -127,6 +128,10 @@ namespace Archive {
     Result save(FS_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);
     Result rawSave(FSPXI_Archive* archive, FS_MediaType mediatype, u32 lowid, u32 highid);
     Result extdata(FS_Archive* archive, u32 extdata);
+    // A DSiWare title's save lives as plain files (public.sav & co.) inside the
+    // TWL NAND FAT, not in its own archive: this is the title's data directory
+    // inside ARCHIVE_NAND_TWL_FS, with a trailing '/'.
+    std::u16string twlSaveDataPath(u32 lowid, u32 highid);
     bool setPlayCoins(void);
 }
 

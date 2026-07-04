@@ -60,6 +60,7 @@ public:
     bool accessibleSave(void);
     bool accessibleExtdata(void);
     bool isGBAVC(void);
+    bool isDSiWare(void);
     FS_CardType cardType(void);
     std::vector<std::u16string> extdata(void);
     u32 extdataId(void);

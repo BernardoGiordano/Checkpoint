@@ -422,7 +422,10 @@ void TitleCatalog::scanInstalledTitles(std::vector<Title>& saves, std::vector<Ti
     u32 sdCount   = 0;
     u32 cartCount = 0;
 
-    if (Configuration::getInstance().nandSaves()) {
+    const bool nandSaves    = Configuration::getInstance().nandSaves();
+    const bool dsiwareSaves = Configuration::getInstance().dsiwareSaves();
+
+    if (nandSaves || dsiwareSaves) {
         AM_GetTitleCount(MEDIATYPE_NAND, &nandCount);
     }
 
@@ -432,21 +435,26 @@ void TitleCatalog::scanInstalledTitles(std::vector<Title>& saves, std::vector<Ti
     mLimit   = nandCount + sdCount + cartCount;
     mCounter = 0;
 
-    if (Configuration::getInstance().nandSaves()) {
+    if (nandSaves || dsiwareSaves) {
         AM_GetTitleCount(MEDIATYPE_NAND, &count);
         std::unique_ptr<u64[]> ids_nand = std::unique_ptr<u64[]>(new u64[count]);
         AM_GetTitleList(NULL, MEDIATYPE_NAND, count, ids_nand.get());
 
         for (u32 i = 0; i < count; i++) {
             if (validId(ids_nand[i])) {
-                Title title;
-                if (TitleProbe::probe(title, ids_nand[i], MEDIATYPE_NAND, CARD_CTR, icons)) {
-                    if (title.accessibleSave()) {
-                        saves.push_back(title);
-                    }
+                // NAND holds both native (0004xxxx) and TWL (00048xxx: DSiWare
+                // and system TWL) titles; each group has its own toggle & probe.
+                const bool isTwl = ((ids_nand[i] >> 44) & 0xF) == 8;
+                if (isTwl ? dsiwareSaves : nandSaves) {
+                    Title title;
+                    if (TitleProbe::probe(title, ids_nand[i], MEDIATYPE_NAND, isTwl ? CARD_TWL : CARD_CTR, icons)) {
+                        if (title.accessibleSave()) {
+                            saves.push_back(title);
+                        }
 
-                    if (title.accessibleExtdata()) {
-                        extdatas.push_back(title);
+                        if (title.accessibleExtdata()) {
+                            extdatas.push_back(title);
+                        }
                     }
                 }
             }

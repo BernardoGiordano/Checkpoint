@@ -68,6 +68,9 @@ public:
     // DS legacy card: decode the 0x23C0 banner blob into the swizzled 32x32
     // buffer now (CPU only); the texture is uploaded later by get().
     void storeDsIcon(u64 id, const u8* banner);
+    // Already-decoded swizzled 32x32 RGB565 pixels (0x400 u16) — the title
+    // cache stores DS icons post-decode, so imports skip the banner pass.
+    void storeDsPixels(u64 id, const u16* pixels);
 
     // Consumer side — main/draw thread. Create-on-demand, cached, owned. Returns
     // Gui::noIcon() (owned by the sprite sheet, never by this store) when `id`
@@ -80,6 +83,8 @@ public:
     // realized into a texture (reclaimed). Lets the cache export reuse the icon
     // bytes the probe already read from the SMDH instead of re-reading it.
     bool copyCtrPixels(u64 id, u16* out) const;
+    // Same contract for a DS icon's decoded pixels (0x400 u16).
+    bool copyDsPixels(u64 id, u16* out) const;
     void clear();
     void swap(IconStore& o) noexcept { mMap.swap(o.mMap); }
 

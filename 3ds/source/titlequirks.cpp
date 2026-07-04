@@ -57,6 +57,11 @@ bool TitleQuirks::isSystemExcluded(u64 id)
         return true;
     }
 
+    // DSi non-executable data archives (no save data of their own)
+    if ((id >> 32) == 0x0004800F) {
+        return true;
+    }
+
     return false;
 }
 

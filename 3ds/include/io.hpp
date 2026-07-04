@@ -79,6 +79,9 @@ namespace io {
     Result createDirectory(FS_Archive archive, const std::u16string& path);
     void deleteBackupFolder(const std::u16string& path);
     Result deleteFolderRecursively(FS_Archive arch, const std::u16string& path);
+    // Empties `path` without deleting the directory itself — used for a DSiWare
+    // restore, where the TWL FAT `data` directory must survive.
+    Result deleteFolderContentsRecursively(FS_Archive arch, const std::u16string& path);
     bool directoryExists(FS_Archive archive, const std::u16string& path);
     bool fileExists(FS_Archive archive, const std::u16string& path);
     bool fileExists(const std::string& path);

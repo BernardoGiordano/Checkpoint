@@ -45,10 +45,11 @@ namespace {
     constexpr size_t OFF_CARD       = 732; // u8
     constexpr size_t OFF_ICON       = 733; // ICON_BYTES
 
-    constexpr size_t SHORT_LEN  = 0x40;
-    constexpr size_t LONG_LEN   = 0x80;
-    constexpr size_t PATH_LEN   = 256;
-    constexpr size_t ICON_BYTES = 0x900 * 2; // bigIconData: 0x900 u16 pixels
+    constexpr size_t SHORT_LEN     = 0x40;
+    constexpr size_t LONG_LEN      = 0x80;
+    constexpr size_t PATH_LEN      = 256;
+    constexpr size_t ICON_BYTES    = 0x900 * 2; // bigIconData: 0x900 u16 pixels
+    constexpr size_t DS_ICON_BYTES = 0x400 * 2; // decoded 32x32 DS icon pixels
 
     // Copies a UTF-8 string into a fixed field of `fieldLen` bytes, always leaving
     // room for a terminating NUL. The SMDH short/long descriptions are 0x40/0x80
@@ -98,6 +99,14 @@ void TitleCache::encode(u8* dst, Title& title, IconStore& icons)
                 std::memcpy(dst + OFF_ICON, smdh->bigIconData, ICON_BYTES);
             }
             delete smdh;
+        }
+    }
+    else if (media == MEDIATYPE_NAND) {
+        // DSiWare: the icon field is sized for a CTR icon; the smaller decoded
+        // 32x32 DS icon (DS_ICON_BYTES) sits in its head, rest stays zero.
+        u16 iconPixels[DS_ICON_BYTES / sizeof(u16)];
+        if (icons.copyDsPixels(id, iconPixels)) {
+            std::memcpy(dst + OFF_ICON, iconPixels, DS_ICON_BYTES);
         }
     }
 
@@ -161,6 +170,11 @@ Title TitleCache::decode(const u8* src, IconStore& icons)
         u16 bigIconData[0x900];
         std::memcpy(bigIconData, src + OFF_ICON, ICON_BYTES);
         icons.storeCtrIcon(id, bigIconData);
+    }
+    else if (media == MEDIATYPE_NAND) {
+        u16 dsIconData[0x400];
+        std::memcpy(dsIconData, src + OFF_ICON, DS_ICON_BYTES);
+        icons.storeDsPixels(id, dsIconData);
     }
 
     return title;

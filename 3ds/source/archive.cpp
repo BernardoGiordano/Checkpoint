@@ -105,6 +105,21 @@ SaveDataSource SaveDataSource::extdata(u32 extdataId)
     return SaveDataSource(Kind::Extdata, MEDIATYPE_SD, extdataId, 0);
 }
 
+SaveDataSource SaveDataSource::twlSave(u32 lowid, u32 highid)
+{
+    return SaveDataSource(Kind::TwlSave, MEDIATYPE_NAND, lowid, highid);
+}
+
+std::u16string Archive::twlSaveDataPath(u32 lowid, u32 highid)
+{
+    // Normalize the high id to the install category (00030004 DSiWare,
+    // 00030005/00030015 system): TWLN stores titles under 000300xx even though
+    // AM reports them as 000480xx.
+    char path[64];
+    snprintf(path, sizeof(path), "/title/%08lx/%08lx/data/", (highid & 0x00000FFF) | 0x00030000, lowid);
+    return StringUtils::UTF8toUTF16(path);
+}
+
 ArchiveHandle SaveDataSource::open(Result& res) const
 {
     switch (mKind) {
@@ -121,6 +136,11 @@ ArchiveHandle SaveDataSource::open(Result& res) const
         case Kind::Extdata: {
             FS_Archive archive;
             res = Archive::extdata(&archive, mA);
+            return R_SUCCEEDED(res) ? ArchiveHandle::fromFs(archive) : ArchiveHandle();
+        }
+        case Kind::TwlSave: {
+            FS_Archive archive;
+            res = FSUSER_OpenArchive(&archive, ARCHIVE_NAND_TWL_FS, fsMakePath(PATH_EMPTY, ""));
             return R_SUCCEEDED(res) ? ArchiveHandle::fromFs(archive) : ArchiveHandle();
         }
     }
@@ -142,6 +162,17 @@ bool SaveDataSource::accessible(void) const
         bool good = file.good();
         file.close();
         return good;
+    }
+    // TWLN opens as a whole; the title is only backupable if its data directory
+    // actually exists on the TWL FAT.
+    if (mKind == Kind::TwlSave) {
+        Handle dir;
+        std::u16string path = Archive::twlSaveDataPath(mA, mB);
+        if (R_FAILED(FSUSER_OpenDirectory(&dir, handle.fs(), fsMakePath(PATH_UTF16, path.data())))) {
+            return false;
+        }
+        FSDIR_Close(dir);
+        return true;
     }
     return true;
 }

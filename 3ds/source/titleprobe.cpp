@@ -161,6 +161,61 @@ namespace {
         }
         return loadTitle;
     }
+
+    // Probe an installed DSiWare / system TWL title on NAND: same legacy header
+    // and banner as a DS card, but addressed by title id, with the save living
+    // as plain files on the TWL FAT instead of an SPI chip.
+    bool probeTwl(u64 id, u8* productCode, bool& accessibleSave, bool& gba, bool& accessibleExtdata, std::u16string& shortDescription,
+        std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, IconStore& icons)
+    {
+        u8* headerData = new u8[0x3B4];
+        Result res     = FSUSER_GetLegacyRomHeader(MEDIATYPE_NAND, id, headerData);
+        if (R_FAILED(res)) {
+            delete[] headerData;
+            Logging::error("Failed get legacy rom header for title 0x{:016X} with result 0x{:08X}.", id, res);
+            return false;
+        }
+
+        char cardTitle[14] = {0};
+        char gameCode[6]   = {0};
+
+        std::copy(headerData, headerData + 12, cardTitle);
+        std::copy(headerData + 12, headerData + 16, gameCode);
+        cardTitle[13] = '\0';
+        gameCode[5]   = '\0';
+
+        delete[] headerData;
+        headerData = new u8[0x23C0];
+        FSUSER_GetLegacyBannerData(MEDIATYPE_NAND, id, headerData);
+        icons.storeDsIcon(id, headerData);
+        delete[] headerData;
+
+        snprintf((char*)productCode, 16, "TWL-%s", gameCode);
+
+        shortDescription = StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(cardTitle));
+        longDescription  = shortDescription;
+        savePath         = StringUtils::UTF8toUTF16("/3ds/Checkpoint/saves/") + StringUtils::UTF8toUTF16(gameCode) + StringUtils::UTF8toUTF16(" ") +
+                   shortDescription;
+        extdataPath = savePath;
+
+        accessibleSave    = SaveDataSource::twlSave((u32)id, (u32)(id >> 32)).accessible();
+        accessibleExtdata = false;
+        gba               = false;
+
+        if (!accessibleSave) {
+            return false;
+        }
+
+        bool loadTitle = true;
+        if (!io::directoryExists(Archive::sdmc(), savePath)) {
+            res = io::createDirectory(Archive::sdmc(), savePath);
+            if (R_FAILED(res)) {
+                loadTitle = false;
+                Logging::error("Failed to create backup directory with result 0x{:08X}.", res);
+            }
+        }
+        return loadTitle;
+    }
 }
 
 bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType card, IconStore& icons)
@@ -174,6 +229,10 @@ bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType car
     if (card == CARD_CTR) {
         loadTitle =
             probeCtr(id, media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, icons);
+    }
+    else if (media == MEDIATYPE_NAND) {
+        loadTitle =
+            probeTwl(id, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, icons);
     }
     else {
         loadTitle = probeCard(

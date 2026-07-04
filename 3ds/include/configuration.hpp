@@ -49,6 +49,7 @@ public:
     bool filter(u64 id);
     bool favorite(u64 id);
     bool nandSaves(void);
+    bool dsiwareSaves(void);
     bool shouldScanCard(void);
     bool transferEnabled(void);
     bool confirmRestore(void);
@@ -67,6 +68,7 @@ public:
     // then mark the config dirty. The SD write is deferred to commit() so a burst
     // of toggles doesn't block the UI on one slow flush per keypress.
     void setNandSaves(bool v);
+    void setDSiWareSaves(bool v);
     void setScanCard(bool v);
     void setTransferEnabled(bool v);
     void setConfirmRestore(bool v);
@@ -103,7 +105,7 @@ private:
     std::mutex mIdMutex;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::u16string>> mAdditionalSaveFolders, mAdditionalExtdataFolders;
-    bool mNandSaves = false, mScanCard = false, mTransferEnabled = false, mConfirmRestore = true;
+    bool mNandSaves = false, mDSiWareSaves = false, mScanCard = false, mTransferEnabled = false, mConfirmRestore = true;
     std::string mTheme   = "dark";
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
     size_t oldSize       = 0;

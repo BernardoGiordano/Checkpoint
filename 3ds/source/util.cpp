@@ -132,6 +132,20 @@ Result servicesInit(void)
     ATEXIT(BackupSizeCache::shutdownStatic);
     ATEXIT(Server::requestStop);
 
+    // Verify TWLN access up front so a missing permission degrades to a logged,
+    // persisted opt-out instead of a per-title failure storm during the scan.
+    if (Configuration::getInstance().dsiwareSaves()) {
+        FS_Archive twln;
+        if (R_FAILED(res = FSUSER_OpenArchive(&twln, ARCHIVE_NAND_TWL_FS, fsMakePath(PATH_EMPTY, "")))) {
+            Logging::error("Failed to open TWLN with result 0x{:08X}; disabling DSiWare saves.", (u32)res);
+            Configuration::getInstance().setDSiWareSaves(false);
+            Configuration::getInstance().commit();
+        }
+        else {
+            FSUSER_CloseArchive(twln);
+        }
+    }
+
     Threads::executeTask(TitleCatalog::loadTitlesThread);
 
     if (Configuration::getInstance().shouldScanCard()) {
@@ -149,15 +163,21 @@ void calculateTitleDBHash(u8* hash)
 {
     u32 titleCount, nandCount, titlesRead, nandTitlesRead;
     AM_GetTitleCount(MEDIATYPE_SD, &titleCount);
+    const bool nandSaves    = Configuration::getInstance().nandSaves();
+    const bool dsiwareSaves = Configuration::getInstance().dsiwareSaves();
+    // The toggles select which NAND titles the scan keeps, so they are part of
+    // the cache identity even when the installed-title list is unchanged.
+    const u64 configFlags = (nandSaves ? 1 : 0) | (dsiwareSaves ? 2 : 0);
     // Append the cache format version so a format change invalidates every
     // existing hash and forces the caches to regenerate.
-    if (Configuration::getInstance().nandSaves()) {
+    if (nandSaves || dsiwareSaves) {
         AM_GetTitleCount(MEDIATYPE_NAND, &nandCount);
         std::vector<u64> ordered(titleCount + nandCount);
         AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
         AM_GetTitleList(&nandTitlesRead, MEDIATYPE_NAND, nandCount, ordered.data() + titlesRead);
         sort(ordered.begin(), ordered.end());
         ordered.push_back(TitleCache::FORMAT_VERSION);
+        ordered.push_back(configFlags);
         sha256(hash, (u8*)ordered.data(), ordered.size() * sizeof(u64));
     }
     else {
@@ -165,6 +185,7 @@ void calculateTitleDBHash(u8* hash)
         AM_GetTitleList(&titlesRead, MEDIATYPE_SD, titleCount, ordered.data());
         sort(ordered.begin(), ordered.end());
         ordered.push_back(TitleCache::FORMAT_VERSION);
+        ordered.push_back(configFlags);
         sha256(hash, (u8*)ordered.data(), ordered.size() * sizeof(u64));
     }
 }

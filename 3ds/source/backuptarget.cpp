@@ -55,6 +55,9 @@ ArchiveHandle BackupTarget::open(Result& res) const
 SaveDataSource BackupTarget::source(void) const
 {
     if (mKind == BackupKind::Save) {
+        if (mTitle.isDSiWare()) {
+            return SaveDataSource::twlSave(mTitle.lowId(), mTitle.highId());
+        }
         return mTitle.isGBAVC() ? SaveDataSource::rawGba(mTitle.mediaType(), mTitle.lowId(), mTitle.highId())
                                 : SaveDataSource::ctrSave(mTitle.mediaType(), mTitle.lowId(), mTitle.highId());
     }

@@ -82,6 +82,11 @@ bool Title::isGBAVC(void)
     return mGBA;
 }
 
+bool Title::isDSiWare(void)
+{
+    return mMedia == MEDIATYPE_NAND && mCard == CARD_TWL;
+}
+
 std::string Title::mediaTypeString(void)
 {
     switch (mMedia) {

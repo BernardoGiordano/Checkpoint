@@ -97,6 +97,27 @@ bool IconStore::copyCtrPixels(u64 id, u16* out) const
     return true;
 }
 
+void IconStore::storeDsPixels(u64 id, const u16* pixels)
+{
+    if (mMap.find(id) != mMap.end()) {
+        return;
+    }
+    Entry e;
+    e.isDs = true;
+    e.pixels.assign(pixels, pixels + DS_PIXELS);
+    mMap.emplace(id, std::move(e));
+}
+
+bool IconStore::copyDsPixels(u64 id, u16* out) const
+{
+    auto it = mMap.find(id);
+    if (it == mMap.end() || !it->second.isDs || it->second.pixels.size() < DS_PIXELS) {
+        return false;
+    }
+    memcpy(out, it->second.pixels.data(), DS_PIXELS * sizeof(u16));
+    return true;
+}
+
 void IconStore::storeDsIcon(u64 id, const u8* banner)
 {
     if (mMap.find(id) != mMap.end()) {

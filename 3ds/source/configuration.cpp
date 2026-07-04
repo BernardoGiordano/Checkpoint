@@ -63,6 +63,10 @@ Configuration::Configuration(void)
                     (*mJson)["nand_saves"] = false;
                     updateJson             = true;
                 }
+                if (!(mJson->contains("dsiware_saves") && (*mJson)["dsiware_saves"].is_boolean())) {
+                    (*mJson)["dsiware_saves"] = false;
+                    updateJson                = true;
+                }
                 if (!(mJson->contains("scan_cart") && (*mJson)["scan_cart"].is_boolean())) {
                     (*mJson)["scan_cart"] = false;
                     updateJson            = true;
@@ -144,6 +148,7 @@ Configuration::Configuration(void)
             }
 
             mNandSaves       = (*mJson)["nand_saves"];
+            mDSiWareSaves    = (*mJson)["dsiware_saves"];
             mScanCard        = (*mJson)["scan_cart"];
             mTransferEnabled = (*mJson)["transfer_enabled"];
             mConfirmRestore  = (*mJson)["confirm_restore"];
@@ -228,6 +233,11 @@ bool Configuration::nandSaves(void)
     return mNandSaves;
 }
 
+bool Configuration::dsiwareSaves(void)
+{
+    return mDSiWareSaves;
+}
+
 std::vector<std::u16string> Configuration::additionalSaveFolders(u64 id)
 {
     std::vector<std::u16string> emptyvec;
@@ -267,6 +277,13 @@ void Configuration::setNandSaves(bool v)
     mNandSaves             = v;
     (*mJson)["nand_saves"] = v;
     mDirty                 = true;
+}
+
+void Configuration::setDSiWareSaves(bool v)
+{
+    mDSiWareSaves             = v;
+    (*mJson)["dsiware_saves"] = v;
+    mDirty                    = true;
 }
 
 void Configuration::setScanCard(bool v)

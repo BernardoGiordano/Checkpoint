@@ -12,6 +12,7 @@
 
   },
   "nand_saves": false,
+  "dsiware_saves": false,
   "scan_cart": false,
   "transfer_enabled": false,
   "confirm_restore": true,

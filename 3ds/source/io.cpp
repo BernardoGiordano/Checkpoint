@@ -259,7 +259,7 @@ bool io::directoryExists(FS_Archive archive, const std::u16string& path)
     return true;
 }
 
-Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
+Result io::deleteFolderContentsRecursively(FS_Archive arch, const std::u16string& path)
 {
     Directory dir(arch, path);
     if (!dir.good()) {
@@ -269,7 +269,7 @@ Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
     for (size_t i = 0, sz = dir.size(); i < sz; i++) {
         if (dir.folder(i)) {
             std::u16string newpath = path + dir.entry(i) + StringUtils::UTF8toUTF16("/");
-            deleteFolderRecursively(arch, newpath);
+            deleteFolderContentsRecursively(arch, newpath);
             newpath = path + dir.entry(i);
             FSUSER_DeleteDirectory(arch, fsMakePath(PATH_UTF16, newpath.data()));
         }
@@ -279,6 +279,15 @@ Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
         }
     }
 
+    return 0;
+}
+
+Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
+{
+    Result res = deleteFolderContentsRecursively(arch, path);
+    if (R_FAILED(res)) {
+        return res;
+    }
     FSUSER_DeleteDirectory(arch, fsMakePath(PATH_UTF16, path.data()));
     return 0;
 }
@@ -290,7 +299,7 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
 
     Logging::info("Started backup of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
 
-    if (title.cardType() == CARD_CTR) {
+    if (title.cardType() == CARD_CTR || title.isDSiWare()) {
         ArchiveHandle handle = target.open(res);
         if (R_FAILED(res)) {
             Logging::error("Failed to open save archive with result 0x{:08X}.", (u32)res);
@@ -327,8 +336,13 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
         else {
             std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/");
 
+            // A DSiWare save is not its own archive: it's the title's data
+            // directory inside the TWL NAND FAT, so the copy is rooted there.
+            const std::u16string archiveRoot =
+                title.isDSiWare() ? Archive::twlSaveDataPath(title.lowId(), title.highId()) : StringUtils::UTF8toUTF16("/");
+
             std::vector<io::TreeEntry> entries;
-            res = io::collectTree(handle.fs(), StringUtils::UTF8toUTF16("/"), entries);
+            res = io::collectTree(handle.fs(), archiveRoot, entries);
             if (R_FAILED(res)) {
                 FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
                 Logging::error("Failed to enumerate {} for backup. Result {}.", target.dataTypeName(), res);
@@ -343,7 +357,7 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
             }
 
             sink.begin("Backup", fileCount);
-            res = io::copyTree(handle.fs(), Archive::sdmc(), StringUtils::UTF8toUTF16("/"), copyPath, entries, sink);
+            res = io::copyTree(handle.fs(), Archive::sdmc(), archiveRoot, copyPath, entries, sink);
             sink.end();
             if (R_FAILED(res)) {
                 FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
@@ -431,7 +445,7 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
 
     Logging::info("Started restore of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
 
-    if (title.cardType() == CARD_CTR) {
+    if (title.cardType() == CARD_CTR || title.isDSiWare()) {
         ArchiveHandle handle = target.open(res);
         if (R_FAILED(res)) {
             Logging::error("Failed to open save archive with result 0x{:08X}.", (u32)res);
@@ -452,9 +466,14 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
             }
         }
         else {
-            std::u16string dstPath = StringUtils::UTF8toUTF16("/");
+            const bool isTwl       = title.isDSiWare();
+            std::u16string dstPath = isTwl ? Archive::twlSaveDataPath(title.lowId(), title.highId()) : StringUtils::UTF8toUTF16("/");
 
-            if (target.kind() != BackupKind::Extdata) {
+            if (isTwl) {
+                // The TWL FAT `data` directory must survive; only its contents go.
+                deleteFolderContentsRecursively(handle.fs(), dstPath);
+            }
+            else if (target.kind() != BackupKind::Extdata) {
                 FSUSER_DeleteDirectoryRecursively(handle.fs(), fsMakePath(PATH_UTF16, dstPath.data()));
             }
             else {
@@ -483,7 +502,8 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
                 return {false, res, BackupStage::Copy};
             }
 
-            if (target.kind() == BackupKind::Save) {
+            // A TWL FAT write needs no commit and has no secure value.
+            if (target.kind() == BackupKind::Save && !isTwl) {
                 res = FSUSER_ControlArchive(handle.fs(), ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
                 if (R_FAILED(res)) {
                     Logging::error("Failed to commit save data with result 0x{:08X}.", (u32)res);
