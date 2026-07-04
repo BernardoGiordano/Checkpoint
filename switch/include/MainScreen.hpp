@@ -88,6 +88,9 @@ private:
     std::array<std::unique_ptr<Clickable>, 4> filterButtons;
     // Rail gear button, touch shortcut to Settings; also opened by Minus.
     std::unique_ptr<Clickable> settingsButton;
+    // Account avatar, touch shortcut to the account picker. Release-triggered so
+    // the picker applet can't relaunch every frame the finger stays down.
+    std::unique_ptr<Clickable> avatarButton;
     char ver[8];
 };
 

@@ -33,6 +33,7 @@
 #include "titlecatalog.hpp"
 #include "transferjob.hpp"
 #include "uikit.hpp"
+#include <algorithm>
 #include <optional>
 
 // Main browser layout. All coordinates are absolute pixels on the fixed
@@ -104,11 +105,11 @@ namespace {
         }
     }
 
-    // A save-kind rail button: filled accent when active, faint fill
-    // otherwise, with the single glyph over the small kind label.
+    // A save-kind rail button: square (radius 0), filled accent when active,
+    // faint fill otherwise, with the single kind letter over the small kind label.
     void drawRailItem(int y, const SaveKind& kind, bool active)
     {
-        Shapes::fillRound(RAIL_ITEM_X, y, RAIL_ITEM, RAIL_ITEM, 14, active ? COLOR_ACCENT : COLOR_FILL1);
+        Shapes::fillRound(RAIL_ITEM_X, y, RAIL_ITEM, RAIL_ITEM, 0, active ? COLOR_ACCENT : COLOR_FILL1);
         SDL_Color fg = active ? COLOR_WHITE : COLOR_TEXT2;
 
         u32 gw, gh, lw, lh;
@@ -120,25 +121,33 @@ namespace {
         SDLH_DrawText(9, RAIL_ITEM_X + (RAIL_ITEM - (int)lw) / 2, top + (int)gh + 2, fg, kind.railLabel);
     }
 
+    // Size of the shoulder-key system glyph drawn inside an action button.
+    constexpr int ACTION_GLYPH_SIZE = 26;
+
     // An action button: filled accent (Backup/Send) or outlined
-    // (Restore/Receive), label + shoulder-key square centered as a group.
+    // (Restore/Receive), label + the shoulder-key system glyph centered as a group.
     void drawActionButton(int x, int y, const std::string& label, const std::string& key, bool filled)
     {
+        // Square buttons (radius 0), matching the 3DS action buttons and the
+        // squared rail / rows.
         if (filled) {
-            Shapes::fillRound(x, y, BTN_W, BTN_H, 14, COLOR_ACCENT);
+            Shapes::fillRound(x, y, BTN_W, BTN_H, 0, COLOR_ACCENT);
         }
         else {
-            Shapes::strokeRound(x, y, BTN_W, BTN_H, 14, 2, COLOR_STROKE3);
+            Shapes::strokeRound(x, y, BTN_W, BTN_H, 0, 2, COLOR_STROKE3);
         }
 
-        u32 lw, lh;
+        const std::string glyph = UiKit::buttonGlyph(key);
+        const SDL_Color fg      = filled ? COLOR_WHITE : COLOR_TEXT;
+
+        u32 lw, lh, gw, gh;
         SDLH_GetTextDimensions(16, label.c_str(), &lw, &lh);
-        const int keyW  = UiKit::keySquareWidth(key);
+        SDLH_GetTextDimensions(ACTION_GLYPH_SIZE, glyph.c_str(), &gw, &gh);
         const int gap   = 10;
-        const int group = (int)lw + gap + keyW;
+        const int group = (int)lw + gap + (int)gw;
         const int sx    = x + (BTN_W - group) / 2;
-        SDLH_DrawText(16, sx, y + (BTN_H - (int)lh) / 2, filled ? COLOR_WHITE : COLOR_TEXT, label.c_str());
-        UiKit::drawKeySquare(sx + (int)lw + gap, y + (BTN_H - 22) / 2, key, filled);
+        SDLH_DrawText(16, sx, y + (BTN_H - (int)lh) / 2, fg, label.c_str());
+        SDLH_DrawText(ACTION_GLYPH_SIZE, sx + (int)lw + gap, y + (BTN_H - (int)gh) / 2, fg, glyph.c_str());
     }
 }
 
@@ -159,6 +168,7 @@ MainScreen::MainScreen(const InputState& input) : hid(GRID_VISIBLE, GRID_COLS, i
         filterButtons[k] = std::make_unique<Clickable>(RAIL_ITEM_X, y, RAIL_ITEM, RAIL_ITEM, COLOR_FILL1, COLOR_TEXT2, "", true);
     }
     settingsButton = std::make_unique<Clickable>(RAIL_ITEM_X, SETTINGS_BTN_Y, RAIL_ITEM, RAIL_ITEM, COLOR_FILL1, COLOR_TEXT2, "", true);
+    avatarButton   = std::make_unique<Clickable>(AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE, COLOR_TILE, COLOR_TEXT2, "", true);
 }
 
 int MainScreen::selectorX(size_t i) const
@@ -207,8 +217,15 @@ void MainScreen::draw() const
     SDLH_GetTextDimensions(22, "checkpoint", &logoW, &logoH);
     SDLH_DrawText(22, 24, (TOPBAR_H - (int)logoH) / 2, COLOR_TEXT, "checkpoint");
 
+    // Plain version label just right of the logo (no chip), e.g. "v4.0.0".
+    u32 verW, verH;
+    SDLH_GetTextDimensions(11, ver, &verW, &verH);
+    const int verX = 24 + (int)logoW + 12;
+    SDLH_DrawText(11, verX, (TOPBAR_H - (int)verH) / 2 + 3, COLOR_TEXT2, ver);
+    const int topbarLeftEnd = verX + (int)verW;
+
     if (!gameName.empty()) {
-        const int avail = 1256 - (24 + (int)logoW + 24);
+        const int avail = 1256 - topbarLeftEnd - 24;
         std::string t   = gameName;
         u32 tw, th;
         SDLH_GetTextDimensions(17, t.c_str(), &tw, &th);
@@ -235,11 +252,11 @@ void MainScreen::draw() const
         Shapes::focusRing(RAIL_ITEM_X, selY, RAIL_ITEM, RAIL_ITEM, 14, COLOR_ACCENT);
     }
 
-    Shapes::fillRound(RAIL_ITEM_X, SETTINGS_BTN_Y, RAIL_ITEM, RAIL_ITEM, 14, COLOR_FILL1);
+    Shapes::fillRound(RAIL_ITEM_X, SETTINGS_BTN_Y, RAIL_ITEM, RAIL_ITEM, 0, COLOR_FILL1);
     {
         u32 gw, gh;
-        SDLH_GetTextDimensions(22, "", &gw, &gh);
-        SDLH_DrawText(22, RAIL_ITEM_X + (RAIL_ITEM - (int)gw) / 2, SETTINGS_BTN_Y + (RAIL_ITEM - (int)gh) / 2, COLOR_TEXT2, "");
+        SDLH_GetTextDimensions(22, "", &gw, &gh);
+        SDLH_DrawText(22, RAIL_ITEM_X + (RAIL_ITEM - (int)gw) / 2, SETTINGS_BTN_Y + (RAIL_ITEM - (int)gh) / 2, COLOR_TEXT2, "");
     }
 
     Shapes::fillRound(AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE, AVATAR_SIZE / 2, COLOR_TILE);
@@ -337,9 +354,18 @@ void MainScreen::draw() const
 
         backupList->draw(g_backupScrollEnabled);
 
-        const bool pksm = getPKSMBridgeFlag() && mSaveTypeFilter == FILTER_SAVES;
-        drawActionButton(COL_X, BTN_BACKUP_Y, pksm ? "Send" : "Backup", "L", true);
-        drawActionButton(COL_X, BTN_RESTORE_Y, pksm ? "Receive" : "Restore", "R", false);
+        if (MS::multipleSelectionEnabled()) {
+            // Multi-select is a batch backup only (no restore): show a single
+            // button counting the selected titles, wired to the same L handler.
+            const size_t n        = selEnt.size();
+            const std::string lbl = StringUtils::format("Backup %zu %s", n, n == 1 ? "title" : "titles");
+            drawActionButton(COL_X, BTN_BACKUP_Y, lbl, "L", true);
+        }
+        else {
+            const bool pksm = getPKSMBridgeFlag() && mSaveTypeFilter == FILTER_SAVES;
+            drawActionButton(COL_X, BTN_BACKUP_Y, pksm ? "Send" : "Backup", "L", true);
+            drawActionButton(COL_X, BTN_RESTORE_Y, pksm ? "Receive" : "Restore", "R", false);
+        }
     }
     else {
         const char* emptyMsg = SaveKind::of(mSaveTypeFilter).emptyMsg;
@@ -367,7 +393,7 @@ void MainScreen::draw() const
         const int mx = 370, mw = 540;
         const int mh = multiSelect ? 290 : 230;
         const int my = multiSelect ? 230 : 260;
-        Shapes::cardRound(mx, my, mw, mh, 16, COLOR_SURFACE, COLOR_STROKE2, 1);
+        Shapes::cardRound(mx, my, mw, mh, 0, COLOR_SURFACE, COLOR_STROKE2, 1);
 
         std::string titleStr = (transfer.mode.empty() ? "Copying files" : transfer.mode) + " in progress...";
         u32 title_w, title_h;
@@ -375,10 +401,10 @@ void MainScreen::draw() const
         SDLH_DrawText(20, mx + (mw - (int)title_w) / 2, my + 16, COLOR_TEXT, titleStr.c_str());
 
         if (transfer.mode == "Backup") {
-            const char* hint = " to cancel";
+            const std::string hint = UiKit::buttonGlyph("B") + " to cancel";
             u32 hint_w;
-            SDLH_GetTextDimensions(14, hint, &hint_w, NULL);
-            SDLH_DrawText(14, mx + mw - (int)hint_w - 16, my + mh - 26, COLOR_TEXT2, hint);
+            SDLH_GetTextDimensions(14, hint.c_str(), &hint_w, NULL);
+            SDLH_DrawText(14, mx + mw - (int)hint_w - 16, my + mh - 26, COLOR_TEXT2, hint.c_str());
         }
 
         u32 fname_w, fname_h;
@@ -390,10 +416,10 @@ void MainScreen::draw() const
         auto drawProgressBar = [&](int y, float frac, const char* leftLabel, const char* rightLabel) {
             if (frac > 1.0f)
                 frac = 1.0f;
-            Shapes::fillRound(barX, y, barW, barH, barH / 2, COLOR_FILL2);
+            Shapes::fillRound(barX, y, barW, barH, 0, COLOR_FILL2);
             int fillW = (int)(barW * frac);
             if (fillW > 0) {
-                Shapes::fillRound(barX, y, fillW, barH, barH / 2, COLOR_ACCENT);
+                Shapes::fillRound(barX, y, fillW, barH, 0, COLOR_ACCENT);
             }
             u32 right_w;
             SDLH_GetTextDimensions(15, rightLabel, &right_w, NULL);
@@ -630,16 +656,15 @@ void MainScreen::handleEvents(const InputState& input)
         }
     }
 
-    // handle account avatar touch (only when filter is Saves)
-    if (mSaveTypeFilter == FILTER_SAVES && !g_backupScrollEnabled && input.touch.count > 0) {
-        if (input.touch.touches[0].x >= AVATAR_X && input.touch.touches[0].x <= AVATAR_X + AVATAR_SIZE && input.touch.touches[0].y >= AVATAR_Y &&
-            input.touch.touches[0].y <= AVATAR_Y + AVATAR_SIZE) {
-            while ((g_currentUId = Account::selectAccount()) == 0)
-                ;
-            this->index(TITLES, 0);
-            this->index(CELLS, 0);
-            setPKSMBridgeFlag(false);
-        }
+    // Tapping the avatar opens the account picker. Release-triggered (like the
+    // rail buttons) so the applet fires once on lift instead of relaunching every
+    // frame the finger is held down on it.
+    if (!g_backupScrollEnabled && avatarButton->released()) {
+        while ((g_currentUId = Account::selectAccount()) == 0)
+            ;
+        this->index(TITLES, 0);
+        this->index(CELLS, 0);
+        setPKSMBridgeFlag(false);
     }
 
     // Handle touching the backup list / panel region

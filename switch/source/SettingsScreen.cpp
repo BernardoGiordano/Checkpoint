@@ -532,20 +532,23 @@ void SettingsScreen::draw(void) const
                 break;
             }
             case Control::Spinner: {
-                // ◂ label ▸ : arrows text-3, value 14/500 text, as one group.
+                // ‹ label › : arrows text-3, value 14/500 text, as one group.
+                // The arrows are Nintendo-Extended-font chevrons (U+E149/E14A);
+                // the plain Unicode triangles are absent from the shared font and
+                // rendered as tofu boxes.
                 const std::string& val = row.options[row.getIndex ? row.getIndex() : 0];
                 u32 vw, vh, aw;
                 SDLH_GetTextDimensions(14, val.c_str(), &vw, &vh);
-                SDLH_GetTextDimensions(14, "▸", &aw, NULL);
+                SDLH_GetTextDimensions(14, "", &aw, NULL);
                 const int gap   = 12;
                 const int group = (int)aw + gap + (int)vw + gap + (int)aw;
                 int cx          = rightEdge - group;
                 const int cy    = y + (ROW_H - (int)vh) / 2;
-                SDLH_DrawText(14, cx, cy, COLOR_TEXT3, "◂");
+                SDLH_DrawText(14, cx, cy, COLOR_TEXT3, "");
                 cx += (int)aw + gap;
                 SDLH_DrawText(14, cx, cy, COLOR_TEXT, val.c_str());
                 cx += (int)vw + gap;
-                SDLH_DrawText(14, cx, cy, COLOR_TEXT3, "▸");
+                SDLH_DrawText(14, cx, cy, COLOR_TEXT3, "");
                 break;
             }
             case Control::Toggle: {
@@ -561,12 +564,14 @@ void SettingsScreen::draw(void) const
 
     // Paged-list affordance: chevrons at the right edge when rows sit off-screen.
     if (!mRows.empty()) {
+        // Nintendo-Extended-font up/down chevrons (U+E147/E148); the plain
+        // Unicode triangles are missing from the shared font (tofu boxes).
         const int cx = ROW_X + ROW_W + 8;
         if (mScroll > 0) {
-            SDLH_DrawText(16, cx, ROWS_Y0, COLOR_TEXT3, "▴");
+            SDLH_DrawText(16, cx, ROWS_Y0, COLOR_TEXT3, "");
         }
         if (lastVisibleRow(mScroll) < (int)mRows.size() - 1) {
-            SDLH_DrawText(16, cx, UiKit::HINTBAR_Y - 24, COLOR_TEXT3, "▾");
+            SDLH_DrawText(16, cx, UiKit::HINTBAR_Y - 24, COLOR_TEXT3, "");
         }
     }
 

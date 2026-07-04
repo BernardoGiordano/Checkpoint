@@ -60,7 +60,7 @@ static std::unordered_map<int, FC_Font*> s_monoFonts;
 // to callers.
 static int scaledFontPx(int size)
 {
-    return (size * 9 + 4) / 8; // ~1.125x, rounded
+    return (size * 6 + 2) / 5; // ~1.2x, rounded
 }
 
 static FC_Font* getFontFromMap(int size)

@@ -39,26 +39,26 @@ namespace UiKit {
     constexpr int HINTBAR_H = 46;
     constexpr int HINTBAR_Y = SCREEN_H - HINTBAR_H;
 
-    // One hint-bar entry: a single glyph letter (drawn inside a hint circle)
-    // plus its label, e.g. {"A", "Select"}.
+    // One hint-bar entry: a button key ("A", "B", "-", …) shown as its system
+    // glyph, plus its label, e.g. {"A", "Select"}.
     struct HintItem {
         std::string glyph;
         std::string label;
     };
 
-    // 20x20 circle (fill-3 bg, 11px/600 #e8e8f0 glyph), left edge at x, vertically
-    // centered on y + 10 (i.e. y is the top of a 20px-tall slot).
+    // shared-font glyph for a controller button ("A",
+    // "B", "X", "Y", "L", "R", "ZL", "ZR", "+", "-") — a circle/pill with the
+    // button symbol already inside it. Preferred over any hand-drawn circle
+    // wherever a controller button is shown. Unknown keys pass through verbatim.
+    std::string buttonGlyph(const std::string& key);
+
+    // Draws buttonGlyph(glyph) centered in the 20px-tall hint slot whose top-left
+    // is (x, y). The glyph supplies its own circle, so nothing is composited here.
     void drawHintCircle(int x, int y, const std::string& glyph);
 
     // The bottom hint bar, identical shape on both screens: top border, items
     // right-aligned ending 26px from the right edge, 24px between items.
     void drawHintBar(const std::vector<HintItem>& items);
-
-    // Shoulder-key square (L/R) used inline in filled/outlined buttons: height
-    // 22, min-width 22, radius 7. `onFilledButton` selects the bg (rgba(0,0,0,.28)
-    // vs fill-3).
-    void drawKeySquare(int x, int y, const std::string& label, bool onFilledButton);
-    int keySquareWidth(const std::string& label);
 
     // 46x27 toggle pill; `on` selects accent/fill-3 track + knob position.
     void drawToggle(int x, int y, bool on);

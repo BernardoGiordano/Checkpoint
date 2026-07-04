@@ -30,23 +30,55 @@
 #include <algorithm>
 
 namespace {
+    // The button glyphs are drawn from the shared font at this
+    // pixel size in the hint bar (a ~20px circle, matching the 20px slot).
+    constexpr int HINT_GLYPH_SIZE = 20;
+
     int hintItemWidth(const UiKit::HintItem& item)
     {
-        u32 tw;
+        u32 gw, tw;
+        SDLH_GetTextDimensions(HINT_GLYPH_SIZE, UiKit::buttonGlyph(item.glyph).c_str(), &gw, NULL);
         SDLH_GetTextDimensions(13, item.label.c_str(), &tw, NULL);
-        return 20 + 7 + (int)tw;
+        return (int)gw + 7 + (int)tw;
     }
+}
+
+std::string UiKit::buttonGlyph(const std::string& key)
+{
+    // shared-font code points: each is a filled circle/pill
+    // with the button symbol already inside it.
+    if (key == "A")
+        return "";
+    if (key == "B")
+        return "";
+    if (key == "X")
+        return "";
+    if (key == "Y")
+        return "";
+    if (key == "L")
+        return "";
+    if (key == "R")
+        return "";
+    if (key == "ZL")
+        return "";
+    if (key == "ZR")
+        return "";
+    if (key == "+")
+        return "";
+    if (key == "-")
+        return "";
+    return key;
 }
 
 void UiKit::drawHintCircle(int x, int y, const std::string& glyph)
 {
-    const int size = 20;
-    Shapes::fillRound(x, y, size, size, size / 2, COLOR_FILL3);
-
+    // The system glyph already includes the circle; draw it centered in the
+    // 20px-tall hint slot rather than compositing a circle + letter by hand.
+    const std::string g  = buttonGlyph(glyph);
     SDL_Color glyphColor = FC_MakeColor(232, 232, 240, 255);
     u32 tw, th;
-    SDLH_GetTextDimensions(11, glyph.c_str(), &tw, &th);
-    SDLH_DrawText(11, x + (size - (int)tw) / 2, y + (size - (int)th) / 2, glyphColor, glyph.c_str());
+    SDLH_GetTextDimensions(HINT_GLYPH_SIZE, g.c_str(), &tw, &th);
+    SDLH_DrawText(HINT_GLYPH_SIZE, x, y + (20 - (int)th) / 2, glyphColor, g.c_str());
 }
 
 void UiKit::drawHintBar(const std::vector<HintItem>& items)
@@ -63,8 +95,10 @@ void UiKit::drawHintBar(const std::vector<HintItem>& items)
     int x = SCREEN_W - 26 - totalW;
     int y = HINTBAR_Y + (HINTBAR_H - 20) / 2;
     for (size_t i = 0; i < items.size(); i++) {
+        u32 gw;
+        SDLH_GetTextDimensions(HINT_GLYPH_SIZE, buttonGlyph(items[i].glyph).c_str(), &gw, NULL);
         drawHintCircle(x, y, items[i].glyph);
-        x += 20 + 7;
+        x += (int)gw + 7;
 
         u32 tw, th;
         SDLH_GetTextDimensions(13, items[i].label.c_str(), &tw, &th);
@@ -75,37 +109,18 @@ void UiKit::drawHintBar(const std::vector<HintItem>& items)
     }
 }
 
-int UiKit::keySquareWidth(const std::string& label)
-{
-    u32 tw;
-    SDLH_GetTextDimensions(11, label.c_str(), &tw, NULL);
-    return std::max(22, (int)tw + 12);
-}
-
-void UiKit::drawKeySquare(int x, int y, const std::string& label, bool onFilledButton)
-{
-    u32 tw, th;
-    SDLH_GetTextDimensions(11, label.c_str(), &tw, &th);
-    int w = std::max(22, (int)tw + 12);
-    int h = 22;
-
-    SDL_Color bg = onFilledButton ? FC_MakeColor(0, 0, 0, 71) : COLOR_FILL3;
-    Shapes::fillRound(x, y, w, h, 7, bg);
-
-    SDL_Color textColor = onFilledButton ? COLOR_WHITE : COLOR_TEXT;
-    SDLH_DrawText(11, x + (w - (int)tw) / 2, y + (h - (int)th) / 2, textColor, label.c_str());
-}
-
 void UiKit::drawToggle(int x, int y, bool on)
 {
     const int w = 46, h = 27, knob = 21, inset = 3;
 
+    // Rectangular track + square knob (radius 0) to match the squared controls
+    // elsewhere in the redesign.
     SDL_Color track = on ? COLOR_ACCENT : COLOR_FILL3;
-    Shapes::fillRound(x, y, w, h, h / 2, track);
+    Shapes::fillRound(x, y, w, h, 0, track);
 
     SDL_Color knobColor = on ? COLOR_WHITE : FC_MakeColor(142, 142, 153, 255);
     int knobX           = on ? x + w - inset - knob : x + inset;
-    Shapes::fillRound(knobX, y + inset, knob, knob, knob / 2, knobColor);
+    Shapes::fillRound(knobX, y + inset, knob, knob, 0, knobColor);
 }
 
 int UiKit::segmentedWidth(const std::vector<std::string>& options)

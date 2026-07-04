@@ -28,14 +28,15 @@
 #define BACKUPLIST_HPP
 
 #include "account.hpp"
-#include "scrollable.hpp"
 #include "title.hpp"
 #include <optional>
 #include <string>
+#include <switch.h>
 #include <vector>
 
-// Owns the detail-panel backup list for the currently selected title: the
-// Scrollable widget backing it and a cached copy of the resolved Title.
+// Owns the detail-panel backup list for the currently selected title: the row
+// names, a sliding selection/scroll cursor, and a cached copy of the resolved
+// Title. Scrolls one row at a time (a sliding window, like the 3DS list).
 class BackupList {
 public:
     BackupList(int x, int y, int w, int h, size_t visibleRows);
@@ -50,24 +51,34 @@ public:
     // strings), so this returns a mutable reference to the cached copy.
     Title& title(void) { return mTitle; }
 
-    size_t size(void) const { return mScrollable.size(); }
+    size_t size(void) const { return mNames.size(); }
     // Real backups only, i.e. excluding the synthetic "New..." entry the model
     // keeps at index 0 (used for the "BACKUPS · N" header count).
-    size_t backupCount(void) const { return mScrollable.size() > 0 ? mScrollable.size() - 1 : 0; }
-    size_t index(void) { return mScrollable.index(); }
-    std::string cellName(size_t i) { return i < size() ? mScrollable.cellName(i) : std::string(); }
+    size_t backupCount(void) const { return mNames.size() > 0 ? mNames.size() - 1 : 0; }
+    size_t index(void) const { return mIndex; }
+    std::string cellName(size_t i) const { return i < mNames.size() ? mNames[i] : std::string(); }
     // Human-readable on-disk size of every backup for this title combined
     // (empty when there are no backups). Shown in the backups header.
     const std::string& totalSizeString(void) const { return mTotalSize; }
-    void setIndex(size_t i) { mScrollable.setIndex(i); }
-    void resetIndex(void) { mScrollable.resetIndex(); }
-    void updateSelection(void) { mScrollable.updateSelection(); }
+    void setIndex(size_t i)
+    {
+        mIndex = i;
+        clampCursor();
+    }
+    void resetIndex(void)
+    {
+        mIndex  = 0;
+        mOffset = 0;
+    }
+    // Advances the selection from D-Pad / touch, one row at a time (a held
+    // direction auto-repeats), keeping the scroll window around it. Same
+    // scroll-by-one sliding window the 3DS list uses — no page jumps.
+    void updateSelection(void);
 
-    // Draws the backup rows directly (rounded 48px rows, mono names, a
-    // per-backup user chip); mScrollable is kept only for the
-    // scroll/selection/touch state. `focused` means the list (not the grid)
-    // currently owns the cursor: the selected row then gets the accent-tint
-    // background.
+    // Draws the backup rows directly (rectangular 48px rows, mono names, on-disk
+    // size on the right) plus a scrollbar. `focused` means the list (not the
+    // grid) currently owns the cursor: the selected row then gets the accent-tint
+    // background and the breathing focus ring.
     void draw(bool focused);
 
     // Picks the destination folder for a backup. cellIndex 0 = a new folder
@@ -78,9 +89,8 @@ public:
     // suggested name was used instead.
     static std::optional<std::string> chooseDst(Title& title, size_t cellIndex, bool& usedKeyboardFallback);
 
-    // Row metrics: 48px rows, 6px gap → 54px pitch. The Scrollable is
-    // built with a matching height (visibleRows * pitch) so its touch math and
-    // the rows drawn here line up.
+    // Row metrics: 48px rows, 6px gap → 54px pitch. Touch math and drawing both
+    // step by ROW_PITCH so they line up.
     static constexpr int ROW_H = 48, ROW_GAP = 6, ROW_PITCH = ROW_H + ROW_GAP;
 
 private:
@@ -88,14 +98,23 @@ private:
     // sizes. `sizesOnly` skips re-resolving the title (used when only the
     // BackupSizeCache generation changed, i.e. an async walk landed).
     void rebuild(bool sizesOnly);
+    // Keeps mIndex in range and slides mOffset so the selection stays visible
+    // without leaving a trailing gap (mirrors the 3DS ListCursor clamp).
+    void clampCursor(void);
 
     int mListX, mListY, mListW;
-    Scrollable mScrollable;
+    size_t mVisibleRows;
     Title mTitle;
-    // Per-row on-disk size strings, aligned with the Scrollable rows (index 0 is
-    // the synthetic "New..." row and is left empty). Filled by rebuild().
+    // Row names (index 0 is the synthetic "New..." row) and their aligned on-disk
+    // size strings (index 0 left empty). Filled by rebuild().
+    std::vector<std::string> mNames;
     std::vector<std::string> mSizes;
     std::string mTotalSize;
+    // Selection + scroll window: mIndex is the selected row, mOffset the first
+    // visible row. mLastTick gates D-Pad auto-repeat.
+    size_t mIndex            = 0;
+    size_t mOffset           = 0;
+    u64 mLastTick            = 0;
     bool mValid              = false;
     AccountUid mUid          = {};
     saveTypeFilter_t mFilter = FILTER_SAVES;

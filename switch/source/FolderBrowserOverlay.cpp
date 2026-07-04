@@ -77,7 +77,7 @@ void FolderBrowserOverlay::readFolders(void)
 void FolderBrowserOverlay::draw(void) const
 {
     SDLH_DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
-    Shapes::cardRound(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 16, COLOR_SURFACE, COLOR_STROKE2, 1);
+    Shapes::cardRound(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 0, COLOR_SURFACE, COLOR_STROKE2, 1);
 
     // Heading + a right-aligned "i / n" counter on the same line.
     SDLH_DrawText(20, LIST_X, PANEL_Y + 18, COLOR_TEXT, mHeading.c_str());
@@ -100,13 +100,13 @@ void FolderBrowserOverlay::draw(void) const
     for (int i = mScroll; i < (int)mFolders.size() && i < mScroll + VISIBLE; i++) {
         const int y      = LIST_Y + (i - mScroll) * (ROW_H + ROW_GAP);
         const bool focus = i == mCursor;
-        Shapes::fillRound(LIST_X, y, LIST_W, ROW_H, 12, focus ? COLOR_ACCENT_TINT : COLOR_FILL1);
+        Shapes::fillRound(LIST_X, y, LIST_W, ROW_H, 0, focus ? COLOR_ACCENT_TINT : COLOR_FILL1);
         u32 nh;
         SDLH_GetTextDimensions(15, "Ag", NULL, &nh);
         std::string name = trimToFit(mFolders[i], LIST_W - 28, 15);
         SDLH_DrawText(15, LIST_X + 14, y + (ROW_H - (int)nh) / 2, focus ? COLOR_TEXT : COLOR_TEXT2, name.c_str());
         if (focus) {
-            Shapes::focusRing(LIST_X, y, LIST_W, ROW_H, 12, COLOR_ACCENT);
+            Shapes::focusRing(LIST_X, y, LIST_W, ROW_H, 0, COLOR_ACCENT);
         }
     }
 
