@@ -25,6 +25,7 @@
  */
 
 #include "io.hpp"
+#include "logging.hpp"
 #include "savedatasource.hpp"
 #include "titlecatalog.hpp"
 

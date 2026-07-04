@@ -27,15 +27,10 @@
 #ifndef SDLHELPER_HPP
 #define SDLHELPER_HPP
 
-#include "SDL_FontCache.h"
 #include "colors.hpp"
-#include "logging.hpp"
-#include "main.hpp"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
+#include "gfxtypes.hpp"
 #include <string>
 #include <switch.h>
-#include <unordered_map>
 
 // Sans is the shared system font (matches the mock's "system font
 // stack"). Mono is a bundled Space Mono (OFL) used for backup names, title
@@ -45,27 +40,31 @@ enum class FontFamily { Sans, Mono };
 bool SDLH_Init(void);
 void SDLH_Exit(void);
 
-void SDLH_ClearScreen(SDL_Color color);
-void SDLH_DrawRect(int x, int y, int w, int h, SDL_Color color);
-void SDLH_DrawText(int size, int x, int y, SDL_Color color, const char* text, FontFamily family = FontFamily::Sans);
-void SDLH_LoadImage(SDL_Texture** texture, char* path);
-void SDLH_LoadImage(SDL_Texture** texture, u8* buff, size_t size);
-void SDLH_DrawImage(SDL_Texture* texture, int x, int y);
-void SDLH_DrawImageScale(SDL_Texture* texture, int x, int y, int w, int h);
+void SDLH_ClearScreen(Color color);
+void SDLH_DrawRect(int x, int y, int w, int h, Color color);
+void SDLH_DrawText(int size, int x, int y, Color color, const char* text, FontFamily family = FontFamily::Sans);
+void SDLH_LoadImage(Texture** texture, const char* path);
+void SDLH_LoadImage(Texture** texture, u8* buff, size_t size);
+void SDLH_DrawImage(Texture* texture, int x, int y);
+void SDLH_DrawImageScale(Texture* texture, int x, int y, int w, int h);
+// Disable alpha blending for `texture` (used for NS title icons, which are
+// opaque JPEGs; SDLH_LoadImage's black colorkey must not punch holes in them).
+void SDLH_SetTextureOpaque(Texture* texture);
+void SDLH_DestroyTexture(Texture* texture);
 // Star (favorite badge) and checkbox (multi-select mark) icon textures.
 // Callers draw their own badge backdrop (Shapes::fillRound) and place these
 // with SDLH_DrawImageScale; neither draws a backdrop of its own. The checkbox
 // texture is tinted white at load time (it is a black-on-transparent checkmark
 // asset).
-SDL_Texture* SDLH_StarTexture(void);
-SDL_Texture* SDLH_CheckboxTexture(void);
+Texture* SDLH_StarTexture(void);
+Texture* SDLH_CheckboxTexture(void);
 void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family = FontFamily::Sans);
-void SDLH_DrawTextBox(int size, int x, int y, SDL_Color color, int max, const char* text, FontFamily family = FontFamily::Sans);
+void SDLH_DrawTextBox(int size, int x, int y, Color color, int max, const char* text, FontFamily family = FontFamily::Sans);
 void SDLH_Render(void);
-void SDLH_CreateColorTexture(SDL_Texture** texture, int w, int h, SDL_Color color);
+void SDLH_CreateColorTexture(Texture** texture, int w, int h, Color color);
 
-void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color);
-void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color);
+void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color);
+void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color);
 std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize, FontFamily family = FontFamily::Sans);
 
 #endif

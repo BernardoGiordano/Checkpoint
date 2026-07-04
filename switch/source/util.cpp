@@ -25,6 +25,8 @@
  */
 
 #include "util.hpp"
+#include "logging.hpp"
+#include "main.hpp"
 #include "server.hpp"
 #include "titlecatalog.hpp"
 

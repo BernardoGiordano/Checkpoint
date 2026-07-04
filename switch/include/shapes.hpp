@@ -37,27 +37,27 @@ namespace Shapes {
     // Filled rounded rect. Radius is clamped to min(w,h)/2. Implemented as one
     // fill for the straight middle band plus one 1px-tall fill per corner row
     // (mirrored top/bottom) — cheap enough to call a few dozen times a frame.
-    void fillRound(int x, int y, int w, int h, int r, SDL_Color color);
+    void fillRound(int x, int y, int w, int h, int r, Color color);
 
     // Filled rounded rect with a border: an outer fillRound in borderColor,
     // then an inset fillRound in fillColor. Correct for the flat, opaque card/
     // row/tile backgrounds used throughout (borderPx == 0 skips the outer pass
     // entirely and just fills).
-    void cardRound(int x, int y, int w, int h, int r, SDL_Color fillColor, SDL_Color borderColor, int borderPx);
+    void cardRound(int x, int y, int w, int h, int r, Color fillColor, Color borderColor, int borderPx);
 
     // Hollow rounded-rect outline of the given thickness — unlike cardRound,
     // does not touch the pixels inside the ring, so it can be drawn over an
     // already-drawn element (a tile, a row) without erasing it. Row-by-row
     // (not the cheap corners-only path fillRound uses); only ever a handful of
     // these are on screen at once (the focus ring + its glow layers).
-    void strokeRound(int x, int y, int w, int h, int r, int thickness, SDL_Color color);
+    void strokeRound(int x, int y, int w, int h, int r, int thickness, Color color);
 
     // The joypad focus ring: a crisp 3px ring at inset -4 (radius r+3),
     // plus two wider, lower-alpha rings outside it approximating the spec's
     // `0 0 18px rgba(139,124,246,.45)` CSS glow. Static, not pulsing — draw it
     // fresh each frame around whatever is focused; exactly one should be on
     // screen at a time.
-    void focusRing(int x, int y, int w, int h, int r, SDL_Color accent);
+    void focusRing(int x, int y, int w, int h, int r, Color accent);
 }
 
 #endif

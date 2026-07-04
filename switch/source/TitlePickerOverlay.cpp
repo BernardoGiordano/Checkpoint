@@ -62,7 +62,7 @@ void TitlePickerOverlay::draw(void) const
         const int y      = LIST_Y + (i - mScroll) * (ROW_H + ROW_GAP);
         const bool focus = i == mCursor;
         Shapes::fillRound(LIST_X, y, LIST_W, ROW_H, 0, focus ? COLOR_ACCENT_TINT : COLOR_FILL1);
-        SDL_Color fg = focus ? COLOR_TEXT : COLOR_TEXT2;
+        Color fg = focus ? COLOR_TEXT : COLOR_TEXT2;
         u32 nh;
         SDLH_GetTextDimensions(15, "Ag", NULL, &nh);
         std::string name = trimToFit(mItems[i].second, LIST_W - 28, 15);

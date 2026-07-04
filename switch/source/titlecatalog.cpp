@@ -256,7 +256,7 @@ void TitleCatalog::refreshDirectories(u64 id)
     mGeneration++;
 }
 
-SDL_Texture* TitleCatalog::iconFor(u64 id)
+Texture* TitleCatalog::iconFor(u64 id)
 {
     return mIcons.get(id);
 }
@@ -296,7 +296,7 @@ bool TitleCatalog::filteredFavorite(AccountUid uid, saveTypeFilter_t filter, int
     return favorite(uid, (int)raw);
 }
 
-SDL_Texture* TitleCatalog::filteredSmallIcon(AccountUid uid, saveTypeFilter_t filter, size_t i)
+Texture* TitleCatalog::filteredSmallIcon(AccountUid uid, saveTypeFilter_t filter, size_t i)
 {
     auto it = mTitles.find(uid);
     if (it == mTitles.end())

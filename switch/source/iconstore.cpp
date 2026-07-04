@@ -26,7 +26,7 @@
 
 #include "iconstore.hpp"
 
-static constexpr SDL_Color systemSavePalette[] = {
+static constexpr Color systemSavePalette[] = {
     {45, 80, 140, 255},  // muted blue
     {120, 50, 130, 255}, // muted purple
     {40, 110, 100, 255}, // teal
@@ -42,9 +42,9 @@ void TextureIconStore::loadIcon(u64 id, NsApplicationControlData* nsacd, size_t 
     if (mIcons.find(id) != mIcons.end()) {
         return;
     }
-    SDL_Texture* texture;
+    Texture* texture = nullptr;
     SDLH_LoadImage(&texture, nsacd->icon, iconSize);
-    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_NONE);
+    SDLH_SetTextureOpaque(texture);
     mIcons.insert({id, texture});
 }
 
@@ -53,15 +53,15 @@ void TextureIconStore::loadPlaceholderIcon(u64 id)
     if (mIcons.find(id) != mIcons.end()) {
         return;
     }
-    SDL_Color color      = systemSavePalette[id % (sizeof(systemSavePalette) / sizeof(systemSavePalette[0]))];
-    SDL_Texture* texture = nullptr;
+    Color color      = systemSavePalette[id % (sizeof(systemSavePalette) / sizeof(systemSavePalette[0]))];
+    Texture* texture = nullptr;
     SDLH_CreateColorTexture(&texture, 256, 256, color);
     if (texture) {
         mIcons.insert({id, texture});
     }
 }
 
-SDL_Texture* TextureIconStore::get(u64 id) const
+Texture* TextureIconStore::get(u64 id) const
 {
     auto it = mIcons.find(id);
     return it != mIcons.end() ? it->second : NULL;
@@ -70,7 +70,7 @@ SDL_Texture* TextureIconStore::get(u64 id) const
 void TextureIconStore::clear(void)
 {
     for (auto& i : mIcons) {
-        SDL_DestroyTexture(i.second);
+        SDLH_DestroyTexture(i.second);
     }
     mIcons.clear();
 }

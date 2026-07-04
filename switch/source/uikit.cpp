@@ -74,8 +74,8 @@ void UiKit::drawHintCircle(int x, int y, const std::string& glyph)
 {
     // The system glyph already includes the circle; draw it centered in the
     // 20px-tall hint slot rather than compositing a circle + letter by hand.
-    const std::string g  = buttonGlyph(glyph);
-    SDL_Color glyphColor = COLOR_TEXT;
+    const std::string g = buttonGlyph(glyph);
+    Color glyphColor    = COLOR_TEXT;
     u32 tw, th;
     SDLH_GetTextDimensions(HINT_GLYPH_SIZE, g.c_str(), &tw, &th);
     SDLH_DrawText(HINT_GLYPH_SIZE, x, y + (20 - (int)th) / 2, glyphColor, g.c_str());
@@ -119,11 +119,11 @@ void UiKit::drawToggle(int x, int y, bool on)
 
     // Rectangular track + square knob (radius 0) to match the squared controls
     // elsewhere in the redesign.
-    SDL_Color track = on ? COLOR_ACCENT : COLOR_FILL3;
+    Color track = on ? COLOR_ACCENT : COLOR_FILL3;
     Shapes::fillRound(x, y, w, h, 0, track);
 
-    SDL_Color knobColor = on ? COLOR_WHITE : FC_MakeColor(142, 142, 153, 255);
-    int knobX           = on ? x + w - inset - knob : x + inset;
+    Color knobColor = on ? COLOR_WHITE : makeColor(142, 142, 153, 255);
+    int knobX       = on ? x + w - inset - knob : x + inset;
     Shapes::fillRound(knobX, y + inset, knob, knob, 0, knobColor);
 }
 
@@ -159,7 +159,7 @@ int UiKit::drawSegmented(int x, int y, const std::vector<std::string>& options, 
         if (active) {
             Shapes::fillRound(cx, cy, segW, segH, 0, COLOR_ACCENT);
         }
-        SDL_Color textColor = active ? COLOR_WHITE : COLOR_TEXT2;
+        Color textColor = active ? COLOR_WHITE : COLOR_TEXT2;
         SDLH_DrawText(13, cx + 20, cy + (segH - (int)th) / 2, textColor, options[i].c_str());
         cx += segW;
     }

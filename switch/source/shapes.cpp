@@ -49,7 +49,7 @@ namespace {
     }
 }
 
-void Shapes::fillRound(int x, int y, int w, int h, int r, SDL_Color color)
+void Shapes::fillRound(int x, int y, int w, int h, int r, Color color)
 {
     r = clampRadius(w, h, r);
     if (r <= 0) {
@@ -70,7 +70,7 @@ void Shapes::fillRound(int x, int y, int w, int h, int r, SDL_Color color)
     }
 }
 
-void Shapes::cardRound(int x, int y, int w, int h, int r, SDL_Color fillColor, SDL_Color borderColor, int borderPx)
+void Shapes::cardRound(int x, int y, int w, int h, int r, Color fillColor, Color borderColor, int borderPx)
 {
     r = clampRadius(w, h, r);
     if (borderPx <= 0 || w <= 2 * borderPx || h <= 2 * borderPx) {
@@ -81,7 +81,7 @@ void Shapes::cardRound(int x, int y, int w, int h, int r, SDL_Color fillColor, S
     fillRound(x + borderPx, y + borderPx, w - 2 * borderPx, h - 2 * borderPx, std::max(0, r - borderPx), fillColor);
 }
 
-void Shapes::strokeRound(int x, int y, int w, int h, int r, int thickness, SDL_Color color)
+void Shapes::strokeRound(int x, int y, int w, int h, int r, int thickness, Color color)
 {
     r = clampRadius(w, h, r);
     if (thickness <= 0 || w <= 0 || h <= 0)
@@ -117,7 +117,7 @@ void Shapes::strokeRound(int x, int y, int w, int h, int r, int thickness, SDL_C
     }
 }
 
-void Shapes::focusRing(int x, int y, int w, int h, int r, SDL_Color accent)
+void Shapes::focusRing(int x, int y, int w, int h, int r, Color accent)
 {
     // The pre-redesign selector: a square outline hugging the element that
     // breathes accent -> white on a ~1s triangle wave. Preferred over a rounded

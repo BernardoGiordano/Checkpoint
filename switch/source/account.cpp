@@ -25,6 +25,7 @@
  */
 
 #include "account.hpp"
+#include "main.hpp"
 
 static std::map<AccountUid, User> mUsers;
 
@@ -36,7 +37,7 @@ Result Account::init(void)
 void Account::exit(void)
 {
     for (auto& value : mUsers) {
-        SDL_DestroyTexture(value.second.icon);
+        SDLH_DestroyTexture(value.second.icon);
     }
     accountExit();
 }
@@ -99,7 +100,7 @@ std::string Account::shortName(AccountUid id)
     return got->second.shortName;
 }
 
-SDL_Texture* Account::icon(AccountUid id)
+Texture* Account::icon(AccountUid id)
 {
     std::map<AccountUid, User>::const_iterator got = mUsers.find(id);
     if (got == mUsers.end()) {

@@ -33,18 +33,18 @@
 #include <string>
 #include <switch.h>
 
-class Clickable : public IClickable<SDL_Color> {
+class Clickable : public IClickable<Color> {
 public:
-    Clickable(int x, int y, u16 w, u16 h, SDL_Color colorBg, SDL_Color colorText, const std::string& message, bool centered)
+    Clickable(int x, int y, u16 w, u16 h, Color colorBg, Color colorText, const std::string& message, bool centered)
         : IClickable(x, y, w, h, colorBg, colorText, message, centered)
     {
     }
     virtual ~Clickable() = default;
 
-    void draw(float font, SDL_Color overlay) override;
+    void draw(float font, Color overlay) override;
     bool held(void) override;
     bool released(void) override;
-    void drawOutline(SDL_Color color) override;
+    void drawOutline(Color color) override;
 };
 
 #endif

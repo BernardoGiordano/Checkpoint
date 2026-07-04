@@ -25,6 +25,7 @@
  */
 
 #include "title.hpp"
+#include "logging.hpp"
 
 void Title::init(u8 saveDataType, u64 id, AccountUid userID, u8 spaceId, const std::string& name, const std::string& author,
     const std::string& userName, const std::string& path)

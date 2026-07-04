@@ -30,6 +30,7 @@
 #include "SDLHelper.hpp"
 #include <switch.h>
 #include <unordered_map>
+#include <vector>
 
 // Injectable seam through which TitleProbe stores a title's icon without knowing
 // whether it ends up as a real SDL texture or is discarded. The producer reports
@@ -55,12 +56,12 @@ public:
     void loadPlaceholderIcon(u64 id) override;
 
     // Texture for title `id`, or NULL when none was loaded.
-    SDL_Texture* get(u64 id) const;
+    Texture* get(u64 id) const;
     // Destroy every owned texture (called on exit).
     void clear(void);
 
 private:
-    std::unordered_map<u64, SDL_Texture*> mIcons;
+    std::unordered_map<u64, Texture*> mIcons;
 };
 
 // Headless adapter: records which ids were asked for, decodes nothing. The

@@ -24,58 +24,30 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef ACCOUNT_HPP
-#define ACCOUNT_HPP
+#ifndef GFXTYPES_HPP
+#define GFXTYPES_HPP
 
-#include "SDLHelper.hpp"
-#include <map>
-#include <string.h>
-#include <string>
 #include <switch.h>
-#include <vector>
 
-#define USER_ICON_SIZE 64
+// Backend-neutral graphics types. UI code (screens, Shapes, UiKit, stores)
+// speaks only these; the active rendering backend (SDLHelper today, deko3d
+// during the migration — see HANDOFF-deko3d.md) owns the conversion to its
+// native representations.
 
-namespace std {
-    template <>
-    struct hash<AccountUid> {
-        size_t operator()(const AccountUid& a) const { return ((hash<u64>()(a.uid[0]) ^ (hash<u64>()(a.uid[1]) << 1)) >> 1); }
-    };
-}
-
-inline bool operator==(const AccountUid& x, const AccountUid& y)
-{
-    return x.uid[0] == y.uid[0] && x.uid[1] == y.uid[1];
-}
-
-inline bool operator==(const AccountUid& x, u64 y)
-{
-    return x.uid[0] == y && x.uid[1] == y;
-}
-
-inline bool operator<(const AccountUid& x, const AccountUid& y)
-{
-    if (x.uid[0] != y.uid[0])
-        return x.uid[0] < y.uid[0];
-    return x.uid[1] < y.uid[1];
-}
-
-struct User {
-    AccountUid id;
-    std::string name;
-    std::string shortName;
-    Texture* icon;
+struct Color {
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 a;
 };
 
-namespace Account {
-    Result init(void);
-    void exit(void);
-
-    std::vector<AccountUid> ids(void);
-    Texture* icon(AccountUid id);
-    AccountUid selectAccount(void);
-    std::string username(AccountUid id);
-    std::string shortName(AccountUid id);
+constexpr Color makeColor(u8 r, u8 g, u8 b, u8 a)
+{
+    return Color{r, g, b, a};
 }
 
-#endif
+// Opaque texture handle; the definition lives in the active backend. Created
+// by SDLH_LoadImage/SDLH_CreateColorTexture, released with SDLH_DestroyTexture.
+struct Texture;
+
+#endif // GFXTYPES_HPP

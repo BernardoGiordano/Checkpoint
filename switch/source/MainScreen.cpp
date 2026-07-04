@@ -27,6 +27,7 @@
 #include "MainScreen.hpp"
 #include "SettingsScreen.hpp"
 #include "backupsize.hpp"
+#include "main.hpp"
 #include "savedatasource.hpp"
 #include "savekind.hpp"
 #include "shapes.hpp"
@@ -110,7 +111,7 @@ namespace {
     void drawRailItem(int y, const SaveKind& kind, bool active)
     {
         Shapes::fillRound(RAIL_ITEM_X, y, RAIL_ITEM, RAIL_ITEM, 0, active ? COLOR_ACCENT : COLOR_FILL1);
-        SDL_Color fg = active ? COLOR_WHITE : COLOR_TEXT2;
+        Color fg = active ? COLOR_WHITE : COLOR_TEXT2;
 
         u32 gw, gh, lw, lh;
         SDLH_GetTextDimensions(16, kind.buttonLabel, &gw, &gh);
@@ -138,7 +139,7 @@ namespace {
         }
 
         const std::string glyph = UiKit::buttonGlyph(key);
-        const SDL_Color fg      = filled ? COLOR_WHITE : COLOR_TEXT;
+        const Color fg          = filled ? COLOR_WHITE : COLOR_TEXT;
 
         u32 lw, lh, gw, gh;
         SDLH_GetTextDimensions(16, label.c_str(), &lw, &lh);
@@ -275,7 +276,7 @@ void MainScreen::draw() const
     for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
         const int tx = selectorX(k), ty = selectorY(k);
         Shapes::cardRound(tx, ty, TILE, TILE, 14, COLOR_TILE, COLOR_STROKE2, 1);
-        SDL_Texture* smallIcon = TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k);
+        Texture* smallIcon = TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k);
         if (smallIcon != NULL) {
             SDLH_DrawImageScale(smallIcon, tx, ty, TILE, TILE);
         }
@@ -284,7 +285,7 @@ void MainScreen::draw() const
         const bool favorite = TitleCatalog::get().filteredFavorite(g_currentUId, mSaveTypeFilter, k);
         if (selected || favorite) {
             const int bx = tx + TILE - 8 - 24, by = ty + 8;
-            Shapes::fillRound(bx, by, 24, 24, 8, selected ? COLOR_ACCENT : FC_MakeColor(16, 16, 20, 191));
+            Shapes::fillRound(bx, by, 24, 24, 8, selected ? COLOR_ACCENT : makeColor(16, 16, 20, 191));
             if (selected && SDLH_CheckboxTexture() != NULL) {
                 SDLH_DrawImageScale(SDLH_CheckboxTexture(), bx + 4, by + 4, 16, 16);
             }

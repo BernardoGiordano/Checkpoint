@@ -37,7 +37,7 @@
 // FsSaveDataType it filters to.
 //
 // Per-kind *colour* does not exist: every filter button shares the same
-// active/inactive colour pair, so SaveKind carries no SDL_Color and no SDL
+// active/inactive colour pair, so SaveKind carries no Color and no SDL
 // dependency. SaveDataSource is the IO-side sibling, keyed by FsSaveDataType:
 // "how to draw a kind" (SaveKind) vs "how to open a kind" (SaveDataSource).
 struct SaveKind {

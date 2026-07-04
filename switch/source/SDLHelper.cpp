@@ -25,11 +25,27 @@
  */
 
 #include "SDLHelper.hpp"
+#include "SDL_FontCache.h"
+#include "logging.hpp"
+#include "main.hpp"
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <unordered_map>
+
+// SDL implementation of the opaque backend handle declared in gfxtypes.hpp.
+struct Texture {
+    SDL_Texture* handle;
+};
+
+static SDL_Color toSDL(Color c)
+{
+    return SDL_Color{c.r, c.g, c.b, c.a};
+}
 
 static SDL_Window* s_window;
 static SDL_Renderer* s_renderer;
-static SDL_Texture* s_star;
-static SDL_Texture* s_checkbox;
+static Texture* s_star;
+static Texture* s_checkbox;
 
 static PlFontData fontData, fontExtData;
 
@@ -70,7 +86,7 @@ static FC_Font* getFontFromMap(int size)
         const int px = scaledFontPx(size);
         FC_Font* f   = FC_CreateFont();
         FC_LoadFont_RW(f, s_renderer, SDL_RWFromMem((void*)fontData.address, fontData.size),
-            SDL_RWFromMem((void*)fontExtData.address, fontExtData.size), 1, px, COLOR_BLACK, TTF_STYLE_NORMAL);
+            SDL_RWFromMem((void*)fontExtData.address, fontExtData.size), 1, px, toSDL(COLOR_BLACK), TTF_STYLE_NORMAL);
         // Register CJK/Korean fallback fonts for this size
         for (int i = 0; i < s_numFallbacks; i++) {
             TTF_Font* fallback = TTF_OpenFontRW(SDL_RWFromMem(s_fallbackData[i].address, s_fallbackData[i].size), 1, px);
@@ -96,7 +112,7 @@ static FC_Font* getMonoFontFromMap(int size)
         // FC_LoadFont_RW requires a valid "ext" font too; Space Mono has no
         // separate glyph-extension file, so it is passed as its own ext.
         FC_LoadFont_RW(f, s_renderer, SDL_RWFromMem(s_monoData.address, s_monoData.size), SDL_RWFromMem(s_monoData.address, s_monoData.size), 1,
-            scaledFontPx(size), COLOR_BLACK, TTF_STYLE_NORMAL);
+            scaledFontPx(size), toSDL(COLOR_BLACK), TTF_STYLE_NORMAL);
         s_monoFonts.insert({size, f});
         return f;
     }
@@ -136,7 +152,7 @@ bool SDLH_Init(void)
     SDLH_LoadImage(&s_checkbox, "romfs:/checkbox.png");
     // The multi-select badge is accent-filled with a white check on top (new
     // design); the checkbox asset itself is a black-on-transparent checkmark.
-    SDL_SetTextureColorMod(s_checkbox, COLOR_WHITE.r, COLOR_WHITE.g, COLOR_WHITE.b);
+    SDL_SetTextureColorMod(s_checkbox->handle, COLOR_WHITE.r, COLOR_WHITE.g, COLOR_WHITE.b);
 
     plGetSharedFontByType(&fontData, PlSharedFontType_Standard);
     plGetSharedFontByType(&fontExtData, PlSharedFontType_NintendoExt);
@@ -199,15 +215,15 @@ void SDLH_Exit(void)
     free(s_monoData.address);
 
     TTF_Quit();
-    SDL_DestroyTexture(s_star);
-    SDL_DestroyTexture(s_checkbox);
+    SDLH_DestroyTexture(s_star);
+    SDLH_DestroyTexture(s_checkbox);
     IMG_Quit();
     SDL_DestroyRenderer(s_renderer);
     SDL_DestroyWindow(s_window);
     SDL_Quit();
 }
 
-void SDLH_ClearScreen(SDL_Color color)
+void SDLH_ClearScreen(Color color)
 {
     SDL_SetRenderDrawColor(s_renderer, color.r, color.g, color.b, color.a);
     SDL_RenderClear(s_renderer);
@@ -219,7 +235,7 @@ void SDLH_Render(void)
     SDL_RenderPresent(s_renderer);
 }
 
-void SDLH_DrawRect(int x, int y, int w, int h, SDL_Color color)
+void SDLH_DrawRect(int x, int y, int w, int h, Color color)
 {
     SDL_Rect rect;
     rect.x = x;
@@ -230,21 +246,21 @@ void SDLH_DrawRect(int x, int y, int w, int h, SDL_Color color)
     SDL_RenderFillRect(s_renderer, &rect);
 }
 
-void SDLH_DrawText(int size, int x, int y, SDL_Color color, const char* text, FontFamily family)
+void SDLH_DrawText(int size, int x, int y, Color color, const char* text, FontFamily family)
 {
-    FC_DrawColor(fontFor(size, family), s_renderer, x, y, color, "%s", text);
+    FC_DrawColor(fontFor(size, family), s_renderer, x, y, toSDL(color), "%s", text);
 }
 
-void SDLH_DrawTextBox(int size, int x, int y, SDL_Color color, int max, const char* text, FontFamily family)
+void SDLH_DrawTextBox(int size, int x, int y, Color color, int max, const char* text, FontFamily family)
 {
     u32 h;
     FC_Font* font = fontFor(size, family);
     SDLH_GetTextDimensions(size, text, NULL, &h, family);
     FC_Rect rect = FC_MakeRect(x, y, max, h);
-    FC_DrawBoxColor(font, s_renderer, rect, color, "%s", text);
+    FC_DrawBoxColor(font, s_renderer, rect, toSDL(color), "%s", text);
 }
 
-void SDLH_LoadImage(SDL_Texture** texture, char* path)
+void SDLH_LoadImage(Texture** texture, const char* path)
 {
     SDL_Surface* loaded_surface = NULL;
     loaded_surface              = IMG_Load(path);
@@ -252,13 +268,16 @@ void SDLH_LoadImage(SDL_Texture** texture, char* path)
     if (loaded_surface) {
         Uint32 colorkey = SDL_MapRGB(loaded_surface->format, 0, 0, 0);
         SDL_SetColorKey(loaded_surface, SDL_TRUE, colorkey);
-        *texture = SDL_CreateTextureFromSurface(s_renderer, loaded_surface);
+        SDL_Texture* handle = SDL_CreateTextureFromSurface(s_renderer, loaded_surface);
+        if (handle) {
+            *texture = new Texture{handle};
+        }
     }
 
     SDL_FreeSurface(loaded_surface);
 }
 
-void SDLH_LoadImage(SDL_Texture** texture, u8* buff, size_t size)
+void SDLH_LoadImage(Texture** texture, u8* buff, size_t size)
 {
     SDL_Surface* loaded_surface = NULL;
     loaded_surface              = IMG_Load_RW(SDL_RWFromMem(buff, size), 1);
@@ -266,29 +285,53 @@ void SDLH_LoadImage(SDL_Texture** texture, u8* buff, size_t size)
     if (loaded_surface) {
         Uint32 colorkey = SDL_MapRGB(loaded_surface->format, 0, 0, 0);
         SDL_SetColorKey(loaded_surface, SDL_TRUE, colorkey);
-        *texture = SDL_CreateTextureFromSurface(s_renderer, loaded_surface);
+        SDL_Texture* handle = SDL_CreateTextureFromSurface(s_renderer, loaded_surface);
+        if (handle) {
+            *texture = new Texture{handle};
+        }
     }
 
     SDL_FreeSurface(loaded_surface);
 }
 
-void SDLH_DrawImage(SDL_Texture* texture, int x, int y)
+void SDLH_DrawImage(Texture* texture, int x, int y)
 {
+    if (!texture) {
+        return;
+    }
     SDL_Rect position;
     position.x = x;
     position.y = y;
-    SDL_QueryTexture(texture, NULL, NULL, &position.w, &position.h);
-    SDL_RenderCopy(s_renderer, texture, NULL, &position);
+    SDL_QueryTexture(texture->handle, NULL, NULL, &position.w, &position.h);
+    SDL_RenderCopy(s_renderer, texture->handle, NULL, &position);
 }
 
-void SDLH_DrawImageScale(SDL_Texture* texture, int x, int y, int w, int h)
+void SDLH_DrawImageScale(Texture* texture, int x, int y, int w, int h)
 {
+    if (!texture) {
+        return;
+    }
     SDL_Rect position;
     position.x = x;
     position.y = y;
     position.w = w;
     position.h = h;
-    SDL_RenderCopy(s_renderer, texture, NULL, &position);
+    SDL_RenderCopy(s_renderer, texture->handle, NULL, &position);
+}
+
+void SDLH_SetTextureOpaque(Texture* texture)
+{
+    if (texture) {
+        SDL_SetTextureBlendMode(texture->handle, SDL_BLENDMODE_NONE);
+    }
+}
+
+void SDLH_DestroyTexture(Texture* texture)
+{
+    if (texture) {
+        SDL_DestroyTexture(texture->handle);
+        delete texture;
+    }
 }
 
 void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family)
@@ -300,17 +343,17 @@ void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFami
         *h = FC_GetHeight(f, "%s", text);
 }
 
-SDL_Texture* SDLH_StarTexture(void)
+Texture* SDLH_StarTexture(void)
 {
     return s_star;
 }
 
-SDL_Texture* SDLH_CheckboxTexture(void)
+Texture* SDLH_CheckboxTexture(void)
 {
     return s_checkbox;
 }
 
-void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
+void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color)
 {
     SDLH_DrawRect(x - size, y - size, w + 2 * size, size, color); // top
     SDLH_DrawRect(x - size, y, size, h, color);                   // left
@@ -318,10 +361,10 @@ void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
     SDLH_DrawRect(x - size, y + h, w + 2 * size, size, color);    // bottom
 }
 
-void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
+void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color)
 {
     float highlight_multiplier = fmax(0.0, fabs(fmod(g_currentTime, 1.0) - 0.5) / 0.5);
-    color                      = FC_MakeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier,
+    color                      = makeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier,
                              color.b + (255 - color.b) * highlight_multiplier, 255);
     drawOutline(x, y, w, h, size, color);
 }
@@ -362,12 +405,15 @@ std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize, Fon
     return newtext;
 }
 
-void SDLH_CreateColorTexture(SDL_Texture** texture, int w, int h, SDL_Color color)
+void SDLH_CreateColorTexture(Texture** texture, int w, int h, Color color)
 {
     SDL_Surface* surface = SDL_CreateRGBSurface(0, w, h, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
     if (surface) {
         SDL_FillRect(surface, NULL, SDL_MapRGBA(surface->format, color.r, color.g, color.b, color.a));
-        *texture = SDL_CreateTextureFromSurface(s_renderer, surface);
+        SDL_Texture* handle = SDL_CreateTextureFromSurface(s_renderer, surface);
+        if (handle) {
+            *texture = new Texture{handle};
+        }
         SDL_FreeSurface(surface);
     }
 }

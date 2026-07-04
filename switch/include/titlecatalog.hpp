@@ -63,10 +63,10 @@ public:
     void getFilteredTitle(Title& dst, AccountUid uid, saveTypeFilter_t filter, size_t i);
     size_t filteredToRawIndex(AccountUid uid, saveTypeFilter_t filter, size_t filteredIdx);
     bool filteredFavorite(AccountUid uid, saveTypeFilter_t filter, int i);
-    SDL_Texture* filteredSmallIcon(AccountUid uid, saveTypeFilter_t filter, size_t i);
+    Texture* filteredSmallIcon(AccountUid uid, saveTypeFilter_t filter, size_t i);
 
     // Big icon of the title with this id (the selected title in the side panel).
-    SDL_Texture* iconFor(u64 id);
+    Texture* iconFor(u64 id);
 
     // Sort the lists in place; rotate to the next sort mode and re-sort. Both
     // persist the new mode through Configuration::setSortMode so the grid's

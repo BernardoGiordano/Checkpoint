@@ -35,7 +35,7 @@
 #include <switch.h>
 #include <vector>
 
-class Scrollable : public IScrollable<SDL_Color> {
+class Scrollable : public IScrollable<Color> {
 public:
     Scrollable(u32 x, u32 y, u32 w, u32 h, size_t visibleEntries) : IScrollable(x, y, w, h, visibleEntries), mHid(visibleEntries, 1) {}
 
@@ -43,7 +43,7 @@ public:
 
     void draw(bool condition = false) override;
     void setIndex(size_t i);
-    void push_back(SDL_Color color, SDL_Color colorMessage, const std::string& message, bool selected) override;
+    void push_back(Color color, Color colorMessage, const std::string& message, bool selected) override;
     void resetIndex(void) override;
     void updateSelection(void) override;
     void text(size_t i, const std::string& v);

@@ -25,6 +25,7 @@
  */
 
 #include "pksmbridge.hpp"
+#include "logging.hpp"
 #include "titlecatalog.hpp"
 
 static bool isLGPE(u64 id)

@@ -622,7 +622,7 @@ void SettingsScreen::draw(void) const
     {
         // Live config-path label, flashing to `success` briefly on a write.
         std::string path = "saved to sdmc:" + Configuration::getInstance().BASEPATH;
-        SDL_Color c      = mFlashTimer > 0 ? COLOR_SUCCESS : COLOR_TEXT3;
+        Color c          = mFlashTimer > 0 ? COLOR_SUCCESS : COLOR_TEXT3;
         u32 tw, th;
         SDLH_GetTextDimensions(12, path.c_str(), &tw, &th);
         SDLH_DrawText(12, 1256 - (int)tw, (TOPBAR_H - (int)th) / 2, c, path.c_str());
@@ -639,7 +639,7 @@ void SettingsScreen::draw(void) const
         if (active) {
             Shapes::fillRound(CAT_X, y, CAT_W, CAT_ITEM_H, 0, COLOR_ACCENT);
         }
-        SDL_Color fg = active ? COLOR_WHITE : COLOR_TEXT2;
+        Color fg = active ? COLOR_WHITE : COLOR_TEXT2;
         u32 lw, lh;
         SDLH_GetTextDimensions(15, kCategoryLabels[i], &lw, &lh);
         SDLH_DrawText(15, CAT_X + 16, y + (CAT_ITEM_H - (int)lh) / 2, fg, kCategoryLabels[i]);
