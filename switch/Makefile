@@ -44,6 +44,7 @@ FORMATINCLUDES	:=	include ../common
 INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/ftp
 EXEFS_SRC		:=	exefs_src
 ROMFS			:=	romfs
+SHADERS			:=	shaders
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -168,16 +169,31 @@ endif
 .PHONY: $(BUILD) clean all format
 
 #---------------------------------------------------------------------------------
+# GLSL -> dksh (deko3d shaders), compiled into romfs before the main build.
+ROMFS_SHADERS		:=	$(ROMFS)/shaders
+GLSLFILES			:=	$(wildcard $(SHADERS)/*_vsh.glsl) $(wildcard $(SHADERS)/*_fsh.glsl)
+DKSHFILES			:=	$(patsubst $(SHADERS)/%.glsl,$(ROMFS_SHADERS)/%.dksh,$(GLSLFILES))
+
 all: $(BUILD)
 
-$(BUILD):
+$(BUILD): $(DKSHFILES)
 	@[ -d $@ ] || mkdir -p $@ $(BUILD) $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+
+$(ROMFS_SHADERS)/%_vsh.dksh: $(SHADERS)/%_vsh.glsl
+	@mkdir -p $(ROMFS_SHADERS)
+	@echo {vert} $(notdir $<)
+	@uam -s vert -o $@ $<
+
+$(ROMFS_SHADERS)/%_fsh.dksh: $(SHADERS)/%_fsh.glsl
+	@mkdir -p $(ROMFS_SHADERS)
+	@echo {frag} $(notdir $<)
+	@uam -s frag -o $@ $<
 
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTDIR)
+	@rm -fr $(BUILD) $(OUTDIR) $(ROMFS_SHADERS)
 #---------------------------------------------------------------------------------
 format:
 	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp) $(wildcard $(dir)/*.tcc)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))
