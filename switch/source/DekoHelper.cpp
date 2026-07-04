@@ -28,8 +28,13 @@
 // Phase 2: batched GPU quad renderer — rects, images and color textures draw
 // through one pipeline (pos+uv+color vertices, texture x vertex color, a 1x1
 // white texture makes solid rects the same path). Image *decode* still goes
-// through SDL_image (decode -> RGBA -> GPU upload); text is stubbed until
-// phase 3. Build with GFX_BACKEND=deko3d; the SDL backend still ships.
+// through SDL_image (decode -> RGBA -> GPU upload).
+// Phase 3: text — FreeType over the shared system fonts (Standard +
+// NintendoExt + CJK fallbacks) and the bundled Space Mono, with per-glyph
+// R8 atlas pages drawn through the same quad batcher. The metrics reproduce
+// the vendored SDL_FontCache exactly (cell-width pen advance, line height =
+// ceil(TTF height * 1.2)) so layouts match the SDL backend pixel-for-pixel.
+// Build with GFX_BACKEND=deko3d; the SDL backend still ships.
 
 #ifdef GFX_BACKEND_DEKO3D
 
@@ -42,9 +47,14 @@
 #include "main.hpp"
 #include <SDL2/SDL_image.h>
 #include <array>
+#include <cmath>
 #include <deko3d.hpp>
 #include <optional>
+#include <unordered_map>
 #include <vector>
+
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 namespace {
     constexpr unsigned FB_NUM  = 2;
@@ -117,6 +127,69 @@ namespace {
     Texture* s_white    = nullptr; // 1x1 white: solid rects sample this
     Texture* s_star     = nullptr;
     Texture* s_checkbox = nullptr;
+
+    // ---- text (phase 3) ----
+
+    constexpr u32 ATLAS_SIZE = 1024; // R8 glyph atlas page dimension
+    constexpr u32 ATLAS_PAD  = 1;    // gap between glyphs (linear filtering bleed)
+
+    // 26.6 fixed-point rounding, same macros SDL_ttf uses for glyph metrics.
+    constexpr int ftFloor(long x)
+    {
+        return (int)(x >> 6);
+    }
+    constexpr int ftCeil(long x)
+    {
+        return (int)(((x + 63) & -64) / 64);
+    }
+
+    // One rasterized glyph in an atlas page. Draw semantics mirror
+    // SDL_FontCache: the bitmap is placed at (penX + bmpDX, lineTopY + bmpDY)
+    // and the pen advances by cellW (the width of the single-char surface
+    // SDL_ttf would have rendered — NOT the FreeType advance).
+    struct GlyphData {
+        u16 page; // index into s_atlasPages; 0xFFFF = no bitmap (space/empty)
+        u16 atlasX, atlasY;
+        u16 bmpW, bmpH;
+        s16 bmpDX, bmpDY;
+        u16 cellW;
+    };
+    constexpr u16 GLYPH_NO_PAGE = 0xFFFF;
+
+    // Shelf-packed R8 atlas page, shared by all font instances.
+    struct AtlasPage {
+        CMemPool::Handle mem;
+        dk::Image image;
+        u32 descId;
+        u32 shelfX, shelfY, shelfH;
+    };
+
+    // Per-(family, requested size) state; glyphs rasterize lazily on first use.
+    struct FontInstance {
+        int px       = 0; // scaledFontPx(requested size)
+        int fcHeight = 0; // FC line height: ceil((ascent - descent + 1) * 1.2)
+        std::unordered_map<u32, GlyphData> glyphs;
+    };
+
+    FT_Library s_ftLibrary = nullptr;
+    // Sans face chain, FC lookup order: [0] Standard, [1] NintendoExt (PUA
+    // codepoints only), [2..] CJK/Korean fallbacks.
+    FT_Face s_sansFaces[6] = {};
+    int s_numSansFaces     = 0;
+    FT_Face s_monoFace     = nullptr;
+    void* s_monoData       = nullptr; // romfs Space Mono, kept alive for the face
+
+    std::unordered_map<int, FontInstance> s_sansInstances;
+    std::unordered_map<int, FontInstance> s_monoInstances;
+    std::vector<AtlasPage> s_atlasPages;
+
+    // Same ~1.2x size bump as the SDL backend (see SDLHelper.cpp): both
+    // drawing and measurement resolve through it, so it is invisible to
+    // callers.
+    constexpr int scaledFontPx(int size)
+    {
+        return (size * 6 + 2) / 5;
+    }
 }
 
 // deko3d implementation of the opaque backend handle declared in gfxtypes.hpp.
@@ -143,21 +216,30 @@ static void oneShotCommands(F&& record)
     cmdMem.destroy();
 }
 
+// Grab a free image-descriptor slot; returns false (with a log) when the
+// table is exhausted.
+static bool allocDescId(u32& descId)
+{
+    if (!s_freeDescIds.empty()) {
+        descId = s_freeDescIds.back();
+        s_freeDescIds.pop_back();
+        return true;
+    }
+    if (s_nextDescId < MAX_IMAGES) {
+        descId = s_nextDescId++;
+        return true;
+    }
+    Logging::error("deko3d: image descriptor table exhausted ({} slots).", MAX_IMAGES);
+    return false;
+}
+
 // Upload a tightly-packed RGBA8 pixel buffer into a new GPU texture and
 // publish its image descriptor. Returns nullptr (with a log) when the
 // descriptor table is exhausted.
 static Texture* createTexture(const u8* pixels, u32 width, u32 height)
 {
     u32 descId;
-    if (!s_freeDescIds.empty()) {
-        descId = s_freeDescIds.back();
-        s_freeDescIds.pop_back();
-    }
-    else if (s_nextDescId < MAX_IMAGES) {
-        descId = s_nextDescId++;
-    }
-    else {
-        Logging::error("deko3d: image descriptor table exhausted ({} slots).", MAX_IMAGES);
+    if (!allocDescId(descId)) {
         return nullptr;
     }
 
@@ -306,7 +388,64 @@ bool SDLH_Init(void)
         free(cbPixels);
     }
 
-    g_username_dotsize = 0; // text is stubbed until phase 3
+    // ---- fonts (phase 3) ----
+    if (FT_Init_FreeType(&s_ftLibrary) != 0) {
+        Logging::error("deko3d: FT_Init_FreeType failed.");
+        return false;
+    }
+
+    PlFontData fd;
+    if (R_SUCCEEDED(plGetSharedFontByType(&fd, PlSharedFontType_Standard)) && fd.address) {
+        FT_New_Memory_Face(s_ftLibrary, (const FT_Byte*)fd.address, fd.size, 0, &s_sansFaces[0]);
+    }
+    if (R_SUCCEEDED(plGetSharedFontByType(&fd, PlSharedFontType_NintendoExt)) && fd.address) {
+        FT_New_Memory_Face(s_ftLibrary, (const FT_Byte*)fd.address, fd.size, 0, &s_sansFaces[1]);
+    }
+    if (!s_sansFaces[0]) {
+        Logging::error("deko3d: failed to open the shared system font.");
+    }
+    s_numSansFaces                                    = 2;
+    static constexpr PlSharedFontType fallbackTypes[] = {
+        PlSharedFontType_KO,
+        PlSharedFontType_ChineseSimplified,
+        PlSharedFontType_ExtChineseSimplified,
+        PlSharedFontType_ChineseTraditional,
+    };
+    for (PlSharedFontType type : fallbackTypes) {
+        if (s_numSansFaces >= (int)(sizeof(s_sansFaces) / sizeof(s_sansFaces[0]))) {
+            break;
+        }
+        if (R_SUCCEEDED(plGetSharedFontByType(&fd, type)) && fd.address &&
+            FT_New_Memory_Face(s_ftLibrary, (const FT_Byte*)fd.address, fd.size, 0, &s_sansFaces[s_numSansFaces]) == 0) {
+            s_numSansFaces++;
+        }
+    }
+
+    // Bundled monospace font: the file buffer must outlive the face
+    // (FT_New_Memory_Face does not copy), so it is kept in s_monoData.
+    FILE* monoFile = fopen("romfs:/fonts/SpaceMono-Regular.ttf", "rb");
+    if (monoFile != NULL) {
+        fseek(monoFile, 0, SEEK_END);
+        long monoSize = ftell(monoFile);
+        fseek(monoFile, 0, SEEK_SET);
+        if (monoSize > 0) {
+            void* buf = malloc((size_t)monoSize);
+            if (buf != NULL && fread(buf, 1, (size_t)monoSize, monoFile) == (size_t)monoSize &&
+                FT_New_Memory_Face(s_ftLibrary, (const FT_Byte*)buf, monoSize, 0, &s_monoFace) == 0) {
+                s_monoData = buf;
+            }
+            else {
+                free(buf);
+                s_monoFace = nullptr;
+            }
+        }
+        fclose(monoFile);
+    }
+    if (!s_monoFace) {
+        Logging::error("Failed to load romfs:/fonts/SpaceMono-Regular.ttf, falling back to the system font.");
+    }
+
+    SDLH_GetTextDimensions(13, "...", &g_username_dotsize, NULL);
 
     return true;
 }
@@ -319,6 +458,29 @@ void SDLH_Exit(void)
     SDLH_DestroyTexture(s_checkbox);
     SDLH_DestroyTexture(s_star);
     SDLH_DestroyTexture(s_white);
+    for (AtlasPage& page : s_atlasPages) {
+        page.mem.destroy();
+        s_freeDescIds.push_back(page.descId);
+    }
+    s_atlasPages.clear();
+    s_sansInstances.clear();
+    s_monoInstances.clear();
+    for (FT_Face& face : s_sansFaces) {
+        if (face) {
+            FT_Done_Face(face);
+            face = nullptr;
+        }
+    }
+    if (s_monoFace) {
+        FT_Done_Face(s_monoFace);
+        s_monoFace = nullptr;
+    }
+    if (s_ftLibrary) {
+        FT_Done_FreeType(s_ftLibrary);
+        s_ftLibrary = nullptr;
+    }
+    free(s_monoData);
+    s_monoData = nullptr;
     s_swapchain.destroy();
     for (unsigned i = 0; i < FB_NUM; i++) {
         s_fbMem[i].destroy();
@@ -401,13 +563,13 @@ static void flushBatch(void)
     s_batchStart = s_vtxCount;
 }
 
-static void pushQuad(const Texture* texture, float x, float y, float w, float h, float u0, float v0, float u1, float v1, Color color)
+static void pushQuadRaw(u32 descId, bool opaque, float x, float y, float w, float h, float u0, float v0, float u1, float v1, Color color)
 {
     frameBegin();
-    if (texture->descId != s_batchDescId || texture->opaque != s_batchOpaque) {
+    if (descId != s_batchDescId || opaque != s_batchOpaque) {
         flushBatch();
-        s_batchDescId = texture->descId;
-        s_batchOpaque = texture->opaque;
+        s_batchDescId = descId;
+        s_batchOpaque = opaque;
     }
     if (s_vtxCount + VERTS_PER_QUAD > MAX_VERTS) {
         if (!s_vtxOverflowed) {
@@ -428,6 +590,11 @@ static void pushQuad(const Texture* texture, float x, float y, float w, float h,
     out[4]      = br;
     out[5]      = tr;
     s_vtxCount += VERTS_PER_QUAD;
+}
+
+static void pushQuad(const Texture* texture, float x, float y, float w, float h, float u0, float v0, float u1, float v1, Color color)
+{
+    pushQuadRaw(texture->descId, texture->opaque, x, y, w, h, u0, v0, u1, v1, color);
 }
 
 void SDLH_ClearScreen(Color color)
@@ -456,16 +623,369 @@ void SDLH_DrawRect(int x, int y, int w, int h, Color color)
     pushQuad(s_white, x, y, w, h, 0.0f, 0.0f, 1.0f, 1.0f, color);
 }
 
-void SDLH_DrawText(int, int, int, Color, const char*, FontFamily) {}
+// ---- text engine (phase 3) ----
 
-void SDLH_DrawTextBox(int, int, int, Color, int, const char*, FontFamily) {}
-
-void SDLH_GetTextDimensions(int, const char*, u32* w, u32* h, FontFamily)
+// Decode one UTF-8 sequence and advance *ptr past it. Truncated/invalid
+// trail bytes end the sequence early (garbage in, garbage codepoint out —
+// same tolerance as SDL_FontCache's decoder).
+static u32 decodeUTF8(const char** ptr)
 {
-    if (w != NULL)
-        *w = 0;
-    if (h != NULL)
-        *h = 0;
+    const u8* p = (const u8*)*ptr;
+    u32 cp      = *p;
+    int len     = 1;
+    if (cp >= 0xF0) {
+        cp &= 0x07;
+        len = 4;
+    }
+    else if (cp >= 0xE0) {
+        cp &= 0x0F;
+        len = 3;
+    }
+    else if (cp >= 0xC0) {
+        cp &= 0x1F;
+        len = 2;
+    }
+    for (int i = 1; i < len; i++) {
+        if ((p[i] & 0xC0) != 0x80) {
+            len = i;
+            break;
+        }
+        cp = (cp << 6) | (p[i] & 0x3F);
+    }
+    *ptr += len;
+    return cp;
+}
+
+// Open a fresh zero-filled R8 atlas page. Its descriptor swizzles to
+// (1, 1, 1, R), so the existing "texture x vertex color" fragment shader
+// turns coverage into colored text with no second pipeline.
+static bool newAtlasPage(void)
+{
+    u32 descId;
+    if (!allocDescId(descId)) {
+        return false;
+    }
+
+    AtlasPage page{};
+    dk::ImageLayout layout;
+    dk::ImageLayoutMaker{s_device}.setFlags(0).setFormat(DkImageFormat_R8_Unorm).setDimensions(ATLAS_SIZE, ATLAS_SIZE).initialize(layout);
+    page.mem = s_poolImages->allocate(layout.getSize(), layout.getAlignment());
+    page.image.initialize(layout, page.mem.getMemBlock(), page.mem.getOffset());
+    page.descId = descId;
+
+    CMemPool::Handle scratch = s_poolData->allocate(ATLAS_SIZE * ATLAS_SIZE, DK_IMAGE_LINEAR_STRIDE_ALIGNMENT);
+    memset(scratch.getCpuAddr(), 0, ATLAS_SIZE * ATLAS_SIZE);
+
+    dk::ImageView view{page.image};
+    view.setSwizzle(DkImageSwizzle_One, DkImageSwizzle_One, DkImageSwizzle_One, DkImageSwizzle_Red);
+    dk::ImageDescriptor descriptor;
+    descriptor.initialize(view);
+
+    oneShotCommands([&](dk::CmdBuf& cmd) {
+        dk::ImageView copyView{page.image};
+        cmd.copyBufferToImage({scratch.getGpuAddr()}, copyView, {0, 0, 0, ATLAS_SIZE, ATLAS_SIZE, 1});
+        s_imageDescs->update(cmd, descId, descriptor);
+    });
+    scratch.destroy();
+
+    s_atlasPages.push_back(page);
+    return true;
+}
+
+// Shelf-pack a w x h glyph into the newest atlas page (older pages are
+// closed), opening a new page when full.
+static bool atlasAlloc(u32 w, u32 h, u32& pageIdx, u32& outX, u32& outY)
+{
+    if (w > ATLAS_SIZE || h > ATLAS_SIZE) {
+        return false;
+    }
+    AtlasPage* page = s_atlasPages.empty() ? nullptr : &s_atlasPages.back();
+    if (page) {
+        if (page->shelfX + w > ATLAS_SIZE) {
+            page->shelfY += page->shelfH + ATLAS_PAD;
+            page->shelfX = 0;
+            page->shelfH = 0;
+        }
+        if (page->shelfY + h > ATLAS_SIZE) {
+            page = nullptr;
+        }
+    }
+    if (!page) {
+        if (!newAtlasPage()) {
+            return false;
+        }
+        page = &s_atlasPages.back();
+    }
+    pageIdx = (u32)(s_atlasPages.size() - 1);
+    outX    = page->shelfX;
+    outY    = page->shelfY;
+    page->shelfX += w + ATLAS_PAD;
+    page->shelfH = std::max(page->shelfH, h);
+    return true;
+}
+
+// FC's face choice: NintendoExt owns the PUA block (button glyphs), then the
+// Standard font, then the CJK fallbacks (BMP only, as in SDL_FontCache);
+// anything still missing renders Standard's .notdef box.
+static FT_Face chooseSansFace(u32 cp)
+{
+    if (cp >= 0xE000 && cp <= 0xF8FF && s_sansFaces[1]) {
+        return s_sansFaces[1];
+    }
+    if (s_sansFaces[0] && FT_Get_Char_Index(s_sansFaces[0], cp) != 0) {
+        return s_sansFaces[0];
+    }
+    if (cp <= 0xFFFF) {
+        for (int i = 2; i < s_numSansFaces; i++) {
+            if (s_sansFaces[i] && FT_Get_Char_Index(s_sansFaces[i], cp) != 0) {
+                return s_sansFaces[i];
+            }
+        }
+    }
+    return s_sansFaces[0];
+}
+
+// Rasterize (or fetch) one glyph. Cell metrics replicate what SDL_ttf's
+// single-char render + SDL_FontCache produced: cellW is the surface width
+// (max(maxx, advance) - min(minx, 0)) and the pen advances by it; the bitmap
+// sits at (max(minx,0), ascent - bearingY) inside the cell.
+static const GlyphData* getGlyph(FontFamily family, FontInstance& inst, u32 cp)
+{
+    auto it = inst.glyphs.find(cp);
+    if (it != inst.glyphs.end()) {
+        return &it->second;
+    }
+
+    if (cp == '\t') {
+        const GlyphData* space = getGlyph(family, inst, ' ');
+        if (!space) {
+            return nullptr;
+        }
+        GlyphData tab{};
+        tab.page  = GLYPH_NO_PAGE;
+        tab.cellW = (u16)(4 * space->cellW); // FC: tab = 4 space cells
+        return &inst.glyphs.emplace(cp, tab).first->second;
+    }
+
+    FT_Face face = family == FontFamily::Mono ? s_monoFace : chooseSansFace(cp);
+    if (!face || FT_Set_Char_Size(face, 0, inst.px << 6, 0, 0) != 0 || FT_Load_Char(face, cp, FT_LOAD_RENDER) != 0) {
+        return nullptr;
+    }
+
+    FT_GlyphSlot slot         = face->glyph;
+    const FT_Glyph_Metrics& m = slot->metrics;
+    const int ascent          = ftCeil(FT_MulFix(face->ascender, face->size->metrics.y_scale));
+    const int minx            = ftFloor(m.horiBearingX);
+    const int maxx            = ftCeil(m.horiBearingX + m.width);
+    const int advance         = ftCeil(m.horiAdvance);
+
+    GlyphData glyph{};
+    glyph.page  = GLYPH_NO_PAGE;
+    glyph.cellW = (u16)std::max(0, std::max(maxx, advance) - std::min(minx, 0));
+    glyph.bmpW  = (u16)slot->bitmap.width;
+    glyph.bmpH  = (u16)slot->bitmap.rows;
+    glyph.bmpDX = (s16)std::max(minx, 0);
+    glyph.bmpDY = (s16)(ascent - ftFloor(m.horiBearingY));
+
+    if (glyph.bmpW > 0 && glyph.bmpH > 0 && slot->bitmap.buffer && slot->bitmap.pitch > 0) {
+        u32 pageIdx, ax, ay;
+        if (atlasAlloc(glyph.bmpW, glyph.bmpH, pageIdx, ax, ay)) {
+            CMemPool::Handle scratch = s_poolData->allocate((size_t)glyph.bmpW * glyph.bmpH, 64);
+            u8* dst                  = (u8*)scratch.getCpuAddr();
+            for (u32 row = 0; row < glyph.bmpH; row++) {
+                memcpy(dst + (size_t)row * glyph.bmpW, slot->bitmap.buffer + (size_t)row * slot->bitmap.pitch, glyph.bmpW);
+            }
+            dk::ImageView view{s_atlasPages[pageIdx].image};
+            oneShotCommands([&](dk::CmdBuf& cmd) { cmd.copyBufferToImage({scratch.getGpuAddr()}, view, {ax, ay, 0, glyph.bmpW, glyph.bmpH, 1}); });
+            scratch.destroy();
+            glyph.page   = (u16)pageIdx;
+            glyph.atlasX = (u16)ax;
+            glyph.atlasY = (u16)ay;
+        }
+    }
+    return &inst.glyphs.emplace(cp, glyph).first->second;
+}
+
+// Per-(family, size) instance, created lazily. Mono degrades to Sans when the
+// romfs font failed to load, exactly like the SDL backend — hence family is
+// taken by reference and normalized.
+static FontInstance& instanceFor(FontFamily& family, int size)
+{
+    if (family == FontFamily::Mono && !s_monoFace) {
+        family = FontFamily::Sans;
+    }
+    auto& map = family == FontFamily::Mono ? s_monoInstances : s_sansInstances;
+    auto it   = map.find(size);
+    if (it != map.end()) {
+        return it->second;
+    }
+
+    FontInstance inst;
+    inst.px         = scaledFontPx(size);
+    FT_Face primary = family == FontFamily::Mono ? s_monoFace : s_sansFaces[0];
+    int ttfHeight   = 0;
+    if (primary && FT_Set_Char_Size(primary, 0, inst.px << 6, 0, 0) == 0) {
+        const long yScale = primary->size->metrics.y_scale;
+        const int ascent  = ftCeil(FT_MulFix(primary->ascender, yScale));
+        const int descent = ftCeil(FT_MulFix(primary->descender, yScale));
+        ttfHeight         = ascent - descent + 1; // TTF_FontHeight
+    }
+    inst.fcHeight = (int)std::ceil(ttfHeight * 1.2); // FC's inflated line height
+    return map.emplace(size, std::move(inst)).first->second;
+}
+
+// FC_GetWidth: sum of cell widths per line, maximum across lines; glyphs that
+// fail to rasterize count as a space.
+static u32 measureWidth(FontFamily family, FontInstance& inst, const char* text)
+{
+    u32 width = 0, best = 0;
+    for (const char* c = text; *c != '\0';) {
+        if (*c == '\n') {
+            best  = std::max(best, width);
+            width = 0;
+            c++;
+            continue;
+        }
+        const u32 cp       = decodeUTF8(&c);
+        const GlyphData* g = getGlyph(family, inst, cp);
+        if (!g) {
+            g = getGlyph(family, inst, ' ');
+        }
+        if (g) {
+            width += g->cellW;
+        }
+    }
+    return std::max(best, width);
+}
+
+// FC_RenderLeft: pen starts at (x, y = line top); '\n' returns to x and drops
+// one fcHeight; spaces advance without drawing.
+static void drawString(FontFamily family, FontInstance& inst, int x, int y, Color color, const char* text)
+{
+    float destX = x;
+    float destY = y;
+    for (const char* c = text; *c != '\0';) {
+        if (*c == '\n') {
+            destX = x;
+            destY += inst.fcHeight;
+            c++;
+            continue;
+        }
+        const u32 cp       = decodeUTF8(&c);
+        const GlyphData* g = getGlyph(family, inst, cp);
+        if (!g) {
+            g = getGlyph(family, inst, ' ');
+            if (!g) {
+                continue;
+            }
+        }
+        if (cp != ' ' && g->page != GLYPH_NO_PAGE) {
+            const AtlasPage& page = s_atlasPages[g->page];
+            const float u0        = g->atlasX / (float)ATLAS_SIZE;
+            const float v0        = g->atlasY / (float)ATLAS_SIZE;
+            const float u1        = (g->atlasX + g->bmpW) / (float)ATLAS_SIZE;
+            const float v1        = (g->atlasY + g->bmpH) / (float)ATLAS_SIZE;
+            pushQuadRaw(page.descId, false, destX + g->bmpDX, destY + g->bmpDY, g->bmpW, g->bmpH, u0, v0, u1, v1, color);
+        }
+        destX += g->cellW;
+    }
+}
+
+// FC_GetBufferFitToColumn: split on '\n', then greedily pack words (space
+// runs stay glued to the preceding word); the first word of a line never
+// wraps, so an overlong word overflows its line rather than breaking.
+static std::vector<std::string> wrapText(FontFamily family, FontInstance& inst, const char* text, int width)
+{
+    std::vector<std::string> out;
+    const std::string all(text);
+    size_t start = 0;
+    while (true) {
+        const size_t nl        = all.find('\n', start);
+        const std::string line = all.substr(start, nl == std::string::npos ? std::string::npos : nl - start);
+        if (width <= 0 || (int)measureWidth(family, inst, line.c_str()) <= width) {
+            out.push_back(line);
+        }
+        else {
+            // (word, trailing spaces) pairs
+            std::vector<std::pair<std::string, std::string>> words;
+            size_t i = 0;
+            while (i < line.size()) {
+                size_t ws              = line.find(' ', i);
+                const std::string word = line.substr(i, ws == std::string::npos ? std::string::npos : ws - i);
+                std::string spaces;
+                if (ws == std::string::npos) {
+                    i = line.size();
+                }
+                else {
+                    size_t j = ws;
+                    while (j < line.size() && line[j] == ' ') {
+                        j++;
+                    }
+                    spaces = line.substr(ws, j - ws);
+                    i      = j;
+                }
+                words.emplace_back(word, spaces);
+            }
+            std::string current = words.empty() ? std::string() : words[0].first + words[0].second;
+            for (size_t k = 1; k < words.size(); k++) {
+                const std::string candidate = current + words[k].first;
+                if ((int)measureWidth(family, inst, candidate.c_str()) > width) {
+                    out.push_back(current);
+                    current = words[k].first + words[k].second;
+                }
+                else {
+                    current = candidate + words[k].second;
+                }
+            }
+            out.push_back(current);
+        }
+        if (nl == std::string::npos) {
+            break;
+        }
+        start = nl + 1;
+    }
+    return out;
+}
+
+void SDLH_DrawText(int size, int x, int y, Color color, const char* text, FontFamily family)
+{
+    if (!text) {
+        return;
+    }
+    FontInstance& inst = instanceFor(family, size);
+    drawString(family, inst, x, y, color, text);
+}
+
+// NOTE: FC_DrawBox also clipped to the box rect; the single caller (button
+// labels in clickable.cpp) never overflows it, so clipping is not replicated.
+void SDLH_DrawTextBox(int size, int x, int y, Color color, int max, const char* text, FontFamily family)
+{
+    if (!text) {
+        return;
+    }
+    FontInstance& inst = instanceFor(family, size);
+    int destY          = y;
+    for (const std::string& line : wrapText(family, inst, text, max)) {
+        drawString(family, inst, x, destY, color, line.c_str());
+        destY += inst.fcHeight;
+    }
+}
+
+void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family)
+{
+    FontInstance& inst = instanceFor(family, size);
+    if (w != NULL) {
+        *w = text ? measureWidth(family, inst, text) : 0;
+    }
+    if (h != NULL) {
+        u32 lines = 1;
+        for (const char* c = text; c && *c != '\0'; c++) {
+            if (*c == '\n') {
+                lines++;
+            }
+        }
+        *h = text ? (u32)inst.fcHeight * lines : 0; // FC_GetHeight: fcHeight x lines
+    }
 }
 
 void SDLH_LoadImage(Texture** texture, const char* path)
