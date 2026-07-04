@@ -32,6 +32,19 @@
 // channel that IoOutcome carries; the exact cause is in the log.
 static const Result RES_COPY_FAILED = MAKERESULT(Module_Libnx, LibnxError_IoError);
 
+// Safety margin kept free in the save journal when committing partway through a
+// file: commits themselves consume journal space for filesystem metadata.
+static constexpr u64 JOURNAL_COMMIT_MARGIN = 0x100000;
+
+// Extra headroom added on top of the backup size when extending the save data
+// partition, so the restored save has room to breathe.
+static constexpr u64 SAVE_EXTEND_MARGIN = 0x500000;
+
+// Save data filesystems allocate in 16 KiB clusters: every restored file wastes
+// up to one cluster of slack, which adds up for backups with thousands of small
+// files (see #541).
+static constexpr u64 SAVE_CLUSTER_SIZE = 0x4000;
+
 bool io::fileExists(const std::string& path)
 {
     struct stat buffer;
@@ -82,7 +95,7 @@ u64 io::directorySize(const std::string& path)
     return total;
 }
 
-Result io::copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink)
+Result io::copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink, u64 commitWriteLimit)
 {
     FILE* src = fopen(srcPath.c_str(), "rb");
     if (src == NULL) {
@@ -107,6 +120,12 @@ Result io::copyFile(const std::string& srcPath, const std::string& dstPath, Prog
     size_t slashpos = srcPath.rfind("/");
     sink.startFile(srcPath.substr(slashpos + 1, srcPath.length() - slashpos - 1), sz);
 
+    // The save journal only holds `commitWriteLimit` bytes of uncommitted writes:
+    // a single file bigger than that must be committed partway through, or the
+    // commit at the end would overflow the journal and fail (#443, #297).
+    const bool toSaveDevice = dstPath.rfind("save:/", 0) == 0;
+    u64 journalPending      = 0;
+
     while (offset < sz) {
         if (sink.cancelled()) {
             break;
@@ -118,18 +137,44 @@ Result io::copyFile(const std::string& srcPath, const std::string& dstPath, Prog
             res = RES_COPY_FAILED;
             break;
         }
+
+        // commit *before* the write that would cross the limit, while the
+        // journal still has room for it
+        if (toSaveDevice && commitWriteLimit > 0 && journalPending + count > commitWriteLimit && journalPending > 0) {
+            if (fclose(dst) != 0) {
+                Logging::error("fclose before mid-file commit failed for {} with errno {}. Aborting copy.", dstPath, errno);
+                dst = NULL;
+                res = RES_COPY_FAILED;
+                break;
+            }
+            res = fsdevCommitDevice("save");
+            if (R_FAILED(res)) {
+                Logging::error("Mid-file commit of {} at offset {}/{} failed with result 0x{:08X}. Aborting copy.", dstPath, offset, sz, (u32)res);
+                dst = NULL;
+                break;
+            }
+            dst = fopen(dstPath.c_str(), "ab");
+            if (dst == NULL) {
+                Logging::error("Failed to reopen {} after mid-file commit with errno {}. Aborting copy.", dstPath, errno);
+                res = RES_COPY_FAILED;
+                break;
+            }
+            journalPending = 0;
+        }
+
         if (fwrite((char*)buf, 1, count, dst) != count) {
             Logging::error("fwrite failed for file {} at offset {}/{} with errno {}. Aborting copy.", dstPath, offset, sz, errno);
             res = RES_COPY_FAILED;
             break;
         }
         offset += count;
+        journalPending += count;
         sink.advanceBytes(offset);
     }
 
     delete[] buf;
     fclose(src);
-    if (fclose(dst) != 0 && R_SUCCEEDED(res)) {
+    if (dst != NULL && fclose(dst) != 0 && R_SUCCEEDED(res)) {
         Logging::error("fclose failed for file {} with errno {}.", dstPath, errno);
         res = RES_COPY_FAILED;
     }
@@ -137,7 +182,7 @@ Result io::copyFile(const std::string& srcPath, const std::string& dstPath, Prog
 
     // commit each file to the save, so a huge restore doesn't accumulate one
     // giant uncommitted journal
-    if (R_SUCCEEDED(res) && dstPath.rfind("save:/", 0) == 0) {
+    if (R_SUCCEEDED(res) && toSaveDevice) {
         res = fsdevCommitDevice("save");
         if (R_FAILED(res)) {
             Logging::error("Failed to commit file {} to the save archive with result 0x{:08X}.", dstPath, (u32)res);
@@ -146,7 +191,7 @@ Result io::copyFile(const std::string& srcPath, const std::string& dstPath, Prog
     return res;
 }
 
-Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink)
+Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink, u64 commitWriteLimit)
 {
     Result res = 0;
     Directory items(srcPath);
@@ -168,11 +213,11 @@ Result io::copyDirectory(const std::string& srcPath, const std::string& dstPath,
             if (R_SUCCEEDED(res)) {
                 newsrc += "/";
                 newdst += "/";
-                res = io::copyDirectory(newsrc, newdst, sink);
+                res = io::copyDirectory(newsrc, newdst, sink, commitWriteLimit);
             }
         }
         else {
-            res = io::copyFile(newsrc, newdst, sink);
+            res = io::copyFile(newsrc, newdst, sink, commitWriteLimit);
         }
     }
 
@@ -273,7 +318,44 @@ io::IoOutcome io::restore(Title& title, const std::string& srcPath, ProgressSink
     Logging::info("Started restore of {}. Title id: 0x{:016X}; User id: 0x{:X}{:X}.", title.name().c_str(), title.id(), title.userId().uid[1],
         title.userId().uid[0]);
 
-    Result res = SaveDataSource(title.saveDataType()).mount(title);
+    // The extra data holds the *actual* current data/journal sizes of this save
+    // container (the NACP only has the initial ones, stale once a save has been
+    // extended). Read before mounting: extending requires the save unmounted.
+    u64 journalSize               = 0;
+    FsSaveDataExtraData extraData = {};
+    Result res =
+        fsReadSaveDataFileSystemExtraDataBySaveDataSpaceId(&extraData, sizeof(extraData), (FsSaveDataSpaceId)title.saveDataSpaceId(), title.saveId());
+    if (R_SUCCEEDED(res)) {
+        journalSize = (u64)extraData.journal_size;
+    }
+    else {
+        Logging::error("Failed to read save extra data with result 0x{:08X}. Title id: 0x{:016X}. "
+                       "Restoring without journal awareness.",
+            (u32)res, title.id());
+    }
+
+    const size_t fileCount = io::countFiles(srcPath);
+
+    // If the backup doesn't fit the currently allocated save data, grow the
+    // partition before restoring: a save can outgrow its original allocation as
+    // the game adds content (#443, #297, #541).
+    if (journalSize > 0 && title.saveDataType() != FsSaveDataType_System) {
+        const u64 backupSize = io::directorySize(srcPath);
+        // each file wastes up to one allocation cluster on the save filesystem
+        const u64 neededSize = backupSize + (u64)fileCount * SAVE_CLUSTER_SIZE + SAVE_EXTEND_MARGIN;
+        if (neededSize > (u64)extraData.data_size) {
+            res = fsExtendSaveDataFileSystem((FsSaveDataSpaceId)title.saveDataSpaceId(), title.saveId(), (s64)neededSize, (s64)journalSize);
+            if (R_FAILED(res)) {
+                Logging::error("Failed to extend save data from {} to {} bytes with result 0x{:08X}. Title id: 0x{:016X}.", (u64)extraData.data_size,
+                    neededSize, (u32)res, title.id());
+                return {false, res, io::BackupStage::OpenArchive};
+            }
+            Logging::info("Extended save data of title 0x{:016X} from {} to {} bytes to fit backup of {} bytes.", title.id(),
+                (u64)extraData.data_size, neededSize, backupSize);
+        }
+    }
+
+    res = SaveDataSource(title.saveDataType()).mount(title);
     if (R_FAILED(res)) {
         Logging::error("Failed to mount filesystem during restore with result 0x{:08X}. Title id: 0x{:016X}.", res, title.id());
         return {false, res, io::BackupStage::OpenArchive};
@@ -288,8 +370,21 @@ io::IoOutcome io::restore(Title& title, const std::string& srcPath, ProgressSink
         return {false, res, io::BackupStage::DeleteDst};
     }
 
-    sink.begin("Restore", io::countFiles(srcPath));
-    res = io::copyDirectory(srcPath, dstPath, sink);
+    // commit the wipe on its own, so the deletions don't eat into the journal
+    // budget of the copies that follow
+    res = fsdevCommitDevice("save");
+    if (R_FAILED(res)) {
+        FileSystem::unmountDevice();
+        Logging::error("Failed to commit save wipe with result 0x{:08X}.", (u32)res);
+        return {false, res, io::BackupStage::Commit};
+    }
+
+    // leave a margin under the journal size so in-flight writes never overflow
+    // it; 0 (extra data unavailable) disables mid-file commits
+    const u64 commitWriteLimit = journalSize > JOURNAL_COMMIT_MARGIN ? journalSize - JOURNAL_COMMIT_MARGIN : journalSize;
+
+    sink.begin("Restore", fileCount);
+    res = io::copyDirectory(srcPath, dstPath, sink, commitWriteLimit);
     sink.end();
     if (R_FAILED(res)) {
         FileSystem::unmountDevice();

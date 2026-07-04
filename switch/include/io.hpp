@@ -66,8 +66,11 @@ namespace io {
     size_t countFiles(const std::string& path);
     // Total byte size of everything under `path`, recursively (0 if unreadable).
     u64 directorySize(const std::string& path);
-    Result copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
-    Result copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink);
+    // `commitWriteLimit` > 0 caps the bytes written to the save device between
+    // commits, so large writes never overflow the save's journal; 0 disables
+    // mid-file commits (writes to sdmc: are unaffected either way).
+    Result copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink, u64 commitWriteLimit = 0);
+    Result copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink, u64 commitWriteLimit = 0);
     Result createDirectory(const std::string& path);
     Result deleteFolderRecursively(const std::string& path);
     bool directoryExists(const std::string& path);
