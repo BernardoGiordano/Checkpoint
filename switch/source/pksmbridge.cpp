@@ -112,7 +112,7 @@ std::tuple<bool, Result, std::string> sendToPKSMBrigde(size_t index, AccountUid 
     while (total < size) {
         size_t tosend = size - total > chunk ? chunk : size - total;
         int n         = send(fd, data + total, tosend, 0);
-        if (n == -1) {
+        if (n <= 0) { // -1 error, 0 peer closed early: stop, don't spin
             break;
         }
         total += n;
@@ -157,6 +157,14 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUi
 
     int fdconn;
     int addrlen = sizeof(servaddr);
+    // Don't block the UI thread forever waiting for PKSM: bail after 30s.
+    struct pollfd pfd = {fd, POLLIN, 0};
+    int pr            = poll(&pfd, 1, 30000);
+    if (pr <= 0) {
+        close(fd);
+        Logging::error("Socket accept poll timed out or failed: {}.", pr);
+        return std::make_tuple(false, pr == 0 ? -1 : errno, "Timed out waiting for connection.");
+    }
     if ((fdconn = accept(fd, (struct sockaddr*)&servaddr, (socklen_t*)&addrlen)) < 0) {
         close(fd);
         Logging::error("Socket accept failed: {}.", fdconn);
@@ -197,7 +205,7 @@ std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUi
     while (total < size) {
         size_t torecv = size - total > chunk ? chunk : size - total;
         int n         = recv(fdconn, data + total, torecv, 0);
-        if (n == -1) {
+        if (n <= 0) { // -1 error, 0 peer closed early: stop, don't spin
             break;
         }
         total += n;

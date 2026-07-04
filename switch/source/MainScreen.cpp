@@ -497,6 +497,20 @@ void MainScreen::update(const InputState& input)
 
 void MainScreen::updateSelector(const InputState& input)
 {
+    // Hiding/showing titles from Settings bumps the catalog generation and can
+    // shrink the filtered list under the cursor. Clamp the index and drop the
+    // selection before anything reads them, so backup/restore can't fall back to
+    // targeting the first (wrong) title.
+    const u32 gen = TitleCatalog::get().generation();
+    if (gen != mLastGeneration) {
+        mLastGeneration    = gen;
+        const size_t count = TitleCatalog::get().getFilteredTitleCount(g_currentUId, mSaveTypeFilter);
+        if (hid.fullIndex() >= count) {
+            this->index(TITLES, count > 0 ? count - 1 : 0);
+        }
+        MS::clearSelectedEntries();
+    }
+
     if (!g_backupScrollEnabled) {
         size_t count    = TitleCatalog::get().getFilteredTitleCount(g_currentUId, mSaveTypeFilter);
         size_t oldindex = hid.index();
@@ -640,6 +654,7 @@ void MainScreen::handleEvents(const InputState& input)
                 ;
             this->index(TITLES, 0);
             this->index(CELLS, 0);
+            MS::clearSelectedEntries(); // filtered indices belong to the old account
             setPKSMBridgeFlag(false);
         }
     }
@@ -664,6 +679,7 @@ void MainScreen::handleEvents(const InputState& input)
             ;
         this->index(TITLES, 0);
         this->index(CELLS, 0);
+        MS::clearSelectedEntries(); // filtered indices belong to the old account
         setPKSMBridgeFlag(false);
     }
 
@@ -693,13 +709,19 @@ void MainScreen::handleEvents(const InputState& input)
             }
             else {
                 if (getPKSMBridgeFlag()) {
-                    auto result = recvFromPKSMBridge(rawIndex(), g_currentUId, this->index(CELLS));
-                    if (std::get<0>(result)) {
-                        currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
-                    }
-                    else {
-                        currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
-                    }
+                    // Receiving overwrites the save: confirm first, like the R-press path.
+                    currentOverlay = std::make_shared<YesNoOverlay>(
+                        *this, "Receive save from PKSM?",
+                        [this]() {
+                            auto result = recvFromPKSMBridge(rawIndex(), g_currentUId, this->index(CELLS));
+                            if (std::get<0>(result)) {
+                                currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
+                            }
+                            else {
+                                currentOverlay = std::make_shared<ErrorOverlay>(*this, std::get<1>(result), std::get<2>(result));
+                            }
+                        },
+                        [this]() { this->removeOverlay(); });
                 }
                 else {
                     currentOverlay = std::make_shared<YesNoOverlay>(
@@ -752,6 +774,9 @@ void MainScreen::handleEvents(const InputState& input)
             }
         }
         else {
+            // Re-sort reorders every filtered index; a stale selection would
+            // batch the wrong titles, so drop it.
+            MS::clearSelectedEntries();
             TitleCatalog::get().rotateSortMode();
         }
     }

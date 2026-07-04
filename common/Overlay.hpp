@@ -28,6 +28,7 @@
 #define OVERLAY_HPP
 
 #include "Screen.hpp"
+#include <functional>
 #include <memory>
 
 class Overlay {
@@ -43,6 +44,18 @@ public:
 #endif
 
 protected:
+    // Dismiss this overlay, then run cb. `me` is the only shared_ptr keeping the
+    // overlay alive, and cb often raises a follow-up overlay (reassigning `me`)
+    // or captures state that outlives us; copying cb to the stack and resetting
+    // first makes destroying *this mid-callback safe. Touch no member after this.
+    void dismissThen(std::function<void()> cb)
+    {
+        auto fn = std::move(cb);
+        me.reset();
+        if (fn)
+            fn();
+    }
+
     Screen& screen;
     std::shared_ptr<Overlay>& me;
 };

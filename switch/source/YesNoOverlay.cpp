@@ -66,10 +66,13 @@ void YesNoOverlay::update(const InputState& input)
 
     const u64 kDown = input.kDown;
 
+    // Dismiss before running the callback: the yes/no lambdas reassign
+    // currentOverlay (the only owner of this overlay), which would otherwise
+    // destroy the std::function mid-call. dismissThen copies it to the stack.
     if (buttonYes->released() || ((kDown & HidNpadButton_A) && hid.index() == 0)) {
-        yesFunc();
+        dismissThen(yesFunc);
     }
     else if (buttonNo->released() || (kDown & HidNpadButton_B) || ((kDown & HidNpadButton_A) && hid.index() == 1)) {
-        noFunc();
+        dismissThen(noFunc);
     }
 }

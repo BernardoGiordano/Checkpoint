@@ -26,6 +26,7 @@
 
 #include "titlecatalog.hpp"
 #include "configuration.hpp"
+#include "logging.hpp"
 #include "savekind.hpp"
 #include "sortmode.hpp"
 #include "titleprobe.hpp"
@@ -279,7 +280,14 @@ size_t TitleCatalog::filteredToRawIndex(AccountUid uid, saveTypeFilter_t filter,
     if (it == mFilterIndex.end())
         return 0;
     const auto& bucket = it->second[(size_t)filter];
-    return filteredIdx < bucket.size() ? bucket[filteredIdx] : 0;
+    if (filteredIdx >= bucket.size()) {
+        // Out-of-range means a stale cursor (e.g. a title was hidden). Callers
+        // clamp on generation() changes; log so a fall-through to title 0 is
+        // never silent rather than silently retargeting the operation.
+        Logging::error("filteredToRawIndex: stale index {} (bucket size {}), falling back to 0.", filteredIdx, bucket.size());
+        return 0;
+    }
+    return bucket[filteredIdx];
 }
 
 bool TitleCatalog::filteredFavorite(AccountUid uid, saveTypeFilter_t filter, int i)

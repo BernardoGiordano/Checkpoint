@@ -79,6 +79,9 @@ private:
     bool sidebarExitFrame            = false;
     int sidebarCursor                = 0;
     saveTypeFilter_t mSaveTypeFilter = FILTER_SAVES;
+    // Last catalog generation the selector reconciled against; a bump means
+    // titles were hidden/shown and the cursor/selection must be clamped.
+    u32 mLastGeneration = 0;
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
     std::unique_ptr<BackupList> backupList;
     std::unique_ptr<Clickable> buttonBackup, buttonRestore;

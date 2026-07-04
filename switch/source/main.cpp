@@ -36,9 +36,16 @@ extern "C" {
 
 static void networkLoop(void)
 {
-    while (appletMainLoop() && !g_shouldExitNetworkLoop) {
+    // Driven purely by the exit flag: appletMainLoop() belongs to the main
+    // thread (calling it here can eat exit/focus applet events).
+    while (!g_shouldExitNetworkLoop) {
         if (g_ftpAvailable && Configuration::getInstance().isFTPEnabled()) {
             ftp_loop();
+        }
+        else {
+            // FTP off (the default): don't busy-spin a core for the app's
+            // lifetime; wake ~10x/s to re-check the flag and the toggle.
+            svcSleepThread(100'000'000ULL); // 100 ms
         }
     }
 }
