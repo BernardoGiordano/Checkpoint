@@ -47,7 +47,7 @@ constexpr Color makeColor(u8 r, u8 g, u8 b, u8 a)
 }
 
 // Opaque texture handle; the definition lives in the active backend. Created
-// by SDLH_LoadImage/SDLH_CreateColorTexture, released with SDLH_DestroyTexture.
+// by Gfx::LoadImage/Gfx::CreateColorTexture, released with Gfx::DestroyTexture.
 struct Texture;
 
 #endif // GFXTYPES_HPP

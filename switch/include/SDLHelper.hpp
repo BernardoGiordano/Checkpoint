@@ -37,31 +37,33 @@
 // IDs, and paths — the shared font has no monospace variant.
 enum class FontFamily { Sans, Mono };
 
-bool SDLH_Init(void);
-void SDLH_Exit(void);
+namespace Gfx {
+    bool Init(void);
+    void Exit(void);
 
-void SDLH_ClearScreen(Color color);
-void SDLH_DrawRect(int x, int y, int w, int h, Color color);
-void SDLH_DrawText(int size, int x, int y, Color color, const char* text, FontFamily family = FontFamily::Sans);
-void SDLH_LoadImage(Texture** texture, const char* path);
-void SDLH_LoadImage(Texture** texture, u8* buff, size_t size);
-void SDLH_DrawImage(Texture* texture, int x, int y);
-void SDLH_DrawImageScale(Texture* texture, int x, int y, int w, int h);
-// Disable alpha blending for `texture` (used for NS title icons, which are
-// opaque JPEGs; SDLH_LoadImage's black colorkey must not punch holes in them).
-void SDLH_SetTextureOpaque(Texture* texture);
-void SDLH_DestroyTexture(Texture* texture);
-// Star (favorite badge) and checkbox (multi-select mark) icon textures.
-// Callers draw their own badge backdrop (Shapes::fillRound) and place these
-// with SDLH_DrawImageScale; neither draws a backdrop of its own. The checkbox
-// texture is tinted white at load time (it is a black-on-transparent checkmark
-// asset).
-Texture* SDLH_StarTexture(void);
-Texture* SDLH_CheckboxTexture(void);
-void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family = FontFamily::Sans);
-void SDLH_DrawTextBox(int size, int x, int y, Color color, int max, const char* text, FontFamily family = FontFamily::Sans);
-void SDLH_Render(void);
-void SDLH_CreateColorTexture(Texture** texture, int w, int h, Color color);
+    void ClearScreen(Color color);
+    void DrawRect(int x, int y, int w, int h, Color color);
+    void DrawText(int size, int x, int y, Color color, const char* text, FontFamily family = FontFamily::Sans);
+    void LoadImage(Texture** texture, const char* path);
+    void LoadImage(Texture** texture, u8* buff, size_t size);
+    void DrawImage(Texture* texture, int x, int y);
+    void DrawImageScale(Texture* texture, int x, int y, int w, int h);
+    // Disable alpha blending for `texture` (used for NS title icons, which are
+    // opaque JPEGs; Gfx::LoadImage's black colorkey must not punch holes in them).
+    void SetTextureOpaque(Texture* texture);
+    void DestroyTexture(Texture* texture);
+    // Star (favorite badge) and checkbox (multi-select mark) icon textures.
+    // Callers draw their own badge backdrop (Shapes::fillRound) and place these
+    // with Gfx::DrawImageScale; neither draws a backdrop of its own. The checkbox
+    // texture is tinted white at load time (it is a black-on-transparent checkmark
+    // asset).
+    Texture* StarTexture(void);
+    Texture* CheckboxTexture(void);
+    void GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family = FontFamily::Sans);
+    void DrawTextBox(int size, int x, int y, Color color, int max, const char* text, FontFamily family = FontFamily::Sans);
+    void Render(void);
+    void CreateColorTexture(Texture** texture, int w, int h, Color color);
+} // namespace Gfx
 
 void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color);
 void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color);

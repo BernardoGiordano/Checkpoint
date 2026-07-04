@@ -53,20 +53,20 @@ void Shapes::fillRound(int x, int y, int w, int h, int r, Color color)
 {
     r = clampRadius(w, h, r);
     if (r <= 0) {
-        SDLH_DrawRect(x, y, w, h, color);
+        Gfx::DrawRect(x, y, w, h, color);
         return;
     }
 
     if (h > 2 * r) {
-        SDLH_DrawRect(x, y + r, w, h - 2 * r, color);
+        Gfx::DrawRect(x, y + r, w, h - 2 * r, color);
     }
     for (int i = 0; i < r; i++) {
         int inset = cornerInset(r, h, i);
         int rowW  = w - 2 * inset;
         if (rowW <= 0)
             continue;
-        SDLH_DrawRect(x + inset, y + i, rowW, 1, color);         // top
-        SDLH_DrawRect(x + inset, y + h - 1 - i, rowW, 1, color); // bottom (mirrored)
+        Gfx::DrawRect(x + inset, y + i, rowW, 1, color);         // top
+        Gfx::DrawRect(x + inset, y + h - 1 - i, rowW, 1, color); // bottom (mirrored)
     }
 }
 
@@ -105,14 +105,14 @@ void Shapes::strokeRound(int x, int y, int w, int h, int r, int thickness, Color
             int innerLeft  = x + ix + innerInset;
             int innerRight = x + ix + iw - innerInset;
             if (innerLeft > outerLeft) {
-                SDLH_DrawRect(outerLeft, y + row, innerLeft - outerLeft, 1, color);
+                Gfx::DrawRect(outerLeft, y + row, innerLeft - outerLeft, 1, color);
             }
             if (outerRight > innerRight) {
-                SDLH_DrawRect(innerRight, y + row, outerRight - innerRight, 1, color);
+                Gfx::DrawRect(innerRight, y + row, outerRight - innerRight, 1, color);
             }
         }
         else {
-            SDLH_DrawRect(outerLeft, y + row, outerRight - outerLeft, 1, color);
+            Gfx::DrawRect(outerLeft, y + row, outerRight - outerLeft, 1, color);
         }
     }
 }

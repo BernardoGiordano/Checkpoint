@@ -33,16 +33,16 @@ YesNoOverlay::YesNoOverlay(
     text    = mtext;
     yesFunc = callbackYes;
     noFunc  = callbackNo;
-    SDLH_GetTextDimensions(28, text.c_str(), &textw, &texth);
+    Gfx::GetTextDimensions(28, text.c_str(), &textw, &texth);
     buttonYes = std::make_unique<Clickable>(322, 462, 316, 56, COLOR_SURFACE, COLOR_TEXT, "Yes", true);
     buttonNo  = std::make_unique<Clickable>(642, 462, 316, 56, COLOR_SURFACE, COLOR_TEXT, "No", true);
 }
 
 void YesNoOverlay::draw(void) const
 {
-    SDLH_DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
-    SDLH_DrawRect(320, 200, 640, 260, COLOR_SURFACE);
-    SDLH_DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), COLOR_TEXT, text.c_str());
+    Gfx::DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
+    Gfx::DrawRect(320, 200, 640, 260, COLOR_SURFACE);
+    Gfx::DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), COLOR_TEXT, text.c_str());
     drawOutline(322, 462, 316, 56, 2, COLOR_TEXT2);
     drawOutline(642, 462, 316, 56, 2, COLOR_TEXT2);
     buttonYes->draw(28, COLOR_ACCENT);

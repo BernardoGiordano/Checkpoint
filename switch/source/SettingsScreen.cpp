@@ -94,7 +94,7 @@ namespace {
     int labelSlotH(void)
     {
         u32 sh;
-        SDLH_GetTextDimensions(11, "Ag", NULL, &sh);
+        Gfx::GetTextDimensions(11, "Ag", NULL, &sh);
         return (int)sh + 8;
     }
 
@@ -512,7 +512,7 @@ void SettingsScreen::switchCategory(int delta)
 int SettingsScreen::logLinesPerPage(void) const
 {
     u32 lh;
-    SDLH_GetTextDimensions(LOG_FONT, "Ag", NULL, &lh, FontFamily::Mono);
+    Gfx::GetTextDimensions(LOG_FONT, "Ag", NULL, &lh, FontFamily::Mono);
     const int lineH = (int)lh + LOG_LINE_GAP;
     const int paneH = UiKit::HINTBAR_Y - ROWS_Y0 - 2 * LOG_PAD;
     return std::max(1, paneH / lineH);
@@ -539,7 +539,7 @@ void SettingsScreen::rebuildLogLines(void)
             std::string glyph = std::string(src, cs);
             std::string cand  = cur + glyph;
             u32 w;
-            SDLH_GetTextDimensions(LOG_FONT, cand.c_str(), &w, NULL, FontFamily::Mono);
+            Gfx::GetTextDimensions(LOG_FONT, cand.c_str(), &w, NULL, FontFamily::Mono);
             if (w > (u32)paneW && !cur.empty()) {
                 mLogLines.push_back(cur);
                 cur = glyph;
@@ -581,56 +581,56 @@ void SettingsScreen::drawLogs(void) const
 
     if (mLogLines.empty()) {
         u32 tw, th;
-        SDLH_GetTextDimensions(13, "No logs yet.", &tw, &th);
-        SDLH_DrawText(13, ROW_X + (ROW_W - (int)tw) / 2, paneY + (paneH - (int)th) / 2, COLOR_TEXT3, "No logs yet.");
+        Gfx::GetTextDimensions(13, "No logs yet.", &tw, &th);
+        Gfx::DrawText(13, ROW_X + (ROW_W - (int)tw) / 2, paneY + (paneH - (int)th) / 2, COLOR_TEXT3, "No logs yet.");
         return;
     }
 
     u32 lh;
-    SDLH_GetTextDimensions(LOG_FONT, "Ag", NULL, &lh, FontFamily::Mono);
+    Gfx::GetTextDimensions(LOG_FONT, "Ag", NULL, &lh, FontFamily::Mono);
     const int lineH = (int)lh + LOG_LINE_GAP;
     const int per   = logLinesPerPage();
 
     int y             = paneY + LOG_PAD;
     const int lastRow = std::min((int)mLogLines.size(), mLogScroll + per);
     for (int i = mLogScroll; i < lastRow; i++) {
-        SDLH_DrawText(LOG_FONT, ROW_X + LOG_PAD, y, COLOR_MONO_VAL, mLogLines[i].c_str(), FontFamily::Mono);
+        Gfx::DrawText(LOG_FONT, ROW_X + LOG_PAD, y, COLOR_MONO_VAL, mLogLines[i].c_str(), FontFamily::Mono);
         y += lineH;
     }
 
     // Off-screen affordance chevrons (Nintendo-Extended up/down glyphs).
     const int cx = ROW_X + ROW_W + 8;
     if (mLogScroll > 0) {
-        SDLH_DrawText(16, cx, paneY, COLOR_TEXT3, "");
+        Gfx::DrawText(16, cx, paneY, COLOR_TEXT3, "");
     }
     if (mLogScroll + per < (int)mLogLines.size()) {
-        SDLH_DrawText(16, cx, UiKit::HINTBAR_Y - 24, COLOR_TEXT3, "");
+        Gfx::DrawText(16, cx, UiKit::HINTBAR_Y - 24, COLOR_TEXT3, "");
     }
 }
 
 void SettingsScreen::draw(void) const
 {
-    SDLH_ClearScreen(COLOR_BG);
+    Gfx::ClearScreen(COLOR_BG);
 
     // ---- Top bar ----
     UiKit::drawHintCircle(24, (TOPBAR_H - 20) / 2, "B");
     {
         u32 tw, th;
-        SDLH_GetTextDimensions(20, "Settings", &tw, &th);
-        SDLH_DrawText(20, 24 + 20 + 14, (TOPBAR_H - (int)th) / 2, COLOR_TEXT, "Settings");
+        Gfx::GetTextDimensions(20, "Settings", &tw, &th);
+        Gfx::DrawText(20, 24 + 20 + 14, (TOPBAR_H - (int)th) / 2, COLOR_TEXT, "Settings");
     }
     {
         // Live config-path label, flashing to `success` briefly on a write.
         std::string path = "saved to sdmc:" + Configuration::getInstance().BASEPATH;
         Color c          = mFlashTimer > 0 ? COLOR_SUCCESS : COLOR_TEXT3;
         u32 tw, th;
-        SDLH_GetTextDimensions(12, path.c_str(), &tw, &th);
-        SDLH_DrawText(12, 1256 - (int)tw, (TOPBAR_H - (int)th) / 2, c, path.c_str());
+        Gfx::GetTextDimensions(12, path.c_str(), &tw, &th);
+        Gfx::DrawText(12, 1256 - (int)tw, (TOPBAR_H - (int)th) / 2, c, path.c_str());
     }
 
     // ---- Frame hairlines ----
-    SDLH_DrawRect(0, TOPBAR_H, 1280, 1, COLOR_STROKE1);
-    SDLH_DrawRect(RAIL_W, TOPBAR_H + 1, 1, 720 - TOPBAR_H - 1 - UiKit::HINTBAR_H, COLOR_STROKE1);
+    Gfx::DrawRect(0, TOPBAR_H, 1280, 1, COLOR_STROKE1);
+    Gfx::DrawRect(RAIL_W, TOPBAR_H + 1, 1, 720 - TOPBAR_H - 1 - UiKit::HINTBAR_H, COLOR_STROKE1);
 
     // ---- Category rail ----
     for (int i = 0; i < (int)Category::COUNT; i++) {
@@ -641,8 +641,8 @@ void SettingsScreen::draw(void) const
         }
         Color fg = active ? COLOR_WHITE : COLOR_TEXT2;
         u32 lw, lh;
-        SDLH_GetTextDimensions(15, kCategoryLabels[i], &lw, &lh);
-        SDLH_DrawText(15, CAT_X + 16, y + (CAT_ITEM_H - (int)lh) / 2, fg, kCategoryLabels[i]);
+        Gfx::GetTextDimensions(15, kCategoryLabels[i], &lw, &lh);
+        Gfx::DrawText(15, CAT_X + 16, y + (CAT_ITEM_H - (int)lh) / 2, fg, kCategoryLabels[i]);
     }
     // Breathing selector on the rail while it owns the cursor.
     if (mCatFocused) {
@@ -689,26 +689,26 @@ void SettingsScreen::draw(void) const
             const int ic = 34, iy = y + (ROW_H - ic) / 2;
             Shapes::cardRound(textX, iy, ic, ic, 8, COLOR_TILE, COLOR_STROKE2, 1);
             if (TitleCatalog::get().iconFor(row.iconId) != NULL) {
-                SDLH_DrawImageScale(TitleCatalog::get().iconFor(row.iconId), textX, iy, ic, ic);
+                Gfx::DrawImageScale(TitleCatalog::get().iconFor(row.iconId), textX, iy, ic, ic);
             }
             textX += ic + 12;
         }
 
         // Left: title over subtitle (+ optional green status suffix).
         u32 tH, sH;
-        SDLH_GetTextDimensions(15, "Ag", NULL, &tH);
-        SDLH_GetTextDimensions(12, "Ag", NULL, &sH);
+        Gfx::GetTextDimensions(15, "Ag", NULL, &tH);
+        Gfx::GetTextDimensions(12, "Ag", NULL, &sH);
         const int stackH = (int)tH + 4 + (int)sH;
         int ty           = y + (ROW_H - stackH) / 2;
-        SDLH_DrawText(15, textX, ty, COLOR_TEXT, row.title.c_str());
+        Gfx::DrawText(15, textX, ty, COLOR_TEXT, row.title.c_str());
         ty += (int)tH + 4;
         u32 subW;
-        SDLH_GetTextDimensions(12, row.subtitle.c_str(), &subW, NULL);
-        SDLH_DrawText(12, textX, ty, row.iconId != 0 ? COLOR_TEXT3 : COLOR_TEXT2, trimToFit(row.subtitle, ROW_W - 260, 12).c_str());
+        Gfx::GetTextDimensions(12, row.subtitle.c_str(), &subW, NULL);
+        Gfx::DrawText(12, textX, ty, row.iconId != 0 ? COLOR_TEXT3 : COLOR_TEXT2, trimToFit(row.subtitle, ROW_W - 260, 12).c_str());
         if (row.statusSuffix) {
             std::string suffix = row.statusSuffix();
             if (!suffix.empty()) {
-                SDLH_DrawText(12, textX + (int)subW + 6, ty, COLOR_SUCCESS, suffix.c_str());
+                Gfx::DrawText(12, textX + (int)subW + 6, ty, COLOR_SUCCESS, suffix.c_str());
             }
         }
 
@@ -717,11 +717,11 @@ void SettingsScreen::draw(void) const
         switch (row.control) {
             case Control::ActionPill: {
                 u32 pw, ph;
-                SDLH_GetTextDimensions(13, row.pillLabel.c_str(), &pw, &ph);
+                Gfx::GetTextDimensions(13, row.pillLabel.c_str(), &pw, &ph);
                 const int pillH = (int)ph + 14, pillW = (int)pw + 28;
                 const int px = rightEdge - pillW, py = y + (ROW_H - pillH) / 2;
                 Shapes::fillRound(px, py, pillW, pillH, 0, COLOR_ACCENT_TINT);
-                SDLH_DrawText(13, px + 14, py + (pillH - (int)ph) / 2, COLOR_ACCENT_LIGHT, row.pillLabel.c_str());
+                Gfx::DrawText(13, px + 14, py + (pillH - (int)ph) / 2, COLOR_ACCENT_LIGHT, row.pillLabel.c_str());
                 break;
             }
             case Control::Segmented: {
@@ -736,17 +736,17 @@ void SettingsScreen::draw(void) const
                 // rendered as tofu boxes.
                 const std::string& val = row.options[row.getIndex ? row.getIndex() : 0];
                 u32 vw, vh, aw;
-                SDLH_GetTextDimensions(14, val.c_str(), &vw, &vh);
-                SDLH_GetTextDimensions(14, "", &aw, NULL);
+                Gfx::GetTextDimensions(14, val.c_str(), &vw, &vh);
+                Gfx::GetTextDimensions(14, "", &aw, NULL);
                 const int gap   = 12;
                 const int group = (int)aw + gap + (int)vw + gap + (int)aw;
                 int cx          = rightEdge - group;
                 const int cy    = y + (ROW_H - (int)vh) / 2;
-                SDLH_DrawText(14, cx, cy, COLOR_TEXT3, "");
+                Gfx::DrawText(14, cx, cy, COLOR_TEXT3, "");
                 cx += (int)aw + gap;
-                SDLH_DrawText(14, cx, cy, COLOR_TEXT, val.c_str());
+                Gfx::DrawText(14, cx, cy, COLOR_TEXT, val.c_str());
                 cx += (int)vw + gap;
-                SDLH_DrawText(14, cx, cy, COLOR_TEXT3, "");
+                Gfx::DrawText(14, cx, cy, COLOR_TEXT3, "");
                 break;
             }
             case Control::Toggle: {
@@ -771,10 +771,10 @@ void SettingsScreen::draw(void) const
         // Unicode triangles are missing from the shared font (tofu boxes).
         const int cx = ROW_X + ROW_W + 8;
         if (mScroll > 0) {
-            SDLH_DrawText(16, cx, ROWS_Y0, COLOR_TEXT3, "");
+            Gfx::DrawText(16, cx, ROWS_Y0, COLOR_TEXT3, "");
         }
         if (lastVisibleRow(mScroll) < (int)mRows.size() - 1) {
-            SDLH_DrawText(16, cx, UiKit::HINTBAR_Y - 24, COLOR_TEXT3, "");
+            Gfx::DrawText(16, cx, UiKit::HINTBAR_Y - 24, COLOR_TEXT3, "");
         }
     }
 

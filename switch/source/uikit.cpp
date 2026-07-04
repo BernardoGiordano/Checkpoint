@@ -37,8 +37,8 @@ namespace {
     int hintItemWidth(const UiKit::HintItem& item)
     {
         u32 gw, tw;
-        SDLH_GetTextDimensions(HINT_GLYPH_SIZE, UiKit::buttonGlyph(item.glyph).c_str(), &gw, NULL);
-        SDLH_GetTextDimensions(13, item.label.c_str(), &tw, NULL);
+        Gfx::GetTextDimensions(HINT_GLYPH_SIZE, UiKit::buttonGlyph(item.glyph).c_str(), &gw, NULL);
+        Gfx::GetTextDimensions(13, item.label.c_str(), &tw, NULL);
         return (int)gw + 7 + (int)tw;
     }
 }
@@ -77,8 +77,8 @@ void UiKit::drawHintCircle(int x, int y, const std::string& glyph)
     const std::string g = buttonGlyph(glyph);
     Color glyphColor    = COLOR_TEXT;
     u32 tw, th;
-    SDLH_GetTextDimensions(HINT_GLYPH_SIZE, g.c_str(), &tw, &th);
-    SDLH_DrawText(HINT_GLYPH_SIZE, x, y + (20 - (int)th) / 2, glyphColor, g.c_str());
+    Gfx::GetTextDimensions(HINT_GLYPH_SIZE, g.c_str(), &tw, &th);
+    Gfx::DrawText(HINT_GLYPH_SIZE, x, y + (20 - (int)th) / 2, glyphColor, g.c_str());
 }
 
 void UiKit::drawHintBar(const std::vector<HintItem>& items)
@@ -86,8 +86,8 @@ void UiKit::drawHintBar(const std::vector<HintItem>& items)
     // Opaque fill so an overlay's hint bar fully hides the page's hint bar
     // underneath (the scrim only dims it, leaving both right-aligned rows to
     // bleed together otherwise).
-    SDLH_DrawRect(0, HINTBAR_Y, SCREEN_W, HINTBAR_H, COLOR_BG);
-    SDLH_DrawRect(0, HINTBAR_Y, SCREEN_W, 1, COLOR_STROKE1);
+    Gfx::DrawRect(0, HINTBAR_Y, SCREEN_W, HINTBAR_H, COLOR_BG);
+    Gfx::DrawRect(0, HINTBAR_Y, SCREEN_W, 1, COLOR_STROKE1);
 
     int totalW = 0;
     for (size_t i = 0; i < items.size(); i++) {
@@ -100,13 +100,13 @@ void UiKit::drawHintBar(const std::vector<HintItem>& items)
     int y = HINTBAR_Y + (HINTBAR_H - 20) / 2;
     for (size_t i = 0; i < items.size(); i++) {
         u32 gw;
-        SDLH_GetTextDimensions(HINT_GLYPH_SIZE, buttonGlyph(items[i].glyph).c_str(), &gw, NULL);
+        Gfx::GetTextDimensions(HINT_GLYPH_SIZE, buttonGlyph(items[i].glyph).c_str(), &gw, NULL);
         drawHintCircle(x, y, items[i].glyph);
         x += (int)gw + 7;
 
         u32 tw, th;
-        SDLH_GetTextDimensions(13, items[i].label.c_str(), &tw, &th);
-        SDLH_DrawText(13, x, y + (20 - (int)th) / 2, COLOR_TEXT2, items[i].label.c_str());
+        Gfx::GetTextDimensions(13, items[i].label.c_str(), &tw, &th);
+        Gfx::DrawText(13, x, y + (20 - (int)th) / 2, COLOR_TEXT2, items[i].label.c_str());
         x += (int)tw;
         if (i + 1 < items.size())
             x += 24;
@@ -132,7 +132,7 @@ int UiKit::segmentedWidth(const std::vector<std::string>& options)
     int w = 4 * 2; // container padding, both sides
     for (const std::string& opt : options) {
         u32 tw;
-        SDLH_GetTextDimensions(13, opt.c_str(), &tw, NULL);
+        Gfx::GetTextDimensions(13, opt.c_str(), &tw, NULL);
         w += (int)tw + 20 * 2;
     }
     return w;
@@ -141,7 +141,7 @@ int UiKit::segmentedWidth(const std::vector<std::string>& options)
 int UiKit::drawSegmented(int x, int y, const std::vector<std::string>& options, int activeIndex)
 {
     u32 refH;
-    SDLH_GetTextDimensions(13, "Ag", NULL, &refH);
+    Gfx::GetTextDimensions(13, "Ag", NULL, &refH);
     const int segH       = (int)refH + 8 * 2;
     const int totalW     = segmentedWidth(options);
     const int containerH = segH + 4 * 2;
@@ -153,14 +153,14 @@ int UiKit::drawSegmented(int x, int y, const std::vector<std::string>& options, 
     int cx = x + 4, cy = y + 4;
     for (size_t i = 0; i < options.size(); i++) {
         u32 tw, th;
-        SDLH_GetTextDimensions(13, options[i].c_str(), &tw, &th);
+        Gfx::GetTextDimensions(13, options[i].c_str(), &tw, &th);
         int segW    = (int)tw + 20 * 2;
         bool active = (int)i == activeIndex;
         if (active) {
             Shapes::fillRound(cx, cy, segW, segH, 0, COLOR_ACCENT);
         }
         Color textColor = active ? COLOR_WHITE : COLOR_TEXT2;
-        SDLH_DrawText(13, cx + 20, cy + (segH - (int)th) / 2, textColor, options[i].c_str());
+        Gfx::DrawText(13, cx + 20, cy + (segH - (int)th) / 2, textColor, options[i].c_str());
         cx += segW;
     }
     return totalW;
@@ -168,5 +168,5 @@ int UiKit::drawSegmented(int x, int y, const std::vector<std::string>& options, 
 
 void UiKit::drawSectionLabel(int x, int y, const std::string& text)
 {
-    SDLH_DrawText(11, x, y, COLOR_TEXT3, text.c_str());
+    Gfx::DrawText(11, x, y, COLOR_TEXT3, text.c_str());
 }

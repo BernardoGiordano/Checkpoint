@@ -213,8 +213,8 @@ void BackupList::draw(bool focused)
         if (i == 0) {
             // The synthetic "New..." entry, rendered as the create-backup row.
             u32 th;
-            SDLH_GetTextDimensions(14, "New backup", NULL, &th);
-            SDLH_DrawText(14, mListX + 16, ry + (ROW_H - (int)th) / 2, COLOR_ACCENT_LIGHT, " New backup");
+            Gfx::GetTextDimensions(14, "New backup", NULL, &th);
+            Gfx::DrawText(14, mListX + 16, ry + (ROW_H - (int)th) / 2, COLOR_ACCENT_LIGHT, " New backup");
             // The breathing ring must reach the "New backup" row too.
             if (cur) {
                 Shapes::focusRing(mListX, ry, mListW, ROW_H, 0, COLOR_ACCENT);
@@ -229,14 +229,14 @@ void BackupList::draw(bool focused)
         splitBackupName(mNames[i], name, chip);
 
         u32 nameH;
-        SDLH_GetTextDimensions(13, name.c_str(), NULL, &nameH, FontFamily::Mono);
-        SDLH_DrawText(13, mListX + 16, ry + (ROW_H - (int)nameH) / 2, cur ? COLOR_TEXT : COLOR_MONO_VAL, name.c_str(), FontFamily::Mono);
+        Gfx::GetTextDimensions(13, name.c_str(), NULL, &nameH, FontFamily::Mono);
+        Gfx::DrawText(13, mListX + 16, ry + (ROW_H - (int)nameH) / 2, cur ? COLOR_TEXT : COLOR_MONO_VAL, name.c_str(), FontFamily::Mono);
 
         std::string sizeStr = i < mSizes.size() ? mSizes[i] : std::string();
         if (!sizeStr.empty()) {
             u32 sw, sh;
-            SDLH_GetTextDimensions(12, sizeStr.c_str(), &sw, &sh, FontFamily::Mono);
-            SDLH_DrawText(
+            Gfx::GetTextDimensions(12, sizeStr.c_str(), &sw, &sh, FontFamily::Mono);
+            Gfx::DrawText(
                 12, mListX + mListW - 12 - (int)sw, ry + (ROW_H - (int)sh) / 2, cur ? COLOR_TEXT2 : COLOR_TEXT3, sizeStr.c_str(), FontFamily::Mono);
         }
 

@@ -47,15 +47,15 @@ TitlePickerOverlay::TitlePickerOverlay(
 
 void TitlePickerOverlay::draw(void) const
 {
-    SDLH_DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
+    Gfx::DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
     Shapes::cardRound(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 0, COLOR_SURFACE, COLOR_STROKE2, 1);
 
     u32 hh;
-    SDLH_GetTextDimensions(20, mHeading.c_str(), NULL, &hh);
-    SDLH_DrawText(20, LIST_X, PANEL_Y + 20, COLOR_TEXT, mHeading.c_str());
+    Gfx::GetTextDimensions(20, mHeading.c_str(), NULL, &hh);
+    Gfx::DrawText(20, LIST_X, PANEL_Y + 20, COLOR_TEXT, mHeading.c_str());
 
     if (mItems.empty()) {
-        SDLH_DrawText(15, LIST_X, LIST_Y + 8, COLOR_TEXT2, "No titles available.");
+        Gfx::DrawText(15, LIST_X, LIST_Y + 8, COLOR_TEXT2, "No titles available.");
     }
 
     for (int i = mScroll; i < (int)mItems.size() && i < mScroll + VISIBLE; i++) {
@@ -64,9 +64,9 @@ void TitlePickerOverlay::draw(void) const
         Shapes::fillRound(LIST_X, y, LIST_W, ROW_H, 0, focus ? COLOR_ACCENT_TINT : COLOR_FILL1);
         Color fg = focus ? COLOR_TEXT : COLOR_TEXT2;
         u32 nh;
-        SDLH_GetTextDimensions(15, "Ag", NULL, &nh);
+        Gfx::GetTextDimensions(15, "Ag", NULL, &nh);
         std::string name = trimToFit(mItems[i].second, LIST_W - 28, 15);
-        SDLH_DrawText(15, LIST_X + 14, y + (ROW_H - (int)nh) / 2, fg, name.c_str());
+        Gfx::DrawText(15, LIST_X + 14, y + (ROW_H - (int)nh) / 2, fg, name.c_str());
         if (focus) {
             Shapes::focusRing(LIST_X, y, LIST_W, ROW_H, 0, COLOR_ACCENT);
         }

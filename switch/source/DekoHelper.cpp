@@ -24,7 +24,6 @@
  *         reasonable ways as different from the original version.
  */
 
-// deko3d implementation of the SDLH_* backend API (see HANDOFF-deko3d.md).
 // Batched GPU quad renderer — rects, images and color textures draw through
 // one pipeline (pos+uv+color vertices, texture x vertex color, a 1x1 white
 // texture makes solid rects the same path). Image decode: libpng / libjpeg-turbo
@@ -197,7 +196,7 @@ struct Texture {
     u32 width;
     u32 height;
     u32 descId;
-    bool opaque; // draw without alpha blending (SDLH_SetTextureOpaque)
+    bool opaque; // draw without alpha blending (Gfx::SetTextureOpaque)
 };
 
 // Record commands into a throwaway cmdbuf, submit, and wait for completion.
@@ -359,7 +358,7 @@ static u8* decodeFileToRGBA(const char* path, u32& width, u32& height)
     return pixels;
 }
 
-bool SDLH_Init(void)
+bool Gfx::Init(void)
 {
     s_device = dk::DeviceMaker{}.create();
     s_queue  = dk::QueueMaker{s_device}.setFlags(DkQueueFlags_Graphics).create();
@@ -427,7 +426,7 @@ bool SDLH_Init(void)
         return false;
     }
 
-    SDLH_LoadImage(&s_star, "romfs:/star.png");
+    Gfx::LoadImage(&s_star, "romfs:/star.png");
     // The multi-select badge is accent-filled with a white check on top; the
     // checkbox asset is a black-on-transparent checkmark. The SDL backend
     // tinted it via SDL_SetTextureColorMod(white); here the tint is baked into
@@ -500,19 +499,19 @@ bool SDLH_Init(void)
         Logging::error("Failed to load romfs:/fonts/SpaceMono-Regular.ttf, falling back to the system font.");
     }
 
-    SDLH_GetTextDimensions(13, "...", &g_username_dotsize, NULL);
+    Gfx::GetTextDimensions(13, "...", &g_username_dotsize, NULL);
 
     return true;
 }
 
-void SDLH_Exit(void)
+void Gfx::Exit(void)
 {
     if (s_queue) {
         s_queue.waitIdle();
     }
-    SDLH_DestroyTexture(s_checkbox);
-    SDLH_DestroyTexture(s_star);
-    SDLH_DestroyTexture(s_white);
+    Gfx::DestroyTexture(s_checkbox);
+    Gfx::DestroyTexture(s_star);
+    Gfx::DestroyTexture(s_white);
     for (AtlasPage& page : s_atlasPages) {
         page.mem.destroy();
         s_freeDescIds.push_back(page.descId);
@@ -652,14 +651,14 @@ static void pushQuad(const Texture* texture, float x, float y, float w, float h,
     pushQuadRaw(texture->descId, texture->opaque, x, y, w, h, u0, v0, u1, v1, color);
 }
 
-void SDLH_ClearScreen(Color color)
+void Gfx::ClearScreen(Color color)
 {
     frameBegin();
     flushBatch(); // preserve painter's order if anything was already batched
     s_cmdbuf.clearColor(0, DkColorMask_RGBA, color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
 }
 
-void SDLH_Render(void)
+void Gfx::Render(void)
 {
     g_currentTime = armTicksToNs(armGetSystemTick()) / 1000000000.0f;
     if (s_slot < 0) {
@@ -673,7 +672,7 @@ void SDLH_Render(void)
     s_vtxSlice = (s_vtxSlice + 1) % FB_NUM;
 }
 
-void SDLH_DrawRect(int x, int y, int w, int h, Color color)
+void Gfx::DrawRect(int x, int y, int w, int h, Color color)
 {
     pushQuad(s_white, x, y, w, h, 0.0f, 0.0f, 1.0f, 1.0f, color);
 }
@@ -1002,7 +1001,7 @@ static std::vector<std::string> wrapText(FontFamily family, FontInstance& inst, 
     return out;
 }
 
-void SDLH_DrawText(int size, int x, int y, Color color, const char* text, FontFamily family)
+void Gfx::DrawText(int size, int x, int y, Color color, const char* text, FontFamily family)
 {
     if (!text) {
         return;
@@ -1013,7 +1012,7 @@ void SDLH_DrawText(int size, int x, int y, Color color, const char* text, FontFa
 
 // NOTE: FC_DrawBox also clipped to the box rect; the single caller (button
 // labels in clickable.cpp) never overflows it, so clipping is not replicated.
-void SDLH_DrawTextBox(int size, int x, int y, Color color, int max, const char* text, FontFamily family)
+void Gfx::DrawTextBox(int size, int x, int y, Color color, int max, const char* text, FontFamily family)
 {
     if (!text) {
         return;
@@ -1026,7 +1025,7 @@ void SDLH_DrawTextBox(int size, int x, int y, Color color, int max, const char* 
     }
 }
 
-void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family)
+void Gfx::GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family)
 {
     FontInstance& inst = instanceFor(family, size);
     if (w != NULL) {
@@ -1043,7 +1042,7 @@ void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFami
     }
 }
 
-void SDLH_LoadImage(Texture** texture, const char* path)
+void Gfx::LoadImage(Texture** texture, const char* path)
 {
     u32 w = 0, h = 0;
     u8* pixels = decodeFileToRGBA(path, w, h);
@@ -1056,7 +1055,7 @@ void SDLH_LoadImage(Texture** texture, const char* path)
     }
 }
 
-void SDLH_LoadImage(Texture** texture, u8* buff, size_t size)
+void Gfx::LoadImage(Texture** texture, u8* buff, size_t size)
 {
     u32 w = 0, h = 0;
     u8* pixels = decodeToRGBA(buff, size, w, h);
@@ -1069,7 +1068,7 @@ void SDLH_LoadImage(Texture** texture, u8* buff, size_t size)
     }
 }
 
-void SDLH_DrawImage(Texture* texture, int x, int y)
+void Gfx::DrawImage(Texture* texture, int x, int y)
 {
     if (!texture) {
         return;
@@ -1077,7 +1076,7 @@ void SDLH_DrawImage(Texture* texture, int x, int y)
     pushQuad(texture, x, y, texture->width, texture->height, 0.0f, 0.0f, 1.0f, 1.0f, COLOR_WHITE);
 }
 
-void SDLH_DrawImageScale(Texture* texture, int x, int y, int w, int h)
+void Gfx::DrawImageScale(Texture* texture, int x, int y, int w, int h)
 {
     if (!texture) {
         return;
@@ -1085,14 +1084,14 @@ void SDLH_DrawImageScale(Texture* texture, int x, int y, int w, int h)
     pushQuad(texture, x, y, w, h, 0.0f, 0.0f, 1.0f, 1.0f, COLOR_WHITE);
 }
 
-void SDLH_SetTextureOpaque(Texture* texture)
+void Gfx::SetTextureOpaque(Texture* texture)
 {
     if (texture) {
         texture->opaque = true;
     }
 }
 
-void SDLH_DestroyTexture(Texture* texture)
+void Gfx::DestroyTexture(Texture* texture)
 {
     if (texture) {
         // The GPU may still be sampling this texture in an in-flight frame;
@@ -1104,17 +1103,17 @@ void SDLH_DestroyTexture(Texture* texture)
     }
 }
 
-Texture* SDLH_StarTexture(void)
+Texture* Gfx::StarTexture(void)
 {
     return s_star;
 }
 
-Texture* SDLH_CheckboxTexture(void)
+Texture* Gfx::CheckboxTexture(void)
 {
     return s_checkbox;
 }
 
-void SDLH_CreateColorTexture(Texture** texture, int w, int h, Color color)
+void Gfx::CreateColorTexture(Texture** texture, int w, int h, Color color)
 {
     std::vector<u8> pixels((size_t)w * h * 4);
     for (int i = 0; i < w * h; i++) {

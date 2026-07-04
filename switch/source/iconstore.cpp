@@ -43,8 +43,8 @@ void TextureIconStore::loadIcon(u64 id, NsApplicationControlData* nsacd, size_t 
         return;
     }
     Texture* texture = nullptr;
-    SDLH_LoadImage(&texture, nsacd->icon, iconSize);
-    SDLH_SetTextureOpaque(texture);
+    Gfx::LoadImage(&texture, nsacd->icon, iconSize);
+    Gfx::SetTextureOpaque(texture);
     mIcons.insert({id, texture});
 }
 
@@ -55,7 +55,7 @@ void TextureIconStore::loadPlaceholderIcon(u64 id)
     }
     Color color      = systemSavePalette[id % (sizeof(systemSavePalette) / sizeof(systemSavePalette[0]))];
     Texture* texture = nullptr;
-    SDLH_CreateColorTexture(&texture, 256, 256, color);
+    Gfx::CreateColorTexture(&texture, 256, 256, color);
     if (texture) {
         mIcons.insert({id, texture});
     }
@@ -70,7 +70,7 @@ Texture* TextureIconStore::get(u64 id) const
 void TextureIconStore::clear(void)
 {
     for (auto& i : mIcons) {
-        SDLH_DestroyTexture(i.second);
+        Gfx::DestroyTexture(i.second);
     }
     mIcons.clear();
 }

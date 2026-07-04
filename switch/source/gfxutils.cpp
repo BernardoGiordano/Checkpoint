@@ -24,7 +24,7 @@
  *         reasonable ways as different from the original version.
  */
 
-// Backend-agnostic drawing helpers: everything here goes through the SDLH_*
+// Backend-agnostic drawing helpers: everything here goes through the Gfx::*
 // API only (see HANDOFF-deko3d.md).
 
 #include "SDLHelper.hpp"
@@ -56,10 +56,10 @@ static int utf8CharSize(const char* character)
 
 void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color)
 {
-    SDLH_DrawRect(x - size, y - size, w + 2 * size, size, color); // top
-    SDLH_DrawRect(x - size, y, size, h, color);                   // left
-    SDLH_DrawRect(x + w, y, size, h, color);                      // right
-    SDLH_DrawRect(x - size, y + h, w + 2 * size, size, color);    // bottom
+    Gfx::DrawRect(x - size, y - size, w + 2 * size, size, color); // top
+    Gfx::DrawRect(x - size, y, size, h, color);                   // left
+    Gfx::DrawRect(x + w, y, size, h, color);                      // right
+    Gfx::DrawRect(x - size, y + h, w + 2 * size, size, color);    // bottom
 }
 
 void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color)
@@ -94,7 +94,7 @@ std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize, Fon
         if (charsize < 1)
             break;
         std::string candidate = newtext + std::string(src, charsize);
-        SDLH_GetTextDimensions(textsize, candidate.c_str(), &width, NULL, family);
+        Gfx::GetTextDimensions(textsize, candidate.c_str(), &width, NULL, family);
         if (width >= maxsize) {
             newtext += "...";
             break;

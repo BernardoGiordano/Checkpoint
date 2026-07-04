@@ -76,7 +76,7 @@ void Scrollable::draw(bool condition)
 
     size_t blankRows = mVisibleEntries - sz;
     size_t rowHeight = mh / mVisibleEntries;
-    SDLH_DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, COLOR_SURFACE2);
+    Gfx::DrawRect(mx, my + sz * rowHeight, mw, rowHeight * blankRows, COLOR_SURFACE2);
 
     // draw selector
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {

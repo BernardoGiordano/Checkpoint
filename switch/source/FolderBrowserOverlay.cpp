@@ -76,25 +76,25 @@ void FolderBrowserOverlay::readFolders(void)
 
 void FolderBrowserOverlay::draw(void) const
 {
-    SDLH_DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
+    Gfx::DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
     Shapes::cardRound(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 0, COLOR_SURFACE, COLOR_STROKE2, 1);
 
     // Heading + a right-aligned "i / n" counter on the same line.
-    SDLH_DrawText(20, LIST_X, PANEL_Y + 18, COLOR_TEXT, mHeading.c_str());
+    Gfx::DrawText(20, LIST_X, PANEL_Y + 18, COLOR_TEXT, mHeading.c_str());
     if (!mFolders.empty()) {
         std::string counter = StringUtils::format("%d / %d", mCursor + 1, (int)mFolders.size());
         u32 cw, ch;
-        SDLH_GetTextDimensions(13, counter.c_str(), &cw, &ch);
-        SDLH_DrawText(13, PANEL_X + PANEL_W - 20 - (int)cw, PANEL_Y + 24, COLOR_TEXT3, counter.c_str());
+        Gfx::GetTextDimensions(13, counter.c_str(), &cw, &ch);
+        Gfx::DrawText(13, PANEL_X + PANEL_W - 20 - (int)cw, PANEL_Y + 24, COLOR_TEXT3, counter.c_str());
     }
 
     // Current path, then a hairline under the header.
-    SDLH_DrawText(13, LIST_X, PANEL_Y + 48, COLOR_ACCENT_LIGHT, trimToFit(currentPath(), LIST_W, 13).c_str());
-    SDLH_DrawRect(LIST_X, PANEL_Y + 70, LIST_W, 1, COLOR_STROKE1);
+    Gfx::DrawText(13, LIST_X, PANEL_Y + 48, COLOR_ACCENT_LIGHT, trimToFit(currentPath(), LIST_W, 13).c_str());
+    Gfx::DrawRect(LIST_X, PANEL_Y + 70, LIST_W, 1, COLOR_STROKE1);
 
     if (mFolders.empty()) {
-        SDLH_DrawText(15, LIST_X, LIST_Y + 8, COLOR_TEXT2, "No sub-folders here.");
-        SDLH_DrawText(13, LIST_X, LIST_Y + 34, COLOR_TEXT3, "Press X to use this folder.");
+        Gfx::DrawText(15, LIST_X, LIST_Y + 8, COLOR_TEXT2, "No sub-folders here.");
+        Gfx::DrawText(13, LIST_X, LIST_Y + 34, COLOR_TEXT3, "Press X to use this folder.");
     }
 
     for (int i = mScroll; i < (int)mFolders.size() && i < mScroll + VISIBLE; i++) {
@@ -102,9 +102,9 @@ void FolderBrowserOverlay::draw(void) const
         const bool focus = i == mCursor;
         Shapes::fillRound(LIST_X, y, LIST_W, ROW_H, 0, focus ? COLOR_ACCENT_TINT : COLOR_FILL1);
         u32 nh;
-        SDLH_GetTextDimensions(15, "Ag", NULL, &nh);
+        Gfx::GetTextDimensions(15, "Ag", NULL, &nh);
         std::string name = trimToFit(mFolders[i], LIST_W - 28, 15);
-        SDLH_DrawText(15, LIST_X + 14, y + (ROW_H - (int)nh) / 2, focus ? COLOR_TEXT : COLOR_TEXT2, name.c_str());
+        Gfx::DrawText(15, LIST_X + 14, y + (ROW_H - (int)nh) / 2, focus ? COLOR_TEXT : COLOR_TEXT2, name.c_str());
         if (focus) {
             Shapes::focusRing(LIST_X, y, LIST_W, ROW_H, 0, COLOR_ACCENT);
         }

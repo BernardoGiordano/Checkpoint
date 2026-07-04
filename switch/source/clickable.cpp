@@ -58,21 +58,21 @@ bool Clickable::released()
 void Clickable::draw(float font, Color overlay)
 {
     u32 textw, texth;
-    SDLH_GetTextDimensions(font, mText.c_str(), &textw, &texth);
+    Gfx::GetTextDimensions(font, mText.c_str(), &textw, &texth);
     const u32 messageWidth = mCentered ? textw : mw - 20;
 
-    SDLH_DrawRect(mx, my, mw, mh, mColorBg);
+    Gfx::DrawRect(mx, my, mw, mh, mColorBg);
     if (mCanChangeColorWhenSelected && held()) {
-        SDLH_DrawRect(mx, my, mw, mh, makeColor(overlay.r, overlay.g, overlay.b, 100));
+        Gfx::DrawRect(mx, my, mw, mh, makeColor(overlay.r, overlay.g, overlay.b, 100));
     }
     if (!mCentered && mSelected) {
-        SDLH_DrawRect(mx + 4, my + 6, 4, mh - 12, COLOR_WHITE);
+        Gfx::DrawRect(mx + 4, my + 6, 4, mh - 12, COLOR_WHITE);
     }
     if (mSelected) {
-        SDLH_DrawRect(mx, my, mw, mh, makeColor(overlay.r, overlay.g, overlay.b, 100));
+        Gfx::DrawRect(mx, my, mw, mh, makeColor(overlay.r, overlay.g, overlay.b, 100));
     }
     u32 offset = mx + (mw - messageWidth) / 2 + (!mCentered ? 8 : 0);
-    SDLH_DrawTextBox(font, offset, my + (mh - texth) / 2 + 2, mColorText, mw - 4 * 2, mText.c_str());
+    Gfx::DrawTextBox(font, offset, my + (mh - texth) / 2 + 2, mColorText, mw - 4 * 2, mText.c_str());
 }
 
 void Clickable::drawOutline(Color color)

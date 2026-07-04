@@ -37,7 +37,7 @@ Result Account::init(void)
 void Account::exit(void)
 {
     for (auto& value : mUsers) {
-        SDLH_DestroyTexture(value.second.icon);
+        Gfx::DestroyTexture(value.second.icon);
     }
     accountExit();
 }
@@ -67,7 +67,7 @@ static User getUser(AccountUid id)
         u32 image_size, real_size;
         if (R_SUCCEEDED(accountProfileGetImageSize(&profile, &image_size)) && (buffer = (u8*)malloc(image_size)) != NULL &&
             R_SUCCEEDED(accountProfileLoadImage(&profile, buffer, image_size, &real_size))) {
-            SDLH_LoadImage(&user.icon, buffer, image_size);
+            Gfx::LoadImage(&user.icon, buffer, image_size);
             free(buffer);
         }
     }

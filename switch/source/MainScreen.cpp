@@ -114,12 +114,12 @@ namespace {
         Color fg = active ? COLOR_WHITE : COLOR_TEXT2;
 
         u32 gw, gh, lw, lh;
-        SDLH_GetTextDimensions(16, kind.buttonLabel, &gw, &gh);
-        SDLH_GetTextDimensions(9, kind.railLabel, &lw, &lh);
+        Gfx::GetTextDimensions(16, kind.buttonLabel, &gw, &gh);
+        Gfx::GetTextDimensions(9, kind.railLabel, &lw, &lh);
         const int stackH = (int)gh + 2 + (int)lh;
         const int top    = y + (RAIL_ITEM - stackH) / 2;
-        SDLH_DrawText(16, RAIL_ITEM_X + (RAIL_ITEM - (int)gw) / 2, top, fg, kind.buttonLabel);
-        SDLH_DrawText(9, RAIL_ITEM_X + (RAIL_ITEM - (int)lw) / 2, top + (int)gh + 2, fg, kind.railLabel);
+        Gfx::DrawText(16, RAIL_ITEM_X + (RAIL_ITEM - (int)gw) / 2, top, fg, kind.buttonLabel);
+        Gfx::DrawText(9, RAIL_ITEM_X + (RAIL_ITEM - (int)lw) / 2, top + (int)gh + 2, fg, kind.railLabel);
     }
 
     // Size of the shoulder-key system glyph drawn inside an action button.
@@ -142,13 +142,13 @@ namespace {
         const Color fg          = filled ? COLOR_WHITE : COLOR_TEXT;
 
         u32 lw, lh, gw, gh;
-        SDLH_GetTextDimensions(16, label.c_str(), &lw, &lh);
-        SDLH_GetTextDimensions(ACTION_GLYPH_SIZE, glyph.c_str(), &gw, &gh);
+        Gfx::GetTextDimensions(16, label.c_str(), &lw, &lh);
+        Gfx::GetTextDimensions(ACTION_GLYPH_SIZE, glyph.c_str(), &gw, &gh);
         const int gap   = 10;
         const int group = (int)lw + gap + (int)gw;
         const int sx    = x + (BTN_W - group) / 2;
-        SDLH_DrawText(16, sx, y + (BTN_H - (int)lh) / 2, fg, label.c_str());
-        SDLH_DrawText(ACTION_GLYPH_SIZE, sx + (int)lw + gap, y + (BTN_H - (int)gh) / 2, fg, glyph.c_str());
+        Gfx::DrawText(16, sx, y + (BTN_H - (int)lh) / 2, fg, label.c_str());
+        Gfx::DrawText(ACTION_GLYPH_SIZE, sx + (int)lw + gap, y + (BTN_H - (int)gh) / 2, fg, glyph.c_str());
     }
 }
 
@@ -203,7 +203,7 @@ void MainScreen::draw() const
     const size_t max         = filteredCnt > 0 ? hid.maxEntries(filteredCnt) + 1 : 0;
     auto selEnt              = MS::selectedEntries();
 
-    SDLH_ClearScreen(COLOR_BG);
+    Gfx::ClearScreen(COLOR_BG);
 
     // Resolve the selected title once (cached): its name feeds the top bar and
     // its detail feeds the right panel.
@@ -215,32 +215,32 @@ void MainScreen::draw() const
 
     // ---- Top bar ----
     u32 logoW, logoH;
-    SDLH_GetTextDimensions(22, "checkpoint", &logoW, &logoH);
-    SDLH_DrawText(22, 24, (TOPBAR_H - (int)logoH) / 2, COLOR_TEXT, "checkpoint");
+    Gfx::GetTextDimensions(22, "checkpoint", &logoW, &logoH);
+    Gfx::DrawText(22, 24, (TOPBAR_H - (int)logoH) / 2, COLOR_TEXT, "checkpoint");
 
     // Plain version label just right of the logo (no chip), e.g. "v4.0.0".
     u32 verW, verH;
-    SDLH_GetTextDimensions(11, ver, &verW, &verH);
+    Gfx::GetTextDimensions(11, ver, &verW, &verH);
     const int verX = 24 + (int)logoW + 12;
-    SDLH_DrawText(11, verX, (TOPBAR_H - (int)verH) / 2 + 3, COLOR_TEXT2, ver);
+    Gfx::DrawText(11, verX, (TOPBAR_H - (int)verH) / 2 + 3, COLOR_TEXT2, ver);
     const int topbarLeftEnd = verX + (int)verW;
 
     if (!gameName.empty()) {
         const int avail = 1256 - topbarLeftEnd - 24;
         std::string t   = gameName;
         u32 tw, th;
-        SDLH_GetTextDimensions(17, t.c_str(), &tw, &th);
+        Gfx::GetTextDimensions(17, t.c_str(), &tw, &th);
         if ((int)tw > avail) {
             t = trimToFit(t, avail, 17);
-            SDLH_GetTextDimensions(17, t.c_str(), &tw, &th);
+            Gfx::GetTextDimensions(17, t.c_str(), &tw, &th);
         }
-        SDLH_DrawText(17, 1256 - (int)tw, (TOPBAR_H - (int)th) / 2, COLOR_TEXT, t.c_str());
+        Gfx::DrawText(17, 1256 - (int)tw, (TOPBAR_H - (int)th) / 2, COLOR_TEXT, t.c_str());
     }
 
     // ---- Frame hairlines ----
-    SDLH_DrawRect(0, TOPBAR_H, 1280, 1, COLOR_STROKE1);
-    SDLH_DrawRect(RAIL_W, TOPBAR_H + 1, 1, 720 - TOPBAR_H - 1 - UiKit::HINTBAR_H, COLOR_STROKE1);
-    SDLH_DrawRect(PANEL_X, TOPBAR_H + 1, 1, 720 - TOPBAR_H - 1 - UiKit::HINTBAR_H, COLOR_STROKE1);
+    Gfx::DrawRect(0, TOPBAR_H, 1280, 1, COLOR_STROKE1);
+    Gfx::DrawRect(RAIL_W, TOPBAR_H + 1, 1, 720 - TOPBAR_H - 1 - UiKit::HINTBAR_H, COLOR_STROKE1);
+    Gfx::DrawRect(PANEL_X, TOPBAR_H + 1, 1, 720 - TOPBAR_H - 1 - UiKit::HINTBAR_H, COLOR_STROKE1);
 
     // ---- Left rail ----
     for (int k = 0; k < 4; k++) {
@@ -256,20 +256,20 @@ void MainScreen::draw() const
     Shapes::fillRound(RAIL_ITEM_X, SETTINGS_BTN_Y, RAIL_ITEM, RAIL_ITEM, 0, COLOR_FILL1);
     {
         u32 gw, gh;
-        SDLH_GetTextDimensions(22, "", &gw, &gh);
-        SDLH_DrawText(22, RAIL_ITEM_X + (RAIL_ITEM - (int)gw) / 2, SETTINGS_BTN_Y + (RAIL_ITEM - (int)gh) / 2, COLOR_TEXT2, "");
+        Gfx::GetTextDimensions(22, "", &gw, &gh);
+        Gfx::DrawText(22, RAIL_ITEM_X + (RAIL_ITEM - (int)gw) / 2, SETTINGS_BTN_Y + (RAIL_ITEM - (int)gh) / 2, COLOR_TEXT2, "");
     }
 
     Shapes::fillRound(AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE, AVATAR_SIZE / 2, COLOR_TILE);
     if (Account::icon(g_currentUId) != NULL) {
-        SDLH_DrawImageScale(Account::icon(g_currentUId), AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE);
+        Gfx::DrawImageScale(Account::icon(g_currentUId), AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE);
     }
     Shapes::strokeRound(AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE, AVATAR_SIZE / 2, 1, COLOR_STROKE2);
     {
         std::string username = Account::shortName(g_currentUId);
         u32 uw, uh;
-        SDLH_GetTextDimensions(10, username.c_str(), &uw, &uh);
-        SDLH_DrawText(10, RAIL_W / 2 - (int)uw / 2, AVATAR_Y + AVATAR_SIZE + 4, COLOR_TEXT2, username.c_str());
+        Gfx::GetTextDimensions(10, username.c_str(), &uw, &uh);
+        Gfx::DrawText(10, RAIL_W / 2 - (int)uw / 2, AVATAR_Y + AVATAR_SIZE + 4, COLOR_TEXT2, username.c_str());
     }
 
     // ---- Title grid ----
@@ -278,7 +278,7 @@ void MainScreen::draw() const
         Shapes::cardRound(tx, ty, TILE, TILE, 14, COLOR_TILE, COLOR_STROKE2, 1);
         Texture* smallIcon = TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k);
         if (smallIcon != NULL) {
-            SDLH_DrawImageScale(smallIcon, tx, ty, TILE, TILE);
+            Gfx::DrawImageScale(smallIcon, tx, ty, TILE, TILE);
         }
 
         const bool selected = !selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end();
@@ -286,11 +286,11 @@ void MainScreen::draw() const
         if (selected || favorite) {
             const int bx = tx + TILE - 8 - 24, by = ty + 8;
             Shapes::fillRound(bx, by, 24, 24, 8, selected ? COLOR_ACCENT : makeColor(16, 16, 20, 191));
-            if (selected && SDLH_CheckboxTexture() != NULL) {
-                SDLH_DrawImageScale(SDLH_CheckboxTexture(), bx + 4, by + 4, 16, 16);
+            if (selected && Gfx::CheckboxTexture() != NULL) {
+                Gfx::DrawImageScale(Gfx::CheckboxTexture(), bx + 4, by + 4, 16, 16);
             }
-            else if (SDLH_StarTexture() != NULL) {
-                SDLH_DrawImageScale(SDLH_StarTexture(), bx + 5, by + 5, 14, 14);
+            else if (Gfx::StarTexture() != NULL) {
+                Gfx::DrawImageScale(Gfx::StarTexture(), bx + 5, by + 5, 14, 14);
             }
         }
     }
@@ -306,7 +306,7 @@ void MainScreen::draw() const
 
         Shapes::cardRound(COL_X, 76, HEADER_ICON, HEADER_ICON, 16, COLOR_TILE, COLOR_STROKE2, 1);
         if (TitleCatalog::get().iconFor(title.id()) != NULL) {
-            SDLH_DrawImageScale(TitleCatalog::get().iconFor(title.id()), COL_X, 76, HEADER_ICON, HEADER_ICON);
+            Gfx::DrawImageScale(TitleCatalog::get().iconFor(title.id()), COL_X, 76, HEADER_ICON, HEADER_ICON);
         }
 
         const int infoX   = COL_X + HEADER_ICON + 14;
@@ -319,28 +319,28 @@ void MainScreen::draw() const
         std::string idStr  = StringUtils::format("%016llX", title.id());
 
         u32 h1, h2, h3;
-        SDLH_GetTextDimensions(12, "Ag", NULL, &h1);
-        SDLH_GetTextDimensions(13, "Ag", NULL, &h2);
-        SDLH_GetTextDimensions(11, "Ag", NULL, &h3, FontFamily::Mono);
+        Gfx::GetTextDimensions(12, "Ag", NULL, &h1);
+        Gfx::GetTextDimensions(13, "Ag", NULL, &h2);
+        Gfx::GetTextDimensions(11, "Ag", NULL, &h3, FontFamily::Mono);
         int stackH = (int)h1 + 4 + (int)h3 + (hasPlay ? 4 + (int)h2 : 0);
         int ty     = 76 + (HEADER_ICON - stackH) / 2;
 
-        SDLH_DrawText(12, infoX, ty, COLOR_TEXT2, trimToFit(line1, infoW, 12).c_str());
+        Gfx::DrawText(12, infoX, ty, COLOR_TEXT2, trimToFit(line1, infoW, 12).c_str());
         ty += (int)h1 + 4;
         if (hasPlay) {
             u32 lblW;
-            SDLH_GetTextDimensions(13, "Play time ", &lblW, NULL);
-            SDLH_DrawText(13, infoX, ty, COLOR_TEXT2, "Play time ");
-            SDLH_DrawText(13, infoX + (int)lblW, ty, COLOR_TEXT, title.playTime().c_str());
+            Gfx::GetTextDimensions(13, "Play time ", &lblW, NULL);
+            Gfx::DrawText(13, infoX, ty, COLOR_TEXT2, "Play time ");
+            Gfx::DrawText(13, infoX + (int)lblW, ty, COLOR_TEXT, title.playTime().c_str());
             ty += (int)h2 + 4;
         }
-        SDLH_DrawText(11, infoX, ty, COLOR_TEXT3, idStr.c_str(), FontFamily::Mono);
+        Gfx::DrawText(11, infoX, ty, COLOR_TEXT3, idStr.c_str(), FontFamily::Mono);
 
         // Backups header row.
         const int headerY      = 184;
         std::string countLabel = StringUtils::format("BACKUPS · %zu", backupList->backupCount());
         u32 clH;
-        SDLH_GetTextDimensions(11, countLabel.c_str(), NULL, &clH);
+        Gfx::GetTextDimensions(11, countLabel.c_str(), NULL, &clH);
         UiKit::drawSectionLabel(COL_X, headerY, countLabel.c_str());
 
         {
@@ -349,8 +349,8 @@ void MainScreen::draw() const
             const std::string& totalSize = backupList->totalSizeString();
             if (!totalSize.empty()) {
                 u32 tw, th;
-                SDLH_GetTextDimensions(11, totalSize.c_str(), &tw, &th, FontFamily::Mono);
-                SDLH_DrawText(11, COL_X + COL_W - (int)tw, headerY + ((int)clH - (int)th) / 2, COLOR_TEXT2, totalSize.c_str(), FontFamily::Mono);
+                Gfx::GetTextDimensions(11, totalSize.c_str(), &tw, &th, FontFamily::Mono);
+                Gfx::DrawText(11, COL_X + COL_W - (int)tw, headerY + ((int)clH - (int)th) / 2, COLOR_TEXT2, totalSize.c_str(), FontFamily::Mono);
             }
         }
 
@@ -372,8 +372,8 @@ void MainScreen::draw() const
     else {
         const char* emptyMsg = SaveKind::of(mSaveTypeFilter).emptyMsg;
         u32 emptyW, emptyH;
-        SDLH_GetTextDimensions(18, emptyMsg, &emptyW, &emptyH);
-        SDLH_DrawText(18, GRID_AREA_X + (GRID_AREA_W - (int)emptyW) / 2, (720 - (int)emptyH) / 2, COLOR_TEXT2, emptyMsg);
+        Gfx::GetTextDimensions(18, emptyMsg, &emptyW, &emptyH);
+        Gfx::DrawText(18, GRID_AREA_X + (GRID_AREA_W - (int)emptyW) / 2, (720 - (int)emptyH) / 2, COLOR_TEXT2, emptyMsg);
     }
 
     // ---- Hint bar ----
@@ -389,7 +389,7 @@ void MainScreen::draw() const
     // ---- Transfer modal ----
     const TransferSnapshot transfer = TransferStatus::snapshot();
     if (transfer.active) {
-        SDLH_DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
+        Gfx::DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
 
         const bool multiSelect = transfer.saveTotal > 1;
         const int mx = 370, mw = 540;
@@ -399,20 +399,20 @@ void MainScreen::draw() const
 
         std::string titleStr = (transfer.mode.empty() ? "Copying files" : transfer.mode) + " in progress...";
         u32 title_w, title_h;
-        SDLH_GetTextDimensions(20, titleStr.c_str(), &title_w, &title_h);
-        SDLH_DrawText(20, mx + (mw - (int)title_w) / 2, my + 16, COLOR_TEXT, titleStr.c_str());
+        Gfx::GetTextDimensions(20, titleStr.c_str(), &title_w, &title_h);
+        Gfx::DrawText(20, mx + (mw - (int)title_w) / 2, my + 16, COLOR_TEXT, titleStr.c_str());
 
         if (transfer.cancellable) {
             const std::string hint = UiKit::buttonGlyph("B") + " to cancel";
             u32 hint_w;
-            SDLH_GetTextDimensions(14, hint.c_str(), &hint_w, NULL);
-            SDLH_DrawText(14, mx + mw - (int)hint_w - 16, my + mh - 26, COLOR_TEXT2, hint.c_str());
+            Gfx::GetTextDimensions(14, hint.c_str(), &hint_w, NULL);
+            Gfx::DrawText(14, mx + mw - (int)hint_w - 16, my + mh - 26, COLOR_TEXT2, hint.c_str());
         }
 
         u32 fname_w, fname_h;
         std::string fname = trimToFit(transfer.currentFile, mw - 40, 15);
-        SDLH_GetTextDimensions(15, fname.c_str(), &fname_w, &fname_h);
-        SDLH_DrawText(15, mx + (mw - (int)fname_w) / 2, my + 16 + (int)title_h + 8, COLOR_TEXT2, fname.c_str());
+        Gfx::GetTextDimensions(15, fname.c_str(), &fname_w, &fname_h);
+        Gfx::DrawText(15, mx + (mw - (int)fname_w) / 2, my + 16 + (int)title_h + 8, COLOR_TEXT2, fname.c_str());
 
         const int barX = mx + 20, barW = mw - 40, barH = 16;
         auto drawProgressBar = [&](int y, float frac, const char* leftLabel, const char* rightLabel) {
@@ -424,9 +424,9 @@ void MainScreen::draw() const
                 Shapes::fillRound(barX, y, fillW, barH, 0, COLOR_ACCENT);
             }
             u32 right_w;
-            SDLH_GetTextDimensions(15, rightLabel, &right_w, NULL);
-            SDLH_DrawText(15, barX, y + barH + 6, COLOR_TEXT2, leftLabel);
-            SDLH_DrawText(15, barX + barW - (int)right_w, y + barH + 6, COLOR_TEXT, rightLabel);
+            Gfx::GetTextDimensions(15, rightLabel, &right_w, NULL);
+            Gfx::DrawText(15, barX, y + barH + 6, COLOR_TEXT2, leftLabel);
+            Gfx::DrawText(15, barX + barW - (int)right_w, y + barH + 6, COLOR_TEXT, rightLabel);
         };
 
         int barY = my + 108;

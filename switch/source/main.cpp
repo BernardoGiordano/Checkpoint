@@ -98,7 +98,7 @@ int main(void)
             g_screen        = std::move(g_pendingScreen);
             g_pendingScreen = nullptr;
         }
-        SDLH_Render();
+        Gfx::Render();
     }
 
     // If the system forced the loop to end while a copy was live, let it finish

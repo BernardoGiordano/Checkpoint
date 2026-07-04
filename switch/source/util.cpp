@@ -44,7 +44,7 @@ void servicesExit(void)
     socketExit();
     Account::exit();
     TitleCatalog::get().freeIcons();
-    SDLH_Exit();
+    Gfx::Exit();
     nsExit();
     plExit();
     romfsExit();
@@ -109,8 +109,8 @@ Result servicesInit(void)
         return res;
     }
 
-    if (!SDLH_Init()) {
-        Logging::error("SDLH_Init failed. Result code 0x{:08X}.", res);
+    if (!Gfx::Init()) {
+        Logging::error("Gfx::Init failed. Result code 0x{:08X}.", res);
         return -1;
     }
 
