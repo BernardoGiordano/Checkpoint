@@ -24,6 +24,8 @@
  *         reasonable ways as different from the original version.
  */
 
+#ifndef GFX_BACKEND_DEKO3D
+
 #include "SDLHelper.hpp"
 #include "SDL_FontCache.h"
 #include "logging.hpp"
@@ -353,58 +355,6 @@ Texture* SDLH_CheckboxTexture(void)
     return s_checkbox;
 }
 
-void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color)
-{
-    SDLH_DrawRect(x - size, y - size, w + 2 * size, size, color); // top
-    SDLH_DrawRect(x - size, y, size, h, color);                   // left
-    SDLH_DrawRect(x + w, y, size, h, color);                      // right
-    SDLH_DrawRect(x - size, y + h, w + 2 * size, size, color);    // bottom
-}
-
-void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color)
-{
-    float highlight_multiplier = fmax(0.0, fabs(fmod(g_currentTime, 1.0) - 0.5) / 0.5);
-    color                      = makeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier,
-                             color.b + (255 - color.b) * highlight_multiplier, 255);
-    drawOutline(x, y, w, h, size, color);
-}
-
-std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize, FontFamily family)
-{
-    // Each call is O(n) FC measurements, and this runs every frame on the top-bar
-    // title, the panel subtitles and overlay rows. Memoize by (size, width,
-    // family, text): the inputs are a small, stable set (title/backup names), and
-    // all drawing is on the one UI thread, so no lock is needed.
-    static std::unordered_map<std::string, std::string> cache;
-    std::string key = std::to_string(textsize) + "|" + std::to_string(maxsize) + "|" + std::to_string((int)family) + "|" + text;
-    auto cached     = cache.find(key);
-    if (cached != cache.end()) {
-        return cached->second;
-    }
-    if (cache.size() > 512) {
-        cache.clear(); // defensive bound; the distinct-string set is normally tiny
-    }
-
-    u32 width;
-    std::string newtext = "";
-    const char* src     = text.c_str();
-    while (*src != '\0') {
-        int charsize = U8_charsize(src);
-        if (charsize < 1)
-            break;
-        std::string candidate = newtext + std::string(src, charsize);
-        SDLH_GetTextDimensions(textsize, candidate.c_str(), &width, NULL, family);
-        if (width >= maxsize) {
-            newtext += "...";
-            break;
-        }
-        newtext = candidate;
-        src += charsize;
-    }
-    cache.emplace(std::move(key), newtext);
-    return newtext;
-}
-
 void SDLH_CreateColorTexture(Texture** texture, int w, int h, Color color)
 {
     SDL_Surface* surface = SDL_CreateRGBSurface(0, w, h, 32, 0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000);
@@ -417,3 +367,5 @@ void SDLH_CreateColorTexture(Texture** texture, int w, int h, Color color)
         SDL_FreeSurface(surface);
     }
 }
+
+#endif // !GFX_BACKEND_DEKO3D

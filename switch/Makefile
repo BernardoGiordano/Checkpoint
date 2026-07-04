@@ -38,7 +38,7 @@ TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out
 BUILD			:=	build
 FORMATSOURCES	:=	source ../common
-SOURCES			:=	$(FORMATSOURCES) ../3rd-party/ftp
+SOURCES			:=	$(FORMATSOURCES) source/gfx ../3rd-party/ftp
 DATA			:=	data
 FORMATINCLUDES	:=	include ../common
 INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/ftp
@@ -49,6 +49,14 @@ ROMFS			:=	romfs
 # options for code generation
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
+
+# Rendering backend: sdl (default, ships) or deko3d (migration in progress,
+# see HANDOFF-deko3d.md). Selects which of SDLHelper.cpp / DekoHelper.cpp
+# provides the SDLH_* API. Usage: make switch GFX_BACKEND=deko3d
+GFX_BACKEND ?= sdl
+ifeq ($(GFX_BACKEND),deko3d)
+DEFINES += -DGFX_BACKEND_DEKO3D
+endif
 
 CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections \
 			-Wno-write-strings -Wno-unused-value -fomit-frame-pointer \
@@ -69,7 +77,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++23
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-no-as-needed,-Map,$(notdir $*.map)
 
-LIBS	:=	`aarch64-none-elf-pkg-config SDL2_ttf SDL2_image --libs`
+LIBS	:=	-ldeko3d `aarch64-none-elf-pkg-config SDL2_ttf SDL2_image --libs`
 
 CXX		:= `which ccache` $(CXX)
 CC		:= `which ccache` $(CC)
