@@ -433,7 +433,7 @@ void MainScreen::draw() const
             char overallCountStr[24];
             snprintf(overallCountStr, sizeof(overallCountStr), "Save %zu / %zu", transfer.saveCount + 1, transfer.saveTotal);
             char overallPctStr[8];
-            snprintf(overallPctStr, sizeof(overallPctStr), "%d%%%%", (int)(overallProgress * 100));
+            snprintf(overallPctStr, sizeof(overallPctStr), "%d%%", (int)(overallProgress * 100));
             drawProgressBar(barY, overallProgress, overallCountStr, overallPctStr);
             barY += 52;
         }
@@ -442,7 +442,7 @@ void MainScreen::draw() const
         char countStr[24];
         snprintf(countStr, sizeof(countStr), "File %zu / %zu", transfer.copyCount, transfer.copyTotal);
         char pctStr[8];
-        snprintf(pctStr, sizeof(pctStr), "%d%%%%", (int)((progress > 1.0f ? 1.0f : progress) * 100));
+        snprintf(pctStr, sizeof(pctStr), "%d%%", (int)((progress > 1.0f ? 1.0f : progress) * 100));
         drawProgressBar(barY, progress, countStr, pctStr);
         barY += 52;
 
@@ -450,7 +450,7 @@ void MainScreen::draw() const
         char kbStr[40];
         snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", transfer.currentFileOffset / 1024.0f, transfer.currentFileSize / 1024.0f);
         char filePctStr[8];
-        snprintf(filePctStr, sizeof(filePctStr), "%d%%%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
+        snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
         drawProgressBar(barY, fileProgress, kbStr, filePctStr);
     }
 }

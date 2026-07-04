@@ -232,7 +232,7 @@ void SDLH_DrawRect(int x, int y, int w, int h, SDL_Color color)
 
 void SDLH_DrawText(int size, int x, int y, SDL_Color color, const char* text, FontFamily family)
 {
-    FC_DrawColor(fontFor(size, family), s_renderer, x, y, color, text);
+    FC_DrawColor(fontFor(size, family), s_renderer, x, y, color, "%s", text);
 }
 
 void SDLH_DrawTextBox(int size, int x, int y, SDL_Color color, int max, const char* text, FontFamily family)
@@ -241,7 +241,7 @@ void SDLH_DrawTextBox(int size, int x, int y, SDL_Color color, int max, const ch
     FC_Font* font = fontFor(size, family);
     SDLH_GetTextDimensions(size, text, NULL, &h, family);
     FC_Rect rect = FC_MakeRect(x, y, max, h);
-    FC_DrawBoxColor(font, s_renderer, rect, color, text);
+    FC_DrawBoxColor(font, s_renderer, rect, color, "%s", text);
 }
 
 void SDLH_LoadImage(SDL_Texture** texture, char* path)
@@ -295,9 +295,9 @@ void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFami
 {
     FC_Font* f = fontFor(size, family);
     if (w != NULL)
-        *w = FC_GetWidth(f, text);
+        *w = FC_GetWidth(f, "%s", text);
     if (h != NULL)
-        *h = FC_GetHeight(f, text);
+        *h = FC_GetHeight(f, "%s", text);
 }
 
 SDL_Texture* SDLH_StarTexture(void)
