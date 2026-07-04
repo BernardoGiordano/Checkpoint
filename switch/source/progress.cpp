@@ -35,7 +35,9 @@
 // around the whole batch.
 void UiProgressSink::begin(const std::string& mode, size_t totalFiles)
 {
-    TransferStatus::beginLocalRun(mode, totalFiles);
+    // A backup sink carries a cancel flag; a restore sink does not. That is
+    // exactly the "may this run be cancelled?" fact the modal needs.
+    TransferStatus::beginLocalRun(mode, totalFiles, mCancelFlag != nullptr);
 }
 
 void UiProgressSink::startFile(const std::string& name, u64 size)

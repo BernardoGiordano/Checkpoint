@@ -25,10 +25,15 @@
  */
 
 #include "util.hpp"
+#include "server.hpp"
 #include "titlecatalog.hpp"
 
 void servicesExit(void)
 {
+    // Stop and join the log server before socketExit tears the socket layer
+    // down under it, and flush the log file.
+    Server::exit();
+    Logging::exit();
     if (g_ftpAvailable)
         ftp_exit();
     if (g_notificationLedAvailable)
@@ -53,6 +58,12 @@ Result servicesInit(void)
     io::createDirectory("sdmc:/switch/Checkpoint/system");
     io::createDirectory("sdmc:/switch/Checkpoint/logs");
 
+    // Sets the log file path and registers the /logs HTTP handlers (the shared
+    // logging module registers them under the SERVER_HPP guard); then open the
+    // file so /logs/file and on-disk logging work too.
+    Logging::init();
+    Logging::initFileLogging();
+
     Logging::info("Starting Checkpoint loading...");
 
     if (appletGetAppletType() != AppletType_Application) {
@@ -68,6 +79,11 @@ Result servicesInit(void)
     }
 
     g_shouldExitNetworkLoop = R_FAILED(socinit);
+
+    // The log server needs the socket layer up; skip it if socket init failed.
+    if (R_SUCCEEDED(socinit)) {
+        Server::init();
+    }
 
     Result res = 0;
 

@@ -30,6 +30,7 @@
 #include "server.hpp"
 #include <3ds.h>
 #elif defined(__SWITCH__)
+#include "server.hpp"
 #include <switch.h>
 #endif
 
@@ -112,6 +113,12 @@ void Logging::init()
         return {200, "text/plain", logData};
     });
 #endif
+}
+
+std::string Logging::getApplicationLogs()
+{
+    std::lock_guard<std::mutex> lock(logMutex);
+    return applicationLogs;
 }
 
 void Logging::info(const std::string& message)

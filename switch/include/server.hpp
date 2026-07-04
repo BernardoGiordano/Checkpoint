@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,24 +24,35 @@
  *         reasonable ways as different from the original version.
  */
 
-#include "KeyboardManager.hpp"
-#include "account.hpp"
-#include "title.hpp"
-#include <arpa/inet.h>
-#include <errno.h>
-#include <netinet/in.h>
-#include <poll.h>
-#include <string.h>
+#ifndef SERVER_HPP
+#define SERVER_HPP
+
+#include <functional>
 #include <string>
-#include <switch.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <tuple>
-#include <unistd.h>
-#include <utility>
 
-#define PKSM_PORT 34567
+// Minimal HTTP/1.1 server over a raw BSD socket, mirroring the 3DS Server API
+// so the shared logging module registers the same /logs endpoints on both
+// platforms. Paths are dispatched to registered handlers on a worker thread.
+namespace Server {
+    struct HttpResponse {
+        int statusCode;
+        std::string contentType;
+        std::string body;
+    };
 
-bool isPKSMBridgeTitle(u64 id);
-std::tuple<bool, Result, std::string> sendToPKSMBridge(size_t index, AccountUid uid, size_t cellIndex);
-std::tuple<bool, Result, std::string> recvFromPKSMBridge(size_t index, AccountUid uid, size_t cellIndex);
+    using HttpHandler = std::function<HttpResponse(const std::string& path, const std::string& requestData)>;
+
+    void init(void);
+    void exit(void);
+    // Signals the accept loop to stop; it exits within one iteration. exit()
+    // joins the worker and tears the socket down.
+    void requestStop(void);
+    bool isRunning(void);
+    // "http://<console-ip>:8000" once listening, empty otherwise.
+    std::string getAddress(void);
+
+    void registerHandler(const std::string& path, HttpHandler handler);
+    void unregisterHandler(const std::string& path);
+}
+
+#endif

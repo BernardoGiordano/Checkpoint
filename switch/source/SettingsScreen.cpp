@@ -29,7 +29,9 @@
 #include "TitlePickerOverlay.hpp"
 #include "colors.hpp"
 #include "configuration.hpp"
+#include "logging.hpp"
 #include "main.hpp"
+#include "server.hpp"
 #include "shapes.hpp"
 #include "sortmode.hpp"
 #include "titlecatalog.hpp"
@@ -64,7 +66,29 @@ namespace {
     constexpr int ROWS_Y0           = TOPBAR_H + 24;
     constexpr int SECTION_GAP_ABOVE = 12;
 
-    const std::array<const char*, 5> kCategoryLabels = {"General", "Library", "Save folders", "Connectivity", "About"};
+    const std::array<const char*, 6> kCategoryLabels = {"General", "Library", "Save folders", "Connectivity", "Logs", "About"};
+
+    // Log viewer: monospace body text, tight line spacing so a useful number of
+    // lines fit the pane.
+    constexpr int LOG_FONT     = 11;
+    constexpr int LOG_LINE_GAP = 3;
+    constexpr int LOG_PAD      = 16;
+
+    // Bytes consumed by the UTF-8 lead byte `c` (1 if not a lead byte). Local so
+    // the log wrapper never splits a multi-byte glyph without pulling in the
+    // font-cache unicode helpers.
+    int utf8Len(unsigned char c)
+    {
+        if (c < 0x80)
+            return 1;
+        if ((c >> 5) == 0x6)
+            return 2;
+        if ((c >> 4) == 0xE)
+            return 3;
+        if ((c >> 3) == 0x1E)
+            return 4;
+        return 1;
+    }
 
     // Height of one section-label slot (label + 8px breathing room below it).
     int labelSlotH(void)
@@ -188,6 +212,18 @@ void SettingsScreen::rebuildRows(void)
                 flashSaved();
             };
             mRows.push_back(std::move(pksm));
+
+            Row confirmRestore;
+            confirmRestore.title      = "Confirm before restore";
+            confirmRestore.subtitle   = "Ask before overwriting a save on restore";
+            confirmRestore.control    = Control::Toggle;
+            confirmRestore.section    = "SAFETY";
+            confirmRestore.getOn      = [&cfg]() { return cfg.isConfirmRestoreEnabled(); };
+            confirmRestore.onActivate = [this, &cfg]() {
+                cfg.setConfirmRestoreEnabled(!cfg.isConfirmRestoreEnabled());
+                flashSaved();
+            };
+            mRows.push_back(std::move(confirmRestore));
             break;
         }
         case Category::Connectivity: {
@@ -208,6 +244,11 @@ void SettingsScreen::rebuildRows(void)
             mRows.push_back(info("FTP server", ftpOn ? "Enabled" : "Disabled", "CONNECTIVITY"));
             mRows.push_back(info("This console's address", ip.empty() ? "Unavailable" : ip + ":50000"));
             mRows.push_back(info("PKSM bridge", cfg.isPKSMBridgeEnabled() ? "Enabled" : "Disabled"));
+
+            // Address of the built-in HTTP log server (parity with the 3DS build).
+            // Open it from any browser on the same network to read the logs.
+            const std::string addr = Server::getAddress();
+            mRows.push_back(info("Log server", addr.empty() ? "Unavailable" : addr + "/logs/memory", "LOGS"));
             mRows.push_back(info("Send / receive", "Turn FTP server or PKSM bridge on from the General tab."));
             break;
         }
@@ -398,6 +439,12 @@ void SettingsScreen::rebuildRows(void)
             }
             break;
         }
+        case Category::Logs: {
+            // No interactive rows: the log pane is drawn directly (drawLogs) and
+            // scrolled by mLogScroll while focused.
+            rebuildLogLines();
+            break;
+        }
         case Category::About: {
             Row v;
             v.section  = "ABOUT";
@@ -452,6 +499,105 @@ void SettingsScreen::switchCategory(int delta)
     mCursor   = 0;
     mScroll   = 0;
     rebuildRows();
+}
+
+int SettingsScreen::logLinesPerPage(void) const
+{
+    u32 lh;
+    SDLH_GetTextDimensions(LOG_FONT, "Ag", NULL, &lh, FontFamily::Mono);
+    const int lineH = (int)lh + LOG_LINE_GAP;
+    const int paneH = UiKit::HINTBAR_Y - ROWS_Y0 - 2 * LOG_PAD;
+    return std::max(1, paneH / lineH);
+}
+
+void SettingsScreen::rebuildLogLines(void)
+{
+    mLogLines.clear();
+
+    const std::string logs = Logging::getApplicationLogs();
+    const int paneW        = ROW_W - 2 * LOG_PAD;
+
+    // Greedy wrap of one logical line to the pane width. Measurement is on the
+    // mono font; only runs when the Logs category is (re)built, not per frame.
+    auto wrap = [&](const std::string& s) {
+        if (s.empty()) {
+            mLogLines.emplace_back();
+            return;
+        }
+        std::string cur;
+        const char* src = s.c_str();
+        while (*src != '\0') {
+            const int cs      = utf8Len((unsigned char)*src);
+            std::string glyph = std::string(src, cs);
+            std::string cand  = cur + glyph;
+            u32 w;
+            SDLH_GetTextDimensions(LOG_FONT, cand.c_str(), &w, NULL, FontFamily::Mono);
+            if (w > (u32)paneW && !cur.empty()) {
+                mLogLines.push_back(cur);
+                cur = glyph;
+            }
+            else {
+                cur = std::move(cand);
+            }
+            src += cs;
+        }
+        mLogLines.push_back(cur);
+    };
+
+    size_t start = 0;
+    while (start <= logs.size()) {
+        size_t nl        = logs.find('\n', start);
+        size_t len       = (nl == std::string::npos) ? logs.size() - start : nl - start;
+        std::string line = logs.substr(start, len);
+        // Drop a trailing '\r' if the log ever carried CRLF.
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        wrap(line);
+        if (nl == std::string::npos) {
+            break;
+        }
+        start = nl + 1;
+    }
+
+    // Start at the newest lines (bottom), which are the ones a user came to see.
+    mLogScroll    = std::max(0, (int)mLogLines.size() - logLinesPerPage());
+    mLogHeldTimer = 0;
+}
+
+void SettingsScreen::drawLogs(void) const
+{
+    const int paneY = ROWS_Y0;
+    const int paneH = UiKit::HINTBAR_Y - ROWS_Y0 - ROW_GAP;
+    Shapes::cardRound(ROW_X, paneY, ROW_W, paneH, 0, COLOR_SURFACE, COLOR_STROKE1, 1);
+
+    if (mLogLines.empty()) {
+        u32 tw, th;
+        SDLH_GetTextDimensions(13, "No logs yet.", &tw, &th);
+        SDLH_DrawText(13, ROW_X + (ROW_W - (int)tw) / 2, paneY + (paneH - (int)th) / 2, COLOR_TEXT3, "No logs yet.");
+        return;
+    }
+
+    u32 lh;
+    SDLH_GetTextDimensions(LOG_FONT, "Ag", NULL, &lh, FontFamily::Mono);
+    const int lineH = (int)lh + LOG_LINE_GAP;
+    const int per   = logLinesPerPage();
+
+    int y             = paneY + LOG_PAD;
+    const int lastRow = std::min((int)mLogLines.size(), mLogScroll + per);
+    for (int i = mLogScroll; i < lastRow; i++) {
+        SDLH_DrawText(LOG_FONT, ROW_X + LOG_PAD, y, COLOR_MONO_VAL, mLogLines[i].c_str(), FontFamily::Mono);
+        y += lineH;
+    }
+
+    // Off-screen affordance chevrons (Nintendo-Extended up/down glyphs).
+    const int cx = ROW_X + ROW_W + 8;
+    if (mLogScroll > 0) {
+        SDLH_DrawText(16, cx, paneY, COLOR_TEXT3, "");
+    }
+    if (mLogScroll + per < (int)mLogLines.size()) {
+        SDLH_DrawText(16, cx, UiKit::HINTBAR_Y - 24, COLOR_TEXT3, "");
+    }
 }
 
 void SettingsScreen::draw(void) const
@@ -606,6 +752,11 @@ void SettingsScreen::draw(void) const
         y += ROW_H + ROW_GAP;
     }
 
+    // The Logs category has no interactive rows; it renders a scrollable pane.
+    if (mCategory == Category::Logs) {
+        drawLogs();
+    }
+
     // Paged-list affordance: chevrons at the right edge when rows sit off-screen.
     if (!mRows.empty()) {
         // Nintendo-Extended-font up/down chevrons (U+E147/E148); the plain
@@ -624,6 +775,12 @@ void SettingsScreen::draw(void) const
         UiKit::drawHintBar({
             {"A", "Open"},
             {"B", "Back"},
+        });
+    }
+    else if (mCategory == Category::Logs) {
+        UiKit::drawHintBar({
+            {"", "Scroll"},
+            {"B", "Categories"},
         });
     }
     else {
@@ -732,8 +889,40 @@ void SettingsScreen::update(const InputState& input)
         else if (kdown & HidNpadButton_Down) {
             switchCategory(1);
         }
-        if ((kdown & (HidNpadButton_Right | HidNpadButton_A)) && hasFocusableRow()) {
+        const bool canEnter = hasFocusableRow() || (mCategory == Category::Logs && !mLogLines.empty());
+        if ((kdown & (HidNpadButton_Right | HidNpadButton_A)) && canEnter) {
             mCatFocused = false; // rebuildRows() already parked mCursor on the first focusable row
+        }
+        return;
+    }
+
+    // ---- Logs pane focused: Up/Down scroll the log lines (d-pad auto-repeat),
+    // B/Left returns to the category rail. ----
+    if (mCategory == Category::Logs) {
+        if ((kdown & HidNpadButton_B) || (kdown & HidNpadButton_Left)) {
+            mCatFocused = true;
+            return;
+        }
+        const int maxScroll = std::max(0, (int)mLogLines.size() - logLinesPerPage());
+        const u64 kheld     = input.kHeld;
+        auto up             = [&]() { mLogScroll = std::max(0, mLogScroll - 1); };
+        auto down           = [&]() { mLogScroll = std::min(maxScroll, mLogScroll + 1); };
+        if (kdown & HidNpadButton_AnyUp) {
+            up();
+            mLogHeldTimer = 0;
+        }
+        else if (kdown & HidNpadButton_AnyDown) {
+            down();
+            mLogHeldTimer = 0;
+        }
+        else if (kheld & (HidNpadButton_AnyUp | HidNpadButton_AnyDown)) {
+            // Ramp: an initial hold delay, then step every other frame.
+            if (++mLogHeldTimer > 8 && (mLogHeldTimer % 2) == 0) {
+                (kheld & HidNpadButton_AnyUp) ? up() : down();
+            }
+        }
+        else {
+            mLogHeldTimer = 0;
         }
         return;
     }

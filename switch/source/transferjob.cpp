@@ -64,9 +64,16 @@ void TransferJob::start(void)
     mCancelRequested.store(false);
     mState.store(State::Running);
 
-    if (R_FAILED(threadCreate(&mThread, TransferJob::runThread, this, nullptr, WORKER_STACK, WORKER_PRIO, -2)) || R_FAILED(threadStart(&mThread))) {
+    if (R_FAILED(threadCreate(&mThread, TransferJob::runThread, this, nullptr, WORKER_STACK, WORKER_PRIO, -2))) {
         // Could not spawn the worker: fall back to running the batch inline so the
         // saves still happen (the UI freezes for this run, as it did before).
+        run();
+        return;
+    }
+    if (R_FAILED(threadStart(&mThread))) {
+        // The thread was created but never started: close the handle so it isn't
+        // leaked, then run the batch inline.
+        threadClose(&mThread);
         run();
         return;
     }

@@ -71,7 +71,7 @@ void Scrollable::draw(bool condition)
     const size_t baseIndex = mVisibleEntries * mPage;
     const size_t sz        = size() - baseIndex > mVisibleEntries ? mVisibleEntries : size() - baseIndex;
     for (size_t i = baseIndex; i < baseIndex + sz; i++) {
-        mCells.at(i)->draw(20, g_backupScrollEnabled && mCells.at(i)->selected() ? COLOR_ACCENT : COLOR_BLACK);
+        mCells.at(i)->draw(20, condition && mCells.at(i)->selected() ? COLOR_ACCENT : COLOR_BLACK);
     }
 
     size_t blankRows = mVisibleEntries - sz;

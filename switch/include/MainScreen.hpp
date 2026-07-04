@@ -70,6 +70,9 @@ protected:
     size_t rawIndex(void) const;
     void doBackup(size_t rawIdx, size_t cellIndex);
     void doRestore(size_t rawIdx, size_t cellIndex);
+    // Restore the currently selected backup: asks for a YesNo confirmation first
+    // unless Settings' confirm-restore toggle is off, then enqueues + starts.
+    void requestRestoreSelected(void);
 
 private:
     entryType_t type;

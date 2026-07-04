@@ -275,8 +275,9 @@ void MainScreen::draw() const
     for (size_t k = hid.page() * entries; k < hid.page() * entries + max; k++) {
         const int tx = selectorX(k), ty = selectorY(k);
         Shapes::cardRound(tx, ty, TILE, TILE, 14, COLOR_TILE, COLOR_STROKE2, 1);
-        if (TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k) != NULL) {
-            SDLH_DrawImageScale(TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k), tx, ty, TILE, TILE);
+        SDL_Texture* smallIcon = TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k);
+        if (smallIcon != NULL) {
+            SDLH_DrawImageScale(smallIcon, tx, ty, TILE, TILE);
         }
 
         const bool selected = !selEnt.empty() && std::find(selEnt.begin(), selEnt.end(), k) != selEnt.end();
@@ -400,7 +401,7 @@ void MainScreen::draw() const
         SDLH_GetTextDimensions(20, titleStr.c_str(), &title_w, &title_h);
         SDLH_DrawText(20, mx + (mw - (int)title_w) / 2, my + 16, COLOR_TEXT, titleStr.c_str());
 
-        if (transfer.mode == "Backup") {
+        if (transfer.cancellable) {
             const std::string hint = UiKit::buttonGlyph("B") + " to cancel";
             u32 hint_w;
             SDLH_GetTextDimensions(14, hint.c_str(), &hint_w, NULL);
@@ -485,7 +486,7 @@ void MainScreen::update(const InputState& input)
     // B press on a backup in flight, which requests a cancel (a restore can't be
     // cancelled: aborting mid-write could leave a truncated save on the cartridge).
     if (TransferJob::get().active()) {
-        if ((input.kDown & HidNpadButton_B) && TransferStatus::snapshot().mode == "Backup") {
+        if ((input.kDown & HidNpadButton_B) && TransferStatus::snapshot().cancellable) {
             TransferJob::get().requestCancel();
         }
         return;
@@ -599,6 +600,25 @@ void MainScreen::doRestore(size_t rawIdx, size_t cellIndex)
     TransferJob::get().enqueueRestore(std::move(title), std::move(src), name + "\nhas been restored successfully.");
 }
 
+void MainScreen::requestRestoreSelected(void)
+{
+    // A restore overwrites the on-console save, so confirm by default; the
+    // confirm-restore toggle (Settings > General) can skip the prompt.
+    if (Configuration::getInstance().isConfirmRestoreEnabled()) {
+        currentOverlay = std::make_shared<YesNoOverlay>(
+            *this, "Restore selected save?",
+            [this]() {
+                doRestore(rawIndex(), this->index(CELLS));
+                TransferJob::get().start();
+            },
+            [this]() { this->removeOverlay(); });
+    }
+    else {
+        doRestore(rawIndex(), this->index(CELLS));
+        TransferJob::get().start();
+    }
+}
+
 void MainScreen::handleEvents(const InputState& input)
 {
     const u64 kheld = input.kHeld;
@@ -659,15 +679,15 @@ void MainScreen::handleEvents(const InputState& input)
         }
     }
 
-    // handle PKSM bridge (only for account saves)
-    if (mSaveTypeFilter == FILTER_SAVES && Configuration::getInstance().isPKSMBridgeEnabled()) {
+    // handle PKSM bridge (only for account saves). The per-frame Title copy
+    // (strings + two path vectors) is gated behind the L+R hold so nothing is
+    // rebuilt on the frames no shoulder combo is held.
+    if (mSaveTypeFilter == FILTER_SAVES && Configuration::getInstance().isPKSMBridgeEnabled() && !getPKSMBridgeFlag() && (kheld & HidNpadButton_L) &&
+        (kheld & HidNpadButton_R)) {
         Title title;
         TitleCatalog::get().getTitle(title, g_currentUId, rawIndex());
-        if (!getPKSMBridgeFlag()) {
-            if ((kheld & HidNpadButton_L) && (kheld & HidNpadButton_R) && title.saveDataType() != FsSaveDataType_Bcat &&
-                title.saveDataType() != FsSaveDataType_Device && isPKSMBridgeTitle(title.id())) {
-                setPKSMBridgeFlag(true);
-            }
+        if (title.saveDataType() != FsSaveDataType_Bcat && title.saveDataType() != FsSaveDataType_Device && isPKSMBridgeTitle(title.id())) {
+            setPKSMBridgeFlag(true);
         }
     }
 
@@ -724,13 +744,7 @@ void MainScreen::handleEvents(const InputState& input)
                         [this]() { this->removeOverlay(); });
                 }
                 else {
-                    currentOverlay = std::make_shared<YesNoOverlay>(
-                        *this, "Restore selected save?",
-                        [this]() {
-                            doRestore(rawIndex(), this->index(CELLS));
-                            TransferJob::get().start();
-                        },
-                        [this]() { this->removeOverlay(); });
+                    requestRestoreSelected();
                 }
             }
         }
@@ -833,7 +847,7 @@ void MainScreen::handleEvents(const InputState& input)
                     currentOverlay = std::make_shared<YesNoOverlay>(
                         *this, "Send save to PKSM?",
                         [this]() {
-                            auto result = sendToPKSMBrigde(rawIndex(), g_currentUId, this->index(CELLS));
+                            auto result = sendToPKSMBridge(rawIndex(), g_currentUId, this->index(CELLS));
                             if (std::get<0>(result)) {
                                 currentOverlay = std::make_shared<InfoOverlay>(*this, std::get<2>(result));
                             }
@@ -875,13 +889,7 @@ void MainScreen::handleEvents(const InputState& input)
             }
             else {
                 if (this->index(CELLS) != 0) {
-                    currentOverlay = std::make_shared<YesNoOverlay>(
-                        *this, "Restore selected save?",
-                        [this]() {
-                            doRestore(rawIndex(), this->index(CELLS));
-                            TransferJob::get().start();
-                        },
-                        [this]() { this->removeOverlay(); });
+                    requestRestoreSelected();
                 }
             }
         }

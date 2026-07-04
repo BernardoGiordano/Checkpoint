@@ -36,7 +36,8 @@ namespace TransferStatus {
     void beginLocalBatch(size_t totalSaves)
     {
         std::lock_guard<std::mutex> lock(sMutex);
-        sState.active = true;
+        sState.active      = true;
+        sState.cancellable = false;
         sState.mode.clear();
         sState.saveCount = 0;
         sState.saveTotal = totalSaves;
@@ -53,12 +54,13 @@ namespace TransferStatus {
         sState.saveCount = count;
     }
 
-    void beginLocalRun(const std::string& mode, size_t totalFiles)
+    void beginLocalRun(const std::string& mode, size_t totalFiles, bool cancellable)
     {
         std::lock_guard<std::mutex> lock(sMutex);
-        sState.mode      = mode;
-        sState.copyCount = 0;
-        sState.copyTotal = totalFiles;
+        sState.mode        = mode;
+        sState.cancellable = cancellable;
+        sState.copyCount   = 0;
+        sState.copyTotal   = totalFiles;
         sState.currentFile.clear();
         sState.currentFileSize   = 0;
         sState.currentFileOffset = 0;

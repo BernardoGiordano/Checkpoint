@@ -56,12 +56,14 @@ public:
     bool favorite(u64 id);
     bool isPKSMBridgeEnabled(void);
     bool isFTPEnabled(void);
+    // Whether a restore asks for a YesNo confirmation first (parity with the 3DS
+    // confirm_restore setting). Default true — a restore overwrites the save.
+    bool isConfirmRestoreEnabled(void);
     std::vector<std::string> additionalSaveFolders(u64 id);
     std::vector<std::string> additionalDeviceSaveFolders(u64 id);
     void save(void);
     void load(void);
     void parse(void);
-    const char* c_str(void);
     nlohmann::json getJson(void);
 
     // Every id currently hidden/favorited (Settings > Library reads these to
@@ -81,6 +83,7 @@ public:
     void setFavorite(u64 id, bool favorite);
     void setPKSMBridgeEnabled(bool enabled);
     void setFTPEnabled(bool enabled);
+    void setConfirmRestoreEnabled(bool enabled);
     void addAdditionalSaveFolder(u64 id, const std::string& path);
     void removeAdditionalSaveFolder(u64 id, const std::string& path);
     void addAdditionalDeviceSaveFolder(u64 id, const std::string& path);
@@ -116,6 +119,7 @@ private:
     nlohmann::json mJson;
     bool PKSMBridgeEnabled;
     bool FTPEnabled;
+    bool mConfirmRestore;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders, mAdditionalDeviceSaveFolders;
     std::string mTheme;

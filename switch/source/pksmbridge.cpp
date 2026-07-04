@@ -48,7 +48,7 @@ bool validateIpAddress(const std::string& ip)
     return inet_pton(AF_INET, ip.c_str(), &sa.sin_addr) != 0;
 }
 
-std::tuple<bool, Result, std::string> sendToPKSMBrigde(size_t index, AccountUid uid, size_t cellIndex)
+std::tuple<bool, Result, std::string> sendToPKSMBridge(size_t index, AccountUid uid, size_t cellIndex)
 {
     auto systemKeyboardAvailable = KeyboardManager::get().isSystemKeyboardAvailable();
     if (!systemKeyboardAvailable.first) {

@@ -102,7 +102,7 @@ std::string Title::fullPath(size_t index)
     return mFullSavePaths.at(index);
 }
 
-std::vector<std::string> Title::saves()
+const std::vector<std::string>& Title::saves()
 {
     return mSaves;
 }

@@ -36,6 +36,10 @@
 // network byte-counter variant here: every transfer is a local file copy.
 struct TransferSnapshot {
     bool active = false;
+    // Whether this run may be aborted mid-flight (backup yes; restore no — a
+    // restore aborted mid-write could leave a truncated save). The UI reads this
+    // instead of comparing the mode string.
+    bool cancellable = false;
     std::string mode;
     std::string currentFile;
     u64 currentFileSize   = 0;
@@ -58,7 +62,7 @@ namespace TransferStatus {
     // figures. end() lowers the modal once the whole batch is done.
     void beginLocalBatch(size_t totalSaves);
     void setSaveCount(size_t count);
-    void beginLocalRun(const std::string& mode, size_t totalFiles);
+    void beginLocalRun(const std::string& mode, size_t totalFiles, bool cancellable);
     void startFile(const std::string& name, u64 size);
     void setFileOffset(u64 offset);
     void finishFile();

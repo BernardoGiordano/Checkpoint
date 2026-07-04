@@ -74,7 +74,7 @@ public:
     void refreshDirectories(void);
     u64 saveId();
     void saveId(u64 id);
-    std::vector<std::string> saves(void);
+    const std::vector<std::string>& saves(void);
     u8 saveDataType(void);
     u8 saveDataSpaceId(void);
     AccountUid userId(void);

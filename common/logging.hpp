@@ -39,6 +39,12 @@ namespace Logging {
     void exit(void);
 
     void log(LogLevel level, const std::string& message);
+
+    // A copy of the accumulated in-memory log (every formatted line since
+    // startup), taken under the log mutex. Backs the Switch settings log viewer
+    // and the /logs/memory HTTP endpoint.
+    std::string getApplicationLogs(void);
+
     void trace(const std::string& message);
     void debug(const std::string& message);
     void info(const std::string& message);

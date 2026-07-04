@@ -328,6 +328,20 @@ void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, SDL_Color color)
 
 std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize, FontFamily family)
 {
+    // Each call is O(n) FC measurements, and this runs every frame on the top-bar
+    // title, the panel subtitles and overlay rows. Memoize by (size, width,
+    // family, text): the inputs are a small, stable set (title/backup names), and
+    // all drawing is on the one UI thread, so no lock is needed.
+    static std::unordered_map<std::string, std::string> cache;
+    std::string key = std::to_string(textsize) + "|" + std::to_string(maxsize) + "|" + std::to_string((int)family) + "|" + text;
+    auto cached     = cache.find(key);
+    if (cached != cache.end()) {
+        return cached->second;
+    }
+    if (cache.size() > 512) {
+        cache.clear(); // defensive bound; the distinct-string set is normally tiny
+    }
+
     u32 width;
     std::string newtext = "";
     const char* src     = text.c_str();
@@ -344,6 +358,7 @@ std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize, Fon
         newtext = candidate;
         src += charsize;
     }
+    cache.emplace(std::move(key), newtext);
     return newtext;
 }
 

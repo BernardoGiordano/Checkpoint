@@ -40,8 +40,8 @@
 // g_pendingScreen swap in main().
 class SettingsScreen : public Screen {
 public:
-    // The five category-rail entries, switched by L/R.
-    enum class Category { General, Library, SaveFolders, Connectivity, About, COUNT };
+    // The category-rail entries, switched by L/R.
+    enum class Category { General, Library, SaveFolders, Connectivity, Logs, About, COUNT };
 
     // One control per row. Segmented (Theme), Spinner (Default sort), Toggle
     // (FTP/PKSM); ActionPill/Static are used by the later-phase tabs.
@@ -77,6 +77,14 @@ public:
 
 private:
     void rebuildRows(void);
+    // Snapshot the in-memory log, wrap each line to the pane width (mono font),
+    // and cache the display lines; scrolls to the newest line. Called when the
+    // Logs category is (re)built.
+    void rebuildLogLines(void);
+    // Number of log lines that fit the pane at once (for paging/clamping).
+    int logLinesPerPage(void) const;
+    // Draws the scrollable log pane for the Logs category.
+    void drawLogs(void) const;
     void switchCategory(int delta);
     // Flashes the config-path label text-3 -> success -> text-3 on a write.
     void flashSaved(void);
@@ -114,6 +122,12 @@ private:
     // dereferences a Row the action just invalidated.
     bool mNeedsRebuild = false;
     char mVer[8];
+
+    // Logs category: wrapped display lines of the in-memory log, the first drawn
+    // line, and a d-pad auto-repeat frame counter for held scrolling.
+    std::vector<std::string> mLogLines;
+    int mLogScroll    = 0;
+    int mLogHeldTimer = 0;
 };
 
 #endif // SETTINGSSCREEN_HPP
