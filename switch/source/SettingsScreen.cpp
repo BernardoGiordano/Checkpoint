@@ -258,7 +258,6 @@ void SettingsScreen::rebuildRows(void)
             if (!addr.empty()) {
                 mRows.push_back(info("Full log file", addr + "/logs/file"));
             }
-            mRows.push_back(info("Send / receive", "Turn FTP server or PKSM bridge on from the General tab."));
             break;
         }
         case Category::Library: {
@@ -463,12 +462,12 @@ void SettingsScreen::rebuildRows(void)
 
             Row a;
             a.title    = "Author";
-            a.subtitle = "Bernardo Giordano · FlagBrew";
+            a.subtitle = "Bernardo Giordano";
             mRows.push_back(std::move(a));
 
             Row g;
             g.title    = "Source";
-            g.subtitle = "github.com/FlagBrew/Checkpoint";
+            g.subtitle = "github.com/BernardoGiordano/Checkpoint";
             mRows.push_back(std::move(g));
 
             Row f;

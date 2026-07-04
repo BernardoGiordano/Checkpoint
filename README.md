@@ -1,4 +1,4 @@
-# Checkpoint <a href="https://github.com/FlagBrew/Checkpoint/releases/latest"><img src="https://img.shields.io/github/downloads/FlagBrew/Checkpoint/total.svg"></a>
+# Checkpoint <a href="https://github.com/BernardoGiordano/Checkpoint/releases/latest"><img src="https://img.shields.io/github/downloads/BernardoGiordano/Checkpoint/total.svg"></a>
 
 A fast and simple homebrew save manager for 3DS and Switch written in C++.
 
@@ -100,7 +100,7 @@ devkitARM and devkitA64 are required to compile Checkpoint for 3DS and Switch, r
 
 ## License
 
-This project is licensed under the GNU GPLv3. Additional Terms 7.b and 7.c of GPLv3 apply to this. See [LICENSE.md](https://github.com/FlagBrew/Checkpoint/blob/master/LICENSE) for details.
+This project is licensed under the GNU GPLv3. Additional Terms 7.b and 7.c of GPLv3 apply to this. See [LICENSE.md](https://github.com/BernardoGiordano/Checkpoint/blob/master/LICENSE) for details.
 
 ## Credits
 
