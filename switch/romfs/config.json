@@ -8,7 +8,13 @@
   "additional_save_folders": {
 
   },
+  "additional_device_save_folders": {
+
+  },
   "pksm-bridge": false,
   "ftp-enabled": false,
-  "version": 4
+  "confirm-restore": true,
+  "theme": "dark",
+  "sort-mode": "alpha",
+  "version": 5
 }
