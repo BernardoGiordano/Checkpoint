@@ -83,6 +83,10 @@ void UiKit::drawHintCircle(int x, int y, const std::string& glyph)
 
 void UiKit::drawHintBar(const std::vector<HintItem>& items)
 {
+    // Opaque fill so an overlay's hint bar fully hides the page's hint bar
+    // underneath (the scrim only dims it, leaving both right-aligned rows to
+    // bleed together otherwise).
+    SDLH_DrawRect(0, HINTBAR_Y, SCREEN_W, HINTBAR_H, COLOR_BG);
     SDLH_DrawRect(0, HINTBAR_Y, SCREEN_W, 1, COLOR_STROKE1);
 
     int totalW = 0;

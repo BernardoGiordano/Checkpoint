@@ -83,6 +83,10 @@ Configuration::Configuration(void)
             mJson["additional_save_folders"] = nlohmann::json::object();
             updateJson                       = true;
         }
+        if (!(mJson.contains("additional_device_save_folders") && mJson["additional_device_save_folders"].is_object())) {
+            mJson["additional_device_save_folders"] = nlohmann::json::object();
+            updateJson                              = true;
+        }
         if (!(mJson.contains("theme") && mJson["theme"].is_string())) {
             mJson["theme"] = "dark";
             updateJson     = true;
@@ -110,6 +114,13 @@ Configuration::Configuration(void)
             if (!obj.is_object()) {
                 mJson["additional_save_folders"] = nlohmann::json::object();
                 updateJson                       = true;
+                break;
+            }
+        }
+        for (auto& obj : mJson["additional_device_save_folders"]) {
+            if (!obj.is_object()) {
+                mJson["additional_device_save_folders"] = nlohmann::json::object();
+                updateJson                              = true;
                 break;
             }
         }
@@ -161,6 +172,13 @@ std::vector<std::string> Configuration::additionalSaveFolders(u64 id)
     return folders == mAdditionalSaveFolders.end() ? emptyvec : folders->second;
 }
 
+std::vector<std::string> Configuration::additionalDeviceSaveFolders(u64 id)
+{
+    std::vector<std::string> emptyvec;
+    auto folders = mAdditionalDeviceSaveFolders.find(id);
+    return folders == mAdditionalDeviceSaveFolders.end() ? emptyvec : folders->second;
+}
+
 bool Configuration::isPKSMBridgeEnabled(void)
 {
     return PKSMBridgeEnabled;
@@ -193,6 +211,7 @@ void Configuration::parse(void)
     mFilterIds.clear();
     mFavoriteIds.clear();
     mAdditionalSaveFolders.clear();
+    mAdditionalDeviceSaveFolders.clear();
 
     // parse filters
     std::vector<std::string> filter = mJson["filter"];
@@ -206,7 +225,7 @@ void Configuration::parse(void)
         mFavoriteIds.emplace(strtoull(id.c_str(), NULL, 16));
     }
 
-    // parse additional save folders
+    // parse additional save folders (user + device kept as separate lists)
     auto js = mJson["additional_save_folders"];
     for (auto it = js.begin(); it != js.end(); ++it) {
         std::vector<std::string> folders = it.value()["folders"];
@@ -215,6 +234,15 @@ void Configuration::parse(void)
             sfolders.push_back(folder);
         }
         mAdditionalSaveFolders.emplace(strtoull(it.key().c_str(), NULL, 16), sfolders);
+    }
+    auto jsDevice = mJson["additional_device_save_folders"];
+    for (auto it = jsDevice.begin(); it != jsDevice.end(); ++it) {
+        std::vector<std::string> folders = it.value()["folders"];
+        std::vector<std::string> sfolders;
+        for (auto& folder : folders) {
+            sfolders.push_back(folder);
+        }
+        mAdditionalDeviceSaveFolders.emplace(strtoull(it.key().c_str(), NULL, 16), sfolders);
     }
 
     // parse PKSM Bridge flag
@@ -256,6 +284,16 @@ std::vector<u64> Configuration::additionalSaveFolderIds(void)
     std::vector<u64> ids;
     ids.reserve(mAdditionalSaveFolders.size());
     for (const auto& pair : mAdditionalSaveFolders) {
+        ids.push_back(pair.first);
+    }
+    return ids;
+}
+
+std::vector<u64> Configuration::additionalDeviceSaveFolderIds(void)
+{
+    std::vector<u64> ids;
+    ids.reserve(mAdditionalDeviceSaveFolders.size());
+    for (const auto& pair : mAdditionalDeviceSaveFolders) {
         ids.push_back(pair.first);
     }
     return ids;
@@ -305,33 +343,53 @@ void Configuration::setFTPEnabled(bool enabled)
     save();
 }
 
-void Configuration::addAdditionalSaveFolder(u64 id, const std::string& path)
+void Configuration::addFolder(std::unordered_map<u64, std::vector<std::string>>& map, const char* key, u64 id, const std::string& path)
 {
-    std::vector<std::string>& folders = mAdditionalSaveFolders[id];
+    std::vector<std::string>& folders = map[id];
     if (std::find(folders.begin(), folders.end(), path) != folders.end()) {
         return;
     }
     folders.push_back(path);
-    mJson["additional_save_folders"][hexId(id)]["folders"] = folders;
+    mJson[key][hexId(id)]["folders"] = folders;
     save();
 }
 
-void Configuration::removeAdditionalSaveFolder(u64 id, const std::string& path)
+void Configuration::removeFolder(std::unordered_map<u64, std::vector<std::string>>& map, const char* key, u64 id, const std::string& path)
 {
-    auto it = mAdditionalSaveFolders.find(id);
-    if (it == mAdditionalSaveFolders.end()) {
+    auto it = map.find(id);
+    if (it == map.end()) {
         return;
     }
     auto& folders = it->second;
     folders.erase(std::remove(folders.begin(), folders.end(), path), folders.end());
     if (folders.empty()) {
-        mAdditionalSaveFolders.erase(it);
-        mJson["additional_save_folders"].erase(hexId(id));
+        map.erase(it);
+        mJson[key].erase(hexId(id));
     }
     else {
-        mJson["additional_save_folders"][hexId(id)]["folders"] = folders;
+        mJson[key][hexId(id)]["folders"] = folders;
     }
     save();
+}
+
+void Configuration::addAdditionalSaveFolder(u64 id, const std::string& path)
+{
+    addFolder(mAdditionalSaveFolders, "additional_save_folders", id, path);
+}
+
+void Configuration::removeAdditionalSaveFolder(u64 id, const std::string& path)
+{
+    removeFolder(mAdditionalSaveFolders, "additional_save_folders", id, path);
+}
+
+void Configuration::addAdditionalDeviceSaveFolder(u64 id, const std::string& path)
+{
+    addFolder(mAdditionalDeviceSaveFolders, "additional_device_save_folders", id, path);
+}
+
+void Configuration::removeAdditionalDeviceSaveFolder(u64 id, const std::string& path)
+{
+    removeFolder(mAdditionalDeviceSaveFolders, "additional_device_save_folders", id, path);
 }
 
 std::string Configuration::theme(void)

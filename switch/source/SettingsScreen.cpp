@@ -320,69 +320,81 @@ void SettingsScreen::rebuildRows(void)
                 return it != names.end() ? it->second : StringUtils::format("%016llX", id);
             };
 
-            bool first           = true;
-            std::vector<u64> ids = cfg.additionalSaveFolderIds();
-            for (u64 id : ids) {
-                std::vector<std::string> folders = cfg.additionalSaveFolders(id);
-                for (const std::string& path : folders) {
-                    Row r;
-                    r.control   = Control::ActionPill;
-                    r.iconId    = id;
-                    r.title     = nameOf(id);
-                    r.subtitle  = path;
-                    r.pillLabel = "Remove";
-                    if (first) {
-                        r.section = "SAVE FOLDERS";
-                        first     = false;
+            // One block per save kind, mirroring the Library tab's shape: the
+            // configured (title, folder) rows with a Remove pill, then a single
+            // "+ Add" row whose flow picks a title of that kind first and the
+            // folder second. The pickers list only titles owning that save
+            // kind, so system/BCAT titles never show up here.
+            struct Kind {
+                const char* section;
+                const char* addTitle;
+                const char* addSubtitle;
+                u8 saveDataType;
+                std::vector<u64> (Configuration::*ids)(void);
+                std::vector<std::string> (Configuration::*folders)(u64);
+                void (Configuration::*add)(u64, const std::string&);
+                void (Configuration::*remove)(u64, const std::string&);
+            };
+            const Kind kinds[] = {
+                {"USER SAVE FOLDERS", "Add a save folder", "Pick a title, then an extra folder for its saves", FsSaveDataType_Account,
+                    &Configuration::additionalSaveFolderIds, &Configuration::additionalSaveFolders, &Configuration::addAdditionalSaveFolder,
+                    &Configuration::removeAdditionalSaveFolder},
+                {"DEVICE SAVE FOLDERS", "Add a device save folder", "Pick a title, then an extra folder for its device saves", FsSaveDataType_Device,
+                    &Configuration::additionalDeviceSaveFolderIds, &Configuration::additionalDeviceSaveFolders,
+                    &Configuration::addAdditionalDeviceSaveFolder, &Configuration::removeAdditionalDeviceSaveFolder},
+            };
+
+            for (const Kind& kind : kinds) {
+                // Copy what the lambdas need out of `kind`: the Kind array is a
+                // local, so capturing a reference to it would dangle by the time
+                // a row's onActivate runs.
+                const auto addFn    = kind.add;
+                const auto removeFn = kind.remove;
+                const u8 type       = kind.saveDataType;
+
+                bool first = true;
+                for (u64 id : (cfg.*kind.ids)()) {
+                    for (const std::string& path : (cfg.*kind.folders)(id)) {
+                        Row r;
+                        r.control   = Control::ActionPill;
+                        r.iconId    = id;
+                        r.title     = nameOf(id);
+                        r.subtitle  = path;
+                        r.pillLabel = "Remove";
+                        if (first) {
+                            r.section = kind.section;
+                            first     = false;
+                        }
+                        r.onActivate = [this, id, path, removeFn]() {
+                            (Configuration::getInstance().*removeFn)(id, path);
+                            TitleCatalog::get().refreshDirectories(id);
+                            flashSaved();
+                            mNeedsRebuild = true;
+                        };
+                        mRows.push_back(std::move(r));
                     }
-                    r.onActivate = [this, id, path]() {
-                        Configuration::getInstance().removeAdditionalSaveFolder(id, path);
-                        flashSaved();
-                        mNeedsRebuild = true;
-                    };
-                    mRows.push_back(std::move(r));
                 }
+
                 Row add;
                 add.control   = Control::ActionPill;
-                add.iconId    = id;
-                add.title     = nameOf(id);
-                add.subtitle  = "Add another save folder";
-                add.pillLabel = "+ Add path";
-                if (first) {
-                    add.section = "SAVE FOLDERS";
-                    first       = false;
-                }
-                add.onActivate = [this, id]() {
-                    currentOverlay = std::make_shared<FolderBrowserOverlay>(*this, "Choose a save folder", [this, id](const std::string& path) {
-                        Configuration::getInstance().addAdditionalSaveFolder(id, path);
-                        flashSaved();
-                        mNeedsRebuild = true;
+                add.title     = kind.addTitle;
+                add.subtitle  = kind.addSubtitle;
+                add.pillLabel = "+ Add";
+                if (first)
+                    add.section = kind.section;
+                add.onActivate = [this, addFn, type]() {
+                    auto items     = TitleCatalog::get().titleListForSaveType(type);
+                    currentOverlay = std::make_shared<TitlePickerOverlay>(*this, "Choose a title", std::move(items), [this, addFn](u64 id) {
+                        currentOverlay =
+                            std::make_shared<FolderBrowserOverlay>(*this, "Choose a save folder", [this, addFn, id](const std::string& path) {
+                                (Configuration::getInstance().*addFn)(id, path);
+                                TitleCatalog::get().refreshDirectories(id);
+                                flashSaved();
+                                mNeedsRebuild = true;
+                            });
                     });
                 };
                 mRows.push_back(std::move(add));
-            }
-            {
-                Row addTitle;
-                addTitle.control   = Control::ActionPill;
-                addTitle.title     = "Add a title";
-                addTitle.subtitle  = "Configure an extra save folder for a title";
-                addTitle.pillLabel = "+ Add title";
-                if (first)
-                    addTitle.section = "SAVE FOLDERS";
-                addTitle.onActivate = [this, names]() {
-                    std::vector<std::pair<u64, std::string>> items;
-                    for (const auto& kv : names) {
-                        items.push_back({(u64)strtoull(kv.first.c_str(), nullptr, 16), kv.second});
-                    }
-                    currentOverlay = std::make_shared<TitlePickerOverlay>(*this, "Choose a title", std::move(items), [this](u64 id) {
-                        currentOverlay = std::make_shared<FolderBrowserOverlay>(*this, "Choose a save folder", [this, id](const std::string& path) {
-                            Configuration::getInstance().addAdditionalSaveFolder(id, path);
-                            flashSaved();
-                            mNeedsRebuild = true;
-                        });
-                    });
-                };
-                mRows.push_back(std::move(addTitle));
             }
             break;
         }

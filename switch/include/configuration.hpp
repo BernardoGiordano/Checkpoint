@@ -57,6 +57,7 @@ public:
     bool isPKSMBridgeEnabled(void);
     bool isFTPEnabled(void);
     std::vector<std::string> additionalSaveFolders(u64 id);
+    std::vector<std::string> additionalDeviceSaveFolders(u64 id);
     void save(void);
     void load(void);
     void parse(void);
@@ -68,8 +69,11 @@ public:
     std::vector<u64> hiddenIds(void);
     std::vector<u64> favoriteIds(void);
     // Every id with at least one additional save folder configured (Settings
-    // > Save folders).
+    // > Save folders). User (account) saves and device saves keep separate
+    // folder lists: an extra folder only feeds the backup list of the save
+    // kind it was configured for.
     std::vector<u64> additionalSaveFolderIds(void);
+    std::vector<u64> additionalDeviceSaveFolderIds(void);
 
     // Mutators. Each writes mJson and calls save() immediately — Settings has
     // no separate "save" step; every change writes config.json synchronously.
@@ -79,6 +83,8 @@ public:
     void setFTPEnabled(bool enabled);
     void addAdditionalSaveFolder(u64 id, const std::string& path);
     void removeAdditionalSaveFolder(u64 id, const std::string& path);
+    void addAdditionalDeviceSaveFolder(u64 id, const std::string& path);
+    void removeAdditionalDeviceSaveFolder(u64 id, const std::string& path);
 
     // "dark" (default, only theme that renders today) or "light" (persisted,
     // reserved for a future light theme).
@@ -99,6 +105,11 @@ private:
 
     void store(void);
 
+    // Shared body of the user/device folder mutators: `map` is the parsed
+    // cache, `key` the config.json object both stay in sync with.
+    void addFolder(std::unordered_map<u64, std::vector<std::string>>& map, const char* key, u64 id, const std::string& path);
+    void removeFolder(std::unordered_map<u64, std::vector<std::string>>& map, const char* key, u64 id, const std::string& path);
+
     Configuration(Configuration const&)  = delete;
     void operator=(Configuration const&) = delete;
 
@@ -106,7 +117,7 @@ private:
     bool PKSMBridgeEnabled;
     bool FTPEnabled;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
-    std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders;
+    std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders, mAdditionalDeviceSaveFolders;
     std::string mTheme;
     sort_t mSortMode;
 };

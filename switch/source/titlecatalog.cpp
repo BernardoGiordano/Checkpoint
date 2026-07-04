@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <cstring>
+#include <unordered_set>
 
 TitleCatalog::TitleCatalog(void) : mSortMode(Configuration::getInstance().sortMode()) {}
 
@@ -310,4 +311,19 @@ std::unordered_map<std::string, std::string> TitleCatalog::getCompleteTitleList(
         }
     }
     return map;
+}
+
+std::vector<std::pair<u64, std::string>> TitleCatalog::titleListForSaveType(u8 saveDataType)
+{
+    std::vector<std::pair<u64, std::string>> list;
+    std::unordered_set<u64> seen;
+    for (auto& pair : mTitles) {
+        for (Title& title : pair.second) {
+            if (title.saveDataType() == saveDataType && seen.insert(title.id()).second) {
+                list.push_back({title.id(), title.name()});
+            }
+        }
+    }
+    std::sort(list.begin(), list.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
+    return list;
 }

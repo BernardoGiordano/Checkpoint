@@ -98,6 +98,12 @@ public:
     // id -> name map of every known title (used to seed the filter configuration).
     std::unordered_map<std::string, std::string> getCompleteTitleList(void);
 
+    // (id, name) of every title owning a save of this FsSaveDataType, unique by
+    // id across users and sorted by name. Feeds the Settings > Save folders
+    // title pickers, so they only offer titles the folder can apply to (and
+    // system/BCAT titles stay out of the user/device lists).
+    std::vector<std::pair<u64, std::string>> titleListForSaveType(u8 saveDataType);
+
 private:
     // Seeds mSortMode from Configuration's persisted setting.
     TitleCatalog(void);

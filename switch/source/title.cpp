@@ -156,8 +156,16 @@ void Title::refreshDirectories(void)
         Logging::error("Couldn't retrieve the extdata directory list for the title {}", name());
     }
 
-    // save backups from configuration
-    std::vector<std::string> additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
+    // Extra backup folders from configuration. User (account) and device saves
+    // have separate lists; other kinds (BCAT/system) take none, so a folder
+    // configured for a game's user save never shows up in its other lists.
+    std::vector<std::string> additionalFolders;
+    if (mSaveDataType == FsSaveDataType_Account) {
+        additionalFolders = Configuration::getInstance().additionalSaveFolders(mId);
+    }
+    else if (mSaveDataType == FsSaveDataType_Device) {
+        additionalFolders = Configuration::getInstance().additionalDeviceSaveFolders(mId);
+    }
     for (std::vector<std::string>::const_iterator it = additionalFolders.begin(); it != additionalFolders.end(); ++it) {
         // we have other folders to parse
         Directory list(*it);
