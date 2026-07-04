@@ -25,7 +25,6 @@
  */
 
 #include "TitlePickerOverlay.hpp"
-#include "archive.hpp"
 #include "glyphs.hpp"
 #include "gui.hpp"
 #include "loader.hpp"
@@ -35,9 +34,6 @@
 #include <3ds.h>
 
 namespace {
-    // Overlay text draws above the screen content layer.
-    constexpr float OVERLAY_Z = 0.6f;
-
     // Icon sized into a `side`x`side` box at (x, y): SMDH icons scale down, small
     // ones sit centered.
     void drawIcon(C2D_Image icon, int x, int y, int side)
@@ -53,62 +49,39 @@ namespace {
 }
 
 TitlePickerOverlay::TitlePickerOverlay(Screen& screen, const std::string& prompt, const std::function<void(u64)>& onPick)
-    : Overlay(screen), mPrompt(prompt), mOnPick(onPick), mHid(VISIBLE, 1)
+    : ListPickerOverlay(screen, prompt, 48, 28, 0.5f), mOnPick(onPick)
 {
 }
 
-void TitlePickerOverlay::drawTop(void) const
+int TitlePickerOverlay::rowCount(void) const
 {
-    TextPool& text  = TextPool::get();
-    const int count = TitleCatalog::get().getTitleCount(BackupKind::Save);
-
-    C2D_DrawRectSolid(0, 0, 0.6f, 400, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(24, 14, 0.6f, 352, 212, COLOR_CARD);
-    Gui::drawOutline(24, 14, 352, 212, 2, COLOR_ACCENT);
-
-    // Header.
-    text.draw(mPrompt, 36, 22, 0.5f, COLOR_TEXT, OVERLAY_Z);
-    if (count > 0) {
-        std::string counter = StringUtils::format("%d / %d", mHid.fullIndex() + 1, count);
-        float w             = text.width(counter, 0.42f);
-        text.draw(counter, 364 - w, 24, 0.42f, COLOR_FAINT, OVERLAY_Z);
-    }
-    C2D_DrawRectSolid(36, 42, 0.6f, 328, 1, COLOR_LINE);
-
-    if (count == 0) {
-        text.drawCentered("No titles available.", 0, 400, 110, 0.5f, COLOR_MUTED, OVERLAY_Z);
-        return;
-    }
-
-    const int rowH  = 28;
-    const int start = mHid.page() * (int)VISIBLE;
-    for (int i = 0; i < (int)VISIBLE && start + i < count; i++) {
-        const int k    = start + i;
-        const int rowY = 48 + i * rowH;
-        const bool sel = i == (int)mHid.index();
-        if (sel) {
-            C2D_DrawRectSolid(30, rowY, 0.6f, 340, rowH - 2, COLOR_ROW_SELECT);
-            Gui::drawOutline(30, rowY, 340, rowH - 2, 1, COLOR_ACCENT);
-        }
-        drawIcon(TitleCatalog::get().icon(k, BackupKind::Save), 36, rowY + 1, 24);
-
-        std::string name;
-        TitleCatalog::get().descriptionByIndex(name, k, BackupKind::Save);
-        text.draw(text.truncate(name, 290, 0.46f), 66, rowY + 5, 0.46f, sel ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
-    }
+    return TitleCatalog::get().getTitleCount(BackupKind::Save);
 }
 
-void TitlePickerOverlay::drawBottom(void) const
+void TitlePickerOverlay::drawEmptyMessage(void) const
 {
-    C2D_DrawRectSolid(0, 0, 0.6f, 320, 240, COLOR_OVERLAY);
-    std::string hints = std::string(GLYPH_A) + " Select      " + GLYPH_B + " Cancel";
-    TextPool::get().drawCentered(hints, 0, 320, 112, 0.5f, COLOR_TEXT, OVERLAY_Z);
+    TextPool::get().drawCentered("No titles available.", 0, 400, 110, 0.5f, COLOR_MUTED, OVERLAY_Z);
+}
+
+void TitlePickerOverlay::drawRowContent(int k, int rowY, bool selected) const
+{
+    drawIcon(TitleCatalog::get().icon(k, BackupKind::Save), 36, rowY + 1, 24);
+
+    std::string name;
+    TitleCatalog::get().descriptionByIndex(name, k, BackupKind::Save);
+    TextPool& text = TextPool::get();
+    text.draw(text.truncate(name, 290, 0.46f), 66, rowY + 5, 0.46f, selected ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
+}
+
+std::string TitlePickerOverlay::bottomHints(void) const
+{
+    return std::string(GLYPH_A) + " Select      " + GLYPH_B + " Cancel";
 }
 
 void TitlePickerOverlay::update(const InputState& input)
 {
     (void)input;
-    const int count = TitleCatalog::get().getTitleCount(BackupKind::Save);
+    const int count = rowCount();
     mHid.update(count > 0 ? count : 1);
 
     u32 kDown = hidKeysDown();

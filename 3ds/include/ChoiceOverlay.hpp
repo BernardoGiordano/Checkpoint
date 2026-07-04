@@ -24,22 +24,48 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef TRANSFEROVERLAY_HPP
-#define TRANSFEROVERLAY_HPP
+#ifndef CHOICEOVERLAY_HPP
+#define CHOICEOVERLAY_HPP
 
-#include "ChoiceOverlay.hpp"
+#include "Overlay.hpp"
+#include "clickable.hpp"
+#include "colors.hpp"
+#include "hid.hpp"
+#include <functional>
+#include <memory>
+#include <string>
 
-class TransferMenuOverlay : public ChoiceOverlay {
+// Two-button modal: one prompt line, a left/right button pair, d-pad + touch
+// selection, A activates the highlighted button. Owns the whole chrome and the
+// update loop; YesNoOverlay and TransferMenuOverlay are just configurations.
+class ChoiceOverlay : public Overlay {
 public:
-    TransferMenuOverlay(Screen& screen, const std::function<void()>& callbackSend, const std::function<void()>& callbackReceive);
-};
+    // A button in hid-index order; `x` places it (ModalChrome::BTN_LEFT_X or
+    // BTN_RIGHT_X) and `extraKeys` triggers it regardless of the highlight.
+    struct Button {
+        std::string label;
+        int x;
+        u32 bg, fg;
+        u32 extraKeys;
+        std::function<void()> action;
+    };
 
-class ReceiveOverlay : public Overlay {
-public:
-    ReceiveOverlay(Screen& screen);
+    ChoiceOverlay(Screen& screen, const std::string& text, Button first, Button second, u32 dismissKeys = 0);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
+
+private:
+    std::string mText;
+    Button mButtons[2];
+    std::unique_ptr<Clickable> mClick[2];
+    Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> mHid;
+    u32 mDismissKeys;
+};
+
+class YesNoOverlay : public ChoiceOverlay {
+public:
+    YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
 };
 
 #endif

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,32 +24,26 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef YESNOOVERLAY_HPP
-#define YESNOOVERLAY_HPP
+#include "ModalChrome.hpp"
 
-#include "Overlay.hpp"
-#include "clickable.hpp"
-#include "colors.hpp"
-#include "gui.hpp"
-#include "hid.hpp"
-#include <functional>
-#include <memory>
-#include <string>
+void ModalChrome::dimTop(float z)
+{
+    C2D_DrawRectSolid(0, 0, z, 400, 240, COLOR_OVERLAY);
+}
 
-class Clickable;
+void ModalChrome::dimBottom(float z)
+{
+    C2D_DrawRectSolid(0, 0, z, 320, 240, COLOR_OVERLAY);
+}
 
-class YesNoOverlay : public Overlay {
-public:
-    YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
-    void drawTop(void) const override;
-    void drawBottom(void) const override;
-    void update(const InputState& input) override;
+void ModalChrome::drawCard(u32 outlineColor)
+{
+    C2D_DrawRectSolid(CARD_X, CARD_Y, 0.5f, CARD_W, CARD_H, COLOR_CARD);
+    Gui::drawOutline(CARD_X, CARD_Y, CARD_W, CARD_H, 2, outlineColor);
+}
 
-private:
-    std::string text;
-    std::unique_ptr<Clickable> buttonYes, buttonNo;
-    Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
-    std::function<void()> yesFunc, noFunc;
-};
-
-#endif
+void ModalChrome::drawListCard(void)
+{
+    C2D_DrawRectSolid(LIST_X, LIST_Y, 0.6f, LIST_W, LIST_H, COLOR_CARD);
+    Gui::drawOutline(LIST_X, LIST_Y, LIST_W, LIST_H, 2, COLOR_ACCENT);
+}

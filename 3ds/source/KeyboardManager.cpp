@@ -9,6 +9,24 @@ std::u16string KeyboardManager::keyboard(const std::string& suggestion)
     return button == SWKBD_BUTTON_CONFIRM ? StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(buf)) : StringUtils::UTF8toUTF16("");
 }
 
+std::string KeyboardManager::text(const std::string& suggestion, const std::string& hint, size_t maxLen)
+{
+    SwkbdState swkbd;
+    const size_t kBufSize = 64;
+    size_t limit          = std::min(maxLen, kBufSize);
+    if (limit < 2) {
+        limit = 2;
+    }
+    swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, limit - 1);
+    swkbdSetValidation(&swkbd, SWKBD_NOTBLANK_NOTEMPTY, 0, 0);
+    swkbdSetInitialText(&swkbd, suggestion.c_str());
+    swkbdSetHintText(&swkbd, hint.c_str());
+    char buf[kBufSize]   = {0};
+    SwkbdButton button   = swkbdInputText(&swkbd, buf, sizeof(buf));
+    buf[sizeof(buf) - 1] = '\0';
+    return button == SWKBD_BUTTON_CONFIRM ? std::string(buf) : std::string();
+}
+
 int KeyboardManager::numericPad(void)
 {
     static SwkbdState swkbd;

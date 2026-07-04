@@ -28,9 +28,24 @@
 #define TRANSFER_HPP
 
 #include "title.hpp"
+#include <optional>
 #include <string>
 
 namespace Transfer {
+    // A parsed send destination. The screen only prompts for the raw "ip:port"
+    // string and hands it here; validation policy lives with the transport.
+    struct TransferTarget {
+        std::string ip;
+        u16 port = 0;
+    };
+
+    // Parses "ip:port"; nullopt on a missing colon, empty ip, or a port outside
+    // [1, 65535].
+    std::optional<TransferTarget> parseTarget(const std::string& ipPort);
+
+    // True iff `pin` is exactly 4 ASCII digits (the receiver token format).
+    bool validPin(const std::string& pin);
+
     bool startReceiver(std::string& outError);
     void stopReceiver(void);
     bool receiverRunning(void);

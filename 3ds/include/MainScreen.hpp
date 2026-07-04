@@ -28,11 +28,10 @@
 #define MAINSCREEN_HPP
 
 #include "BackupList.hpp"
-#include "ErrorOverlay.hpp"
-#include "InfoOverlay.hpp"
+#include "ChoiceOverlay.hpp"
+#include "MessageOverlay.hpp"
 #include "Screen.hpp"
 #include "TransferOverlay.hpp"
-#include "YesNoOverlay.hpp"
 #include "archive.hpp"
 #include "clickable.hpp"
 #include "gui.hpp"

@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,37 +24,20 @@
  *         reasonable ways as different from the original version.
  */
 
-#include "InfoOverlay.hpp"
-#include "textpool.hpp"
+#ifndef OUTCOMEMESSAGES_HPP
+#define OUTCOMEMESSAGES_HPP
 
-InfoOverlay::InfoOverlay(Screen& screen, const std::string& mtext) : Overlay(screen)
-{
-    button = std::make_unique<Clickable>(46, 142, 228, 32, COLOR_ACCENT, COLOR_WHITE, " OK", true);
-    button->selected(true);
-    text = StringUtils::wrap(mtext, size, 220);
-    posx = ceilf((320 - StringUtils::textWidth(text, size)) / 2);
-    posy = 54 + ceilf((88 - StringUtils::textHeight(text, size)) / 2);
+#include "io.hpp"
+#include "transfer.hpp"
+#include <string>
+
+// The single home of the stage-enum → user-facing message mapping. io and
+// transfer report *where* an operation failed; the strings live here so every
+// screen shows the same words for the same failure.
+namespace OutcomeMessages {
+    std::string backupError(io::BackupStage stage, const std::string& dataType);
+    std::string restoreError(io::BackupStage stage, const std::string& dataType);
+    std::string sendError(const Transfer::SendOutcome& outcome);
 }
 
-void InfoOverlay::drawTop(void) const
-{
-    C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
-}
-
-void InfoOverlay::drawBottom(void) const
-{
-    C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(34, 54, 0.5f, 252, 132, COLOR_CARD);
-    Gui::drawOutline(34, 54, 252, 132, 2, COLOR_LINE);
-    TextPool::get().draw(text, posx, posy, size, COLOR_TEXT);
-    button->draw(0.55f, COLOR_RING);
-    Gui::drawPulsingOutline(46, 142, 228, 32, 2, COLOR_RING);
-}
-
-void InfoOverlay::update(const InputState& input)
-{
-    (void)input;
-    if (button->released() || (hidKeysDown() & KEY_A) || (hidKeysDown() & KEY_B)) {
-        screen.removeOverlay();
-    }
-}
+#endif

@@ -36,8 +36,10 @@
 #include "transferstatus.hpp"
 #include "util.hpp"
 #include <3ds.h>
+#include <algorithm>
 #include <arpa/inet.h>
 #include <atomic>
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <map>
@@ -1128,4 +1130,23 @@ Transfer::SendOutcome Transfer::sendBackup(const Title& title, const std::u16str
     }
 
     return SendOutcome{true, SendStage::Response, ""};
+}
+
+std::optional<Transfer::TransferTarget> Transfer::parseTarget(const std::string& ipPort)
+{
+    size_t colon = ipPort.find(':');
+    if (colon == std::string::npos) {
+        return std::nullopt;
+    }
+    std::string ip = ipPort.substr(0, colon);
+    int port       = atoi(ipPort.substr(colon + 1).c_str());
+    if (ip.empty() || port <= 0 || port > 65535) {
+        return std::nullopt;
+    }
+    return TransferTarget{std::move(ip), (u16)port};
+}
+
+bool Transfer::validPin(const std::string& pin)
+{
+    return pin.size() == 4 && std::all_of(pin.begin(), pin.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
 }

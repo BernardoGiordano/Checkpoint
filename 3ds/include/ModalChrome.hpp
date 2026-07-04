@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,31 +24,33 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef INFOOVERLAY_HPP
-#define INFOOVERLAY_HPP
+#ifndef MODALCHROME_HPP
+#define MODALCHROME_HPP
 
-#include "Overlay.hpp"
-#include "clickable.hpp"
 #include "colors.hpp"
 #include "gui.hpp"
-#include "util.hpp"
-#include <memory>
-#include <string>
+#include <citro2d.h>
 
-class Clickable;
+// The one home for the modal-dialog geometry. Every overlay draws its backdrop
+// and card through these helpers, so a dialog's box and its hit-tests / button
+// outlines can never drift apart.
+namespace ModalChrome {
+    // Small message / choice card on the bottom screen.
+    constexpr int CARD_X = 34, CARD_Y = 54, CARD_W = 252, CARD_H = 132;
+    // Button row inside the small card: one wide OK, or a left/right pair.
+    constexpr int BTN_Y = 142, BTN_H = 32;
+    constexpr int BTN_WIDE_X = 46, BTN_WIDE_W = 228;
+    constexpr int BTN_LEFT_X = 46, BTN_RIGHT_X = 164, BTN_HALF_W = 110;
+    // Full-screen list-picker card on the top screen.
+    constexpr int LIST_X = 24, LIST_Y = 14, LIST_W = 352, LIST_H = 212;
 
-class InfoOverlay : public Overlay {
-public:
-    InfoOverlay(Screen& screen, const std::string& mtext);
-    void drawTop(void) const override;
-    void drawBottom(void) const override;
-    void update(const InputState& input) override;
-
-private:
-    u32 posx, posy;
-    const float size = 0.6f;
-    std::string text;
-    std::unique_ptr<Clickable> button;
-};
+    // Dimmed backdrop over a whole screen at depth `z`.
+    void dimTop(float z = 0.5f);
+    void dimBottom(float z = 0.5f);
+    // Small card on the bottom screen, outlined in `outlineColor`.
+    void drawCard(u32 outlineColor);
+    // List-picker card on the top screen (accent outline, picker depth).
+    void drawListCard(void);
+}
 
 #endif

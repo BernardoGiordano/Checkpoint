@@ -43,6 +43,9 @@ public:
     void operator=(KeyboardManager const&)  = delete;
 
     std::u16string keyboard(const std::string& suggestion);
+    // Free-form text prompt with a custom hint and length cap; returns the raw
+    // input (no forbidden-character filtering), empty on cancel.
+    std::string text(const std::string& suggestion, const std::string& hint, size_t maxLen);
     int numericPad(void);
 
     static const size_t CUSTOM_PATH_LEN = 20;

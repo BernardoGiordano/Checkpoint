@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,31 +24,49 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef ERROROVERLAY_HPP
-#define ERROROVERLAY_HPP
+#ifndef MESSAGEOVERLAY_HPP
+#define MESSAGEOVERLAY_HPP
 
 #include "Overlay.hpp"
 #include "clickable.hpp"
 #include "colors.hpp"
-#include "gui.hpp"
 #include "util.hpp"
 #include <memory>
 #include <string>
 
-class Clickable;
-
-class ErrorOverlay : public Overlay {
+// One-message modal with a single OK button (A/B/tap dismisses). Owns the whole
+// chrome; InfoOverlay and ErrorOverlay are just color/header configurations.
+class MessageOverlay : public Overlay {
 public:
-    ErrorOverlay(Screen& screen, Result res, const std::string& mtext);
     void drawTop(void) const override;
     void drawBottom(void) const override;
     void update(const InputState& input) override;
 
+protected:
+    // Everything Info and Error differ by.
+    struct Style {
+        u32 outline, buttonBg, buttonFg, ring;
+        std::string header; // accent line above the text (empty = none)
+        u32 headerColor;
+    };
+    MessageOverlay(Screen& screen, const std::string& mtext, const Style& style);
+
 private:
-    u32 posx, posy;
-    const float size = 0.6f;
-    std::string text, error;
-    std::unique_ptr<Clickable> button;
+    static constexpr float SIZE = 0.6f;
+    Style mStyle;
+    std::string mText;
+    u32 mPosx, mPosy;
+    std::unique_ptr<Clickable> mButton;
+};
+
+class InfoOverlay : public MessageOverlay {
+public:
+    InfoOverlay(Screen& screen, const std::string& mtext);
+};
+
+class ErrorOverlay : public MessageOverlay {
+public:
+    ErrorOverlay(Screen& screen, Result res, const std::string& mtext);
 };
 
 #endif

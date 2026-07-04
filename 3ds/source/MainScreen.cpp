@@ -32,6 +32,7 @@
 #include "configuration.hpp"
 #include "io.hpp"
 #include "loader.hpp"
+#include "outcomemessages.hpp"
 #include "progress.hpp"
 #include "server.hpp"
 #include "textpool.hpp"
@@ -39,7 +40,6 @@
 #include "transferjob.hpp"
 #include "transferstatus.hpp"
 #include <3ds.h>
-#include <cctype>
 #include <optional>
 
 // ---- v4 main-page geometry ----------------------------------------------
@@ -65,72 +65,6 @@ namespace {
             return std::nullopt;
         }
         return target.rootPath() + StringUtils::UTF8toUTF16("/") + name;
-    }
-
-    std::string backupErrorMessage(io::BackupStage stage, const char* dataType)
-    {
-        switch (stage) {
-            case io::BackupStage::OpenArchive:
-                return "Failed to open save archive.";
-            case io::BackupStage::DeleteDst:
-                return "Failed to delete the existing backup\ndirectory recursively.";
-            case io::BackupStage::CreateDst:
-                return "Failed to create destination directory.";
-            default:
-                return std::string("Failed to backup ") + dataType + ".";
-        }
-    }
-
-    std::string restoreErrorMessage(io::BackupStage stage, const char* dataType)
-    {
-        switch (stage) {
-            case io::BackupStage::OpenArchive:
-                return "Failed to open save archive.";
-            case io::BackupStage::ReadFile:
-                return "Failed to read save file backup.";
-            case io::BackupStage::Commit:
-                return "Failed to commit save data.";
-            case io::BackupStage::SecureValue:
-                return "Failed to fix secure value.";
-            default:
-                return std::string("Failed to restore ") + dataType + ".";
-        }
-    }
-
-    std::string sendErrorMessage(const Transfer::SendOutcome& outcome)
-    {
-        switch (outcome.stage) {
-            case Transfer::SendStage::Zip:
-                return "Failed to create backup package.";
-            case Transfer::SendStage::Socket:
-                return "Failed to open socket.";
-            case Transfer::SendStage::Resolve:
-                return "Invalid IP address.";
-            case Transfer::SendStage::Connect:
-                return "Failed to connect.";
-            case Transfer::SendStage::Response:
-                return outcome.detail.empty() ? "Receiver returned no response." : "Receiver error: " + outcome.detail;
-            default:
-                return "Transfer failed.";
-        }
-    }
-
-    std::string rawKeyboard(const std::string& suggestion, const std::string& hint, size_t maxLen)
-    {
-        SwkbdState swkbd;
-        const size_t kBufSize = 64;
-        size_t limit          = std::min(maxLen, kBufSize);
-        if (limit < 2) {
-            limit = 2;
-        }
-        swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, limit - 1);
-        swkbdSetValidation(&swkbd, SWKBD_NOTBLANK_NOTEMPTY, 0, 0);
-        swkbdSetInitialText(&swkbd, suggestion.c_str());
-        swkbdSetHintText(&swkbd, hint.c_str());
-        char buf[kBufSize]   = {0};
-        SwkbdButton button   = swkbdInputText(&swkbd, buf, sizeof(buf));
-        buf[sizeof(buf) - 1] = '\0';
-        return button == SWKBD_BUTTON_CONFIRM ? std::string(buf) : std::string();
     }
 
     // Draws a single button-glyph footer hint line, centered on `screenW`.
@@ -515,12 +449,12 @@ void MainScreen::update(const InputState& input)
                 currentOverlay = std::make_shared<InfoOverlay>(*this, "Selected backup is empty.");
             }
             else {
-                currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, sendErrorMessage(*result->send));
+                currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, OutcomeMessages::sendError(*result->send));
             }
         }
         else {
-            std::string message = result->isRestore ? restoreErrorMessage(result->stage, result->dataType.c_str())
-                                                    : backupErrorMessage(result->stage, result->dataType.c_str());
+            std::string message = result->isRestore ? OutcomeMessages::restoreError(result->stage, result->dataType)
+                                                    : OutcomeMessages::backupError(result->stage, result->dataType);
             currentOverlay      = std::make_shared<ErrorOverlay>(*this, result->res, message);
         }
         return;
@@ -925,29 +859,21 @@ void MainScreen::startTransferSend(void)
     std::string backupName    = nameFromCell(cellIndex);
     std::u16string backupPath = target.fullPath(cellIndex);
 
-    std::string ipPort = rawKeyboard("192.168.1.10:8000", "Receiver IP:PORT", 32);
+    std::string ipPort = KeyboardManager::get().text("", "Receiver IP:PORT", 32);
     if (ipPort.empty()) {
         return;
     }
-
-    size_t colon = ipPort.find(':');
-    if (colon == std::string::npos) {
-        currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Invalid IP:PORT.");
-        return;
-    }
-    std::string ip = ipPort.substr(0, colon);
-    int port       = atoi(ipPort.substr(colon + 1).c_str());
-    if (ip.empty() || port <= 0 || port > 65535) {
+    auto dst = Transfer::parseTarget(ipPort);
+    if (!dst) {
         currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "Invalid IP:PORT.");
         return;
     }
 
-    std::string pin = rawKeyboard("1234", "PIN (4 digits)", 5);
+    std::string pin = KeyboardManager::get().text("1234", "PIN (4 digits)", 5);
     if (pin.empty()) {
         return;
     }
-    bool pinOk = pin.size() == 4 && std::all_of(pin.begin(), pin.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
-    if (!pinOk) {
+    if (!Transfer::validPin(pin)) {
         currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, "PIN must be 4 digits.");
         return;
     }
@@ -957,6 +883,6 @@ void MainScreen::startTransferSend(void)
     // value so nothing here needs to outlive this frame.
     std::string dataType = target.dataTypeName();
     TransferJob::get().enqueueSend(
-        std::move(title), std::move(backupPath), std::move(backupName), std::move(dataType), std::move(ip), (u16)port, std::move(pin));
+        std::move(title), std::move(backupPath), std::move(backupName), std::move(dataType), std::move(dst->ip), dst->port, std::move(pin));
     TransferJob::get().start();
 }

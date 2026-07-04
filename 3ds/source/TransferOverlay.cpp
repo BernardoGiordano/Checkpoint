@@ -25,6 +25,7 @@
  */
 
 #include "TransferOverlay.hpp"
+#include "ModalChrome.hpp"
 #include "common.hpp"
 #include "main.hpp"
 #include "textpool.hpp"
@@ -32,57 +33,9 @@
 #include "transferstatus.hpp"
 
 TransferMenuOverlay::TransferMenuOverlay(Screen& screen, const std::function<void()>& callbackSend, const std::function<void()>& callbackReceive)
-    : Overlay(screen), hid(2, 2)
+    : ChoiceOverlay(screen, "Choose Send or Receive", Button{"Send", ModalChrome::BTN_LEFT_X, COLOR_ACCENT, COLOR_WHITE, KEY_R, callbackSend},
+          Button{"Receive", ModalChrome::BTN_RIGHT_X, COLOR_RAISED, COLOR_TEXT, KEY_B, callbackReceive}, KEY_START)
 {
-    sendFunc    = callbackSend;
-    receiveFunc = callbackReceive;
-
-    buttonSend    = std::make_unique<Clickable>(46, 142, 110, 32, COLOR_ACCENT, COLOR_WHITE, "Send", true);
-    buttonReceive = std::make_unique<Clickable>(164, 142, 110, 32, COLOR_RAISED, COLOR_TEXT, "Receive", true);
-}
-
-void TransferMenuOverlay::drawTop(void) const
-{
-    C2D_DrawRectSolid(0, 0, 0.5f, 400, 240, COLOR_OVERLAY);
-}
-
-void TransferMenuOverlay::drawBottom(void) const
-{
-    C2D_DrawRectSolid(0, 0, 0.5f, 320, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(34, 54, 0.5f, 252, 132, COLOR_CARD);
-    Gui::drawOutline(34, 54, 252, 132, 2, COLOR_LINE);
-    TextPool::get().drawCentered("Choose Send or Receive", 0, 320, 84, 0.55f, COLOR_TEXT);
-
-    buttonSend->draw(0.55f, COLOR_RING);
-    buttonReceive->draw(0.55f, COLOR_RING);
-
-    if (hid.index() == 0) {
-        Gui::drawPulsingOutline(46, 142, 110, 32, 2, COLOR_RING);
-    }
-    else {
-        Gui::drawPulsingOutline(164, 142, 110, 32, 2, COLOR_RING);
-    }
-}
-
-void TransferMenuOverlay::update(const InputState& input)
-{
-    (void)input;
-    u32 kDown = hidKeysDown();
-    hid.update(2);
-
-    hid.index(buttonSend->held() ? 0 : buttonReceive->held() ? 1 : hid.index());
-    buttonSend->selected(hid.index() == 0);
-    buttonReceive->selected(hid.index() == 1);
-
-    if ((kDown & KEY_R) || buttonSend->released() || ((kDown & KEY_A) && hid.index() == 0)) {
-        sendFunc();
-    }
-    else if ((kDown & KEY_B) || buttonReceive->released() || ((kDown & KEY_A) && hid.index() == 1)) {
-        receiveFunc();
-    }
-    else if (kDown & KEY_START) {
-        screen.removeOverlay();
-    }
 }
 
 ReceiveOverlay::ReceiveOverlay(Screen& screen) : Overlay(screen) {}

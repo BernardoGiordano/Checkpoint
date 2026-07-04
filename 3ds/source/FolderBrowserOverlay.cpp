@@ -35,9 +35,6 @@
 #include <algorithm>
 
 namespace {
-    // Overlay text draws above the screen content layer.
-    constexpr float OVERLAY_Z = 0.6f;
-
     // A small folder glyph drawn from primitives (no gfx asset): a tab + body.
     void drawFolderMark(int x, int y, int side, u32 color)
     {
@@ -48,7 +45,7 @@ namespace {
 }
 
 FolderBrowserOverlay::FolderBrowserOverlay(Screen& screen, const std::string& prompt, const std::function<void(const std::u16string&)>& onPick)
-    : Overlay(screen), mPrompt(prompt), mOnPick(onPick), mHid(VISIBLE, 1)
+    : ListPickerOverlay(screen, prompt, 62, 26, 0.46f), mOnPick(onPick)
 {
     readFolders();
 }
@@ -75,60 +72,44 @@ void FolderBrowserOverlay::readFolders(void)
     mHid.reset();
 }
 
-void FolderBrowserOverlay::drawTop(void) const
+int FolderBrowserOverlay::rowCount(void) const
 {
-    TextPool& text  = TextPool::get();
-    const int count = (int)mFolders.size();
-
-    C2D_DrawRectSolid(0, 0, 0.6f, 400, 240, COLOR_OVERLAY);
-    C2D_DrawRectSolid(24, 14, 0.6f, 352, 212, COLOR_CARD);
-    Gui::drawOutline(24, 14, 352, 212, 2, COLOR_ACCENT);
-
-    // Header: the prompt, then the current path on its own line (monospace-ish).
-    text.draw(mPrompt, 36, 22, 0.5f, COLOR_TEXT, OVERLAY_Z);
-    if (count > 0) {
-        std::string counter = StringUtils::format("%d / %d", mHid.fullIndex() + 1, count);
-        float w             = text.width(counter, 0.42f);
-        text.draw(counter, 364 - w, 24, 0.42f, COLOR_FAINT, OVERLAY_Z);
-    }
-    std::string path = StringUtils::UTF16toUTF8(currentPath());
-    text.draw(text.truncate(path, 328, 0.42f), 36, 40, 0.42f, COLOR_TEAL, OVERLAY_Z);
-    C2D_DrawRectSolid(36, 56, 0.6f, 328, 1, COLOR_LINE);
-
-    if (count == 0) {
-        text.drawCentered("No sub-folders here.", 0, 400, 120, 0.46f, COLOR_MUTED, OVERLAY_Z);
-        text.drawCentered("Press X to use this folder.", 0, 400, 142, 0.42f, COLOR_FAINT, OVERLAY_Z);
-        return;
-    }
-
-    const int rowH  = 26;
-    const int start = mHid.page() * (int)VISIBLE;
-    for (int i = 0; i < (int)VISIBLE && start + i < count; i++) {
-        const int k    = start + i;
-        const int rowY = 62 + i * rowH;
-        const bool sel = i == (int)mHid.index();
-        if (sel) {
-            C2D_DrawRectSolid(30, rowY, 0.6f, 340, rowH - 2, COLOR_ROW_SELECT);
-            Gui::drawOutline(30, rowY, 340, rowH - 2, 1, COLOR_ACCENT);
-        }
-        drawFolderMark(38, rowY + 4, 16, sel ? COLOR_TEAL : COLOR_MUTED);
-        std::string name = StringUtils::UTF16toUTF8(mFolders[k]);
-        text.draw(text.truncate(name, 292, 0.46f), 64, rowY + 4, 0.46f, sel ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
-    }
+    return (int)mFolders.size();
 }
 
-void FolderBrowserOverlay::drawBottom(void) const
+void FolderBrowserOverlay::drawHeaderExtra(void) const
 {
-    C2D_DrawRectSolid(0, 0, 0.6f, 320, 240, COLOR_OVERLAY);
+    // The current path on its own line under the prompt.
+    TextPool& text   = TextPool::get();
+    std::string path = StringUtils::UTF16toUTF8(currentPath());
+    text.draw(text.truncate(path, 328, 0.42f), 36, 40, 0.42f, COLOR_TEAL, OVERLAY_Z);
+}
+
+void FolderBrowserOverlay::drawEmptyMessage(void) const
+{
+    TextPool& text = TextPool::get();
+    text.drawCentered("No sub-folders here.", 0, 400, 120, 0.46f, COLOR_MUTED, OVERLAY_Z);
+    text.drawCentered("Press X to use this folder.", 0, 400, 142, 0.42f, COLOR_FAINT, OVERLAY_Z);
+}
+
+void FolderBrowserOverlay::drawRowContent(int k, int rowY, bool selected) const
+{
+    drawFolderMark(38, rowY + 4, 16, selected ? COLOR_TEAL : COLOR_MUTED);
+    TextPool& text   = TextPool::get();
+    std::string name = StringUtils::UTF16toUTF8(mFolders[k]);
+    text.draw(text.truncate(name, 292, 0.46f), 64, rowY + 4, 0.46f, selected ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
+}
+
+std::string FolderBrowserOverlay::bottomHints(void) const
+{
     const bool atRoot = mCurrent == u"/";
-    std::string hints = std::string(GLYPH_A) + " Open   " + GLYPH_X + " Use folder   " + GLYPH_B + (atRoot ? " Cancel" : " Up");
-    TextPool::get().drawCentered(hints, 0, 320, 112, 0.46f, COLOR_TEXT, OVERLAY_Z);
+    return std::string(GLYPH_A) + " Open   " + GLYPH_X + " Use folder   " + GLYPH_B + (atRoot ? " Cancel" : " Up");
 }
 
 void FolderBrowserOverlay::update(const InputState& input)
 {
     (void)input;
-    const int count = (int)mFolders.size();
+    const int count = rowCount();
     mHid.update(count > 0 ? count : 1);
 
     u32 kDown = hidKeysDown();

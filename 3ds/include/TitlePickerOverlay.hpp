@@ -27,9 +27,7 @@
 #ifndef TITLEPICKEROVERLAY_HPP
 #define TITLEPICKEROVERLAY_HPP
 
-#include "Overlay.hpp"
-#include "hid.hpp"
-#include <citro2d.h>
+#include "ListPickerOverlay.hpp"
 #include <functional>
 #include <string>
 
@@ -38,18 +36,18 @@
 // (invokes onPick with the title id, then dismisses), B cancels. The picked id
 // is all the caller needs — what it does with the choice (favorite / hide /
 // prompt for a folder path) lives in the caller's callback.
-class TitlePickerOverlay : public Overlay {
+class TitlePickerOverlay : public ListPickerOverlay {
 public:
     TitlePickerOverlay(Screen& screen, const std::string& prompt, const std::function<void(u64)>& onPick);
-    void drawTop(void) const override;
-    void drawBottom(void) const override;
     void update(const InputState& input) override;
 
 private:
-    std::string mPrompt;
+    int rowCount(void) const override;
+    void drawEmptyMessage(void) const override;
+    void drawRowContent(int k, int rowY, bool selected) const override;
+    std::string bottomHints(void) const override;
+
     std::function<void(u64)> mOnPick;
-    Hid<HidDirection::VERTICAL, HidDirection::VERTICAL> mHid;
-    static constexpr size_t VISIBLE = 6;
 };
 
 #endif
