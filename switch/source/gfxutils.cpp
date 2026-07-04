@@ -25,8 +25,7 @@
  */
 
 // Backend-agnostic drawing helpers: everything here goes through the SDLH_*
-// API only, so it is shared between the SDL backend and the deko3d backend
-// (see HANDOFF-deko3d.md).
+// API only (see HANDOFF-deko3d.md).
 
 #include "SDLHelper.hpp"
 #include "main.hpp"
@@ -34,8 +33,7 @@
 #include <unordered_map>
 
 // Byte length of the UTF-8 sequence starting at `character`, 0 if invalid.
-// (Local copy of SDL_FontCache's U8_charsize, so this file does not depend on
-// the SDL backend being compiled.)
+// (Same semantics as the retired SDL_FontCache's U8_charsize.)
 static int utf8CharSize(const char* character)
 {
     if (character == NULL || character[0] == '\0') {

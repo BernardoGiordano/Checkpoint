@@ -51,14 +51,6 @@ SHADERS			:=	shaders
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 
-# Rendering backend: sdl (default, ships) or deko3d (migration in progress,
-# see HANDOFF-deko3d.md). Selects which of SDLHelper.cpp / DekoHelper.cpp
-# provides the SDLH_* API. Usage: make switch GFX_BACKEND=deko3d
-GFX_BACKEND ?= sdl
-ifeq ($(GFX_BACKEND),deko3d)
-DEFINES += -DGFX_BACKEND_DEKO3D
-endif
-
 CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections \
 			-Wno-write-strings -Wno-unused-value -fomit-frame-pointer \
 			-Wno-unused-parameter \
@@ -67,7 +59,7 @@ CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections \
 			-DVERSION_MINOR=${VERSION_MINOR} \
 			-DVERSION_MICRO=${VERSION_MICRO} \
 			-DGIT_REV=\"${GIT_REV}\" \
-			`sdl2-config --cflags` \
+			`aarch64-none-elf-pkg-config freetype2 libpng libturbojpeg --cflags` \
 			-DJSON_HAS_FILESYSTEM=0 \
 			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
 
@@ -78,7 +70,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++23
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-no-as-needed,-Map,$(notdir $*.map)
 
-LIBS	:=	-ldeko3d `aarch64-none-elf-pkg-config SDL2_ttf SDL2_image --libs`
+LIBS	:=	-ldeko3d `aarch64-none-elf-pkg-config freetype2 libpng libturbojpeg --libs`
 
 CXX		:= `which ccache` $(CXX)
 CC		:= `which ccache` $(CC)

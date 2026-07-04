@@ -25,18 +25,16 @@
  */
 
 // deko3d implementation of the SDLH_* backend API (see HANDOFF-deko3d.md).
-// Phase 2: batched GPU quad renderer — rects, images and color textures draw
-// through one pipeline (pos+uv+color vertices, texture x vertex color, a 1x1
-// white texture makes solid rects the same path). Image *decode* still goes
-// through SDL_image (decode -> RGBA -> GPU upload).
-// Phase 3: text — FreeType over the shared system fonts (Standard +
-// NintendoExt + CJK fallbacks) and the bundled Space Mono, with per-glyph
-// R8 atlas pages drawn through the same quad batcher. The metrics reproduce
-// the vendored SDL_FontCache exactly (cell-width pen advance, line height =
-// ceil(TTF height * 1.2)) so layouts match the SDL backend pixel-for-pixel.
-// Build with GFX_BACKEND=deko3d; the SDL backend still ships.
-
-#ifdef GFX_BACKEND_DEKO3D
+// Batched GPU quad renderer — rects, images and color textures draw through
+// one pipeline (pos+uv+color vertices, texture x vertex color, a 1x1 white
+// texture makes solid rects the same path). Image decode: libpng / libjpeg-turbo
+// (magic-byte sniffed) -> RGBA -> GPU upload.
+// Text — FreeType over the shared system fonts (Standard + NintendoExt + CJK
+// fallbacks) and the bundled Space Mono, with per-glyph R8 atlas pages drawn
+// through the same quad batcher. The metrics reproduce the previously vendored
+// SDL_FontCache exactly (cell-width pen advance, line height =
+// ceil(TTF height * 1.2)) so layouts match the retired SDL backend
+// pixel-for-pixel.
 
 #include "SDLHelper.hpp"
 #include "gfx/CCmdMemRing.h"
@@ -45,11 +43,12 @@
 #include "gfx/CShader.h"
 #include "logging.hpp"
 #include "main.hpp"
-#include <SDL2/SDL_image.h>
 #include <array>
 #include <cmath>
 #include <deko3d.hpp>
 #include <optional>
+#include <png.h>
+#include <turbojpeg.h>
 #include <unordered_map>
 #include <vector>
 
@@ -183,9 +182,8 @@ namespace {
     std::unordered_map<int, FontInstance> s_monoInstances;
     std::vector<AtlasPage> s_atlasPages;
 
-    // Same ~1.2x size bump as the SDL backend (see SDLHelper.cpp): both
-    // drawing and measurement resolve through it, so it is invisible to
-    // callers.
+    // Same ~1.2x size bump the retired SDL backend applied: both drawing and
+    // measurement resolve through it, so it is invisible to callers.
     constexpr int scaledFontPx(int size)
     {
         return (size * 6 + 2) / 5;
@@ -271,28 +269,66 @@ static Texture* createTexture(const u8* pixels, u32 width, u32 height)
     return texture;
 }
 
-// Decode an image with SDL_image into a malloc'd RGBA8 buffer, reproducing
-// the SDL backend's black colorkey: fully-opaque pure-black pixels become
-// transparent (SDL_SetColorKey only ever matched the opaque mapping of
-// (0,0,0)). Caller frees.
-static u8* decodeToRGBA(SDL_Surface* loaded, u32& width, u32& height)
+static u8* decodePNGToRGBA(const u8* data, size_t size, u32& width, u32& height)
 {
-    if (!loaded) {
+    png_image image;
+    memset(&image, 0, sizeof(image));
+    image.version = PNG_IMAGE_VERSION;
+    if (png_image_begin_read_from_memory(&image, data, size) == 0) {
         return nullptr;
     }
-    SDL_Surface* rgba = SDL_ConvertSurfaceFormat(loaded, SDL_PIXELFORMAT_RGBA32, 0);
-    SDL_FreeSurface(loaded);
-    if (!rgba) {
+    image.format = PNG_FORMAT_RGBA;
+    u8* pixels   = (u8*)malloc(PNG_IMAGE_SIZE(image));
+    if (!pixels || png_image_finish_read(&image, NULL, pixels, 0, NULL) == 0) {
+        free(pixels);
+        png_image_free(&image);
         return nullptr;
     }
+    width  = image.width;
+    height = image.height;
+    return pixels;
+}
 
-    width      = rgba->w;
-    height     = rgba->h;
-    u8* pixels = (u8*)malloc((size_t)width * height * 4);
-    if (pixels) {
-        for (u32 row = 0; row < height; row++) {
-            memcpy(pixels + (size_t)row * width * 4, (u8*)rgba->pixels + (size_t)row * rgba->pitch, (size_t)width * 4);
+static u8* decodeJPEGToRGBA(const u8* data, size_t size, u32& width, u32& height)
+{
+    tjhandle decompressor = tjInitDecompress();
+    if (!decompressor) {
+        return nullptr;
+    }
+    int w = 0, h = 0, samp = 0;
+    u8* pixels = nullptr;
+    if (tjDecompressHeader2(decompressor, (u8*)data, size, &w, &h, &samp) == 0 && w > 0 && h > 0) {
+        pixels = (u8*)malloc((size_t)w * h * 4);
+        if (pixels && tjDecompress2(decompressor, (u8*)data, size, pixels, w, 0, h, TJPF_RGBA, TJFLAG_ACCURATEDCT) != 0) {
+            free(pixels);
+            pixels = nullptr;
         }
+    }
+    tjDestroy(decompressor);
+    if (pixels) {
+        width  = w;
+        height = h;
+    }
+    return pixels;
+}
+
+// Decode a PNG or JPEG (sniffed by magic bytes) into a malloc'd RGBA8 buffer,
+// reproducing the retired SDL backend's black colorkey: fully-opaque
+// pure-black pixels become transparent (SDL_SetColorKey only ever matched the
+// opaque mapping of (0,0,0)). Caller frees.
+static u8* decodeToRGBA(const u8* data, size_t size, u32& width, u32& height)
+{
+    if (!data || size < 4) {
+        return nullptr;
+    }
+    u8* pixels = nullptr;
+    if (data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G') {
+        pixels = decodePNGToRGBA(data, size, width, height);
+    }
+    else if (data[0] == 0xFF && data[1] == 0xD8) {
+        pixels = decodeJPEGToRGBA(data, size, width, height);
+    }
+    if (pixels) {
         for (u32 i = 0; i < width * height; i++) {
             u8* px = pixels + (size_t)i * 4;
             if (px[0] == 0 && px[1] == 0 && px[2] == 0 && px[3] == 255) {
@@ -300,7 +336,26 @@ static u8* decodeToRGBA(SDL_Surface* loaded, u32& width, u32& height)
             }
         }
     }
-    SDL_FreeSurface(rgba);
+    return pixels;
+}
+
+// Read a whole file (romfs assets) and decode it. Caller frees.
+static u8* decodeFileToRGBA(const char* path, u32& width, u32& height)
+{
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        return nullptr;
+    }
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    rewind(f);
+    u8* data   = size > 0 ? (u8*)malloc(size) : nullptr;
+    u8* pixels = nullptr;
+    if (data && fread(data, 1, size, f) == (size_t)size) {
+        pixels = decodeToRGBA(data, size, width, height);
+    }
+    free(data);
+    fclose(f);
     return pixels;
 }
 
@@ -378,7 +433,7 @@ bool SDLH_Init(void)
     // tinted it via SDL_SetTextureColorMod(white); here the tint is baked into
     // the pixels before upload.
     u32 cbW = 0, cbH = 0;
-    u8* cbPixels = decodeToRGBA(IMG_Load("romfs:/checkbox.png"), cbW, cbH);
+    u8* cbPixels = decodeFileToRGBA("romfs:/checkbox.png", cbW, cbH);
     if (cbPixels) {
         for (u32 i = 0; i < cbW * cbH; i++) {
             u8* px = cbPixels + (size_t)i * 4;
@@ -991,7 +1046,7 @@ void SDLH_GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFami
 void SDLH_LoadImage(Texture** texture, const char* path)
 {
     u32 w = 0, h = 0;
-    u8* pixels = decodeToRGBA(IMG_Load(path), w, h);
+    u8* pixels = decodeFileToRGBA(path, w, h);
     if (pixels) {
         Texture* t = createTexture(pixels, w, h);
         if (t) {
@@ -1004,7 +1059,7 @@ void SDLH_LoadImage(Texture** texture, const char* path)
 void SDLH_LoadImage(Texture** texture, u8* buff, size_t size)
 {
     u32 w = 0, h = 0;
-    u8* pixels = decodeToRGBA(IMG_Load_RW(SDL_RWFromMem(buff, size), 1), w, h);
+    u8* pixels = decodeToRGBA(buff, size, w, h);
     if (pixels) {
         Texture* t = createTexture(pixels, w, h);
         if (t) {
@@ -1073,5 +1128,3 @@ void SDLH_CreateColorTexture(Texture** texture, int w, int h, Color color)
         *texture = t;
     }
 }
-
-#endif // GFX_BACKEND_DEKO3D
