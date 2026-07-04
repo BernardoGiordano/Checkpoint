@@ -241,7 +241,7 @@ void SettingsScreen::rebuildRows(void)
 
             // FTP row keeps the General-tab subtitle; the reachable address is
             // shown as the green status suffix when the server is running.
-            Row ftp = info("FTP server", "Browse backups from a computer", "CONNECTIVITY");
+            Row ftp          = info("FTP server", "Browse backups from a computer", "CONNECTIVITY");
             ftp.statusSuffix = [&cfg]() -> std::string {
                 if (!cfg.isFTPEnabled())
                     return "";
