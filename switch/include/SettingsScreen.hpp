@@ -121,7 +121,7 @@ private:
     // add/remove); update() rebuilds at the top of the next frame so it never
     // dereferences a Row the action just invalidated.
     bool mNeedsRebuild = false;
-    char mVer[8];
+    char mVer[16];
 
     // Logs category: wrapped display lines of the in-memory log, the first drawn
     // line, and a d-pad auto-repeat frame counter for held scrolling.

@@ -136,7 +136,7 @@ namespace {
 
 SettingsScreen::SettingsScreen(std::shared_ptr<Screen> returnTo) : mReturnTo(std::move(returnTo))
 {
-    sprintf(mVer, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+    snprintf(mVer, sizeof(mVer), "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
     rebuildRows();
 }
 

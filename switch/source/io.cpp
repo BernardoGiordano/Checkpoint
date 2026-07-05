@@ -247,21 +247,31 @@ Result io::deleteFolderRecursively(const std::string& path)
         return dir.error();
     }
 
+    Result firstError = 0;
+    auto note         = [&](int rc) {
+        if (rc != 0 && firstError == 0) {
+            firstError = errno ? errno : -1;
+        }
+    };
+
     for (size_t i = 0, sz = dir.size(); i < sz; i++) {
         if (dir.folder(i)) {
             std::string newpath = path + dir.entry(i) + "/";
-            deleteFolderRecursively(newpath);
+            Result sub          = deleteFolderRecursively(newpath);
+            if (sub != 0 && firstError == 0) {
+                firstError = sub;
+            }
             newpath = path + dir.entry(i);
-            rmdir(newpath.c_str());
+            note(rmdir(newpath.c_str()));
         }
         else {
             std::string newpath = path + dir.entry(i);
-            std::remove(newpath.c_str());
+            note(std::remove(newpath.c_str()));
         }
     }
 
-    rmdir(path.c_str());
-    return 0;
+    note(rmdir(path.c_str()));
+    return firstError;
 }
 
 io::IoOutcome io::backup(Title& title, const std::string& dstPath, ProgressSink& sink)

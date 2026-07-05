@@ -77,10 +77,19 @@ std::tuple<bool, Result, std::string> sendToPKSMBridge(size_t index, AccountUid 
     }
 
     fseek(save, 0, SEEK_END);
-    size_t size = ftell(save);
+    long ssize = ftell(save);
     rewind(save);
-    char* data = new char[size];
-    fread(data, 1, size, save);
+    if (ssize < 0) {
+        fclose(save);
+        return std::make_tuple(false, systemKeyboardAvailable.second, "Failed to size source file.");
+    }
+    size_t size = (size_t)ssize;
+    char* data  = new char[size];
+    if (fread(data, 1, size, save) != size) {
+        delete[] data;
+        fclose(save);
+        return std::make_tuple(false, systemKeyboardAvailable.second, "Failed to read source file.");
+    }
     fclose(save);
 
     // get server address

@@ -156,7 +156,7 @@ MainScreen::MainScreen(const InputState& input) : hid(GRID_VISIBLE, GRID_COLS, i
 {
     pksmBridge     = false;
     selectionTimer = 0;
-    sprintf(ver, "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+    snprintf(ver, sizeof(ver), "v%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 
     backupList    = std::make_unique<BackupList>(COL_X, LIST_Y, COL_W, LIST_ROWS * BackupList::ROW_PITCH, LIST_ROWS);
     buttonBackup  = std::make_unique<Clickable>(COL_X, BTN_BACKUP_Y, BTN_W, BTN_H, COLOR_ACCENT, COLOR_WHITE, "Backup", true);

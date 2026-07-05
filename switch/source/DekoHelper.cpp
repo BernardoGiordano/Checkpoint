@@ -829,7 +829,11 @@ void Gfx::ClearScreen(Color color)
 
 void Gfx::Render(void)
 {
-    g_currentTime = armTicksToNs(armGetSystemTick()) / 1000000000.0f;
+    // Anchor to app start: armTicksToNs is nanoseconds since boot, which after
+    // weeks of console uptime exceeds float's 24-bit mantissa and quantizes the
+    // pulsing outline to ~1 s steps. Take the tick delta before the float cast.
+    static const u64 s_startTick = armGetSystemTick();
+    g_currentTime                = armTicksToNs(armGetSystemTick() - s_startTick) / 1000000000.0f;
     if (s_slot < 0) {
         return;
     }

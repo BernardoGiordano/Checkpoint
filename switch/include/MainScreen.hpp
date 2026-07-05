@@ -97,7 +97,7 @@ private:
     // Account avatar, touch shortcut to the account picker. Release-triggered so
     // the picker applet can't relaunch every frame the finger stays down.
     std::unique_ptr<Clickable> avatarButton;
-    char ver[8];
+    char ver[16];
 };
 
 #endif
