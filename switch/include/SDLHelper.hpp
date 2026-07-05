@@ -63,6 +63,13 @@ namespace Gfx {
     void DrawTextBox(int size, int x, int y, Color color, int max, const char* text, FontFamily family = FontFamily::Sans);
     void Render(void);
     void CreateColorTexture(Texture** texture, int w, int h, Color color);
+
+    // GPU-antialiased rounded rectangles (signed-distance-field). radius is
+    // clamped to min(w,h)/2 by the caller conventions in Shapes. FillRoundRect
+    // fills the shape; StrokeRoundRect draws a hollow ring of `thickness` inset
+    // from the outer edge (inner corner radius = radius - thickness).
+    void FillRoundRect(int x, int y, int w, int h, float radius, Color color);
+    void StrokeRoundRect(int x, int y, int w, int h, float radius, float thickness, Color color);
 } // namespace Gfx
 
 void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color);

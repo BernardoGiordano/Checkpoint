@@ -26,7 +26,6 @@
 
 #include "shapes.hpp"
 #include <algorithm>
-#include <cmath>
 
 namespace {
     int clampRadius(int w, int h, int r)
@@ -34,40 +33,11 @@ namespace {
         int maxR = std::min(w, h) / 2;
         return std::max(0, std::min(r, maxR));
     }
-
-    // Horizontal inset (from each side) at row `row` (0-indexed from the
-    // shape's top edge) of a w x h rect with corner radius r. 0 outside the
-    // corner rows, symmetric top/bottom.
-    int cornerInset(int r, int h, int row)
-    {
-        int fromEdge = std::min(row, h - row - 1);
-        if (fromEdge >= r)
-            return 0;
-        int dy = r - fromEdge;
-        int dx = (int)(std::sqrt((double)(r * r - dy * dy)) + 0.5);
-        return r - dx;
-    }
 }
 
 void Shapes::fillRound(int x, int y, int w, int h, int r, Color color)
 {
-    r = clampRadius(w, h, r);
-    if (r <= 0) {
-        Gfx::DrawRect(x, y, w, h, color);
-        return;
-    }
-
-    if (h > 2 * r) {
-        Gfx::DrawRect(x, y + r, w, h - 2 * r, color);
-    }
-    for (int i = 0; i < r; i++) {
-        int inset = cornerInset(r, h, i);
-        int rowW  = w - 2 * inset;
-        if (rowW <= 0)
-            continue;
-        Gfx::DrawRect(x + inset, y + i, rowW, 1, color);         // top
-        Gfx::DrawRect(x + inset, y + h - 1 - i, rowW, 1, color); // bottom (mirrored)
-    }
+    Gfx::FillRoundRect(x, y, w, h, clampRadius(w, h, r), color);
 }
 
 void Shapes::cardRound(int x, int y, int w, int h, int r, Color fillColor, Color borderColor, int borderPx)
@@ -83,38 +53,9 @@ void Shapes::cardRound(int x, int y, int w, int h, int r, Color fillColor, Color
 
 void Shapes::strokeRound(int x, int y, int w, int h, int r, int thickness, Color color)
 {
-    r = clampRadius(w, h, r);
     if (thickness <= 0 || w <= 0 || h <= 0)
         return;
-
-    const int ix = thickness, iy = thickness;
-    const int iw = w - 2 * thickness, ih = h - 2 * thickness;
-    const int ir        = std::max(0, r - thickness);
-    const bool hasInner = iw > 0 && ih > 0;
-
-    for (int row = 0; row < h; row++) {
-        int outerInset = cornerInset(r, h, row);
-        int outerLeft  = x + outerInset;
-        int outerRight = x + w - outerInset;
-        if (outerRight <= outerLeft)
-            continue;
-
-        int innerRow = row - iy;
-        if (hasInner && innerRow >= 0 && innerRow < ih) {
-            int innerInset = cornerInset(ir, ih, innerRow);
-            int innerLeft  = x + ix + innerInset;
-            int innerRight = x + ix + iw - innerInset;
-            if (innerLeft > outerLeft) {
-                Gfx::DrawRect(outerLeft, y + row, innerLeft - outerLeft, 1, color);
-            }
-            if (outerRight > innerRight) {
-                Gfx::DrawRect(innerRight, y + row, outerRight - innerRight, 1, color);
-            }
-        }
-        else {
-            Gfx::DrawRect(outerLeft, y + row, outerRight - outerLeft, 1, color);
-        }
-    }
+    Gfx::StrokeRoundRect(x, y, w, h, clampRadius(w, h, r), thickness, color);
 }
 
 void Shapes::focusRing(int x, int y, int w, int h, int r, Color accent)

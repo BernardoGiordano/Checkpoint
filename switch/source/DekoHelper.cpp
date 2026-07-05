@@ -55,16 +55,24 @@
 #include FT_FREETYPE_H
 
 namespace {
-    constexpr unsigned FB_NUM  = 2;
-    constexpr u32 FB_WIDTH     = 1280;
-    constexpr u32 FB_HEIGHT    = 720;
-    constexpr u32 CMDMEM_SLICE = 0x40000; // per-frame dynamic command memory
-    constexpr u32 IMAGEPOOL_SZ = 16 * 1024 * 1024;
-    constexpr u32 DATAPOOL_SZ  = 4 * 1024 * 1024;
-    constexpr u32 CODEPOOL_SZ  = 128 * 1024;
+    constexpr unsigned FB_NUM = 2;
+    // The UI is authored in a fixed 1280x720 logical space (the shaders map it
+    // to NDC, so it is resolution-independent). Handheld renders 1:1; docked
+    // renders the same UI into a 1920x1080 framebuffer (viewport upscale) for a
+    // crisp 1080p output. The swapchain/framebuffers are recreated on mode
+    // change; the CPU-side layout never changes.
+    constexpr u32 FB_WIDTH_HANDHELD  = 1280;
+    constexpr u32 FB_HEIGHT_HANDHELD = 720;
+    constexpr u32 FB_WIDTH_DOCKED    = 1920;
+    constexpr u32 FB_HEIGHT_DOCKED   = 1080;
+    constexpr u32 CMDMEM_SLICE       = 0x40000; // per-frame dynamic command memory
+    constexpr u32 IMAGEPOOL_SZ       = 16 * 1024 * 1024;
+    constexpr u32 DATAPOOL_SZ        = 4 * 1024 * 1024;
+    constexpr u32 CODEPOOL_SZ        = 128 * 1024;
 
-    constexpr u32 MAX_IMAGES = 1024; // image descriptor slots (icons, avatars, assets)
-    constexpr u32 MAX_QUADS  = 16384;
+    constexpr u32 MAX_IMAGES     = 1024; // image descriptor slots (icons, avatars, assets)
+    constexpr u32 MAX_QUADS      = 16384;
+    constexpr u32 MAX_ROUNDQUADS = 4096; // SDF rounded-rect quads per frame
 
     // One UI quad vertex: logical-720p position, texcoord, straight-alpha
     // color (RGBA8, unpacked to floats by the Unorm vertex attribute).
@@ -78,6 +86,10 @@ namespace {
     constexpr u32 MAX_VERTS      = MAX_QUADS * VERTS_PER_QUAD;
     constexpr u32 VTX_SLICE_SZ   = MAX_VERTS * sizeof(Vertex);
 
+    // Which pipeline a batch draws through (they use different vertex formats
+    // and shaders); a batch is homogeneous, so a mode change forces a flush.
+    enum class BatchMode { Quad, Round };
+
     constexpr std::array VertexAttribState = {
         DkVtxAttribState{0, 0, offsetof(Vertex, x), DkVtxAttribSize_2x32, DkVtxAttribType_Float, 0},
         DkVtxAttribState{0, 0, offsetof(Vertex, u), DkVtxAttribSize_2x32, DkVtxAttribType_Float, 0},
@@ -86,6 +98,28 @@ namespace {
     constexpr std::array VertexBufferState = {
         DkVtxBufferState{sizeof(Vertex), 0},
     };
+
+    // One SDF rounded-rect vertex: logical position, local offset from the rect
+    // centre (pixels), the rect params the fragment shader needs, and color.
+    struct RoundVertex {
+        float x, y;
+        float lx, ly;
+        float halfW, halfH, radius, thickness;
+        u8 rgba[4];
+    };
+
+    constexpr std::array RoundVertexAttribState = {
+        DkVtxAttribState{0, 0, offsetof(RoundVertex, x), DkVtxAttribSize_2x32, DkVtxAttribType_Float, 0},
+        DkVtxAttribState{0, 0, offsetof(RoundVertex, lx), DkVtxAttribSize_2x32, DkVtxAttribType_Float, 0},
+        DkVtxAttribState{0, 0, offsetof(RoundVertex, halfW), DkVtxAttribSize_4x32, DkVtxAttribType_Float, 0},
+        DkVtxAttribState{0, 0, offsetof(RoundVertex, rgba), DkVtxAttribSize_4x8, DkVtxAttribType_Unorm, 0},
+    };
+    constexpr std::array RoundVertexBufferState = {
+        DkVtxBufferState{sizeof(RoundVertex), 0},
+    };
+
+    constexpr u32 ROUND_MAX_VERTS = MAX_ROUNDQUADS * VERTS_PER_QUAD;
+    constexpr u32 ROUND_SLICE_SZ  = ROUND_MAX_VERTS * sizeof(RoundVertex);
 
     dk::UniqueDevice s_device;
     dk::UniqueQueue s_queue;
@@ -97,9 +131,14 @@ namespace {
     CMemPool::Handle s_fbMem[FB_NUM];
     dk::Image s_framebuffers[FB_NUM];
     dk::UniqueSwapchain s_swapchain;
+    u32 s_fbWidth                = FB_WIDTH_HANDHELD;
+    u32 s_fbHeight               = FB_HEIGHT_HANDHELD;
+    AppletOperationMode s_opMode = AppletOperationMode_Handheld;
 
     CShader s_vertexShader;
     CShader s_fragmentShader;
+    CShader s_roundVertexShader;
+    CShader s_roundFragmentShader;
     std::optional<CDescriptorSet<MAX_IMAGES>> s_imageDescs;
     std::optional<CDescriptorSet<1>> s_samplerDescs;
     std::vector<u32> s_freeDescIds; // recycled descriptor slots
@@ -113,11 +152,21 @@ namespace {
     u32 s_vtxCount       = 0;
     bool s_vtxOverflowed = false;
 
-    // Current batch: contiguous vertex range sharing texture + blend state.
-    u32 s_batchStart   = 0;
-    u32 s_batchDescId  = UINT32_MAX;
-    bool s_batchOpaque = false;
-    bool s_blendBound  = true; // blending state currently bound on the cmdbuf
+    // Parallel per-frame ring for SDF rounded-rect vertices (same FB_NUM
+    // slices, cycled by s_vtxSlice in lockstep with the quad ring).
+    CMemPool::Handle s_roundVtxMem;
+    RoundVertex* s_roundBase = nullptr;
+    u32 s_roundCount         = 0;
+    bool s_roundOverflowed   = false;
+
+    // Current batch: contiguous vertex range in one mode's buffer sharing
+    // texture + blend state.
+    BatchMode s_batchMode = BatchMode::Quad;
+    u32 s_batchStart      = 0; // index into the active mode's vertex buffer
+    u32 s_batchDescId     = UINT32_MAX;
+    bool s_batchOpaque    = false;
+    bool s_blendBound     = true; // blending state currently bound on the cmdbuf
+    int s_boundMode       = -1;   // BatchMode whose pipeline is bound (-1 = none)
 
     // Swapchain slot acquired for the frame being recorded; -1 outside a frame.
     int s_slot = -1;
@@ -358,6 +407,48 @@ static u8* decodeFileToRGBA(const char* path, u32& width, u32& height)
     return pixels;
 }
 
+// Pick the framebuffer resolution for the current applet operation mode:
+// docked outputs native 1080p, handheld 720p.
+static void chooseFbSize(AppletOperationMode mode)
+{
+    if (mode == AppletOperationMode_Console) {
+        s_fbWidth  = FB_WIDTH_DOCKED;
+        s_fbHeight = FB_HEIGHT_DOCKED;
+    }
+    else {
+        s_fbWidth  = FB_WIDTH_HANDHELD;
+        s_fbHeight = FB_HEIGHT_HANDHELD;
+    }
+    s_opMode = mode;
+}
+
+// (Re)create the swapchain framebuffers at the current s_fbWidth/s_fbHeight.
+static void createFramebuffers(void)
+{
+    dk::ImageLayout fbLayout;
+    dk::ImageLayoutMaker{s_device}
+        .setFlags(DkImageFlags_UsageRender | DkImageFlags_UsagePresent | DkImageFlags_HwCompression)
+        .setFormat(DkImageFormat_RGBA8_Unorm)
+        .setDimensions(s_fbWidth, s_fbHeight)
+        .initialize(fbLayout);
+
+    std::array<DkImage const*, FB_NUM> fbArray;
+    for (unsigned i = 0; i < FB_NUM; i++) {
+        s_fbMem[i] = s_poolImages->allocate(fbLayout.getSize(), fbLayout.getAlignment());
+        s_framebuffers[i].initialize(fbLayout, s_fbMem[i].getMemBlock(), s_fbMem[i].getOffset());
+        fbArray[i] = &s_framebuffers[i];
+    }
+    s_swapchain = dk::SwapchainMaker{s_device, nwindowGetDefault(), fbArray}.create();
+}
+
+static void destroyFramebuffers(void)
+{
+    s_swapchain.destroy();
+    for (unsigned i = 0; i < FB_NUM; i++) {
+        s_fbMem[i].destroy();
+    }
+}
+
 bool Gfx::Init(void)
 {
     s_device = dk::DeviceMaker{}.create();
@@ -378,6 +469,11 @@ bool Gfx::Init(void)
         Logging::error("deko3d: failed to load romfs:/shaders/quad_{vsh,fsh}.dksh.");
         return false;
     }
+    if (!s_roundVertexShader.load(*s_poolCode, "romfs:/shaders/round_vsh.dksh") ||
+        !s_roundFragmentShader.load(*s_poolCode, "romfs:/shaders/round_fsh.dksh")) {
+        Logging::error("deko3d: failed to load romfs:/shaders/round_{vsh,fsh}.dksh.");
+        return false;
+    }
 
     s_imageDescs.emplace();
     s_samplerDescs.emplace();
@@ -391,21 +487,14 @@ bool Gfx::Init(void)
         Logging::error("deko3d: failed to allocate vertex ring.");
         return false;
     }
-
-    dk::ImageLayout fbLayout;
-    dk::ImageLayoutMaker{s_device}
-        .setFlags(DkImageFlags_UsageRender | DkImageFlags_UsagePresent | DkImageFlags_HwCompression)
-        .setFormat(DkImageFormat_RGBA8_Unorm)
-        .setDimensions(FB_WIDTH, FB_HEIGHT)
-        .initialize(fbLayout);
-
-    std::array<DkImage const*, FB_NUM> fbArray;
-    for (unsigned i = 0; i < FB_NUM; i++) {
-        s_fbMem[i] = s_poolImages->allocate(fbLayout.getSize(), fbLayout.getAlignment());
-        s_framebuffers[i].initialize(fbLayout, s_fbMem[i].getMemBlock(), s_fbMem[i].getOffset());
-        fbArray[i] = &s_framebuffers[i];
+    s_roundVtxMem = s_poolData->allocate(FB_NUM * ROUND_SLICE_SZ, alignof(RoundVertex));
+    if (!s_roundVtxMem) {
+        Logging::error("deko3d: failed to allocate rounded-rect vertex ring.");
+        return false;
     }
-    s_swapchain = dk::SwapchainMaker{s_device, nwindowGetDefault(), fbArray}.create();
+
+    chooseFbSize(appletGetOperationMode());
+    createFramebuffers();
 
     // Persistent queue state: linear-clamp sampler in slot 0, descriptor sets
     // bound once (deko3d queues retain bound state across submissions).
@@ -535,11 +624,9 @@ void Gfx::Exit(void)
     }
     free(s_monoData);
     s_monoData = nullptr;
-    s_swapchain.destroy();
-    for (unsigned i = 0; i < FB_NUM; i++) {
-        s_fbMem[i].destroy();
-    }
+    destroyFramebuffers();
     s_vtxMem.destroy();
+    s_roundVtxMem.destroy();
     s_samplerDescs.reset();
     s_imageDescs.reset();
     s_cmdRing.reset();
@@ -559,13 +646,23 @@ static void frameBegin(void)
     if (s_slot >= 0) {
         return;
     }
+    // Applet operation mode can change between frames (dock/undock); recreate
+    // the swapchain at the new resolution before starting the frame.
+    AppletOperationMode mode = appletGetOperationMode();
+    if (mode != s_opMode) {
+        s_queue.waitIdle();
+        destroyFramebuffers();
+        chooseFbSize(mode);
+        createFramebuffers();
+    }
+
     s_slot = s_queue.acquireImage(s_swapchain);
     s_cmdRing->begin(s_cmdbuf);
 
     dk::ImageView colorTarget{s_framebuffers[s_slot]};
     s_cmdbuf.bindRenderTargets(&colorTarget);
-    s_cmdbuf.setViewports(0, {{0.0f, 0.0f, (float)FB_WIDTH, (float)FB_HEIGHT, 0.0f, 1.0f}});
-    s_cmdbuf.setScissors(0, {{0, 0, FB_WIDTH, FB_HEIGHT}});
+    s_cmdbuf.setViewports(0, {{0.0f, 0.0f, (float)s_fbWidth, (float)s_fbHeight, 0.0f, 1.0f}});
+    s_cmdbuf.setScissors(0, {{0, 0, s_fbWidth, s_fbHeight}});
 
     dk::RasterizerState rasterizerState;
     rasterizerState.setCullMode(DkFace_None);
@@ -579,7 +676,6 @@ static void frameBegin(void)
     // SDL_BLENDMODE_BLEND: straight-alpha src-over.
     blendState.setFactors(DkBlendFactor_SrcAlpha, DkBlendFactor_InvSrcAlpha, DkBlendFactor_One, DkBlendFactor_InvSrcAlpha);
 
-    s_cmdbuf.bindShaders(DkStageFlag_GraphicsMask, {s_vertexShader, s_fragmentShader});
     s_cmdbuf.bindRasterizerState(rasterizerState);
     s_cmdbuf.bindDepthStencilState(depthStencilState);
     s_cmdbuf.bindColorState(colorState);
@@ -587,44 +683,84 @@ static void frameBegin(void)
     s_cmdbuf.bindBlendStates(0, blendState);
     s_blendBound = true;
 
-    s_vtxBase = (Vertex*)((u8*)s_vtxMem.getCpuAddr() + s_vtxSlice * VTX_SLICE_SZ);
-    s_cmdbuf.bindVtxBuffer(0, s_vtxMem.getGpuAddr() + s_vtxSlice * VTX_SLICE_SZ, VTX_SLICE_SZ);
-    s_cmdbuf.bindVtxAttribState(VertexAttribState);
-    s_cmdbuf.bindVtxBufferState(VertexBufferState);
-    s_vtxCount      = 0;
-    s_batchStart    = 0;
-    s_batchDescId   = UINT32_MAX;
-    s_vtxOverflowed = false;
+    // Pipeline (shaders + vertex stream) is bound lazily per batch by bindMode,
+    // so the first draw of the frame always establishes it.
+    s_boundMode       = -1;
+    s_vtxBase         = (Vertex*)((u8*)s_vtxMem.getCpuAddr() + s_vtxSlice * VTX_SLICE_SZ);
+    s_roundBase       = (RoundVertex*)((u8*)s_roundVtxMem.getCpuAddr() + s_vtxSlice * ROUND_SLICE_SZ);
+    s_vtxCount        = 0;
+    s_roundCount      = 0;
+    s_batchMode       = BatchMode::Quad;
+    s_batchStart      = 0;
+    s_batchDescId     = UINT32_MAX;
+    s_vtxOverflowed   = false;
+    s_roundOverflowed = false;
 }
 
-// Emit the pending batch (if any) as one draw call, binding its texture and
-// switching blending on/off as needed.
-static void flushBatch(void)
+// Bind the shaders + vertex stream for `mode` (only when it differs from what
+// is already bound on the cmdbuf).
+static void bindMode(BatchMode mode)
 {
-    const u32 count = s_vtxCount - s_batchStart;
-    if (count == 0 || s_batchDescId == UINT32_MAX) {
+    if ((int)mode == s_boundMode) {
         return;
     }
-    const bool wantBlend = !s_batchOpaque;
+    if (mode == BatchMode::Quad) {
+        s_cmdbuf.bindShaders(DkStageFlag_GraphicsMask, {s_vertexShader, s_fragmentShader});
+        s_cmdbuf.bindVtxBuffer(0, s_vtxMem.getGpuAddr() + s_vtxSlice * VTX_SLICE_SZ, VTX_SLICE_SZ);
+        s_cmdbuf.bindVtxAttribState(VertexAttribState);
+        s_cmdbuf.bindVtxBufferState(VertexBufferState);
+    }
+    else {
+        s_cmdbuf.bindShaders(DkStageFlag_GraphicsMask, {s_roundVertexShader, s_roundFragmentShader});
+        s_cmdbuf.bindVtxBuffer(0, s_roundVtxMem.getGpuAddr() + s_vtxSlice * ROUND_SLICE_SZ, ROUND_SLICE_SZ);
+        s_cmdbuf.bindVtxAttribState(RoundVertexAttribState);
+        s_cmdbuf.bindVtxBufferState(RoundVertexBufferState);
+    }
+    s_boundMode = (int)mode;
+}
+
+// Emit the pending batch (if any) as one draw call, binding its pipeline /
+// texture and switching blending on/off as needed.
+static void flushBatch(void)
+{
+    const u32 activeCount = s_batchMode == BatchMode::Quad ? s_vtxCount : s_roundCount;
+    const u32 count       = activeCount - s_batchStart;
+    if (count == 0 || (s_batchMode == BatchMode::Quad && s_batchDescId == UINT32_MAX)) {
+        return;
+    }
+    bindMode(s_batchMode);
+    // Rounded rects always blend (their coverage lives in the alpha channel).
+    const bool wantBlend = s_batchMode == BatchMode::Round ? true : !s_batchOpaque;
     if (wantBlend != s_blendBound) {
         dk::ColorState colorState;
         colorState.setBlendEnable(0, wantBlend);
         s_cmdbuf.bindColorState(colorState);
         s_blendBound = wantBlend;
     }
-    s_cmdbuf.bindTextures(DkStage_Fragment, 0, dkMakeTextureHandle(s_batchDescId, 0));
+    if (s_batchMode == BatchMode::Quad) {
+        s_cmdbuf.bindTextures(DkStage_Fragment, 0, dkMakeTextureHandle(s_batchDescId, 0));
+    }
     s_cmdbuf.draw(DkPrimitive_Triangles, count, 1, s_batchStart, 0);
-    s_batchStart = s_vtxCount;
+    s_batchStart = activeCount;
+}
+
+// Switch the active batch when its key (mode / texture / blend) changes,
+// flushing the old one and anchoring the new batch's start in its buffer.
+static void beginBatch(BatchMode mode, u32 descId, bool opaque)
+{
+    if (mode != s_batchMode || descId != s_batchDescId || opaque != s_batchOpaque) {
+        flushBatch();
+        s_batchMode   = mode;
+        s_batchDescId = descId;
+        s_batchOpaque = opaque;
+        s_batchStart  = mode == BatchMode::Quad ? s_vtxCount : s_roundCount;
+    }
 }
 
 static void pushQuadRaw(u32 descId, bool opaque, float x, float y, float w, float h, float u0, float v0, float u1, float v1, Color color)
 {
     frameBegin();
-    if (descId != s_batchDescId || opaque != s_batchOpaque) {
-        flushBatch();
-        s_batchDescId = descId;
-        s_batchOpaque = opaque;
-    }
+    beginBatch(BatchMode::Quad, descId, opaque);
     if (s_vtxCount + VERTS_PER_QUAD > MAX_VERTS) {
         if (!s_vtxOverflowed) {
             Logging::error("deko3d: vertex ring full ({} quads), dropping draws this frame.", MAX_QUADS);
@@ -651,6 +787,39 @@ static void pushQuad(const Texture* texture, float x, float y, float w, float h,
     pushQuadRaw(texture->descId, texture->opaque, x, y, w, h, u0, v0, u1, v1, color);
 }
 
+// Emit one SDF rounded-rect quad. The geometry is expanded by 1px on every
+// side so the antialiased edge is not clipped; local coordinates run from the
+// rect centre so the fragment shader can evaluate the distance field.
+// thickness <= 0 fills; thickness > 0 draws a ring of that width.
+static void pushRound(float cx, float cy, float halfW, float halfH, float radius, float thickness, Color color)
+{
+    frameBegin();
+    beginBatch(BatchMode::Round, 0, false);
+    if (s_roundCount + VERTS_PER_QUAD > ROUND_MAX_VERTS) {
+        if (!s_roundOverflowed) {
+            Logging::error("deko3d: rounded-rect ring full ({} quads), dropping draws this frame.", MAX_ROUNDQUADS);
+            s_roundOverflowed = true;
+        }
+        return;
+    }
+    const float m    = 1.0f; // AA margin
+    const float lx   = halfW + m;
+    const float ly   = halfH + m;
+    const u8 rgba[4] = {color.r, color.g, color.b, color.a};
+    const RoundVertex tl{cx - lx, cy - ly, -lx, -ly, halfW, halfH, radius, thickness, {rgba[0], rgba[1], rgba[2], rgba[3]}};
+    const RoundVertex tr{cx + lx, cy - ly, lx, -ly, halfW, halfH, radius, thickness, {rgba[0], rgba[1], rgba[2], rgba[3]}};
+    const RoundVertex bl{cx - lx, cy + ly, -lx, ly, halfW, halfH, radius, thickness, {rgba[0], rgba[1], rgba[2], rgba[3]}};
+    const RoundVertex br{cx + lx, cy + ly, lx, ly, halfW, halfH, radius, thickness, {rgba[0], rgba[1], rgba[2], rgba[3]}};
+    RoundVertex* out = s_roundBase + s_roundCount;
+    out[0]           = tl;
+    out[1]           = bl;
+    out[2]           = br;
+    out[3]           = tl;
+    out[4]           = br;
+    out[5]           = tr;
+    s_roundCount += VERTS_PER_QUAD;
+}
+
 void Gfx::ClearScreen(Color color)
 {
     frameBegin();
@@ -675,6 +844,28 @@ void Gfx::Render(void)
 void Gfx::DrawRect(int x, int y, int w, int h, Color color)
 {
     pushQuad(s_white, x, y, w, h, 0.0f, 0.0f, 1.0f, 1.0f, color);
+}
+
+void Gfx::FillRoundRect(int x, int y, int w, int h, float radius, Color color)
+{
+    if (w <= 0 || h <= 0) {
+        return;
+    }
+    const float halfW = w * 0.5f;
+    const float halfH = h * 0.5f;
+    const float r     = std::max(0.0f, std::min(radius, std::min(halfW, halfH)));
+    pushRound(x + halfW, y + halfH, halfW, halfH, r, 0.0f, color);
+}
+
+void Gfx::StrokeRoundRect(int x, int y, int w, int h, float radius, float thickness, Color color)
+{
+    if (w <= 0 || h <= 0 || thickness <= 0.0f) {
+        return;
+    }
+    const float halfW = w * 0.5f;
+    const float halfH = h * 0.5f;
+    const float r     = std::max(0.0f, std::min(radius, std::min(halfW, halfH)));
+    pushRound(x + halfW, y + halfH, halfW, halfH, r, thickness, color);
 }
 
 // ---- text engine (phase 3) ----
