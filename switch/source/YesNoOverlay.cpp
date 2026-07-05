@@ -25,6 +25,7 @@
  */
 
 #include "YesNoOverlay.hpp"
+#include "gfxutils.hpp"
 
 YesNoOverlay::YesNoOverlay(
     Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo)

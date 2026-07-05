@@ -27,10 +27,10 @@
 #ifndef INFOOVERLAY_HPP
 #define INFOOVERLAY_HPP
 
-#include "DekoHelper.hpp"
 #include "Overlay.hpp"
 #include "clickable.hpp"
 #include "colors.hpp"
+#include "gfx.hpp"
 #include <memory>
 #include <string>
 

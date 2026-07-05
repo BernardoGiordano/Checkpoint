@@ -80,6 +80,7 @@ private:
     bool pksmBridge;
     bool sidebarFocused              = false;
     bool sidebarExitFrame            = false;
+    bool backupScrollEnabled         = false;
     int sidebarCursor                = 0;
     saveTypeFilter_t mSaveTypeFilter = FILTER_SAVES;
     // Last catalog generation the selector reconciled against; a bump means

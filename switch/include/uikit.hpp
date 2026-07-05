@@ -27,7 +27,7 @@
 #ifndef UIKIT_HPP
 #define UIKIT_HPP
 
-#include "DekoHelper.hpp"
+#include "gfx.hpp"
 #include <string>
 #include <vector>
 

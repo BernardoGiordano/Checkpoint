@@ -25,6 +25,7 @@
  */
 
 #include "clickable.hpp"
+#include "gfxutils.hpp"
 
 bool Clickable::held()
 {

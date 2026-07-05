@@ -27,7 +27,7 @@
 #ifndef ACCOUNT_HPP
 #define ACCOUNT_HPP
 
-#include "DekoHelper.hpp"
+#include "gfx.hpp"
 #include <map>
 #include <string.h>
 #include <string>

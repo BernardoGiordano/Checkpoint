@@ -27,8 +27,7 @@
 // Backend-agnostic drawing helpers: everything here goes through the Gfx::*
 // API only (see HANDOFF-deko3d.md).
 
-#include "DekoHelper.hpp"
-#include "main.hpp"
+#include "gfxutils.hpp"
 #include <cmath>
 #include <unordered_map>
 
@@ -64,7 +63,7 @@ void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color)
 
 void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color)
 {
-    float highlight_multiplier = fmax(0.0, fabs(fmod(g_currentTime, 1.0) - 0.5) / 0.5);
+    float highlight_multiplier = fmax(0.0, fabs(fmod(Gfx::animationTime(), 1.0) - 0.5) / 0.5);
     color                      = makeColor(color.r + (255 - color.r) * highlight_multiplier, color.g + (255 - color.g) * highlight_multiplier,
                              color.b + (255 - color.b) * highlight_multiplier, 255);
     drawOutline(x, y, w, h, size, color);

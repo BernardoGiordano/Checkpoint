@@ -25,6 +25,7 @@
  */
 
 #include "account.hpp"
+#include "gfxutils.hpp"
 #include "main.hpp"
 
 static std::map<AccountUid, User> mUsers;
@@ -59,8 +60,16 @@ static User getUser(AccountUid id)
     memset(&profilebase, 0, sizeof(profilebase));
 
     if (R_SUCCEEDED(accountGetProfile(&profile, id)) && R_SUCCEEDED(accountProfileGet(&profile, NULL, &profilebase))) {
+        // "..." width at size 13, measured once and cached: trimToFit needs it to
+        // reserve space for its own ellipsis truncation marker.
+        static u32 dotsize = [] {
+            u32 w;
+            Gfx::GetTextDimensions(13, "...", &w, NULL);
+            return w;
+        }();
+
         user.name      = std::string(profilebase.nickname, 0x20);
-        user.shortName = trimToFit(user.name, 96 - g_username_dotsize * 2, 13);
+        user.shortName = trimToFit(user.name, 96 - dotsize * 2, 13);
 
         // load icon
         u8* buffer;

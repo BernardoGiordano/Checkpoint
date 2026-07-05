@@ -27,7 +27,7 @@
 #ifndef CLICKABLE_HPP
 #define CLICKABLE_HPP
 
-#include "DekoHelper.hpp"
+#include "gfx.hpp"
 #include "iclickable.hpp"
 #include "main.hpp"
 #include <string>

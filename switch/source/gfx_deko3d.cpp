@@ -35,13 +35,12 @@
 // ceil(TTF height * 1.2)) so layouts match the retired SDL backend
 // pixel-for-pixel.
 
-#include "DekoHelper.hpp"
+#include "gfx.hpp"
 #include "gfx/CCmdMemRing.h"
 #include "gfx/CDescriptorSet.h"
 #include "gfx/CMemPool.h"
 #include "gfx/CShader.h"
 #include "logging.hpp"
-#include "main.hpp"
 #include <array>
 #include <cmath>
 #include <deko3d.hpp>
@@ -546,8 +545,6 @@ bool Gfx::Init(void)
         Logging::error("Failed to load romfs:/fonts/SpaceMono-Regular.ttf, falling back to the system font.");
     }
 
-    Gfx::GetTextDimensions(13, "...", &g_username_dotsize, NULL);
-
     return true;
 }
 
@@ -783,13 +780,20 @@ void Gfx::ClearScreen(Color color)
     s_cmdbuf.clearColor(0, DkColorMask_RGBA, color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
 }
 
+static float s_currentTime = 0;
+
+float Gfx::animationTime(void)
+{
+    return s_currentTime;
+}
+
 void Gfx::Render(void)
 {
     // Anchor to app start: armTicksToNs is nanoseconds since boot, which after
     // weeks of console uptime exceeds float's 24-bit mantissa and quantizes the
     // pulsing outline to ~1 s steps. Take the tick delta before the float cast.
     static const u64 s_startTick = armGetSystemTick();
-    g_currentTime                = armTicksToNs(armGetSystemTick() - s_startTick) / 1000000000.0f;
+    s_currentTime                = armTicksToNs(armGetSystemTick() - s_startTick) / 1000000000.0f;
     if (s_slot < 0) {
         return;
     }

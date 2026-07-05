@@ -24,12 +24,11 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef DEKOHELPER_HPP
-#define DEKOHELPER_HPP
+#ifndef GFX_HPP
+#define GFX_HPP
 
 #include "colors.hpp"
 #include "gfxtypes.hpp"
-#include <string>
 #include <switch.h>
 
 // Sans is the shared system font (matches the mock's "system font
@@ -40,6 +39,10 @@ enum class FontFamily { Sans, Mono };
 namespace Gfx {
     bool Init(void);
     void Exit(void);
+
+    // Seconds since app start; anchors the pulsing-outline animation (see
+    // Gfx::Render). Not wall-clock time.
+    float animationTime(void);
 
     void ClearScreen(Color color);
     void DrawRect(int x, int y, int w, int h, Color color);
@@ -63,9 +66,5 @@ namespace Gfx {
     void FillRoundRect(int x, int y, int w, int h, float radius, Color color);
     void StrokeRoundRect(int x, int y, int w, int h, float radius, float thickness, Color color);
 } // namespace Gfx
-
-void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color);
-void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color);
-std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize, FontFamily family = FontFamily::Sans);
 
 #endif

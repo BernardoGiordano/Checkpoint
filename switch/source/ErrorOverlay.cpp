@@ -25,6 +25,7 @@
  */
 
 #include "ErrorOverlay.hpp"
+#include "gfxutils.hpp"
 
 ErrorOverlay::ErrorOverlay(Screen& screen, Result mres, const std::string& mtext) : Overlay(screen)
 {

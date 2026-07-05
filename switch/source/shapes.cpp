@@ -25,6 +25,7 @@
  */
 
 #include "shapes.hpp"
+#include "gfxutils.hpp"
 #include <algorithm>
 
 namespace {

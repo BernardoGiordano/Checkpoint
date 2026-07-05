@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,30 +24,15 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef ERROROVERLAY_HPP
-#define ERROROVERLAY_HPP
+#ifndef GFXUTILS_HPP
+#define GFXUTILS_HPP
 
-#include "Overlay.hpp"
-#include "clickable.hpp"
-#include "colors.hpp"
 #include "gfx.hpp"
-#include <memory>
 #include <string>
 
-class Clickable;
-
-class ErrorOverlay : public Overlay {
-public:
-    ErrorOverlay(Screen& screen, Result res, const std::string& mtext);
-    ~ErrorOverlay() = default;
-    void draw(void) const override;
-    void update(const InputState&) override;
-
-private:
-    u32 textw, texth;
-    std::string text;
-    std::unique_ptr<Clickable> button;
-    Result res;
-};
+// Backend-agnostic drawing helpers built on top of Gfx::*; see gfxutils.cpp.
+void drawOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color);
+void drawPulsingOutline(u32 x, u32 y, u16 w, u16 h, u8 size, Color color);
+std::string trimToFit(const std::string& text, u32 maxsize, size_t textsize, FontFamily family = FontFamily::Sans);
 
 #endif

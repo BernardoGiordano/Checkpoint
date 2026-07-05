@@ -27,10 +27,10 @@
 #ifndef TITLE_HPP
 #define TITLE_HPP
 
-#include "DekoHelper.hpp"
 #include "account.hpp"
 #include "configuration.hpp"
 #include "filesystem.hpp"
+#include "gfx.hpp"
 #include "io.hpp"
 #include <algorithm>
 #include <stdlib.h>

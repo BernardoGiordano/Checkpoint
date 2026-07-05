@@ -25,10 +25,10 @@
  */
 
 #include "FolderBrowserOverlay.hpp"
-#include "DekoHelper.hpp"
 #include "colors.hpp"
 #include "common.hpp"
 #include "directory.hpp"
+#include "gfxutils.hpp"
 #include "shapes.hpp"
 #include "uikit.hpp"
 #include <algorithm>

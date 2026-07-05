@@ -27,6 +27,7 @@
 #include "MainScreen.hpp"
 #include "SettingsScreen.hpp"
 #include "backupsize.hpp"
+#include "gfxutils.hpp"
 #include "main.hpp"
 #include "savedatasource.hpp"
 #include "savekind.hpp"
@@ -192,7 +193,7 @@ void MainScreen::setSaveTypeFilter(saveTypeFilter_t filter)
     mSaveTypeFilter = filter;
     this->index(TITLES, 0);
     this->index(CELLS, 0);
-    g_backupScrollEnabled = false;
+    backupScrollEnabled = false;
     MS::clearSelectedEntries();
     setPKSMBridgeFlag(false);
 }
@@ -354,7 +355,7 @@ void MainScreen::draw() const
             }
         }
 
-        backupList->draw(g_backupScrollEnabled);
+        backupList->draw(backupScrollEnabled);
 
         if (MS::multipleSelectionEnabled()) {
             // Multi-select is a batch backup only (no restore): show a single
@@ -513,7 +514,7 @@ void MainScreen::updateSelector(const InputState& input)
         MS::clearSelectedEntries();
     }
 
-    if (!g_backupScrollEnabled) {
+    if (!backupScrollEnabled) {
         size_t count    = TitleCatalog::get().getFilteredTitleCount(g_currentUId, mSaveTypeFilter);
         size_t oldindex = hid.index();
         if (sidebarFocused && (input.kDown & (HidNpadButton_Right | HidNpadButton_B))) {
@@ -695,7 +696,7 @@ void MainScreen::handleEvents(const InputState& input)
     // Tapping the avatar opens the account picker. Release-triggered (like the
     // rail buttons) so the applet fires once on lift instead of relaunching every
     // frame the finger is held down on it.
-    if (!g_backupScrollEnabled && avatarButton->released()) {
+    if (!backupScrollEnabled && avatarButton->released()) {
         while ((g_currentUId = Account::selectAccount()) == 0)
             ;
         this->index(TITLES, 0);
@@ -709,7 +710,7 @@ void MainScreen::handleEvents(const InputState& input)
         input.touch.touches[0].y < BTN_BACKUP_Y) {
         // Activate backup list only if multiple selections are not enabled
         if (!MS::multipleSelectionEnabled()) {
-            g_backupScrollEnabled = true;
+            backupScrollEnabled = true;
             entryType(CELLS);
         }
     }
@@ -720,7 +721,7 @@ void MainScreen::handleEvents(const InputState& input)
     //                       selections are enabled
     if ((kdown & HidNpadButton_A) && TitleCatalog::get().getFilteredTitleCount(g_currentUId, mSaveTypeFilter) > 0) {
         // If backup list is active...
-        if (g_backupScrollEnabled) {
+        if (backupScrollEnabled) {
             // If the "New..." entry is selected...
             if (0 == this->index(CELLS)) {
                 if (!getPKSMBridgeFlag()) {
@@ -752,7 +753,7 @@ void MainScreen::handleEvents(const InputState& input)
         else {
             // Activate backup list only if multiple selections are not enabled
             if (!MS::multipleSelectionEnabled()) {
-                g_backupScrollEnabled = true;
+                backupScrollEnabled = true;
                 entryType(CELLS);
             }
         }
@@ -762,7 +763,7 @@ void MainScreen::handleEvents(const InputState& input)
     if ((kdown & HidNpadButton_B) || (input.touch.count > 0 && input.touch.touches[0].x >= GRID_AREA_X &&
                                          input.touch.touches[0].x <= (GRID_AREA_X + GRID_AREA_W) && input.touch.touches[0].y <= 674)) {
         this->index(CELLS, 0);
-        g_backupScrollEnabled = false;
+        backupScrollEnabled = false;
         entryType(TITLES);
         MS::clearSelectedEntries();
         setPKSMBridgeFlag(false);
@@ -770,7 +771,7 @@ void MainScreen::handleEvents(const InputState& input)
 
     // Handle pressing X
     if (kdown & HidNpadButton_X) {
-        if (g_backupScrollEnabled) {
+        if (backupScrollEnabled) {
             size_t index = this->index(CELLS);
             if (index > 0) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
@@ -801,9 +802,9 @@ void MainScreen::handleEvents(const InputState& input)
     //                       enable backup button
     // Backup list inactive: Select title and enable backup button
     if (kdown & HidNpadButton_Y) {
-        if (g_backupScrollEnabled) {
+        if (backupScrollEnabled) {
             this->index(CELLS, 0);
-            g_backupScrollEnabled = false;
+            backupScrollEnabled = false;
         }
         entryType(TITLES);
         MS::addSelectedEntry(this->index(TITLES));
@@ -811,7 +812,7 @@ void MainScreen::handleEvents(const InputState& input)
     }
 
     // Handle holding Y
-    if (kheld & HidNpadButton_Y && !(g_backupScrollEnabled)) {
+    if (kheld & HidNpadButton_Y && !(backupScrollEnabled)) {
         selectionTimer++;
     }
     else {
@@ -842,7 +843,7 @@ void MainScreen::handleEvents(const InputState& input)
             TransferJob::get().start();
             MS::clearSelectedEntries();
         }
-        else if (g_backupScrollEnabled) {
+        else if (backupScrollEnabled) {
             if (getPKSMBridgeFlag()) {
                 if (this->index(CELLS) != 0) {
                     currentOverlay = std::make_shared<YesNoOverlay>(
@@ -873,7 +874,7 @@ void MainScreen::handleEvents(const InputState& input)
 
     // Handle pressing/touching R
     if (buttonRestore->released() || (kdown & HidNpadButton_R)) {
-        if (g_backupScrollEnabled) {
+        if (backupScrollEnabled) {
             if (getPKSMBridgeFlag() && this->index(CELLS) != 0) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
                     *this, "Receive save from PKSM?",

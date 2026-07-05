@@ -35,9 +35,7 @@
 #include <memory>
 #include <switch.h>
 
-inline float g_currentTime = 0;
 inline AccountUid g_currentUId;
-inline bool g_backupScrollEnabled       = 0;
 inline bool g_notificationLedAvailable  = false;
 inline std::shared_ptr<Screen> g_screen = nullptr;
 // Screen swap requested during the current frame's update; main() applies it
@@ -47,7 +45,6 @@ inline std::shared_ptr<Screen> g_screen = nullptr;
 inline std::shared_ptr<Screen> g_pendingScreen = nullptr;
 inline bool g_ftpAvailable                     = false;
 inline bool g_shouldExitNetworkLoop            = false;
-inline u32 g_username_dotsize;
-inline const InputState* g_input = nullptr;
+inline const InputState* g_input               = nullptr;
 
 #endif

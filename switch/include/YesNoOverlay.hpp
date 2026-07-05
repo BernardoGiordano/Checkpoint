@@ -27,10 +27,10 @@
 #ifndef YESNOOVERLAY_HPP
 #define YESNOOVERLAY_HPP
 
-#include "DekoHelper.hpp"
 #include "Overlay.hpp"
 #include "clickable.hpp"
 #include "colors.hpp"
+#include "gfx.hpp"
 #include "hid.hpp"
 #include <functional>
 #include <memory>

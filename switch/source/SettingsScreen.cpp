@@ -29,6 +29,7 @@
 #include "TitlePickerOverlay.hpp"
 #include "colors.hpp"
 #include "configuration.hpp"
+#include "gfxutils.hpp"
 #include "logging.hpp"
 #include "main.hpp"
 #include "server.hpp"

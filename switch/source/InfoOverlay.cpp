@@ -25,6 +25,7 @@
  */
 
 #include "InfoOverlay.hpp"
+#include "gfxutils.hpp"
 
 InfoOverlay::InfoOverlay(Screen& screen, const std::string& mtext) : Overlay(screen)
 {
