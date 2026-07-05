@@ -27,8 +27,8 @@
 #ifndef INFOOVERLAY_HPP
 #define INFOOVERLAY_HPP
 
-#include "Overlay.hpp"
 #include "DekoHelper.hpp"
+#include "Overlay.hpp"
 #include "clickable.hpp"
 #include "colors.hpp"
 #include <memory>

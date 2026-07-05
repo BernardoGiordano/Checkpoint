@@ -26,8 +26,8 @@
 
 // Batched GPU quad renderer — rects, images and color textures draw through
 // one pipeline (pos+uv+color vertices, texture x vertex color, a 1x1 white
-// texture makes solid rects the same path). Image decode: libpng / libjpeg-turbo
-// (magic-byte sniffed) -> RGBA -> GPU upload.
+// texture makes solid rects the same path). Image decode: libjpeg-turbo
+// (NS title icons) -> RGBA -> GPU upload.
 // Text — FreeType over the shared system fonts (Standard + NintendoExt + CJK
 // fallbacks) and the bundled Space Mono, with per-glyph R8 atlas pages drawn
 // through the same quad batcher. The metrics reproduce the previously vendored
@@ -46,7 +46,6 @@
 #include <cmath>
 #include <deko3d.hpp>
 #include <optional>
-#include <png.h>
 #include <turbojpeg.h>
 #include <unordered_map>
 #include <vector>
@@ -171,9 +170,7 @@ namespace {
     // Swapchain slot acquired for the frame being recorded; -1 outside a frame.
     int s_slot = -1;
 
-    Texture* s_white    = nullptr; // 1x1 white: solid rects sample this
-    Texture* s_star     = nullptr;
-    Texture* s_checkbox = nullptr;
+    Texture* s_white = nullptr; // 1x1 white: solid rects sample this
 
     // ---- text (phase 3) ----
 
@@ -317,26 +314,6 @@ static Texture* createTexture(const u8* pixels, u32 width, u32 height)
     return texture;
 }
 
-static u8* decodePNGToRGBA(const u8* data, size_t size, u32& width, u32& height)
-{
-    png_image image;
-    memset(&image, 0, sizeof(image));
-    image.version = PNG_IMAGE_VERSION;
-    if (png_image_begin_read_from_memory(&image, data, size) == 0) {
-        return nullptr;
-    }
-    image.format = PNG_FORMAT_RGBA;
-    u8* pixels   = (u8*)malloc(PNG_IMAGE_SIZE(image));
-    if (!pixels || png_image_finish_read(&image, NULL, pixels, 0, NULL) == 0) {
-        free(pixels);
-        png_image_free(&image);
-        return nullptr;
-    }
-    width  = image.width;
-    height = image.height;
-    return pixels;
-}
-
 static u8* decodeJPEGToRGBA(const u8* data, size_t size, u32& width, u32& height)
 {
     tjhandle decompressor = tjInitDecompress();
@@ -360,20 +337,17 @@ static u8* decodeJPEGToRGBA(const u8* data, size_t size, u32& width, u32& height
     return pixels;
 }
 
-// Decode a PNG or JPEG (sniffed by magic bytes) into a malloc'd RGBA8 buffer,
-// reproducing the retired SDL backend's black colorkey: fully-opaque
-// pure-black pixels become transparent (SDL_SetColorKey only ever matched the
-// opaque mapping of (0,0,0)). Caller frees.
+// Decode a JPEG into a malloc'd RGBA8 buffer, reproducing the retired SDL
+// backend's black colorkey: fully-opaque pure-black pixels become transparent
+// (SDL_SetColorKey only ever matched the opaque mapping of (0,0,0)). Caller
+// frees.
 static u8* decodeToRGBA(const u8* data, size_t size, u32& width, u32& height)
 {
     if (!data || size < 4) {
         return nullptr;
     }
     u8* pixels = nullptr;
-    if (data[0] == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G') {
-        pixels = decodePNGToRGBA(data, size, width, height);
-    }
-    else if (data[0] == 0xFF && data[1] == 0xD8) {
+    if (data[0] == 0xFF && data[1] == 0xD8) {
         pixels = decodeJPEGToRGBA(data, size, width, height);
     }
     if (pixels) {
@@ -515,22 +489,6 @@ bool Gfx::Init(void)
         return false;
     }
 
-    Gfx::LoadImage(&s_star, "romfs:/star.png");
-    // The multi-select badge is accent-filled with a white check on top; the
-    // checkbox asset is a black-on-transparent checkmark. The SDL backend
-    // tinted it via SDL_SetTextureColorMod(white); here the tint is baked into
-    // the pixels before upload.
-    u32 cbW = 0, cbH = 0;
-    u8* cbPixels = decodeFileToRGBA("romfs:/checkbox.png", cbW, cbH);
-    if (cbPixels) {
-        for (u32 i = 0; i < cbW * cbH; i++) {
-            u8* px = cbPixels + (size_t)i * 4;
-            px[0] = px[1] = px[2] = 255;
-        }
-        s_checkbox = createTexture(cbPixels, cbW, cbH);
-        free(cbPixels);
-    }
-
     // ---- fonts (phase 3) ----
     if (FT_Init_FreeType(&s_ftLibrary) != 0) {
         Logging::error("deko3d: FT_Init_FreeType failed.");
@@ -598,8 +556,6 @@ void Gfx::Exit(void)
     if (s_queue) {
         s_queue.waitIdle();
     }
-    Gfx::DestroyTexture(s_checkbox);
-    Gfx::DestroyTexture(s_star);
     Gfx::DestroyTexture(s_white);
     for (AtlasPage& page : s_atlasPages) {
         page.mem.destroy();
@@ -1288,16 +1244,6 @@ void Gfx::DestroyTexture(Texture* texture)
         s_freeDescIds.push_back(texture->descId);
         delete texture;
     }
-}
-
-Texture* Gfx::StarTexture(void)
-{
-    return s_star;
-}
-
-Texture* Gfx::CheckboxTexture(void)
-{
-    return s_checkbox;
 }
 
 void Gfx::CreateColorTexture(Texture** texture, int w, int h, Color color)

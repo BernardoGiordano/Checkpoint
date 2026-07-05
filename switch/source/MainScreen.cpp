@@ -56,15 +56,16 @@ namespace {
 
     // Title grid: origin 100,76; 5 columns of 142px tiles, 12px gap →
     // 154px pitch; 3 rows visible per page (15 tiles).
-    constexpr int GRID_COLS    = 5;
-    constexpr int GRID_ROWS    = 3;
-    constexpr int GRID_VISIBLE = GRID_COLS * GRID_ROWS;
-    constexpr int TILE         = 142;
-    constexpr int TILE_PITCH   = 154;
-    constexpr int GRID_X0      = 100;
-    constexpr int GRID_Y0      = 76;
-    constexpr int GRID_AREA_X  = RAIL_W;
-    constexpr int GRID_AREA_W  = 800;
+    constexpr int GRID_COLS        = 5;
+    constexpr int GRID_ROWS        = 3;
+    constexpr int GRID_VISIBLE     = GRID_COLS * GRID_ROWS;
+    constexpr int TILE             = 142;
+    constexpr int TILE_PITCH       = 154;
+    constexpr int BADGE_GLYPH_SIZE = 14; // ★/✓ badge marks, centered in the 24px badge
+    constexpr int GRID_X0          = 100;
+    constexpr int GRID_Y0          = 76;
+    constexpr int GRID_AREA_X      = RAIL_W;
+    constexpr int GRID_AREA_W      = 800;
 
     // Right panel: 400px column with an inner 360px content column.
     constexpr int PANEL_X       = 880;
@@ -286,12 +287,11 @@ void MainScreen::draw() const
         if (selected || favorite) {
             const int bx = tx + TILE - 8 - 24, by = ty + 8;
             Shapes::fillRound(bx, by, 24, 24, 8, selected ? COLOR_ACCENT : makeColor(16, 16, 20, 191));
-            if (selected && Gfx::CheckboxTexture() != NULL) {
-                Gfx::DrawImageScale(Gfx::CheckboxTexture(), bx + 4, by + 4, 16, 16);
-            }
-            else if (Gfx::StarTexture() != NULL) {
-                Gfx::DrawImageScale(Gfx::StarTexture(), bx + 5, by + 5, 14, 14);
-            }
+            const char* glyph = selected ? "\uE14B" : "★"; // ✓ multi-select · ★ favorite
+            const Color gcol  = selected ? COLOR_WHITE : COLOR_GOLD;
+            u32 gw = 0, gh = 0;
+            Gfx::GetTextDimensions(BADGE_GLYPH_SIZE, glyph, &gw, &gh);
+            Gfx::DrawText(BADGE_GLYPH_SIZE, bx + (24 - (int)gw) / 2, by + (24 - (int)gh) / 2 + 1, gcol, glyph);
         }
     }
 

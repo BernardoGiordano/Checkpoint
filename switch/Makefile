@@ -59,7 +59,7 @@ CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections \
 			-DVERSION_MINOR=${VERSION_MINOR} \
 			-DVERSION_MICRO=${VERSION_MICRO} \
 			-DGIT_REV=\"${GIT_REV}\" \
-			`aarch64-none-elf-pkg-config freetype2 libpng libturbojpeg --cflags` \
+			`aarch64-none-elf-pkg-config freetype2 libturbojpeg --cflags` \
 			-DJSON_HAS_FILESYSTEM=0 \
 			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
 
@@ -70,7 +70,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++23
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-no-as-needed,-Map,$(notdir $*.map)
 
-LIBS	:=	-ldeko3d `aarch64-none-elf-pkg-config freetype2 libpng libturbojpeg --libs`
+LIBS	:=	-ldeko3d `aarch64-none-elf-pkg-config freetype2 libturbojpeg --libs`
 
 CXX		:= `which ccache` $(CXX)
 CC		:= `which ccache` $(CC)

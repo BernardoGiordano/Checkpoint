@@ -51,13 +51,6 @@ namespace Gfx {
     // opaque JPEGs; Gfx::LoadImage's black colorkey must not punch holes in them).
     void SetTextureOpaque(Texture* texture);
     void DestroyTexture(Texture* texture);
-    // Star (favorite badge) and checkbox (multi-select mark) icon textures.
-    // Callers draw their own badge backdrop (Shapes::fillRound) and place these
-    // with Gfx::DrawImageScale; neither draws a backdrop of its own. The checkbox
-    // texture is tinted white at load time (it is a black-on-transparent checkmark
-    // asset).
-    Texture* StarTexture(void);
-    Texture* CheckboxTexture(void);
     void GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family = FontFamily::Sans);
     void DrawTextBox(int size, int x, int y, Color color, int max, const char* text, FontFamily family = FontFamily::Sans);
     void Render(void);
