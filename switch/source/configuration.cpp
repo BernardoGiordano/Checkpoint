@@ -260,11 +260,6 @@ void Configuration::parse(void)
     mSortMode = SortMode::fromConfigKey(mJson.value("sort-mode", std::string(SortMode::of(SORT_ALPHA).configKey)));
 }
 
-nlohmann::json Configuration::getJson(void)
-{
-    return mJson;
-}
-
 bool Configuration::isFTPEnabled(void)
 {
     return FTPEnabled;

@@ -27,7 +27,7 @@
 #ifndef SHAPES_HPP
 #define SHAPES_HPP
 
-#include "SDLHelper.hpp"
+#include "DekoHelper.hpp"
 
 // SDL2 has no native rounded-rect draw call, so the whole design system's
 // radii (999px pills, 7-16px cards/tiles/buttons) go through this one

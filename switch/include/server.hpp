@@ -44,15 +44,10 @@ namespace Server {
 
     void init(void);
     void exit(void);
-    // Signals the accept loop to stop; it exits within one iteration. exit()
-    // joins the worker and tears the socket down.
-    void requestStop(void);
-    bool isRunning(void);
     // "http://<console-ip>:8000" once listening, empty otherwise.
     std::string getAddress(void);
 
     void registerHandler(const std::string& path, HttpHandler handler);
-    void unregisterHandler(const std::string& path);
 }
 
 #endif

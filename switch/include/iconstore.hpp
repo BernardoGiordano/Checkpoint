@@ -27,7 +27,7 @@
 #ifndef ICONSTORE_HPP
 #define ICONSTORE_HPP
 
-#include "SDLHelper.hpp"
+#include "DekoHelper.hpp"
 #include <switch.h>
 #include <unordered_map>
 #include <vector>

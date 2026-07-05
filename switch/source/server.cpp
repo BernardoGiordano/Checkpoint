@@ -229,20 +229,6 @@ void Server::registerHandler(const std::string& path, Server::HttpHandler handle
     Logging::info("Registered HTTP handler for path {}", path);
 }
 
-void Server::unregisterHandler(const std::string& path)
-{
-    {
-        std::lock_guard<std::mutex> lock(handlersMutex);
-        handlers.erase(path);
-    }
-    Logging::info("Unregistered HTTP handler for path {}", path);
-}
-
-bool Server::isRunning(void)
-{
-    return serverIsRunning.load();
-}
-
 std::string Server::getAddress(void)
 {
     return serverAddress;
@@ -293,11 +279,6 @@ void Server::init()
         close(serverSocket);
         serverSocket = -1;
     }
-}
-
-void Server::requestStop()
-{
-    serverRunning.clear();
 }
 
 void Server::exit()

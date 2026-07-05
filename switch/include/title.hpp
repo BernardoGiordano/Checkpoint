@@ -27,7 +27,7 @@
 #ifndef TITLE_HPP
 #define TITLE_HPP
 
-#include "SDLHelper.hpp"
+#include "DekoHelper.hpp"
 #include "account.hpp"
 #include "configuration.hpp"
 #include "filesystem.hpp"

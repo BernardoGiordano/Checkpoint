@@ -24,8 +24,8 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef SDLHELPER_HPP
-#define SDLHELPER_HPP
+#ifndef DEKOHELPER_HPP
+#define DEKOHELPER_HPP
 
 #include "colors.hpp"
 #include "gfxtypes.hpp"
@@ -46,7 +46,6 @@ namespace Gfx {
     void DrawText(int size, int x, int y, Color color, const char* text, FontFamily family = FontFamily::Sans);
     void LoadImage(Texture** texture, const char* path);
     void LoadImage(Texture** texture, u8* buff, size_t size);
-    void DrawImage(Texture* texture, int x, int y);
     void DrawImageScale(Texture* texture, int x, int y, int w, int h);
     // Disable alpha blending for `texture` (used for NS title icons, which are
     // opaque JPEGs; Gfx::LoadImage's black colorkey must not punch holes in them).

@@ -25,7 +25,7 @@
  */
 
 #include "FolderBrowserOverlay.hpp"
-#include "SDLHelper.hpp"
+#include "DekoHelper.hpp"
 #include "colors.hpp"
 #include "common.hpp"
 #include "directory.hpp"

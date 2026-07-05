@@ -29,11 +29,6 @@
 
 #include <switch.h>
 
-// Backend-neutral graphics types. UI code (screens, Shapes, UiKit, stores)
-// speaks only these; the active rendering backend (SDLHelper today, deko3d
-// during the migration — see HANDOFF-deko3d.md) owns the conversion to its
-// native representations.
-
 struct Color {
     u8 r;
     u8 g;

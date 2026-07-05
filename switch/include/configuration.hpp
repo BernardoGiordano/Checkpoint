@@ -64,7 +64,6 @@ public:
     void save(void);
     void load(void);
     void parse(void);
-    nlohmann::json getJson(void);
 
     // Every id currently hidden/favorited (Settings > Library reads these to
     // build its two lists; getCompleteTitleList() supplies the id->name map).

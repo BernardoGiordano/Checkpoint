@@ -77,7 +77,6 @@ public:
     // Stop the worker and join it. Called at application shutdown; any in-flight
     // walk returns promptly (checked between top-level backup folders).
     void shutdown(void);
-    static void shutdownStatic(void) { get().shutdown(); }
 
 private:
     BackupSizeCache(void)                              = default;

@@ -35,7 +35,7 @@
 // ceil(TTF height * 1.2)) so layouts match the retired SDL backend
 // pixel-for-pixel.
 
-#include "SDLHelper.hpp"
+#include "DekoHelper.hpp"
 #include "gfx/CCmdMemRing.h"
 #include "gfx/CDescriptorSet.h"
 #include "gfx/CMemPool.h"
@@ -1261,14 +1261,6 @@ void Gfx::LoadImage(Texture** texture, u8* buff, size_t size)
         }
         free(pixels);
     }
-}
-
-void Gfx::DrawImage(Texture* texture, int x, int y)
-{
-    if (!texture) {
-        return;
-    }
-    pushQuad(texture, x, y, texture->width, texture->height, 0.0f, 0.0f, 1.0f, 1.0f, COLOR_WHITE);
 }
 
 void Gfx::DrawImageScale(Texture* texture, int x, int y, int w, int h)

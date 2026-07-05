@@ -25,7 +25,7 @@
  */
 
 #include "TitlePickerOverlay.hpp"
-#include "SDLHelper.hpp"
+#include "DekoHelper.hpp"
 #include "colors.hpp"
 #include "shapes.hpp"
 #include "uikit.hpp"

@@ -27,7 +27,7 @@
 // Backend-agnostic drawing helpers: everything here goes through the Gfx::*
 // API only (see HANDOFF-deko3d.md).
 
-#include "SDLHelper.hpp"
+#include "DekoHelper.hpp"
 #include "main.hpp"
 #include <cmath>
 #include <unordered_map>

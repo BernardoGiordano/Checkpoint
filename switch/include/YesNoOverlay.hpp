@@ -28,7 +28,7 @@
 #define YESNOOVERLAY_HPP
 
 #include "Overlay.hpp"
-#include "SDLHelper.hpp"
+#include "DekoHelper.hpp"
 #include "clickable.hpp"
 #include "colors.hpp"
 #include "hid.hpp"
