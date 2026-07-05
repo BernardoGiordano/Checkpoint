@@ -169,6 +169,29 @@ namespace {
     // Swapchain slot acquired for the frame being recorded; -1 outside a frame.
     int s_slot = -1;
 
+    // GPU resources retired this frame (texture memory, upload scratch) plus
+    // the descriptor slot to recycle (UINT32_MAX = none). Batched-but-
+    // unsubmitted quads may still reference them, so freeing waits for the
+    // slice fence: entries pushed under s_vtxSlice are released in frameBegin
+    // after s_cmdRing->begin() waits that slice's fence.
+    struct DeferredFree {
+        CMemPool::Handle mem;
+        u32 descId;
+    };
+    std::vector<DeferredFree> s_graveyard[FB_NUM];
+
+    // Graveyard to retire into right now. Mid-frame, the current slice's
+    // fence (signaled when this frame ends) covers both in-flight frames and
+    // this frame's unsubmitted batch. Between frames, the newest submitted
+    // frame is the last possible user, so its slice fence is the one to wait
+    // — the current slice's graveyard is drained *before* that fence signals
+    // and must not be used.
+    std::vector<DeferredFree>& graveyardForNow(void)
+    {
+        const unsigned slice = s_slot >= 0 ? s_vtxSlice : (s_vtxSlice + FB_NUM - 1) % FB_NUM;
+        return s_graveyard[slice];
+    }
+
     Texture* s_white = nullptr; // 1x1 white: solid rects sample this
 
     // ---- text (phase 3) ----
@@ -225,6 +248,17 @@ namespace {
     std::unordered_map<int, FontInstance> s_sansInstances;
     std::unordered_map<int, FontInstance> s_monoInstances;
     std::vector<AtlasPage> s_atlasPages;
+
+    // Freshly rasterized glyphs waiting for GPU upload. Copies are batched
+    // into one submission per frame (flushGlyphUploads) instead of a full
+    // submit + waitIdle per glyph — the first CJK-heavy screen used to issue
+    // dozens of GPU syncs.
+    struct PendingGlyphUpload {
+        CMemPool::Handle scratch;
+        u16 page;
+        u16 x, y, w, h;
+    };
+    std::vector<PendingGlyphUpload> s_pendingGlyphs;
 
     // Same ~1.2x size bump the retired SDL backend applied: both drawing and
     // measurement resolve through it, so it is invisible to callers.
@@ -336,28 +370,15 @@ static u8* decodeJPEGToRGBA(const u8* data, size_t size, u32& width, u32& height
     return pixels;
 }
 
-// Decode a JPEG into a malloc'd RGBA8 buffer, reproducing the retired SDL
-// backend's black colorkey: fully-opaque pure-black pixels become transparent
-// (SDL_SetColorKey only ever matched the opaque mapping of (0,0,0)). Caller
-// frees.
+// Decode a JPEG into a malloc'd RGBA8 buffer. Caller frees. (The SDL-era
+// black colorkey existed for the retired PNG marks only; JPEG icons never
+// legitimately wanted holes punched in them.)
 static u8* decodeToRGBA(const u8* data, size_t size, u32& width, u32& height)
 {
-    if (!data || size < 4) {
+    if (!data || size < 4 || data[0] != 0xFF || data[1] != 0xD8) {
         return nullptr;
     }
-    u8* pixels = nullptr;
-    if (data[0] == 0xFF && data[1] == 0xD8) {
-        pixels = decodeJPEGToRGBA(data, size, width, height);
-    }
-    if (pixels) {
-        for (u32 i = 0; i < width * height; i++) {
-            u8* px = pixels + (size_t)i * 4;
-            if (px[0] == 0 && px[1] == 0 && px[2] == 0 && px[3] == 255) {
-                px[3] = 0;
-            }
-        }
-    }
-    return pixels;
+    return decodeJPEGToRGBA(data, size, width, height);
 }
 
 // Read a whole file (romfs assets) and decode it. Caller frees.
@@ -554,6 +575,18 @@ void Gfx::Exit(void)
         s_queue.waitIdle();
     }
     Gfx::DestroyTexture(s_white);
+    s_white = nullptr;
+    // waitIdle above makes every deferred free safe immediately.
+    for (PendingGlyphUpload& up : s_pendingGlyphs) {
+        up.scratch.destroy();
+    }
+    s_pendingGlyphs.clear();
+    for (auto& graveyard : s_graveyard) {
+        for (DeferredFree& d : graveyard) {
+            d.mem.destroy();
+        }
+        graveyard.clear();
+    }
     for (AtlasPage& page : s_atlasPages) {
         page.mem.destroy();
         s_freeDescIds.push_back(page.descId);
@@ -611,6 +644,16 @@ static void frameBegin(void)
 
     s_slot = s_queue.acquireImage(s_swapchain);
     s_cmdRing->begin(s_cmdbuf);
+
+    // The begin() above waited this slice's fence, so everything retired when
+    // this slice last recorded (FB_NUM frames ago) is now GPU-idle.
+    for (DeferredFree& d : s_graveyard[s_vtxSlice]) {
+        d.mem.destroy();
+        if (d.descId != UINT32_MAX) {
+            s_freeDescIds.push_back(d.descId);
+        }
+    }
+    s_graveyard[s_vtxSlice].clear();
 
     dk::ImageView colorTarget{s_framebuffers[s_slot]};
     s_cmdbuf.bindRenderTargets(&colorTarget);
@@ -787,6 +830,32 @@ float Gfx::animationTime(void)
     return s_currentTime;
 }
 
+// Submit all pending glyph atlas copies as one command list, ahead of the
+// frame's own list so the queue's in-order execution puts every copy before
+// the draws that sample it. No CPU sync: the scratch buffers and command
+// memory retire through the graveyard once the slice fence signals.
+static void flushGlyphUploads(void)
+{
+    if (s_pendingGlyphs.empty()) {
+        return;
+    }
+    dk::UniqueCmdBuf cmd    = dk::CmdBufMaker{s_device}.create();
+    CMemPool::Handle cmdMem = s_poolData->allocate(std::max<u32>(DK_MEMBLOCK_ALIGNMENT, (u32)s_pendingGlyphs.size() * 256));
+    cmd.addMemory(cmdMem.getMemBlock(), cmdMem.getOffset(), cmdMem.getSize());
+    for (const PendingGlyphUpload& up : s_pendingGlyphs) {
+        dk::ImageView view{s_atlasPages[up.page].image};
+        cmd.copyBufferToImage({up.scratch.getGpuAddr()}, view, {up.x, up.y, 0, up.w, up.h, 1});
+    }
+    // Make the copies land before the frame's draws sample the atlas.
+    cmd.barrier(DkBarrier_Full, DkInvalidateFlags_Image);
+    s_queue.submitCommands(cmd.finishList());
+    for (PendingGlyphUpload& up : s_pendingGlyphs) {
+        graveyardForNow().push_back({up.scratch, UINT32_MAX});
+    }
+    graveyardForNow().push_back({cmdMem, UINT32_MAX});
+    s_pendingGlyphs.clear();
+}
+
 void Gfx::Render(void)
 {
     // Anchor to app start: armTicksToNs is nanoseconds since boot, which after
@@ -798,6 +867,7 @@ void Gfx::Render(void)
         return;
     }
     flushBatch();
+    flushGlyphUploads();
     DkCmdList list = s_cmdRing->end(s_cmdbuf);
     s_queue.submitCommands(list);
     s_queue.presentImage(s_swapchain, s_slot);
@@ -1004,9 +1074,7 @@ static const GlyphData* getGlyph(FontFamily family, FontInstance& inst, u32 cp)
             for (u32 row = 0; row < glyph.bmpH; row++) {
                 memcpy(dst + (size_t)row * glyph.bmpW, slot->bitmap.buffer + (size_t)row * slot->bitmap.pitch, glyph.bmpW);
             }
-            dk::ImageView view{s_atlasPages[pageIdx].image};
-            oneShotCommands([&](dk::CmdBuf& cmd) { cmd.copyBufferToImage({scratch.getGpuAddr()}, view, {ax, ay, 0, glyph.bmpW, glyph.bmpH, 1}); });
-            scratch.destroy();
+            s_pendingGlyphs.push_back({scratch, (u16)pageIdx, (u16)ax, (u16)ay, glyph.bmpW, glyph.bmpH});
             glyph.page   = (u16)pageIdx;
             glyph.atlasX = (u16)ax;
             glyph.atlasY = (u16)ay;
@@ -1241,25 +1309,21 @@ void Gfx::SetTextureOpaque(Texture* texture)
 void Gfx::DestroyTexture(Texture* texture)
 {
     if (texture) {
-        // The GPU may still be sampling this texture in an in-flight frame;
-        // rare (icon cache refresh), so a full sync is acceptable.
-        s_queue.waitIdle();
-        texture->mem.destroy();
-        s_freeDescIds.push_back(texture->descId);
+        // In-flight frames — and quads batched this frame but not yet
+        // submitted — may still sample this texture, so memory and the
+        // descriptor slot go to the graveyard until the slice fence proves
+        // the GPU is done with them.
+        graveyardForNow().push_back({texture->mem, texture->descId});
         delete texture;
     }
 }
 
-void Gfx::CreateColorTexture(Texture** texture, int w, int h, Color color)
+void Gfx::CreateColorTexture(Texture** texture, Color color)
 {
-    std::vector<u8> pixels((size_t)w * h * 4);
-    for (int i = 0; i < w * h; i++) {
-        pixels[(size_t)i * 4 + 0] = color.r;
-        pixels[(size_t)i * 4 + 1] = color.g;
-        pixels[(size_t)i * 4 + 2] = color.b;
-        pixels[(size_t)i * 4 + 3] = color.a;
-    }
-    Texture* t = createTexture(pixels.data(), w, h);
+    // A 1x1 texel stretched by the quad is indistinguishable from a full-size
+    // solid; no reason to upload a real w x h surface.
+    const u8 pixel[4] = {color.r, color.g, color.b, color.a};
+    Texture* t        = createTexture(pixel, 1, 1);
     if (t) {
         *texture = t;
     }

@@ -51,13 +51,14 @@ namespace Gfx {
     void LoadImage(Texture** texture, u8* buff, size_t size);
     void DrawImageScale(Texture* texture, int x, int y, int w, int h);
     // Disable alpha blending for `texture` (used for NS title icons, which are
-    // opaque JPEGs; Gfx::LoadImage's black colorkey must not punch holes in them).
+    // opaque JPEGs — skipping blending lets them batch as opaque quads).
     void SetTextureOpaque(Texture* texture);
     void DestroyTexture(Texture* texture);
     void GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family = FontFamily::Sans);
     void DrawTextBox(int size, int x, int y, Color color, int max, const char* text, FontFamily family = FontFamily::Sans);
     void Render(void);
-    void CreateColorTexture(Texture** texture, int w, int h, Color color);
+    // 1x1 solid-color texture (DrawImageScale stretches it to any size).
+    void CreateColorTexture(Texture** texture, Color color);
 
     // GPU-antialiased rounded rectangles (signed-distance-field). radius is
     // clamped to min(w,h)/2 by the caller conventions in Shapes. FillRoundRect

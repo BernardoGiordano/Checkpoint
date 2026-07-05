@@ -55,7 +55,7 @@ void TextureIconStore::loadPlaceholderIcon(u64 id)
     }
     Color color      = systemSavePalette[id % (sizeof(systemSavePalette) / sizeof(systemSavePalette[0]))];
     Texture* texture = nullptr;
-    Gfx::CreateColorTexture(&texture, 256, 256, color);
+    Gfx::CreateColorTexture(&texture, color);
     if (texture) {
         mIcons.insert({id, texture});
     }
