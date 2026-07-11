@@ -43,7 +43,7 @@ Checkpoint comes with **chlink**, a companion command line app for your PC that 
 
 Transfers are protected by a 4-digit PIN displayed on the console, and chlink automatically recognizes backups coming from a Checkpoint SD card layout, so title and backup information are filled in for you.
 
-chlink is a single, dependency-free executable available for Windows, macOS and Linux. You can download it from the [releases page](https://github.com/BernardoGiordano/Checkpoint/releases/latest), or build it yourself from the `tools/chlink` folder.
+chlink is a single, dependency-free executable available for Windows, macOS and Linux. You can download it from the [releases page](https://github.com/BernardoGiordano/Checkpoint/releases/latest), or build it yourself from the `tools/chlink` folder. Package for ArchLinux is maintained by [leleobhz][https://github.com/leleobhz] and it's available on AUR via [chlink](https://aur.archlinux.org/packages/chlink) package.
 
 ## Usage
 
