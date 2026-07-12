@@ -72,11 +72,16 @@ Result servicesInit(void)
 
     Logging::info("Checkpoint loading started...");
 
-    Handle hbldrHandle;
-    if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
-        return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
+    s64 isEmulator = 0;
+    svcGetSystemInfo(&isEmulator, 0x20000, 0);
+    
+    if (!isEmulator) {
+        Handle hbldrHandle;
+        if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
+            return consoleDisplayError("Rosalina not found on this system.\nAn updated CFW is required to launch Checkpoint.", res);
+        }
+        svcCloseHandle(hbldrHandle);
     }
-    svcCloseHandle(hbldrHandle);
 
     if (R_FAILED(res = Archive::init())) {
         return consoleDisplayError("Archive::init failed.", res);
