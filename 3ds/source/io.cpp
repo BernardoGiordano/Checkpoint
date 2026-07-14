@@ -27,6 +27,7 @@
 #include "io.hpp"
 #include "backuptarget.hpp"
 #include "csvc.hpp"
+#include "gbasave.hpp"
 #include "loader.hpp"
 
 // Synthetic failure Result for a short write (FSFILE_Write reported success but
@@ -183,70 +184,6 @@ Result io::copyFile(
     return res;
 }
 
-Result io::copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const std::u16string& path, bool fromPxi, ProgressSink& sink)
-{
-    u32 size       = 0;
-    FSStream input = fromPxi ? FSStream(pxiArch, FS_OPEN_READ) : FSStream(regularArch, path, FS_OPEN_READ);
-    if (input.good()) {
-        size = input.size() > BUFFER_SIZE ? BUFFER_SIZE : input.size();
-    }
-    else {
-        Logging::error("Failed to open source {} during GBA save copy with result {}.",
-            fromPxi ? std::string("GBA save") : StringUtils::UTF16toUTF8(path), input.result());
-        return input.result();
-    }
-
-    FSStream output = fromPxi ? FSStream(regularArch, path, FS_OPEN_WRITE, input.size()) : FSStream(pxiArch, FS_OPEN_WRITE, input.size());
-    if (!output.good()) {
-        Logging::error("Failed to open destination {} during GBA save copy with result {}.",
-            fromPxi ? StringUtils::UTF16toUTF8(path) : std::string("GBA save"), output.result());
-        input.close();
-        return output.result();
-    }
-
-    size_t slashpos = path.rfind(StringUtils::UTF8toUTF16("/"));
-    sink.startFile(path.substr(slashpos + 1, path.length() - slashpos - 1), input.size());
-
-    Result res = 0;
-    u32 offset = 0;
-    auto buf   = std::make_unique<u8[]>(size);
-    do {
-        if (sink.cancelled()) {
-            break;
-        }
-        u32 rd = input.read(buf.get(), size);
-        if (R_FAILED(input.result())) {
-            res = input.result();
-            Logging::error("Read failure during GBA save copy with result 0x{:08X}.", (u32)res);
-            break;
-        }
-        if (rd == 0) {
-            break;
-        }
-        u32 wt = output.write(buf.get(), rd);
-        if (R_FAILED(output.result())) {
-            res = output.result();
-            Logging::error("Write failure during GBA save copy with result 0x{:08X}.", (u32)res);
-            break;
-        }
-        if (wt != rd) {
-            res = RES_SHORT_WRITE;
-            Logging::error("Short write during GBA save copy: wrote {} of {} bytes.", wt, rd);
-            break;
-        }
-        offset += rd;
-        sink.advanceBytes(offset);
-    } while (!input.eof());
-    if (res == 0) {
-        sink.finishFile();
-    }
-
-    input.close();
-    output.close();
-
-    return res;
-}
-
 Result io::copyTree(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcRoot, const std::u16string& dstRoot,
     const std::vector<TreeEntry>& entries, ProgressSink& sink)
 {
@@ -364,7 +301,7 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
             std::u16string savePath = dstPath + StringUtils::UTF8toUTF16("/00000001.sav");
 
             sink.begin("Backup", 1);
-            res = io::copyPxiSaveFile(handle.pxi(), Archive::sdmc(), savePath, true, sink);
+            res = GbaSave::backup(handle.pxi(), Archive::sdmc(), savePath, sink);
             sink.end();
             if (sink.cancelled()) {
                 FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
@@ -514,7 +451,7 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
             fullSrc = rawBackupFile(fullSrc);
 
             sink.begin("Restore", 1);
-            res = io::copyPxiSaveFile(handle.pxi(), Archive::sdmc(), fullSrc, false, sink);
+            res = GbaSave::restore(handle.pxi(), Archive::sdmc(), fullSrc, sink);
             sink.end();
             if (R_FAILED(res)) {
                 Logging::error("Failed to restore GBA save. Result {}.", res);

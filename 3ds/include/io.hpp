@@ -75,8 +75,6 @@ namespace io {
     // Copies a single file using the caller-provided BUFFER_SIZE scratch buffer.
     Result copyFile(
         FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink, u8* buffer);
-    // Copies a GBA VC raw save between the FSPXI archive and an SD-card file (fromPxi selects the direction).
-    Result copyPxiSaveFile(FSPXI_Archive pxiArch, FS_Archive regularArch, const std::u16string& path, bool fromPxi, ProgressSink& sink);
     Result createDirectory(FS_Archive archive, const std::u16string& path);
     void deleteBackupFolder(const std::u16string& path);
     Result deleteFolderRecursively(FS_Archive arch, const std::u16string& path);

@@ -25,10 +25,32 @@
  */
 
 #include "outcomemessages.hpp"
+#include "gbasave.hpp"
 #include "i18n.hpp"
 
-std::string OutcomeMessages::backupError(io::BackupStage stage, const std::string& dataType)
+namespace {
+    // The GbaSave synthetic results carry advice a bare stage can't; an empty
+    // string means the result adds nothing over the stage mapping.
+    std::string gbaMessage(Result res)
+    {
+        if (res == GbaSave::resNoSave) {
+            return i18n::t("outcome.gba_no_save");
+        }
+        if (res == GbaSave::resSizeMismatch) {
+            return i18n::t("outcome.gba_size_mismatch");
+        }
+        if (res == GbaSave::resBadBackup) {
+            return i18n::t("outcome.gba_bad_backup");
+        }
+        return "";
+    }
+}
+
+std::string OutcomeMessages::backupError(io::BackupStage stage, const std::string& dataType, Result res)
 {
+    if (std::string gba = gbaMessage(res); !gba.empty()) {
+        return gba;
+    }
     switch (stage) {
         case io::BackupStage::OpenArchive:
             return i18n::t("outcome.open_archive");
@@ -41,8 +63,11 @@ std::string OutcomeMessages::backupError(io::BackupStage stage, const std::strin
     }
 }
 
-std::string OutcomeMessages::restoreError(io::BackupStage stage, const std::string& dataType)
+std::string OutcomeMessages::restoreError(io::BackupStage stage, const std::string& dataType, Result res)
 {
+    if (std::string gba = gbaMessage(res); !gba.empty()) {
+        return gba;
+    }
     switch (stage) {
         case io::BackupStage::OpenArchive:
             return i18n::t("outcome.open_archive");

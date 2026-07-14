@@ -52,6 +52,8 @@ public:
     Result result(void);
     u32 size(void);
     u32 write(const void* buf, u32 size);
+    // Only valid on a stream opened from an FSPXI_Archive (raw GBA VC save).
+    FSPXI_File pxiFile(void) const { return std::get<FSPXI_File>(mHandle); }
 
 private:
     bool isPxi(void) const { return std::holds_alternative<FSPXI_File>(mHandle); }

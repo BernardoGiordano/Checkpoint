@@ -725,6 +725,36 @@
     "ja": "セキュア値の修正に失敗しました。",
     "zh": "修复安全值失败"
   },
+  "outcome.gba_no_save": {
+    "en": "No GBA save data yet.\nLaunch the game and save once, then retry.",
+    "it": "Nessun salvataggio GBA presente.\nAvvia il gioco e salva una volta, poi riprova.",
+    "es": "Aún no hay datos de guardado de GBA.\nInicia el juego y guarda una vez, luego reintenta.",
+    "fr": "Pas encore de sauvegarde GBA.\nLancez le jeu et sauvegardez une fois, puis réessayez.",
+    "de": "Noch keine GBA-Speicherdaten.\nStarte das Spiel und speichere einmal, dann erneut versuchen.",
+    "pt": "Ainda não há dados de save de GBA.\nInicie o jogo e salve uma vez, depois tente novamente.",
+    "nl": "Nog geen GBA-savegegevens.\nStart het spel en sla één keer op, probeer het dan opnieuw.",
+    "ja": "GBAセーブデータがまだありません。\nゲームを起動して一度セーブしてから、再試行してください。"
+  },
+  "outcome.gba_size_mismatch": {
+    "en": "The backup's save size does not match this game's save type.",
+    "it": "La dimensione del backup non corrisponde al tipo di salvataggio del gioco.",
+    "es": "El tamaño de la copia de seguridad no coincide con el tipo de guardado del juego.",
+    "fr": "La taille de la sauvegarde ne correspond pas au type de sauvegarde du jeu.",
+    "de": "Die Größe des Backups passt nicht zum Speichertyp des Spiels.",
+    "pt": "O tamanho do backup não corresponde ao tipo de save do jogo.",
+    "nl": "De grootte van de back-up komt niet overeen met het savetype van dit spel.",
+    "ja": "バックアップのサイズがこのゲームのセーブタイプと一致しません。"
+  },
+  "outcome.gba_bad_backup": {
+    "en": "The backup is not a valid GBA save file.",
+    "it": "Il backup non è un salvataggio GBA valido.",
+    "es": "La copia de seguridad no es un guardado de GBA válido.",
+    "fr": "La sauvegarde n'est pas un fichier de sauvegarde GBA valide.",
+    "de": "Das Backup ist keine gültige GBA-Speicherdatei.",
+    "pt": "O backup não é um arquivo de save de GBA válido.",
+    "nl": "De back-up is geen geldig GBA-savebestand.",
+    "ja": "バックアップは有効なGBAセーブファイルではありません。"
+  },
   "outcome.restore_failed": {
     "en": "Failed to restore {0}.",
     "it": "Impossibile ripristinare {0}.",

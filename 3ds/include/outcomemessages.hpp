@@ -33,10 +33,11 @@
 
 // The single home of the stage-enum → user-facing message mapping. io and
 // transfer report *where* an operation failed; the strings live here so every
-// screen shows the same words for the same failure.
+// screen shows the same words for the same failure. `res` refines the stage
+// for the few synthetic results that carry actionable advice (GBA saves).
 namespace OutcomeMessages {
-    std::string backupError(io::BackupStage stage, const std::string& dataType);
-    std::string restoreError(io::BackupStage stage, const std::string& dataType);
+    std::string backupError(io::BackupStage stage, const std::string& dataType, Result res);
+    std::string restoreError(io::BackupStage stage, const std::string& dataType, Result res);
     std::string sendError(const Transfer::SendOutcome& outcome);
 }
 

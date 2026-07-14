@@ -494,8 +494,8 @@ void MainScreen::update(const InputState& input)
             }
         }
         else {
-            std::string message = result->isRestore ? OutcomeMessages::restoreError(result->stage, result->dataType)
-                                                    : OutcomeMessages::backupError(result->stage, result->dataType);
+            std::string message = result->isRestore ? OutcomeMessages::restoreError(result->stage, result->dataType, result->res)
+                                                    : OutcomeMessages::backupError(result->stage, result->dataType, result->res);
             currentOverlay      = std::make_shared<ErrorOverlay>(*this, result->res, message);
         }
         return;
