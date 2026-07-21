@@ -35,9 +35,10 @@ extern "C" {
 
 namespace {
     // picoc's own heap, not the OS thread stack: every variable, string and
-    // parse node the script allocates comes out of this. 32 KB is what PKSM
-    // ships; the cheats script (phase 2) may need it bigger.
-    constexpr int PICOC_STACKSIZE = 32 * 1024;
+    // parse node the script allocates comes out of this. PKSM ships 32 KB;
+    // bundled sharkive.c parses a ~2 MB cheat DB (held natively, not here) but
+    // has a deeper parse tree and more locals, so give scripts 64 KB of margin.
+    constexpr int PICOC_STACKSIZE = 64 * 1024;
 
     // Script printf() goes through picoc's stdlib to the real stdout, which is
     // nowhere on a 3DS. Point stdout's buffer at ours for the duration of the

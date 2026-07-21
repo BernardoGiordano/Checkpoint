@@ -53,8 +53,18 @@ void ScriptPickerOverlay::drawRowContent(int k, int rowY, bool selected) const
     const ScriptCatalog::Entry& entry = mEntries[k];
     const std::string tag             = entry.universal ? i18n::t("scripts.universal_tag") : mTitleTag;
     const float tagW                  = text.width(tag, 0.42f);
-    text.draw(text.truncate(entry.name, 320 - (int)tagW, 0.46f), 40, rowY + 5, 0.46f, selected ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
-    text.draw(tag, 364 - tagW, rowY + 6, 0.42f, COLOR_FAINT, OVERLAY_Z);
+    const float tagX                  = 364 - tagW;
+
+    // "override" marker (an SD file shadowing a bundled one), left of the tag.
+    float ovrW = 0;
+    if (entry.overridden) {
+        const std::string ovr = i18n::t("scripts.overridden_tag");
+        ovrW                  = text.width(ovr, 0.42f) + 10;
+        text.draw(ovr, tagX - ovrW, rowY + 6, 0.42f, COLOR_GOLD, OVERLAY_Z);
+    }
+
+    text.draw(text.truncate(entry.name, 320 - (int)tagW - (int)ovrW, 0.46f), 40, rowY + 5, 0.46f, selected ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
+    text.draw(tag, tagX, rowY + 6, 0.42f, COLOR_FAINT, OVERLAY_Z);
 }
 
 std::string ScriptPickerOverlay::bottomHints(void) const

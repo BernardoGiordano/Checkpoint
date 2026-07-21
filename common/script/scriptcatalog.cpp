@@ -30,39 +30,59 @@
 #include <sys/stat.h>
 
 namespace {
-    void scanDir(const std::string& dir, bool universal, std::vector<ScriptCatalog::Entry>& out)
+    using ScriptCatalog::Entry;
+    using ScriptCatalog::Root;
+    using ScriptCatalog::Source;
+
+    // Merges one section (universal or a title's specific scripts) across its
+    // roots. Roots come base-first (bundled, then SD): a later root's file with
+    // the same name replaces the earlier one and is flagged `overridden`. The
+    // merged section is appended to `out`, sorted alphabetically.
+    void scanSection(const std::vector<Root>& roots, bool universal, std::vector<Entry>& out)
     {
-        DIR* d = opendir(dir.c_str());
-        if (!d) {
-            return;
-        }
-
         const size_t first = out.size();
-        while (struct dirent* ent = readdir(d)) {
-            const std::string name = ent->d_name;
-            if (name.size() <= 2 || name.compare(name.size() - 2, 2, ".c") != 0) {
+        for (const Root& root : roots) {
+            DIR* d = opendir(root.dir.c_str());
+            if (!d) {
                 continue;
             }
-            // Only files directly in the directory count; subfolders are assets.
-            const std::string path = dir + "/" + name;
-            struct stat st;
-            if (stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {
-                continue;
+            while (struct dirent* ent = readdir(d)) {
+                const std::string name = ent->d_name;
+                if (name.size() <= 2 || name.compare(name.size() - 2, 2, ".c") != 0) {
+                    continue;
+                }
+                // Only files directly in the directory count; subfolders are assets.
+                const std::string path = root.dir + "/" + name;
+                struct stat st;
+                if (stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) {
+                    continue;
+                }
+                const std::string display = name.substr(0, name.size() - 2);
+                auto it                   = std::find_if(out.begin() + first, out.end(), [&](const Entry& e) { return e.name == display; });
+                if (it != out.end()) {
+                    // A later root shadows an earlier one: the SD file wins and
+                    // is marked as an override of the bundled script.
+                    it->path       = path;
+                    it->source     = root.source;
+                    it->overridden = true;
+                }
+                else {
+                    out.push_back({display, path, universal, root.source, false});
+                }
             }
-            out.push_back({name.substr(0, name.size() - 2), path, universal});
+            closedir(d);
         }
-        closedir(d);
 
-        std::sort(out.begin() + first, out.end(), [](const auto& a, const auto& b) { return a.name < b.name; });
+        std::sort(out.begin() + first, out.end(), [](const Entry& a, const Entry& b) { return a.name < b.name; });
     }
 }
 
-std::vector<ScriptCatalog::Entry> ScriptCatalog::scan(const std::string& universalDir, const std::string& specificDir)
+std::vector<ScriptCatalog::Entry> ScriptCatalog::scan(const std::vector<Root>& universalRoots, const std::vector<Root>& specificRoots)
 {
     std::vector<Entry> entries;
-    scanDir(universalDir, true, entries);
-    if (!specificDir.empty()) {
-        scanDir(specificDir, false, entries);
+    scanSection(universalRoots, true, entries);
+    if (!specificRoots.empty()) {
+        scanSection(specificRoots, false, entries);
     }
     return entries;
 }

@@ -40,6 +40,12 @@ namespace Paths {
     const char* scriptsRoot(void);
     std::string universalScriptsDir(void);
     std::string scriptsDirFor(u64 id);
+
+    // "romfs:/scripts" — scripts bundled inside the app (e.g. sharkive.c). Same
+    // layout as scriptsRoot; an SD file of the same name shadows the bundled one.
+    const char* bundledScriptsRoot(void);
+    std::string bundledUniversalScriptsDir(void);
+    std::string bundledScriptsDirFor(u64 id);
 }
 
 #endif

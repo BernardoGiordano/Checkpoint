@@ -35,16 +35,30 @@
 // into. The caller supplies the directories (Paths owns the layout rules), so
 // this stays platform-neutral.
 namespace ScriptCatalog {
+    // Where a script was found. Bundled scripts ship in the app's romfs; the
+    // user can shadow one by dropping a file of the same name on the SD card.
+    enum class Source { Bundled, Sd };
+
     struct Entry {
         std::string name; // filename without ".c"
         std::string path; // full path, ready for ScriptRunner::start
-        bool universal = true;
+        bool universal  = true;
+        Source source   = Source::Sd;
+        bool overridden = false; // an SD file shadowing a bundled one of the same name
     };
 
-    // Universal scripts first, then the title's specific ones (skipped when
-    // `specificDir` is empty), each section sorted alphabetically. A missing
+    // One directory to scan, tagged with where its scripts come from.
+    struct Root {
+        std::string dir;
+        Source source;
+    };
+
+    // Universal scripts first, then the title's specific ones (pass an empty
+    // list to skip a section), each section sorted alphabetically. Roots are
+    // listed base-first: a later root's *.c with the same filename wins and is
+    // flagged `overridden` (the shadowed base entry is dropped). A missing
     // directory contributes nothing.
-    std::vector<Entry> scan(const std::string& universalDir, const std::string& specificDir);
+    std::vector<Entry> scan(const std::vector<Root>& universalRoots, const std::vector<Root>& specificRoots);
 }
 
 #endif

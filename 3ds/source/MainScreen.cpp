@@ -738,8 +738,20 @@ void MainScreen::startScriptPicker(void)
 
     const bool hasTitle = selected.valid;
     const u64 titleId   = selected.id;
-    auto entries        = ScriptCatalog::scan(Paths::universalScriptsDir(), hasTitle ? Paths::scriptsDirFor(titleId) : "");
-    currentOverlay      = std::make_shared<ScriptPickerOverlay>(
+    // Bundled (romfs) scripts first, then SD: an SD file of the same name wins.
+    std::vector<ScriptCatalog::Root> universalRoots = {
+        {Paths::bundledUniversalScriptsDir(), ScriptCatalog::Source::Bundled},
+        {Paths::universalScriptsDir(), ScriptCatalog::Source::Sd},
+    };
+    std::vector<ScriptCatalog::Root> specificRoots;
+    if (hasTitle) {
+        specificRoots = {
+            {Paths::bundledScriptsDirFor(titleId), ScriptCatalog::Source::Bundled},
+            {Paths::scriptsDirFor(titleId), ScriptCatalog::Source::Sd},
+        };
+    }
+    auto entries   = ScriptCatalog::scan(universalRoots, specificRoots);
+    currentOverlay = std::make_shared<ScriptPickerOverlay>(
         *this, std::move(entries), hasTitle ? selected.name : "", [this, hasTitle, titleId](const ScriptCatalog::Entry& entry) {
             currentOverlay = std::make_shared<YesNoOverlay>(
                 *this, i18n::t("scripts.confirm_run", {entry.name}),

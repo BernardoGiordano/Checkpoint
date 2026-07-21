@@ -50,6 +50,23 @@ std::string Paths::scriptsDirFor(u64 id)
     return std::string(scriptsRoot()) + "/" + idStr;
 }
 
+const char* Paths::bundledScriptsRoot(void)
+{
+    return "romfs:/scripts";
+}
+
+std::string Paths::bundledUniversalScriptsDir(void)
+{
+    return std::string(bundledScriptsRoot()) + "/universal";
+}
+
+std::string Paths::bundledScriptsDirFor(u64 id)
+{
+    char idStr[17] = {0};
+    snprintf(idStr, sizeof(idStr), "%016llX", id);
+    return std::string(bundledScriptsRoot()) + "/" + idStr;
+}
+
 std::u16string Paths::savesRoot(void)
 {
     return StringUtils::UTF8toUTF16("/3ds/Checkpoint/saves/");

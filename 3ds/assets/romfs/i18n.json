@@ -1479,6 +1479,16 @@
     "nl": "universeel",
     "ja": "共通"
   },
+  "scripts.overridden_tag": {
+    "en": "override",
+    "it": "sostituito",
+    "es": "sobrescrito",
+    "fr": "remplacé",
+    "de": "ersetzt",
+    "pt": "substituído",
+    "nl": "vervangen",
+    "ja": "上書き"
+  },
   "scripts.confirm_run": {
     "en": "Run \"{0}\"?\nScripts can modify saves and SD card contents.",
     "it": "Eseguire \"{0}\"?\nGli script possono modificare salvataggi e contenuti della scheda SD.",

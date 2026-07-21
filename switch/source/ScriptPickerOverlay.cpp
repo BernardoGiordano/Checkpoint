@@ -73,9 +73,19 @@ void ScriptPickerOverlay::draw(void) const
         Gfx::GetTextDimensions(12, tagFit.c_str(), &tagW, &tagH);
         Gfx::DrawText(12, LIST_X + LIST_W - 14 - (int)tagW, y + (ROW_H - (int)tagH) / 2, COLOR_TEXT3, tagFit.c_str());
 
+        // "override" marker (an SD file shadowing a bundled one), left of the tag.
+        u32 ovrW = 0;
+        if (mEntries[i].overridden) {
+            const std::string ovr = i18n::t("scripts.overridden_tag");
+            u32 oh;
+            Gfx::GetTextDimensions(12, ovr.c_str(), &ovrW, &oh);
+            Gfx::DrawText(12, LIST_X + LIST_W - 14 - (int)tagW - 12 - (int)ovrW, y + (ROW_H - (int)oh) / 2, COLOR_ACCENT, ovr.c_str());
+            ovrW += 12;
+        }
+
         u32 nh;
         Gfx::GetTextDimensions(15, "Ag", NULL, &nh);
-        std::string name = trimToFit(mEntries[i].name, LIST_W - 42 - (int)tagW, 15);
+        std::string name = trimToFit(mEntries[i].name, LIST_W - 42 - (int)tagW - (int)ovrW, 15);
         Gfx::DrawText(15, LIST_X + 14, y + (ROW_H - (int)nh) / 2, fg, name.c_str());
         if (focus) {
             Shapes::focusRing(LIST_X, y, LIST_W, ROW_H, 0, COLOR_ACCENT);
