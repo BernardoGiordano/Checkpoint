@@ -25,6 +25,7 @@
  */
 
 #include "ScriptRequestOverlays.hpp"
+#include "ModalChrome.hpp"
 #include "colors.hpp"
 #include "gfxutils.hpp"
 #include "i18n.hpp"
@@ -116,17 +117,16 @@ void ScriptMessageOverlay::draw(void) const
 {
     // InfoOverlay's chrome, redrawn here because the dismissal must answer the
     // bridge instead of just closing.
-    Gfx::DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
-    Gfx::DrawRect(320, 200, 640, 260, COLOR_SURFACE);
-    u32 tw, th;
-    Gfx::GetTextDimensions(20, mText.c_str(), &tw, &th);
-    Gfx::DrawText(20, ceilf(1280 - tw) / 2, 200 + ceilf((260 - th) / 2), COLOR_TEXT, mText.c_str());
+    ModalChrome::dim();
+    ModalChrome::drawCard(COLOR_SURFACE);
+    ModalChrome::drawText(mText, COLOR_TEXT);
 
-    Shapes::fillRound(322, 462, 636, 56, 0, COLOR_SURFACE);
+    Shapes::fillRound(ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, 0, COLOR_SURFACE);
     u32 ow, oh;
-    Gfx::GetTextDimensions(28, "OK", &ow, &oh);
-    Gfx::DrawText(28, 322 + (636 - (int)ow) / 2, 462 + (56 - (int)oh) / 2, COLOR_ACCENT, "OK");
-    drawPulsingOutline(322, 462, 636, 56, 4, COLOR_ACCENT);
+    Gfx::GetTextDimensions(ModalChrome::BTN_SIZE, "OK", &ow, &oh);
+    Gfx::DrawText(ModalChrome::BTN_SIZE, ModalChrome::BTN_WIDE_X + (ModalChrome::BTN_WIDE_W - (int)ow) / 2,
+        ModalChrome::BTN_Y + (ModalChrome::BTN_H - (int)oh) / 2, COLOR_ACCENT, "OK");
+    drawPulsingOutline(ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, 4, COLOR_ACCENT);
 }
 
 void ScriptMessageOverlay::update(const InputState& input)

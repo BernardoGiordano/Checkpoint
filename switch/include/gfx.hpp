@@ -59,6 +59,10 @@ namespace Gfx {
     void DestroyTexture(Texture* texture);
     void GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family = FontFamily::Sans);
     void DrawTextBox(int size, int x, int y, Color color, int max, const char* text, FontFamily family = FontFamily::Sans);
+    // Wrapped dimensions for a `max`-wide DrawTextBox of the same text: `w` is
+    // the widest resulting line, `h` is lineCount x lineHeight. Lets callers
+    // center a wrapped block instead of measuring the unwrapped single line.
+    void MeasureTextBox(int size, const char* text, int max, u32* w, u32* h, FontFamily family = FontFamily::Sans);
     void Render(void);
     // 1x1 solid-color texture (DrawImageScale stretches it to any size).
     void CreateColorTexture(Texture** texture, Color color);

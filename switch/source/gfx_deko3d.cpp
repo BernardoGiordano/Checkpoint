@@ -1346,6 +1346,27 @@ void Gfx::DrawTextBox(int size, int x, int y, Color color, int max, const char* 
     }
 }
 
+void Gfx::MeasureTextBox(int size, const char* text, int max, u32* w, u32* h, FontFamily family)
+{
+    FontInstance& inst = instanceFor(family, size);
+    u32 maxLine = 0, lines = 0;
+    if (text) {
+        for (const std::string& line : wrapText(family, inst, text, max)) {
+            const u32 lw = measureWidth(family, inst, line.c_str());
+            if (lw > maxLine) {
+                maxLine = lw;
+            }
+            lines++;
+        }
+    }
+    if (w != NULL) {
+        *w = maxLine;
+    }
+    if (h != NULL) {
+        *h = (u32)inst.fcHeight * (lines ? lines : 1);
+    }
+}
+
 void Gfx::GetTextDimensions(int size, const char* text, u32* w, u32* h, FontFamily family)
 {
     FontInstance& inst = instanceFor(family, size);

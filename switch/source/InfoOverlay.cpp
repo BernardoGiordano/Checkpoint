@@ -25,23 +25,24 @@
  */
 
 #include "InfoOverlay.hpp"
+#include "ModalChrome.hpp"
 #include "gfxutils.hpp"
 
 InfoOverlay::InfoOverlay(Screen& screen, const std::string& mtext) : Overlay(screen)
 {
-    text = mtext;
-    Gfx::GetTextDimensions(28, text.c_str(), &textw, &texth);
-    button = std::make_unique<Clickable>(322, 462, 636, 56, COLOR_SURFACE, COLOR_TEXT, "OK", true);
+    text   = mtext;
+    button = std::make_unique<Clickable>(
+        ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, COLOR_SURFACE, COLOR_TEXT, "OK", true);
     button->selected(true);
 }
 
 void InfoOverlay::draw(void) const
 {
-    Gfx::DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
-    Gfx::DrawRect(320, 200, 640, 260, COLOR_SURFACE);
-    Gfx::DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), COLOR_TEXT, text.c_str());
-    button->draw(28, COLOR_ACCENT);
-    drawPulsingOutline(322, 462, 636, 56, 4, COLOR_ACCENT);
+    ModalChrome::dim();
+    ModalChrome::drawCard(COLOR_SURFACE);
+    ModalChrome::drawText(text, COLOR_TEXT);
+    button->draw(ModalChrome::BTN_SIZE, COLOR_ACCENT);
+    drawPulsingOutline(ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, 4, COLOR_ACCENT);
 }
 
 void InfoOverlay::update(const InputState& input)

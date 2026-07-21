@@ -56,7 +56,10 @@ public:
     void update(const InputState& input) override;
 
 private:
+    static constexpr float SIZE = 0.55f;
+
     std::string mText;
+    int mPosx, mPosy;
     Button mButtons[2];
     std::unique_ptr<Clickable> mClick[2];
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> mHid;

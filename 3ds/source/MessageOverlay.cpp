@@ -34,7 +34,7 @@ MessageOverlay::MessageOverlay(Screen& screen, const std::string& mtext, const S
     mButton = std::make_unique<Clickable>(
         ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, style.buttonBg, style.buttonFg, " OK", true);
     mButton->selected(true);
-    mText = StringUtils::wrap(mtext, SIZE, 220);
+    mText = StringUtils::wrap(mtext, SIZE, ModalChrome::TEXT_MAX_W);
     // Center the text between the header line (if any) and the button row.
     const int top = mStyle.header.empty() ? 54 : 74;
     const int h   = mStyle.header.empty() ? 88 : 68;
@@ -52,7 +52,7 @@ void MessageOverlay::drawBottom(void) const
     ModalChrome::dimBottom();
     ModalChrome::drawCard(mStyle.outline);
     if (!mStyle.header.empty()) {
-        TextPool::get().draw(mStyle.header, 46, 62, 0.42f, mStyle.headerColor);
+        TextPool::get().draw(mStyle.header, ModalChrome::BTN_WIDE_X, 62, 0.42f, mStyle.headerColor);
     }
     TextPool::get().draw(mText, mPosx, mPosy, SIZE, COLOR_TEXT);
     mButton->draw(0.55f, mStyle.ring);

@@ -48,7 +48,7 @@ ScriptMessageOverlay::ScriptMessageOverlay(Screen& screen, const std::string& te
     mButton = std::make_unique<Clickable>(
         ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, COLOR_ACCENT, COLOR_WHITE, " OK", true);
     mButton->selected(true);
-    mText = StringUtils::wrap(text, SIZE, 220);
+    mText = StringUtils::wrap(text, SIZE, ModalChrome::TEXT_MAX_W);
     mPosx = ceilf((320 - StringUtils::textWidth(mText, SIZE)) / 2);
     mPosy = 54 + ceilf((88 - StringUtils::textHeight(mText, SIZE)) / 2);
 }

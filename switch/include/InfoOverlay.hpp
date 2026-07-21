@@ -44,7 +44,6 @@ public:
     void update(const InputState&) override;
 
 private:
-    u32 textw, texth;
     std::string text;
     std::unique_ptr<Clickable> button;
 };

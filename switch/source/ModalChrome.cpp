@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,29 +24,27 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef ERROROVERLAY_HPP
-#define ERROROVERLAY_HPP
+#include "ModalChrome.hpp"
 
-#include "Overlay.hpp"
-#include "clickable.hpp"
-#include "colors.hpp"
-#include "gfx.hpp"
-#include <memory>
-#include <string>
+void ModalChrome::dim(void)
+{
+    Gfx::DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
+}
 
-class Clickable;
+void ModalChrome::drawCard(Color surface)
+{
+    Gfx::DrawRect(CARD_X, CARD_Y, CARD_W, CARD_H, surface);
+}
 
-class ErrorOverlay : public Overlay {
-public:
-    ErrorOverlay(Screen& screen, Result res, const std::string& mtext);
-    ~ErrorOverlay() = default;
-    void draw(void) const override;
-    void update(const InputState&) override;
-
-private:
-    std::string text;
-    std::unique_ptr<Clickable> button;
-    Result res;
-};
-
-#endif
+void ModalChrome::drawText(const std::string& text, Color color, int size)
+{
+    // Text band = from below the card's top padding down to just above the
+    // button row. Center the wrapped block in it, both axes.
+    const int bandTop = CARD_Y + PAD;
+    const int bandBot = BTN_Y - 16;
+    u32 w, h;
+    Gfx::MeasureTextBox(size, text.c_str(), TEXT_MAX_W, &w, &h);
+    const int x = CARD_X + ((int)CARD_W - (int)w) / 2;
+    const int y = bandTop + ((bandBot - bandTop) - (int)h) / 2;
+    Gfx::DrawTextBox(size, x, y, color, TEXT_MAX_W, text.c_str());
+}

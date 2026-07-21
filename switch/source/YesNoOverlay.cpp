@@ -25,6 +25,7 @@
  */
 
 #include "YesNoOverlay.hpp"
+#include "ModalChrome.hpp"
 #include "gfxutils.hpp"
 #include "i18n.hpp"
 
@@ -32,30 +33,27 @@ YesNoOverlay::YesNoOverlay(
     Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo)
     : Overlay(screen), hid(2, 2)
 {
-    text    = mtext;
-    yesFunc = callbackYes;
-    noFunc  = callbackNo;
-    Gfx::GetTextDimensions(28, text.c_str(), &textw, &texth);
-    buttonYes = std::make_unique<Clickable>(322, 462, 316, 56, COLOR_SURFACE, COLOR_TEXT, i18n::t("common.yes"), true);
-    buttonNo  = std::make_unique<Clickable>(642, 462, 316, 56, COLOR_SURFACE, COLOR_TEXT, i18n::t("common.no"), true);
+    text      = mtext;
+    yesFunc   = callbackYes;
+    noFunc    = callbackNo;
+    buttonYes = std::make_unique<Clickable>(ModalChrome::BTN_LEFT_X, ModalChrome::BTN_Y, ModalChrome::BTN_HALF_W, ModalChrome::BTN_H, COLOR_SURFACE,
+        COLOR_TEXT, i18n::t("common.yes"), true);
+    buttonNo  = std::make_unique<Clickable>(ModalChrome::BTN_RIGHT_X, ModalChrome::BTN_Y, ModalChrome::BTN_HALF_W, ModalChrome::BTN_H, COLOR_SURFACE,
+         COLOR_TEXT, i18n::t("common.no"), true);
 }
 
 void YesNoOverlay::draw(void) const
 {
-    Gfx::DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
-    Gfx::DrawRect(320, 200, 640, 260, COLOR_SURFACE);
-    Gfx::DrawText(28, ceilf(1280 - textw) / 2, 200 + ceilf((260 - texth) / 2), COLOR_TEXT, text.c_str());
-    drawOutline(322, 462, 316, 56, 2, COLOR_TEXT2);
-    drawOutline(642, 462, 316, 56, 2, COLOR_TEXT2);
-    buttonYes->draw(28, COLOR_ACCENT);
-    buttonNo->draw(28, COLOR_ACCENT);
+    ModalChrome::dim();
+    ModalChrome::drawCard(COLOR_SURFACE);
+    ModalChrome::drawText(text, COLOR_TEXT);
+    drawOutline(ModalChrome::BTN_LEFT_X, ModalChrome::BTN_Y, ModalChrome::BTN_HALF_W, ModalChrome::BTN_H, 2, COLOR_TEXT2);
+    drawOutline(ModalChrome::BTN_RIGHT_X, ModalChrome::BTN_Y, ModalChrome::BTN_HALF_W, ModalChrome::BTN_H, 2, COLOR_TEXT2);
+    buttonYes->draw(ModalChrome::BTN_SIZE, COLOR_ACCENT);
+    buttonNo->draw(ModalChrome::BTN_SIZE, COLOR_ACCENT);
 
-    if (hid.index() == 0) {
-        drawPulsingOutline(324, 464, 312, 52, 4, COLOR_ACCENT);
-    }
-    else {
-        drawPulsingOutline(644, 464, 312, 52, 4, COLOR_ACCENT);
-    }
+    const int bx = hid.index() == 0 ? ModalChrome::BTN_LEFT_X : ModalChrome::BTN_RIGHT_X;
+    drawPulsingOutline(bx + 2, ModalChrome::BTN_Y + 2, ModalChrome::BTN_HALF_W - 4, ModalChrome::BTN_H - 4, 4, COLOR_ACCENT);
 }
 
 void YesNoOverlay::update(const InputState& input)
