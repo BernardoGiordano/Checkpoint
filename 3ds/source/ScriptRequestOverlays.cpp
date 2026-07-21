@@ -39,6 +39,29 @@ namespace {
     {
         ScriptRunner::get().bridge().respond(std::move(resp));
     }
+
+    // List rows are single-line, but script-supplied strings can carry newlines
+    // (3DS SMDH long titles store the two-line marquee form as "line1\nline2").
+    // C2D_DrawText honours those breaks and wraps the row mid-screen, so collapse
+    // any CR/LF run to a single space before the row is measured and drawn.
+    std::string flattenLine(const std::string& s)
+    {
+        std::string out;
+        out.reserve(s.size());
+        bool pendingSpace = false;
+        for (char c : s) {
+            if (c == '\n' || c == '\r') {
+                pendingSpace = !out.empty();
+                continue;
+            }
+            if (pendingSpace) {
+                out.push_back(' ');
+                pendingSpace = false;
+            }
+            out.push_back(c);
+        }
+        return out;
+    }
 }
 
 /* ---- gui_message ------------------------------------------------------- */
@@ -96,7 +119,7 @@ void ScriptPickOneOverlay::drawEmptyMessage(void) const
 void ScriptPickOneOverlay::drawRowContent(int k, int rowY, bool selected) const
 {
     TextPool& text = TextPool::get();
-    text.draw(text.truncate(mItems[k], 324, 0.46f), 40, rowY + 5, 0.46f, selected ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
+    text.draw(text.truncate(flattenLine(mItems[k]), 324, 0.46f), 40, rowY + 5, 0.46f, selected ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
 }
 
 std::string ScriptPickOneOverlay::bottomHints(void) const
@@ -149,7 +172,7 @@ void ScriptPickManyOverlay::drawRowContent(int k, int rowY, bool selected) const
 {
     TextPool& text = TextPool::get();
     text.draw(mSelected[k] ? "[x]" : "[  ]", 40, rowY + 5, 0.46f, mSelected[k] ? COLOR_ACCENT : COLOR_FAINT, OVERLAY_Z);
-    text.draw(text.truncate(mItems[k], 300, 0.46f), 66, rowY + 5, 0.46f, selected ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
+    text.draw(text.truncate(flattenLine(mItems[k]), 300, 0.46f), 66, rowY + 5, 0.46f, selected ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
 }
 
 std::string ScriptPickManyOverlay::bottomHints(void) const
