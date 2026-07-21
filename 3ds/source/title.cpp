@@ -254,8 +254,3 @@ CardType Title::SPICardType(void)
 {
     return mCardType;
 }
-
-bool Title::isActivityLog(void)
-{
-    return TitleQuirks::isActivityLog(lowId(), mMedia);
-}

@@ -39,17 +39,19 @@
 // user's answer back through respond(). No UI types on purpose: this is the
 // platform-neutral seam the Switch render loop pumps identically.
 struct UiRequest {
-    enum class Kind { Message, Confirm, PickOne, PickMany, Keyboard };
+    enum class Kind { Message, Confirm, PickOne, PickMany, Keyboard, Numpad };
     Kind kind = Kind::Message;
     std::string prompt;
     std::vector<std::string> items; // PickOne / PickMany
     std::vector<bool> preselected;  // PickMany
     int maxChars = 0;               // Keyboard: buffer size including the terminator
+    int numMin   = 0;               // Numpad: inclusive lower bound
+    int numMax   = 0;               // Numpad: inclusive upper bound
 };
 
 struct UiResponse {
     bool confirmed = false;     // Confirm / PickMany
-    int index      = -1;        // PickOne (-1 = cancelled)
+    int index      = -1;        // PickOne (-1 = cancelled) / Numpad (value, -1 = cancelled)
     std::vector<bool> selected; // PickMany
     std::string text;           // Keyboard (empty = cancelled)
 };

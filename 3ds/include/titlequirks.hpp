@@ -41,9 +41,6 @@ namespace TitleQuirks {
     // The extdata archive id for a title. Usually `lowId >> 8`, but a handful of
     // games store extdata under a different id; this returns the correct one.
     u32 extdataIdFor(u64 id);
-
-    // Whether the title is a system Activity Log (only meaningful on NAND).
-    bool isActivityLog(u32 lowId, FS_MediaType media);
 }
 
 #endif // TITLEQUIRKS_HPP

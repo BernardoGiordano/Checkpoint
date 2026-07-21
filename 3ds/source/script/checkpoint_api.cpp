@@ -326,6 +326,42 @@ void ckpt_sav_open(struct ParseState* Parser, struct Value* ReturnValue, struct 
     ReturnValue->Val->Integer = slot;
 }
 
+void ckpt_sav_open_shared(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    // A shared-extdata archive belongs to the console, not a title, so it is keyed
+    // by id instead of a catalog index. The id crosses the boundary as a 16-hex
+    // string like a title id (picoc has no reliable 64-bit ints): its low 32 bits
+    // are the extdata id, its high 32 the archive magic (0x00048000 for the Home
+    // Menu shared extdata that holds Play Coins).
+    const u64 id = strtoull((char*)Param[0]->Val->Pointer, nullptr, 16);
+
+    int slot = -1;
+    for (int i = 0; i < MAX_SAV_HANDLES && slot < 0; i++) {
+        if (!savSlots[i].arch) {
+            slot = i;
+        }
+    }
+    if (slot < 0) {
+        ReturnValue->Val->Integer = -2;
+        return;
+    }
+
+    FS_Archive archive;
+    const u32 path[3] = {MEDIATYPE_NAND, (u32)id, (u32)(id >> 32)};
+    Result res        = FSUSER_OpenArchive(&archive, ARCHIVE_SHARED_EXTDATA, {PATH_BINARY, 0xC, path});
+    if (R_FAILED(res)) {
+        ReturnValue->Val->Integer = (int)res;
+        return;
+    }
+
+    // Shared extdata is a file-level archive like ordinary extdata: it needs no
+    // commit and no secure-value fix, so sav_commit is a no-op on this handle.
+    savSlots[slot].arch       = ArchiveHandle::fromFs(archive);
+    savSlots[slot].commitable = false;
+    savSlots[slot].uniqueId   = 0;
+    ReturnValue->Val->Integer = slot;
+}
+
 void ckpt_sav_read(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
     SavSlot& slot = savAt(Parser, Param[0]->Val->Integer);
@@ -612,6 +648,22 @@ void ckpt_gui_keyboard(struct ParseState* Parser, struct Value* ReturnValue, str
     // maxChars is the out buffer's size, terminator included (PKSM semantics).
     UiResponse resp = bridge().request(std::move(req));
     snprintf(out, (size_t)maxChars, "%s", resp.text.c_str());
+}
+
+void ckpt_gui_numpad(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    const int min = Param[1]->Val->Integer;
+    const int max = Param[2]->Val->Integer;
+    if (max < min) {
+        ProgramFail(Parser, "gui_numpad max %d is below min %d", max, min);
+    }
+
+    UiRequest req;
+    req.kind                  = UiRequest::Kind::Numpad;
+    req.prompt                = (char*)Param[0]->Val->Pointer;
+    req.numMin                = min;
+    req.numMax                = max;
+    ReturnValue->Val->Integer = bridge().request(std::move(req)).index;
 }
 
 void ckpt_gui_status(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)

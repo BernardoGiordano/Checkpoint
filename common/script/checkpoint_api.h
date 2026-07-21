@@ -59,6 +59,7 @@ CKPT_BINDING(ckpt_sd_exists);
 
 /* save archives (kind: 0=save, 1=extdata; fixed table of 8 handles) */
 CKPT_BINDING(ckpt_sav_open);
+CKPT_BINDING(ckpt_sav_open_shared);
 CKPT_BINDING(ckpt_sav_read);
 CKPT_BINDING(ckpt_sav_write);
 CKPT_BINDING(ckpt_sav_delete);
@@ -76,6 +77,7 @@ CKPT_BINDING(ckpt_gui_confirm);
 CKPT_BINDING(ckpt_gui_pick_one);
 CKPT_BINDING(ckpt_gui_pick_many);
 CKPT_BINDING(ckpt_gui_keyboard);
+CKPT_BINDING(ckpt_gui_numpad);
 CKPT_BINDING(ckpt_gui_status);
 
 /* json (platform-neutral, common/script/json_api.cpp) */

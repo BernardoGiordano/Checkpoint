@@ -868,6 +868,12 @@ void MainScreen::pumpScriptRequests(void)
             bridge.respond(std::move(resp));
             break;
         }
+        case UiRequest::Kind::Numpad: {
+            UiResponse resp;
+            resp.index = KeyboardManager::get().numpad(req->prompt, req->numMin, req->numMax);
+            bridge.respond(std::move(resp));
+            break;
+        }
     }
 }
 

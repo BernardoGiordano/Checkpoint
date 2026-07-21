@@ -132,7 +132,6 @@ namespace Archive {
     // TWL NAND FAT, not in its own archive: this is the title's data directory
     // inside ARCHIVE_NAND_TWL_FS, with a trailing '/'.
     std::u16string twlSaveDataPath(u32 lowid, u32 highid);
-    bool setPlayCoins(void);
 }
 
 #endif

@@ -839,16 +839,6 @@
     "nl": "Herst.",
     "ja": "リストア"
   },
-  "main.coins": {
-    "en": "Coins",
-    "it": "Monete",
-    "es": "Monedas",
-    "fr": "Pièces",
-    "de": "Münzen",
-    "pt": "Moedas",
-    "nl": "Munten",
-    "ja": "コイン"
-  },
   "main.backup_selected": {
     "en": "Backup selected",
     "it": "Backup selez.",
@@ -1118,16 +1108,6 @@
     "pt": "Falha ao iniciar o receptor.",
     "nl": "Kon ontvanger niet starten.",
     "ja": "受信の開始に失敗しました。"
-  },
-  "main.coins_failed": {
-    "en": "Failed to set play coins.",
-    "it": "Impossibile impostare le Play Coin.",
-    "es": "No se pudieron establecer las Play Coins.",
-    "fr": "Impossible de définir les Play Coins.",
-    "de": "Play Coins konnten nicht festgelegt werden.",
-    "pt": "Falha ao definir as moedas de jogo.",
-    "nl": "Kon speelmunten niet instellen.",
-    "ja": "プレイコインの設定に失敗しました。"
   },
   "main.no_titles": {
     "en": "No titles available.",

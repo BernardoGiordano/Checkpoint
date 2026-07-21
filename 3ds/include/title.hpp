@@ -68,7 +68,6 @@ public:
     std::u16string fullExtdataPath(size_t index);
     u32 highId(void);
     u64 id(void) const;
-    bool isActivityLog(void);
     void load(void);
     void load(u64 id, u8* productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::string shortDescription,
         std::string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card);

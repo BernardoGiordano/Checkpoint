@@ -94,18 +94,3 @@ u32 TitleQuirks::extdataIdFor(u64 id)
 
     return low >> 8;
 }
-
-bool TitleQuirks::isActivityLog(u32 lowId, FS_MediaType media)
-{
-    bool activityId = false;
-    switch (lowId) {
-        case 0x00020200:
-        case 0x00021200:
-        case 0x00022200:
-        case 0x00026200:
-        case 0x00027200:
-        case 0x00028200:
-            activityId = true;
-    }
-    return media == MEDIATYPE_NAND && activityId;
-}

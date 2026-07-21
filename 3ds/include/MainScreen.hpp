@@ -98,7 +98,6 @@ protected:
 
 private:
     Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
-    std::unique_ptr<Clickable> buttonPlayCoins;
     std::unique_ptr<Clickable> buttonBackupAL, buttonRestoreAL; // narrower Backup/Restore of the three-button action rows
     std::unique_ptr<Clickable> buttonSend;                      // middle of the Backup/Send/Restore trio shown on a highlighted backup
     std::unique_ptr<Clickable> buttonScripts;                   // middle of the default Backup/Scripts/Restore trio
@@ -130,7 +129,6 @@ private:
         std::string cartId;      // productCode or "System title"
         std::string mediaType;
         bool favorite      = false;
-        bool activityLog   = false;
         bool transferRow   = false;   // rows were built with the "Receive" row at index 1
         size_t backupCount = 0;       // existing backups (action rows excluded)
         std::optional<u64> totalSize; // async total; nullopt while computing

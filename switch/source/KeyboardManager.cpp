@@ -26,7 +26,28 @@
 
 #include "KeyboardManager.hpp"
 #include "backupsize.hpp"
+#include <cstdio>
+#include <cstdlib>
 #include <vector>
+
+namespace {
+    // libnx's text-check callback carries no user pointer, so the range lives at
+    // file scope. Safe: scripts run one at a time and swkbd blocks the main thread
+    // for the whole session, so no two numpad prompts overlap.
+    int g_numpadMin = 0;
+    int g_numpadMax = 0;
+
+    SwkbdTextCheckResult numpadRangeCheck(char* tmpString, size_t tmpStringSize)
+    {
+        char* end        = nullptr;
+        const long value = strtol(tmpString, &end, 10);
+        if (end == tmpString || *end != '\0' || value < g_numpadMin || value > g_numpadMax) {
+            snprintf(tmpString, tmpStringSize, "Enter a value between %d and %d.", g_numpadMin, g_numpadMax);
+            return SwkbdTextCheckResult_Bad;
+        }
+        return SwkbdTextCheckResult_OK;
+    }
+}
 
 KeyboardManager::KeyboardManager(void)
 {
@@ -62,6 +83,42 @@ std::pair<bool, std::string> KeyboardManager::keyboard(const std::string& sugges
         }
     }
     return std::make_pair(false, suggestion);
+}
+
+int KeyboardManager::numpad(const std::string& hint, int min, int max)
+{
+    if (!systemKeyboardAvailable) {
+        return -1;
+    }
+
+    // Same PauseGuard rationale as text(): the size-cache walk delays the swkbd
+    // applet launch by the walk's full remaining duration.
+    BackupSizeCache::PauseGuard pauseWalk;
+    SwkbdConfig kbd;
+    int result = -1;
+    if (R_SUCCEEDED(swkbdCreate(&kbd, 0))) {
+        swkbdConfigMakePresetDefault(&kbd);
+        swkbdConfigSetType(&kbd, SwkbdType_NumPad);
+        swkbdConfigSetGuideText(&kbd, hint.c_str());
+
+        int digits = 1;
+        for (int m = max; m >= 10; m /= 10) {
+            digits++;
+        }
+        swkbdConfigSetStringLenMax(&kbd, digits);
+
+        g_numpadMin = min;
+        g_numpadMax = max;
+        swkbdConfigSetTextCheckCallback(&kbd, numpadRangeCheck);
+
+        char out[16] = {0};
+        Result rc    = swkbdShow(&kbd, out, sizeof(out));
+        swkbdClose(&kbd);
+        if (R_SUCCEEDED(rc)) {
+            result = (int)strtol(out, nullptr, 10);
+        }
+    }
+    return result;
 }
 
 std::string KeyboardManager::text(const std::string& suggestion, const std::string& hint, size_t maxLen)

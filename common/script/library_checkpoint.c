@@ -60,6 +60,13 @@ struct LibraryFunction CheckpointFunctions[] =
     // sav_commit also clears the title's secure value (as restore does);
     // it is a no-op on extdata.
     { ckpt_sav_open,           "int sav_open(int titleIdx, int kind);" },
+    // Opens a console-wide shared-extdata archive (not owned by any title, so it
+    // is keyed by id rather than a catalog index): e.g. the Home Menu shared
+    // extdata "00048000F000000B" that holds Play Coins. The id is a 16-hex string
+    // like a title id; its low 32 bits are the extdata id, the high 32 the archive
+    // magic. Returns a handle usable with the sav_* calls below (-2 = no free
+    // handle, negative Result = open failed). commit is a no-op on it.
+    { ckpt_sav_open_shared,    "int sav_open_shared(char* extdataIdHex);" },
     { ckpt_sav_read,           "int sav_read(int h, char* path, char** out, int* outSize);" },
     { ckpt_sav_write,          "int sav_write(int h, char* path, char* data, int size);" },
     { ckpt_sav_delete,         "int sav_delete(int h, char* path);" },
@@ -83,6 +90,10 @@ struct LibraryFunction CheckpointFunctions[] =
     { ckpt_gui_pick_one,       "int gui_pick_one(char* prompt, char** items, int count);" },
     { ckpt_gui_pick_many,      "int gui_pick_many(char* prompt, char** items, int count, int* selected);" },
     { ckpt_gui_keyboard,       "void gui_keyboard(char* out, char* hint, int maxChars);" },
+    // On-screen numeric keypad constrained to [min, max]: the keyboard itself
+    // rejects out-of-range input. Returns the entered value, or -1 if cancelled
+    // (so pass a min >= 0 to keep the sentinel unambiguous).
+    { ckpt_gui_numpad,         "int gui_numpad(char* prompt, int min, int max);" },
     { ckpt_gui_status,         "void gui_status(char* text);" },
     // json (nlohmann wrappers; struct JSON* is an opaque handle)
     { ckpt_json_new,             "struct JSON* json_new(void);" },

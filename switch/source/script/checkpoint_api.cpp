@@ -363,6 +363,13 @@ void ckpt_sav_open(struct ParseState* Parser, struct Value* ReturnValue, struct 
     ReturnValue->Val->Integer = slot;
 }
 
+void ckpt_sav_open_shared(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    // Shared extdata is a 3DS concept (e.g. the Home Menu Play Coin archive);
+    // the Switch has no console-wide extdata, so this is always unsupported.
+    ReturnValue->Val->Integer = -1;
+}
+
 void ckpt_sav_read(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
     SavSlot& slot = savAt(Parser, Param[0]->Val->Integer);
@@ -647,6 +654,22 @@ void ckpt_gui_keyboard(struct ParseState* Parser, struct Value* ReturnValue, str
     // maxChars is the out buffer's size, terminator included (PKSM semantics).
     UiResponse resp = bridge().request(std::move(req));
     snprintf(out, (size_t)maxChars, "%s", resp.text.c_str());
+}
+
+void ckpt_gui_numpad(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    const int min = Param[1]->Val->Integer;
+    const int max = Param[2]->Val->Integer;
+    if (max < min) {
+        ProgramFail(Parser, "gui_numpad max %d is below min %d", max, min);
+    }
+
+    UiRequest req;
+    req.kind                  = UiRequest::Kind::Numpad;
+    req.prompt                = (char*)Param[0]->Val->Pointer;
+    req.numMin                = min;
+    req.numMax                = max;
+    ReturnValue->Val->Integer = bridge().request(std::move(req)).index;
 }
 
 void ckpt_gui_status(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)

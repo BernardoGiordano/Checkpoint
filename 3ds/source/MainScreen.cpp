@@ -110,9 +110,8 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
 
     // Detail action row: three 96px slots. Backup is the primary (accent),
     // Restore secondary, the middle slot contextual - Scripts by default, Send
-    // on a highlighted backup, Coins on the Activity Log.
+    // on a highlighted backup.
     buttonBackupAL  = std::make_unique<Clickable>(8, 182, 96, 30, COLOR_ACCENT, COLOR_WHITE, i18n::t("main.backup_short"), true);
-    buttonPlayCoins = std::make_unique<Clickable>(112, 182, 96, 30, COLOR_RAISED, COLOR_TEXT, i18n::t("main.coins"), true);
     buttonRestoreAL = std::make_unique<Clickable>(216, 182, 96, 30, COLOR_RAISED, COLOR_TEXT, i18n::t("main.restore_short"), true);
     // Full-width batch-backup button shown only while multi-selecting.
     buttonBackupAll = std::make_unique<Clickable>(8, 182, 304, 30, COLOR_ACCENT, COLOR_WHITE, i18n::t("main.backup_selected"), true);
@@ -120,7 +119,6 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     buttonScripts   = std::make_unique<Clickable>(112, 182, 96, 30, COLOR_RAISED, COLOR_TEXT, i18n::t("main.scripts"), true);
     directoryList   = std::make_unique<BackupList>(12, 70, 296, 106, 5);
     buttonBackupAll->canChangeColorWhenSelected(true);
-    buttonPlayCoins->canChangeColorWhenSelected(true);
     buttonBackupAL->canChangeColorWhenSelected(true);
     buttonRestoreAL->canChangeColorWhenSelected(true);
     buttonSend->canChangeColorWhenSelected(true);
@@ -375,16 +373,8 @@ void MainScreen::drawBottom(void) const
             buttonBackupAll->text(i18n::t("main.backup_n_selected", {std::to_string(MS::selectedEntries().size())}) + " ");
             buttonBackupAll->draw(0.6f, COLOR_RING);
         }
-        else if (selected.activityLog) {
-            buttonBackupAL->text(i18n::t("main.backup_short"));
-            buttonPlayCoins->text(i18n::t("main.coins"));
-            buttonRestoreAL->text(i18n::t("main.restore_short"));
-            buttonBackupAL->draw(0.6f, COLOR_RING);
-            buttonPlayCoins->draw(0.6f, COLOR_ACCENT);
-            buttonRestoreAL->draw(0.6f, COLOR_RING);
-        }
-        // A highlighted existing backup (not an action row, not Activity Log) gets a
-        // Backup / Send / Restore trio so Send is a one-touch, contextual action.
+        // A highlighted existing backup (not an action row) gets a Backup / Send /
+        // Restore trio so Send is a one-touch, contextual action.
         else if (transferEnabled && g_bottomScrollEnabled && directoryList->index() > 0 && !isReceiveRow(directoryList->index())) {
             buttonBackupAL->text(i18n::t("main.backup_short"));
             buttonSend->text(i18n::t("transfer.send"));
@@ -627,14 +617,13 @@ void MainScreen::refreshSelected(void)
     catalog.getTitle(title, selected.fullIndex, backupKind);
     BackupTarget target = title.backup(backupKind);
 
-    selected.id          = title.id();
-    selected.rootPath    = target.rootPath();
-    selected.name        = title.shortDescription();
-    selected.cartId      = title.productCode[0] != '\0' ? std::string(title.productCode) : i18n::t("main.system_title");
-    selected.mediaType   = title.mediaTypeString();
-    selected.favorite    = catalog.favorite(selected.fullIndex, backupKind);
-    selected.activityLog = title.isActivityLog();
-    selected.totalSize   = BackupSizeCache::get().total(selected.id, backupKind);
+    selected.id        = title.id();
+    selected.rootPath  = target.rootPath();
+    selected.name      = title.shortDescription();
+    selected.cartId    = title.productCode[0] != '\0' ? std::string(title.productCode) : i18n::t("main.system_title");
+    selected.mediaType = title.mediaTypeString();
+    selected.favorite  = catalog.favorite(selected.fullIndex, backupKind);
+    selected.totalSize = BackupSizeCache::get().total(selected.id, backupKind);
 
     // Rows: entry 0 is the "New backup" affordance, entry 1 the "Receive" action
     // (while the transfer feature is enabled), the rest are existing backups
@@ -812,6 +801,12 @@ void MainScreen::pumpScriptRequests(void)
             bridge.respond(std::move(resp));
             break;
         }
+        case UiRequest::Kind::Numpad: {
+            UiResponse resp;
+            resp.index = KeyboardManager::get().numpad(req->prompt, req->numMin, req->numMax);
+            bridge.respond(std::move(resp));
+            break;
+        }
     }
 }
 
@@ -942,11 +937,10 @@ void MainScreen::handleEvents(const InputState& input)
 
     // From the snapshot the current frame was drawn from, so input maps to the
     // buttons the user actually sees.
-    const bool activityLog = selected.valid && selected.activityLog;
     // A highlighted existing backup shows the Backup / Send / Restore trio; Send
     // goes straight to startTransferSend() (which validates and prompts).
-    const bool sendContext = transferEnabled && selected.valid && !activityLog && g_bottomScrollEnabled && directoryList->index() > 0 &&
-                             !isReceiveRow(directoryList->index());
+    const bool sendContext =
+        transferEnabled && selected.valid && g_bottomScrollEnabled && directoryList->index() > 0 && !isReceiveRow(directoryList->index());
 
     if (sendContext && buttonSend->released()) {
         startTransferSend();
@@ -954,8 +948,8 @@ void MainScreen::handleEvents(const InputState& input)
     }
 
     // The default action row shows the Scripts middle button (everywhere except
-    // multi-select, the Activity Log and the send context).
-    const bool scriptsShown = !MS::multipleSelectionEnabled() && !activityLog && !sendContext;
+    // multi-select and the send context).
+    const bool scriptsShown = !MS::multipleSelectionEnabled() && !sendContext;
     if (scriptsShown && buttonScripts->released()) {
         startScriptPicker();
         return;
@@ -998,24 +992,16 @@ void MainScreen::handleEvents(const InputState& input)
             }
         }
     }
-
-    if (activityLog && buttonPlayCoins->released()) {
-        if (!Archive::setPlayCoins()) {
-            currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, i18n::t("main.coins_failed"));
-        }
-    }
 }
 
 void MainScreen::updateButtons(void)
 {
     if (MS::multipleSelectionEnabled()) {
-        buttonPlayCoins->setColors(COLOR_RAISED, COLOR_MUTED);
         buttonBackupAL->setColors(COLOR_ACCENT, COLOR_WHITE);
         buttonRestoreAL->setColors(COLOR_RAISED, COLOR_MUTED);
         buttonScripts->setColors(COLOR_RAISED, COLOR_MUTED);
     }
     else {
-        buttonPlayCoins->setColors(COLOR_RAISED, COLOR_TEXT);
         buttonBackupAL->setColors(COLOR_ACCENT, COLOR_WHITE);
         buttonRestoreAL->setColors(COLOR_RAISED, COLOR_TEXT);
         buttonScripts->setColors(COLOR_RAISED, COLOR_TEXT);
