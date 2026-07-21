@@ -91,7 +91,10 @@ CFLAGS	+=	$(INCLUDE) -DARM11 -D__3DS__ -D_GNU_SOURCE=1
 
 # picoc: UNIX_HOST is the only host flavour that fits newlib (the alternative is
 # MSVC). Its platform.h comes from common/script, not the submodule.
-CFLAGS	+=	-DUNIX_HOST
+# DEBUGGER doesn't pull in the interactive debugger (debug.c is filtered out of
+# CFILES below): it makes ParseStatement call DebugCheckStatement, which
+# ../common/script/scriptabort.c implements as the script-abort kill switch.
+CFLAGS	+=	-DUNIX_HOST -DDEBUGGER
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++23
 
@@ -129,6 +132,9 @@ export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
 export DEPSDIR	:=	$(CURDIR)/$(BUILD)
 
 CFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+# picoc's interactive debugger stays out of the build; its Debug* entry points
+# come from ../common/script/scriptabort.c (the script-abort hook) instead.
+CFILES		:=	$(filter-out debug.c,$(CFILES))
 CPPFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 PICAFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.v.pica)))

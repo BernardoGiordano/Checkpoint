@@ -106,6 +106,23 @@ CKPT_BINDING(ckpt_selected_title);
  * forgot sav_close never leaks an open archive into the next run. */
 void ckpt_sav_close_all(void);
 
+/* not bindings: the script kill switch (common/script/scriptabort.c). The
+ * main thread requests an abort and picoc's per-statement hook fails the run
+ * at the next statement the script executes; long-running bindings (web_get)
+ * poll ckpt_script_abort_requested() themselves to bail out early. */
+void ckpt_script_abort_request(void);
+int ckpt_script_abort_requested(void);
+void ckpt_script_abort_reset(void);
+
+/* not a binding (per-platform): the worker calls this once at entry to drop
+ * its own scheduler priority just below the main thread. A syscall-free script
+ * (e.g. a pure `while (1)` compute loop) never yields its core, so if it ran at
+ * or above the main thread's priority it would starve the loop that samples the
+ * hold-B abort — the request would never be raised and the kill switch above
+ * could never fire. Running one step below main lets the UI thread always
+ * preempt long enough to poll input. */
+void ckpt_script_lower_priority(void);
+
 #ifdef __cplusplus
 }
 #endif

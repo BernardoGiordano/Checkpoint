@@ -29,6 +29,11 @@
 UiResponse ScriptUiBridge::request(UiRequest req)
 {
     std::unique_lock<std::mutex> lock(mMutex);
+    if (mCancelled) {
+        // Abort in progress: don't park, hand back "cancelled" so the script
+        // reaches its next statement (where picoc's abort hook fails the run).
+        return UiResponse{};
+    }
     mReq = std::move(req);
     mCv.wait(lock, [this] { return mResp.has_value(); });
     UiResponse out = std::move(*mResp);
@@ -58,6 +63,18 @@ void ScriptUiBridge::respond(UiResponse resp)
     mCv.notify_all();
 }
 
+void ScriptUiBridge::cancelAll(void)
+{
+    {
+        std::lock_guard<std::mutex> lock(mMutex);
+        mCancelled = true;
+        if (mReq && !mResp) {
+            mResp = UiResponse{};
+        }
+    }
+    mCv.notify_all();
+}
+
 std::string ScriptUiBridge::statusText(void)
 {
     std::lock_guard<std::mutex> lock(mMutex);
@@ -70,4 +87,5 @@ void ScriptUiBridge::reset(void)
     mStatus.clear();
     mReq.reset();
     mResp.reset();
+    mCancelled = false;
 }

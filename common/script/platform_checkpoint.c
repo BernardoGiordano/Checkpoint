@@ -6,31 +6,14 @@
 #include <readline/readline.h>
 #endif
 
+/* DEBUGGER here only enables the per-statement hook scriptabort.c turns into
+ * the script kill switch — no SIGINT-driven manual break on a console. */
 #ifdef DEBUGGER
 static int gEnableDebugger = true;
 #else
 static int gEnableDebugger = false;
 #endif
-
-#ifdef DEBUGGER
-#include <signal.h>
-
-Picoc* break_pc = NULL;
-
-static void BreakHandler(int Signal)
-{
-    break_pc->DebugManualBreak = true;
-}
-
-void PlatformInit(Picoc* pc)
-{
-    /* capture the break signal and pass it to the debugger */
-    break_pc = pc;
-    signal(SIGINT, BreakHandler);
-}
-#else
 void PlatformInit(Picoc* pc) {}
-#endif
 
 void PlatformCleanup(Picoc* pc) {}
 

@@ -501,6 +501,13 @@ namespace {
         ((std::string*)userdata)->append(ptr, size * nmemb);
         return size * nmemb;
     }
+
+    // Nonzero aborts the transfer: a script being aborted mustn't sit in a
+    // download it can't reach the per-statement abort hook from.
+    int curlAbortOnScriptCancel(void*, curl_off_t, curl_off_t, curl_off_t, curl_off_t)
+    {
+        return ckpt_script_abort_requested();
+    }
 }
 
 void ckpt_net_ip(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
@@ -538,7 +545,8 @@ void ckpt_web_get(struct ParseState* Parser, struct Value* ReturnValue, struct V
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L);
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, curlAbortOnScriptCancel);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "Checkpoint-curl");
     curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 300L);
     curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 10L);
@@ -656,4 +664,15 @@ void ckpt_script_log(struct ParseState* Parser, struct Value* ReturnValue, struc
 void ckpt_selected_title(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
     ReturnValue->Val->Pointer = strToRet(ScriptRunner::get().selectedTitle());
+}
+
+void ckpt_script_lower_priority(void)
+{
+    // The worker was spawned at the main thread's priority (0x2C); +2 puts it a
+    // step below so the UI thread always preempts to sample the hold-B abort,
+    // even against a syscall-free compute loop that never yields the core.
+    s32 prio = 0;
+    if (R_SUCCEEDED(svcGetThreadPriority(&prio, CUR_THREAD_HANDLE))) {
+        svcSetThreadPriority(CUR_THREAD_HANDLE, (u32)(prio + 2));
+    }
 }

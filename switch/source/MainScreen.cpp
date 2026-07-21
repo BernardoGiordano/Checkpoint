@@ -562,6 +562,12 @@ void MainScreen::draw() const
             Gfx::GetTextDimensions(15, status.c_str(), &sw, NULL);
             Gfx::DrawText(15, mx + (mw - (int)sw) / 2, my + 36 + (int)th + 18, COLOR_TEXT2, status.c_str());
         }
+
+        // Hold-B abort hint (same wording as the transfer modal).
+        std::string hint = ScriptRunner::get().cancelRequested() ? i18n::t("transfer.cancelling") : i18n::t("transfer.cancel_hint");
+        u32 hw;
+        Gfx::GetTextDimensions(15, hint.c_str(), &hw, NULL);
+        Gfx::DrawText(15, mx + (mw - (int)hw) / 2, my + mh - 34, COLOR_TEXT2, hint.c_str());
     }
 
     // ---- Transfer modal ----
@@ -746,7 +752,11 @@ void MainScreen::update(const InputState& input)
     // UI-bridge requests; normal input is ignored (same policy as TransferJob).
     if (auto script = ScriptRunner::get().takeResult()) {
         appletEndBlockingHomeButton();
-        if (script->exitValue == 0) {
+        if (script->cancelled) {
+            // User-requested abort: neutral info, not an error.
+            currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("scripts.aborted", {script->scriptName}));
+        }
+        else if (script->exitValue == 0) {
             currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("scripts.success", {script->scriptName}));
         }
         else {
@@ -758,6 +768,9 @@ void MainScreen::update(const InputState& input)
         return;
     }
     if (ScriptRunner::get().active()) {
+        // The hold-B kill switch lives in main.cpp (it must keep counting
+        // while a script-raised overlay replaces this update); here we only
+        // pump the bridge.
         pumpScriptRequests();
         return;
     }

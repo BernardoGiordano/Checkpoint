@@ -43,7 +43,8 @@ public:
     struct Outcome {
         std::string scriptName; // display name, for the result overlay
         int exitValue = 0;
-        std::string output; // everything the script printed (4 KB cap)
+        std::string output;     // everything the script printed (4 KB cap)
+        bool cancelled = false; // ended because the user requested an abort
     };
 
     static ScriptRunner& get(void)
@@ -60,6 +61,16 @@ public:
 
     // True from start() until takeResult() collects the outcome.
     bool active(void) const { return mState.load() != State::Idle; }
+
+    // Main thread, the kill switch: answers the pending/future bridge requests
+    // as cancelled and makes picoc fail the run at the next statement, so even
+    // a script stuck in a loop dies without rebooting the console. The worker
+    // then finishes normally through the usual takeResult() path. No-op when
+    // no script is running.
+    void requestCancel(void);
+
+    // Main thread, for the "Cancelling…" hint.
+    bool cancelRequested(void) const;
 
     // If the script finished, returns its outcome and resets to idle.
     std::optional<Outcome> takeResult(void);

@@ -110,6 +110,21 @@ int main(void)
         input.kUp   = padGetButtonsUp(&pad);
         hidGetTouchScreenStates(&input.touch, 1);
 
+        // Script kill switch: hold B to abort the running script (picoc fails
+        // the run at its next statement, so even an infinite loop dies without
+        // rebooting the console). Lives here rather than in MainScreen::update
+        // so it keeps counting while a script-raised overlay is swallowing
+        // that screen's update.
+        static int scriptCancelHold = 0;
+        if (ScriptRunner::get().active() && (input.kHeld & HidNpadButton_B)) {
+            if (++scriptCancelHold >= 45 && !ScriptRunner::get().cancelRequested()) {
+                ScriptRunner::get().requestCancel();
+            }
+        }
+        else {
+            scriptCancelHold = 0;
+        }
+
         g_screen->doDraw();
         g_screen->doUpdate(input);
         if (g_pendingScreen) {

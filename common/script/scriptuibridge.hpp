@@ -70,6 +70,12 @@ public:
     // Main thread. Wakes the script thread with the user's answer.
     void respond(UiResponse resp);
 
+    // Main thread, on script abort. Answers the pending request (if any) with
+    // the default cancelled response and makes every future request() return
+    // it immediately, so an aborting script can never park on the bridge
+    // again. Cleared by reset().
+    void cancelAll(void);
+
     // Main thread. Snapshot of the last gui_status text.
     std::string statusText(void);
 
@@ -82,6 +88,7 @@ private:
     std::optional<UiRequest> mReq;
     std::optional<UiResponse> mResp;
     std::string mStatus;
+    bool mCancelled = false;
 };
 
 #endif

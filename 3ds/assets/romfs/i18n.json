@@ -1519,6 +1519,16 @@
     "nl": "\"{0}\" mislukt.",
     "ja": "「{0}」が失敗しました。"
   },
+  "scripts.aborted": {
+    "en": "\"{0}\" aborted.",
+    "it": "\"{0}\" interrotto.",
+    "es": "\"{0}\" cancelado.",
+    "fr": "\"{0}\" annulé.",
+    "de": "\"{0}\" abgebrochen.",
+    "pt": "\"{0}\" cancelado.",
+    "nl": "\"{0}\" afgebroken.",
+    "ja": "「{0}」を中止しました。"
+  },
   "scripts.start_failed": {
     "en": "Could not start the script thread.",
     "it": "Impossibile avviare il thread dello script.",

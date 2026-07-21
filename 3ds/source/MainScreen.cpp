@@ -269,11 +269,18 @@ void MainScreen::drawTop(void) const
     C2D_DrawRectSolid(0, TOP_FOOTER_TOP, 0.5f, 400, 240 - TOP_FOOTER_TOP, COLOR_SURFACE);
     C2D_DrawRectSolid(0, TOP_FOOTER_TOP - 1, 0.5f, 400, 1, COLOR_LINE);
     if (ScriptRunner::get().active()) {
-        // Script status strip: name + last gui_status text from the worker.
-        std::string line   = i18n::t("scripts.running", {ScriptRunner::get().scriptName()});
-        std::string status = ScriptRunner::get().bridge().statusText();
-        if (!status.empty()) {
-            line += "  -  " + status;
+        // Script status strip: name + last gui_status text from the worker,
+        // plus the hold-B abort hint.
+        std::string line = i18n::t("scripts.running", {ScriptRunner::get().scriptName()});
+        if (ScriptRunner::get().cancelRequested()) {
+            line += "  -  " + i18n::t("transfer.cancelling");
+        }
+        else {
+            std::string status = ScriptRunner::get().bridge().statusText();
+            if (!status.empty()) {
+                line += "  -  " + status;
+            }
+            line += "  -  " + i18n::t("transfer.cancel_hint");
         }
         drawHints(400, 224, line);
     }
@@ -532,7 +539,11 @@ void MainScreen::update(const InputState& input)
     // UI-bridge requests; normal input is ignored (same policy as TransferJob).
     if (auto script = ScriptRunner::get().takeResult()) {
         aptSetHomeAllowed(true);
-        if (script->exitValue == 0) {
+        if (script->cancelled) {
+            // User-requested abort: neutral info, not an error.
+            currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("scripts.aborted", {script->scriptName}));
+        }
+        else if (script->exitValue == 0) {
             currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("scripts.success", {script->scriptName}));
         }
         else {
@@ -544,6 +555,9 @@ void MainScreen::update(const InputState& input)
         return;
     }
     if (ScriptRunner::get().active()) {
+        // The hold-B kill switch lives in main.cpp (it must keep counting
+        // while a script-raised overlay replaces this update); here we only
+        // pump the bridge.
         pumpScriptRequests();
         return;
     }
