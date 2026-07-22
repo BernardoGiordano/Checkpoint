@@ -110,6 +110,7 @@ CKPT_BINDING(ckpt_json_object_key);
 /* misc */
 CKPT_BINDING(ckpt_script_log);
 CKPT_BINDING(ckpt_selected_title);
+CKPT_BINDING(ckpt_app_root);
 
 /* not a binding: ScriptRunner calls this after every run (whatever the exit
  * path — normal return, script exit(), parse error longjmp) so a script that
