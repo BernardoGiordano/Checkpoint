@@ -90,7 +90,7 @@ void ChoiceOverlay::update(const InputState& input)
 
 YesNoOverlay::YesNoOverlay(
     Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo)
-    : ChoiceOverlay(screen, mtext, Button{" " + i18n::t("hint.confirm"), ModalChrome::BTN_RIGHT_X, COLOR_ACCENT, COLOR_WHITE, 0, callbackYes},
-          Button{" " + i18n::t("common.cancel"), ModalChrome::BTN_LEFT_X, COLOR_RAISED, COLOR_TEXT, KEY_B, callbackNo})
+    : ChoiceOverlay(screen, mtext, Button{" " + i18n::t("hint.confirm"), ModalChrome::BTN_LEFT_X, COLOR_ACCENT, COLOR_WHITE, 0, callbackYes},
+          Button{" " + i18n::t("common.cancel"), ModalChrome::BTN_RIGHT_X, COLOR_RAISED, COLOR_TEXT, KEY_B, callbackNo})
 {
 }

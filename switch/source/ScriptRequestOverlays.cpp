@@ -73,7 +73,7 @@ namespace {
                     Shapes::fillRound(textX, boxY, 22, 22, 4, COLOR_ACCENT);
                     u32 gw, gh;
                     Gfx::GetTextDimensions(14, "", &gw, &gh);
-                    Gfx::DrawText(14, textX + (22 - (int)gw) / 2, boxY + (22 - (int)gh) / 2, COLOR_WHITE, "");
+                    Gfx::DrawText(14, textX + (22 - (int)gw) / 2, boxY + (22 - (int)gh) / 2 + 2, COLOR_WHITE, "");
                 }
                 else {
                     Shapes::strokeRound(textX, boxY, 22, 22, 4, 2, COLOR_STROKE3);
