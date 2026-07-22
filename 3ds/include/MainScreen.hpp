@@ -99,9 +99,8 @@ protected:
 private:
     Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
     std::unique_ptr<Clickable> buttonBackupAL, buttonRestoreAL; // narrower Backup/Restore of the three-button action rows
-    std::unique_ptr<Clickable> buttonSend;                      // middle of the Backup/Send/Restore trio shown on a highlighted backup
-    std::unique_ptr<Clickable> buttonScripts;                   // middle of the default Backup/Scripts/Restore trio
-    std::unique_ptr<Clickable> buttonBackupAll;                 // full-width batch Backup shown in multi-select, replacing the two action buttons
+    std::unique_ptr<Clickable> buttonSend;      // middle of the Backup/Send/Restore trio (greyed unless a highlighted backup is sendable)
+    std::unique_ptr<Clickable> buttonBackupAll; // full-width batch Backup shown in multi-select, replacing the two action buttons
     std::unique_ptr<BackupList> directoryList;
     std::string ver;
 

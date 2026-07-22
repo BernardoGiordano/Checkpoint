@@ -26,6 +26,7 @@
 
 #include "MainScreen.hpp"
 #include "KeyboardManager.hpp"
+#include "MenuOverlay.hpp"
 #include "ScriptPickerOverlay.hpp"
 #include "ScriptRequestOverlays.hpp"
 #include "SettingsScreen.hpp"
@@ -116,13 +117,11 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     // Full-width batch-backup button shown only while multi-selecting.
     buttonBackupAll = std::make_unique<Clickable>(8, 182, 304, 30, COLOR_ACCENT, COLOR_WHITE, i18n::t("main.backup_selected"), true);
     buttonSend      = std::make_unique<Clickable>(112, 182, 96, 30, COLOR_RAISED, COLOR_TEXT, i18n::t("transfer.send"), true);
-    buttonScripts   = std::make_unique<Clickable>(112, 182, 96, 30, COLOR_RAISED, COLOR_TEXT, i18n::t("main.scripts"), true);
     directoryList   = std::make_unique<BackupList>(12, 70, 296, 106, 5);
     buttonBackupAll->canChangeColorWhenSelected(true);
     buttonBackupAL->canChangeColorWhenSelected(true);
     buttonRestoreAL->canChangeColorWhenSelected(true);
     buttonSend->canChangeColorWhenSelected(true);
-    buttonScripts->canChangeColorWhenSelected(true);
 
     ver = StringUtils::versionString();
 
@@ -286,7 +285,7 @@ void MainScreen::drawTop(void) const
         drawHints(400, 224, " Tag     hold all     Backup all     Clear");
     }
     else {
-        drawHints(400, 224, " Open     Tag     Extdata    SELECT Settings");
+        drawHints(400, 224, " Open     Tag     Extdata    SELECT Menu");
     }
 
     // Live transfer status (network sends draw their own modal on the bottom).
@@ -373,23 +372,20 @@ void MainScreen::drawBottom(void) const
             buttonBackupAll->text(i18n::t("main.backup_n_selected", {std::to_string(MS::selectedEntries().size())}) + " ");
             buttonBackupAll->draw(0.6f, COLOR_RING);
         }
-        // A highlighted existing backup (not an action row) gets a Backup / Send /
-        // Restore trio so Send is a one-touch, contextual action.
-        else if (transferEnabled && g_bottomScrollEnabled && directoryList->index() > 0 && !isReceiveRow(directoryList->index())) {
-            buttonBackupAL->text(i18n::t("main.backup_short"));
-            buttonSend->text(i18n::t("transfer.send"));
-            buttonRestoreAL->text(i18n::t("main.restore_short"));
-            buttonBackupAL->draw(0.6f, COLOR_RING);
-            buttonSend->draw(0.6f, COLOR_ACCENT);
-            buttonRestoreAL->draw(0.6f, COLOR_RING);
-        }
+        // Backup / Send / Restore. Send keeps its slot at all times (greyed until
+        // a highlighted existing backup can actually be sent) so it never swaps
+        // identity with another action; Scripts now lives in the SELECT menu.
         else {
+            const bool sendCtx = g_bottomScrollEnabled && directoryList->index() > 0 && !isReceiveRow(directoryList->index());
             buttonBackupAL->text(i18n::t("main.backup_short"));
-            buttonScripts->text(i18n::t("main.scripts"));
             buttonRestoreAL->text(i18n::t("main.restore_short"));
             buttonBackupAL->draw(0.6f, COLOR_RING);
-            buttonScripts->draw(0.6f, COLOR_ACCENT);
             buttonRestoreAL->draw(0.6f, COLOR_RING);
+            if (transferEnabled) {
+                buttonSend->text(i18n::t("transfer.send"));
+                buttonSend->setColors(COLOR_RAISED, sendCtx ? COLOR_TEXT : COLOR_MUTED);
+                buttonSend->draw(0.6f, sendCtx ? COLOR_ACCENT : COLOR_RING);
+            }
         }
     }
 
@@ -815,9 +811,15 @@ void MainScreen::handleEvents(const InputState& input)
     u32 kDown = hidKeysDown();
     u32 kHeld = hidKeysHeld();
 
-    // SELECT opens Settings, but not while the catalog is still loading titles.
+    // SELECT opens the tools menu (Scripts / Settings), but not while the catalog
+    // is still loading titles. The menu is the touch-free home for actions that
+    // used to fight the backup buttons for a slot.
     if ((kDown & KEY_SELECT) && !TitleCatalog::get().progress().active) {
-        g_pendingScreen = std::make_shared<SettingsScreen>(g_screen);
+        std::vector<MenuOverlay::Item> items = {
+            {i18n::t("main.scripts"), [this]() { startScriptPicker(); }},
+            {i18n::t("settings.title"), []() { g_pendingScreen = std::make_shared<SettingsScreen>(g_screen); }},
+        };
+        currentOverlay = std::make_shared<MenuOverlay>(*this, i18n::t("menu.title"), std::move(items));
         return;
     }
 
@@ -947,14 +949,6 @@ void MainScreen::handleEvents(const InputState& input)
         return;
     }
 
-    // The default action row shows the Scripts middle button (everywhere except
-    // multi-select and the send context).
-    const bool scriptsShown = !MS::multipleSelectionEnabled() && !sendContext;
-    if (scriptsShown && buttonScripts->released()) {
-        startScriptPicker();
-        return;
-    }
-
     if (MS::multipleSelectionEnabled()) {
         // One large Backup button (touch or A) backs up the whole tagged batch;
         // it replaces the per-title Backup/Restore pair while multi-selecting.
@@ -999,12 +993,10 @@ void MainScreen::updateButtons(void)
     if (MS::multipleSelectionEnabled()) {
         buttonBackupAL->setColors(COLOR_ACCENT, COLOR_WHITE);
         buttonRestoreAL->setColors(COLOR_RAISED, COLOR_MUTED);
-        buttonScripts->setColors(COLOR_RAISED, COLOR_MUTED);
     }
     else {
         buttonBackupAL->setColors(COLOR_ACCENT, COLOR_WHITE);
         buttonRestoreAL->setColors(COLOR_RAISED, COLOR_TEXT);
-        buttonScripts->setColors(COLOR_RAISED, COLOR_TEXT);
     }
 }
 

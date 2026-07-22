@@ -649,6 +649,16 @@
     "nl": "Instellingen",
     "ja": "設定"
   },
+  "hint.menu": {
+    "en": "Menu",
+    "it": "Menu",
+    "es": "Menú",
+    "fr": "Menu",
+    "de": "Menü",
+    "pt": "Menu",
+    "nl": "Menu",
+    "ja": "メニュー"
+  },
   "common.unavailable": {
     "en": "Unavailable",
     "it": "Non disponibile",
@@ -1398,6 +1408,16 @@
     "pt": "Scripts",
     "nl": "Scripts",
     "ja": "スクリプト"
+  },
+  "menu.title": {
+    "en": "Menu",
+    "it": "Menu",
+    "es": "Menú",
+    "fr": "Menu",
+    "de": "Menü",
+    "pt": "Menu",
+    "nl": "Menu",
+    "ja": "メニュー"
   },
   "scripts.pick_prompt": {
     "en": "Run a script",

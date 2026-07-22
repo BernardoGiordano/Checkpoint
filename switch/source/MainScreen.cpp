@@ -26,6 +26,7 @@
 
 #include "MainScreen.hpp"
 #include "KeyboardManager.hpp"
+#include "MenuOverlay.hpp"
 #include "ReceiveOverlay.hpp"
 #include "ScriptPickerOverlay.hpp"
 #include "ScriptRequestOverlays.hpp"
@@ -513,12 +514,12 @@ void MainScreen::draw() const
             drawActionButton(COL_X, BTN_BACKUP_Y, lbl, "L", true);
         }
         else {
-            // The slot above Backup/Restore is contextual (3DS parity): Send when
-            // wireless transfer is on and a highlighted existing backup can be
-            // sent, Scripts otherwise. Both live on ZR.
+            // The slot above Backup/Restore is always Send on ZR (greyed until a
+            // highlighted existing backup can actually be sent) so it never swaps
+            // identity; Scripts now lives in the Minus menu.
             const bool sendCtx = Configuration::getInstance().isTransferEnabled() && backupScrollEnabled && backupList->index() != 0 &&
                                  !backupList->isReceiveRow(backupList->index());
-            drawActionButton(COL_X, BTN_TRANSFER_Y, i18n::t(sendCtx ? "transfer.send" : "main.scripts"), "ZR", true);
+            drawActionButton(COL_X, BTN_TRANSFER_Y, i18n::t("transfer.send"), "ZR", true, BTN_W, sendCtx);
             drawActionButton(COL_X, BTN_BACKUP_Y, i18n::t("main.backup"), "L", true);
             drawActionButton(COL_X, BTN_RESTORE_Y, i18n::t("main.restore"), "R", false);
         }
@@ -531,13 +532,13 @@ void MainScreen::draw() const
     }
 
     // ---- Hint bar ----
-    // Minus opens Settings (see the class note); no help overlay in this build.
+    // Minus opens the tools menu (see the class note); no help overlay in this build.
     UiKit::drawHintBar({
         {"A", i18n::t("hint.select")},
         {"B", i18n::t("hint.back")},
         {"X", i18n::t("hint.sort")},
         {"Y", i18n::t("hint.multiselect")},
-        {"-", i18n::t("hint.settings")},
+        {"-", i18n::t("hint.menu")},
     });
 
     // ---- Script status ----
@@ -1010,9 +1011,20 @@ void MainScreen::handleEvents(const InputState& input)
         }
     }
 
-    // Minus (or the rail gear) opens Settings. Guarded so you can't navigate
-    // away mid-copy; the swap itself is deferred to main() via g_pendingScreen.
-    if (((kdown & HidNpadButton_Minus) || settingsButton->released()) && !TransferJob::get().active()) {
+    // Minus opens the tools menu (Scripts / Settings). Guarded so you can't
+    // navigate away mid-copy.
+    if ((kdown & HidNpadButton_Minus) && !TransferJob::get().active()) {
+        std::vector<MenuOverlay::Item> items = {
+            {i18n::t("main.scripts"), [this]() { startScriptPicker(); }},
+            {i18n::t("settings.title"), []() { g_pendingScreen = std::make_shared<SettingsScreen>(g_screen); }},
+        };
+        currentOverlay = std::make_shared<MenuOverlay>(*this, i18n::t("menu.title"), std::move(items));
+        return;
+    }
+
+    // The rail gear is an unambiguous Settings icon, so it still jumps straight
+    // there; the swap itself is deferred to main() via g_pendingScreen.
+    if (settingsButton->released() && !TransferJob::get().active()) {
         g_pendingScreen = std::make_shared<SettingsScreen>(g_screen);
         return;
     }
@@ -1220,13 +1232,9 @@ void MainScreen::handleEvents(const InputState& input)
     // Receive is a row inside the backup list (handled by the A/touch path
     // above).
     if (!MS::multipleSelectionEnabled() && (buttonSend->released() || (kdown & HidNpadButton_ZR))) {
-        const size_t row = this->index(CELLS);
-        if (Configuration::getInstance().isTransferEnabled() && backupScrollEnabled && row != 0 && !backupList->isReceiveRow(row)) {
-            startTransferSend();
-        }
-        else {
-            startScriptPicker();
-        }
+        // startTransferSend self-guards: it no-ops unless a highlighted existing
+        // backup is sendable, matching the greyed-out ZR button.
+        startTransferSend();
         return;
     }
 }

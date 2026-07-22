@@ -1429,6 +1429,16 @@
     "nl": "Scripts",
     "ja": "スクリプト"
   },
+  "menu.title": {
+    "en": "Menu",
+    "it": "Menu",
+    "es": "Menú",
+    "fr": "Menu",
+    "de": "Menü",
+    "pt": "Menu",
+    "nl": "Menu",
+    "ja": "メニュー"
+  },
   "scripts.pick_prompt": {
     "en": "Run a script",
     "it": "Esegui uno script",
