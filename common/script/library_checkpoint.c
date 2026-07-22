@@ -88,11 +88,24 @@ struct LibraryFunction CheckpointFunctions[] =
     // valid char** for both; the script frees them. Returns the HTTP status, or
     // negative like web_get (-1 = curl unavailable, -(CURLcode+100) = transfer).
     { ckpt_web_request,        "int web_request(char* method, char* url, char* headers, char* body, int bodySize, char** out, int* outSize, char** respHeaders);" },
+    // Like web_request but the request body is a file's bytes streamed straight
+    // from SD (never through the interpreter heap), for a multi-MB upload such as
+    // the Google Drive resumable PUT. method/headers/out/outSize/respHeaders/return
+    // match web_request; filePath is the local file to send. While it runs it
+    // appends " <pct>%" to the current gui_status line, and hold-B aborts it.
+    { ckpt_web_upload_file,    "int web_upload_file(char* method, char* url, char* headers, char* filePath, char** out, int* outSize, char** respHeaders);" },
     // Percent-encode a string for form bodies / query params (malloc'd).
     { ckpt_url_encode,         "char* url_encode(char* s);" },
     // Value of one header key in a raw response header block ("" if absent),
     // e.g. the resumable-upload Location. Case-sensitive key match.
     { ckpt_http_header_value,  "char* http_header_value(char* headers, char* key);" },
+    // Store-only zip of a directory tree into one file on SD (0 ok, <0 error:
+    // -2 = cancelled via hold-B). unzip is the inverse. Both reuse the same
+    // TransferProto zip framing (CRC + path-safety) the wireless transfer uses,
+    // over stdio so one copy serves both consoles; the bytes never enter the
+    // interpreter heap. zipName entries carry '/'-separated relative paths.
+    { ckpt_zip_dir,            "int zip_dir(char* srcDir, char* outZipPath);" },
+    { ckpt_unzip,              "int unzip(char* zipPath, char* outDir);" },
     // sd card (plus full picoc stdio: fopen("/3ds/...", ...) works)
     { ckpt_read_directory,     "struct directory* read_directory(char* dir);" },
     { ckpt_delete_directory,   "void delete_directory(struct directory* dir);" },
