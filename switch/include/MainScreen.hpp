@@ -116,6 +116,9 @@ private:
     // Clickables purely for their stateful touch-release hit-testing; the rail
     // look is drawn by hand, not through Clickable::draw.
     std::array<std::unique_ptr<Clickable>, 4> filterButtons;
+    // Rail scripts button, touch shortcut to the script picker; stacked directly
+    // above the gear.
+    std::unique_ptr<Clickable> scriptButton;
     // Rail gear button, touch shortcut to Settings; also opened by Minus.
     std::unique_ptr<Clickable> settingsButton;
     // Account avatar, touch shortcut to the account picker. Release-triggered so

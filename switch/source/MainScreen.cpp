@@ -62,6 +62,7 @@ namespace {
     constexpr int RAIL_ITEM_Y0    = 72;
     constexpr int RAIL_ITEM_PITCH = 66;
     constexpr int SETTINGS_BTN_Y  = 544;
+    constexpr int SCRIPT_BTN_Y    = SETTINGS_BTN_Y - RAIL_ITEM_PITCH;
     constexpr int AVATAR_SIZE     = 44;
     constexpr int AVATAR_X        = 18;
     constexpr int AVATAR_Y        = 610;
@@ -240,6 +241,7 @@ MainScreen::MainScreen(const InputState&)
         int y            = RAIL_ITEM_Y0 + RAIL_ITEM_PITCH * k;
         filterButtons[k] = std::make_unique<Clickable>(RAIL_ITEM_X, y, RAIL_ITEM, RAIL_ITEM, COLOR_FILL1, COLOR_TEXT2, "", true);
     }
+    scriptButton   = std::make_unique<Clickable>(RAIL_ITEM_X, SCRIPT_BTN_Y, RAIL_ITEM, RAIL_ITEM, COLOR_FILL1, COLOR_TEXT2, "", true);
     settingsButton = std::make_unique<Clickable>(RAIL_ITEM_X, SETTINGS_BTN_Y, RAIL_ITEM, RAIL_ITEM, COLOR_FILL1, COLOR_TEXT2, "", true);
     avatarButton   = std::make_unique<Clickable>(AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE, COLOR_TILE, COLOR_TEXT2, "", true);
 }
@@ -384,11 +386,19 @@ void MainScreen::draw() const
     for (int k = 0; k < 4; k++) {
         drawRailItem(RAIL_ITEM_Y0 + RAIL_ITEM_PITCH * k, SaveKind::all()[k], mSaveTypeFilter == static_cast<saveTypeFilter_t>(k));
     }
-    // Sidebar cursor spans the 4 save-kind buttons plus the settings gear
-    // (index 4), so it can be reached by pressing Down past SYSTEM.
+    // Sidebar cursor spans the 4 save-kind buttons plus the scripts glyph
+    // (index 4) and settings gear (index 5), so both can be reached by pressing
+    // Down past SYSTEM.
     if (sidebarFocused) {
-        const int selY = sidebarCursor < 4 ? RAIL_ITEM_Y0 + RAIL_ITEM_PITCH * sidebarCursor : SETTINGS_BTN_Y;
+        const int selY = sidebarCursor < 4 ? RAIL_ITEM_Y0 + RAIL_ITEM_PITCH * sidebarCursor : (sidebarCursor == 4 ? SCRIPT_BTN_Y : SETTINGS_BTN_Y);
         Shapes::focusRing(RAIL_ITEM_X, selY, RAIL_ITEM, RAIL_ITEM, 14, COLOR_ACCENT);
+    }
+
+    Shapes::fillRound(RAIL_ITEM_X, SCRIPT_BTN_Y, RAIL_ITEM, RAIL_ITEM, 0, COLOR_FILL1);
+    {
+        u32 sw, sh;
+        Gfx::GetTextDimensions(22, "", &sw, &sh);
+        Gfx::DrawText(22, RAIL_ITEM_X + (RAIL_ITEM - (int)sw) / 2, SCRIPT_BTN_Y + (RAIL_ITEM - (int)sh) / 2 + 3, COLOR_TEXT2, "");
     }
 
     Shapes::fillRound(RAIL_ITEM_X, SETTINGS_BTN_Y, RAIL_ITEM, RAIL_ITEM, 0, COLOR_FILL1);
@@ -1022,6 +1032,12 @@ void MainScreen::handleEvents(const InputState& input)
         return;
     }
 
+    // The rail scripts glyph opens the picker straight away, mirroring the gear.
+    if (scriptButton->released() && !TransferJob::get().active()) {
+        startScriptPicker();
+        return;
+    }
+
     // The rail gear is an unambiguous Settings icon, so it still jumps straight
     // there; the swap itself is deferred to main() via g_pendingScreen.
     if (settingsButton->released() && !TransferJob::get().active()) {
@@ -1030,18 +1046,24 @@ void MainScreen::handleEvents(const InputState& input)
     }
 
     // handle sidebar D-pad navigation. Cursor 0..3 = save-kind buttons, 4 =
-    // settings gear (so Down from SYSTEM reaches it, Up from USER wraps to it).
+    // scripts glyph, 5 = settings gear (so Down from SYSTEM reaches them, Up from
+    // USER wraps to the gear).
     if (sidebarFocused) {
         if (kdown & HidNpadButton_Up) {
-            sidebarCursor = sidebarCursor > 0 ? sidebarCursor - 1 : 4;
+            sidebarCursor = sidebarCursor > 0 ? sidebarCursor - 1 : 5;
         }
         else if (kdown & HidNpadButton_Down) {
-            sidebarCursor = sidebarCursor < 4 ? sidebarCursor + 1 : 0;
+            sidebarCursor = sidebarCursor < 5 ? sidebarCursor + 1 : 0;
         }
         if (kdown & HidNpadButton_A) {
-            if (sidebarCursor == 4) {
+            if (sidebarCursor == 5) {
                 if (!TransferJob::get().active()) {
                     g_pendingScreen = std::make_shared<SettingsScreen>(g_screen);
+                }
+            }
+            else if (sidebarCursor == 4) {
+                if (!TransferJob::get().active()) {
+                    startScriptPicker();
                 }
             }
             else {
