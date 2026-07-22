@@ -32,11 +32,10 @@
 #include "io.hpp"
 #include "main.hpp"
 #include "savedatasource.hpp"
-#include <algorithm>
-#include <cctype>
 #include "shapes.hpp"
 #include "titlecatalog.hpp"
 #include <algorithm>
+#include <cctype>
 #include <optional>
 
 namespace {
@@ -203,10 +202,10 @@ namespace {
     // spaces) must not be split — only a "YYYYMMDD-HHMMSS" prefix triggers it.
     void splitBackupName(const std::string& full, std::string& name, std::string& chip)
     {
-        size_t sp = full.find(' ');
+        size_t sp              = full.find(' ');
         const bool timestamped = sp == 15 && full[8] == '-' &&
-            std::all_of(full.begin(), full.begin() + 8, [](unsigned char c) { return std::isdigit(c); }) &&
-            std::all_of(full.begin() + 9, full.begin() + 15, [](unsigned char c) { return std::isdigit(c); });
+                                 std::all_of(full.begin(), full.begin() + 8, [](unsigned char c) { return std::isdigit(c); }) &&
+                                 std::all_of(full.begin() + 9, full.begin() + 15, [](unsigned char c) { return std::isdigit(c); });
         if (!timestamped) {
             name = full;
             chip.clear();

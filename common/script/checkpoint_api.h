@@ -70,6 +70,9 @@ CKPT_BINDING(ckpt_sav_close);
 /* network */
 CKPT_BINDING(ckpt_net_ip);
 CKPT_BINDING(ckpt_web_get);
+CKPT_BINDING(ckpt_web_request);
+CKPT_BINDING(ckpt_url_encode);
+CKPT_BINDING(ckpt_http_header_value);
 
 /* gui (block the script thread on the UI bridge) */
 CKPT_BINDING(ckpt_gui_message);

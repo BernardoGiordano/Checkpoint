@@ -74,7 +74,7 @@ Result servicesInit(void)
 
     s64 isEmulator = 0;
     svcGetSystemInfo(&isEmulator, 0x20000, 0);
-    
+
     if (!isEmulator) {
         Handle hbldrHandle;
         if (R_FAILED(res = svcConnectToPort(&hbldrHandle, "hb:ldr"))) {
