@@ -79,6 +79,20 @@ struct LibraryFunction CheckpointFunctions[] =
     // failure. net_ip returns "0.0.0.0" with no network.
     { ckpt_net_ip,             "char* net_ip(void);" },
     { ckpt_web_get,            "int web_get(char** out, int* outSize, char* url);" },
+    // General HTTP for scripts that need methods/headers/bodies web_get can't do
+    // (e.g. OAuth + Drive REST). method is "GET"/"POST"/"PUT"/"PATCH"/"DELETE";
+    // headers is "\n"-separated "Key: Value" lines ("" for none); body/bodySize
+    // is the request body ("" / 0 for none, small form/JSON payloads only). out
+    // is the malloc'd NUL-terminated response body (NULL/0 on failure) and
+    // respHeaders the malloc'd raw response header block ("" if none) — pass a
+    // valid char** for both; the script frees them. Returns the HTTP status, or
+    // negative like web_get (-1 = curl unavailable, -(CURLcode+100) = transfer).
+    { ckpt_web_request,        "int web_request(char* method, char* url, char* headers, char* body, int bodySize, char** out, int* outSize, char** respHeaders);" },
+    // Percent-encode a string for form bodies / query params (malloc'd).
+    { ckpt_url_encode,         "char* url_encode(char* s);" },
+    // Value of one header key in a raw response header block ("" if absent),
+    // e.g. the resumable-upload Location. Case-sensitive key match.
+    { ckpt_http_header_value,  "char* http_header_value(char* headers, char* key);" },
     // sd card (plus full picoc stdio: fopen("/3ds/...", ...) works)
     { ckpt_read_directory,     "struct directory* read_directory(char* dir);" },
     { ckpt_delete_directory,   "void delete_directory(struct directory* dir);" },

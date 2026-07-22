@@ -577,6 +577,125 @@ void ckpt_web_get(struct ParseState* Parser, struct Value* ReturnValue, struct V
     ReturnValue->Val->Integer = (int)status;
 }
 
+void ckpt_web_request(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    const char* method  = (char*)Param[0]->Val->Pointer;
+    const char* url     = (char*)Param[1]->Val->Pointer;
+    const char* headers = (char*)Param[2]->Val->Pointer;
+    const char* body    = (char*)Param[3]->Val->Pointer;
+    const int bodySize  = Param[4]->Val->Integer;
+    char** out          = (char**)Param[5]->Val->Pointer;
+    int* outSize        = (int*)Param[6]->Val->Pointer;
+    char** respHeaders  = (char**)Param[7]->Val->Pointer;
+    *out                = nullptr;
+    *outSize            = 0;
+    if (respHeaders) {
+        *respHeaders = nullptr;
+    }
+
+    static bool curlReady = false;
+    if (!curlReady) {
+        curlReady = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
+    }
+    CURL* curl = curlReady ? curl_easy_init() : nullptr;
+    if (!curl) {
+        ReturnValue->Val->Integer = -1;
+        return;
+    }
+
+    // "\n"-separated "Key: Value" lines into a curl slist. Empty lines (and a
+    // trailing newline) are skipped, so "" means "no request headers".
+    struct curl_slist* hl = nullptr;
+    if (headers && headers[0]) {
+        std::string all(headers);
+        size_t start = 0;
+        while (start < all.size()) {
+            const size_t nl    = all.find('\n', start);
+            std::string line   = all.substr(start, nl == std::string::npos ? std::string::npos : nl - start);
+            if (!line.empty()) {
+                hl = curl_slist_append(hl, line.c_str());
+            }
+            if (nl == std::string::npos) {
+                break;
+            }
+            start = nl + 1;
+        }
+    }
+
+    std::string data, rhdr;
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method); // GET/POST/PUT/PATCH/DELETE
+    if (hl) {
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hl);
+    }
+    if (bodySize > 0 && body) {
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)bodySize);
+    }
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteToString);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, curlWriteToString);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &rhdr);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, curlAbortOnScriptCancel);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Checkpoint-curl");
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 300L);
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 10L);
+
+    const CURLcode code = curl_easy_perform(curl);
+    long status         = 0;
+    if (code == CURLE_OK) {
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+    }
+    if (hl) {
+        curl_slist_free_all(hl);
+    }
+    curl_easy_cleanup(curl);
+
+    if (code != CURLE_OK) {
+        Logging::warning("[script] web_request {} '{}' failed: {}", method, url, curl_easy_strerror(code));
+        ReturnValue->Val->Integer = -((int)code + 100);
+        return;
+    }
+
+    char* buf = (char*)malloc(data.size() + 1);
+    if (!buf) {
+        ReturnValue->Val->Integer = -1;
+        return;
+    }
+    memcpy(buf, data.data(), data.size());
+    buf[data.size()] = '\0';
+    *out             = buf;
+    *outSize         = (int)data.size();
+    if (respHeaders) {
+        *respHeaders = (char*)strToRet(rhdr);
+    }
+    ReturnValue->Val->Integer = (int)status;
+}
+
+void ckpt_url_encode(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    const char* s = (char*)Param[0]->Val->Pointer;
+
+    static bool curlReady = false;
+    if (!curlReady) {
+        curlReady = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
+    }
+    CURL* curl = curlReady ? curl_easy_init() : nullptr;
+    if (!curl) {
+        ReturnValue->Val->Pointer = strToRet("");
+        return;
+    }
+    char* enc                 = curl_easy_escape(curl, s ? s : "", 0);
+    ReturnValue->Val->Pointer = strToRet(enc ? enc : "");
+    if (enc) {
+        curl_free(enc);
+    }
+    curl_easy_cleanup(curl);
+}
+
 /* ---- gui -------------------------------------------------------------- */
 
 void ckpt_gui_message(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
