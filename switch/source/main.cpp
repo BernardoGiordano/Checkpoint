@@ -135,26 +135,40 @@ int main(void)
         Gfx::Render();
     }
 
+    // Teardown is breadcrumbed step-by-step: a crash or hang while closing the
+    // app leaves the log pointing at the exact step that didn't return, so we
+    // can tell a stuck worker-join from a gfx/service teardown fault instead of
+    // guessing (see tools/nx-crash-bt.py for pairing this with the creport).
+    Logging::trace("[shutdown] main loop exited (transfer active: {}, script active: {})", TransferJob::get().active(), ScriptRunner::get().active());
+
     // If the system forced the loop to end while a copy was live, let it finish
     // and join the worker before tearing anything down.
+    Logging::trace("[shutdown] joining transfer worker...");
     TransferJob::get().join();
     // Stop the backup-size worker and join it before tearing down the fs services
     // it walks (aborts any long scan in progress).
+    Logging::trace("[shutdown] stopping backup-size worker...");
     BackupSizeCache::get().shutdown();
 
     // A forced applet exit can end the loop mid-script. Ask a running script to
     // abort (this unparks any UI-bridge wait so the worker can reach its exit
     // path) and reap the worker before servicesExit tears down the fs services
-    // it may still be touching.
+    // it may still be touching. A worker parked in a native FS binding won't see
+    // the abort until it returns, so this join is the prime suspect for a
+    // close-time hang — the breadcrumb pair around it will show if it stalls.
     if (ScriptRunner::get().active()) {
+        Logging::trace("[shutdown] script still running, requesting cancel...");
         ScriptRunner::get().requestCancel();
     }
+    Logging::trace("[shutdown] joining script worker...");
     Threads::join();
 
+    Logging::trace("[shutdown] joining network thread...");
     g_shouldExitNetworkLoop = true;
     threadWaitForExit(&networkThread);
     threadClose(&networkThread);
 
+    Logging::trace("[shutdown] releasing screen and services...");
     g_screen.reset();
     servicesExit();
     exit(0);

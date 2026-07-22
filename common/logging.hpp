@@ -38,6 +38,15 @@ namespace Logging {
     void initFileLogging(void);
     void exit(void);
 
+    // Installs a std::terminate handler that, before the process dies, forces
+    // the in-flight exception's what() to disk and flushes the log. Any uncaught
+    // throw anywhere (a main-thread overlay, a libnx callback — not only the
+    // script worker's try/catch) then leaves a breadcrumb instead of an
+    // information-free abort. Chains to the previous handler / std::abort so
+    // Atmosphere still writes its crash report (which carries the faulting PC).
+    // Call once, as early as file logging is up.
+    void installCrashHandlers(void);
+
     void log(LogLevel level, const std::string& message);
 
     // A copy of the accumulated in-memory log (every formatted line since

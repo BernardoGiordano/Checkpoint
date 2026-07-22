@@ -34,8 +34,11 @@
 #include <switch.h>
 #endif
 
+#include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <iomanip>
 #include <mutex>
 #include <sstream>
@@ -217,5 +220,53 @@ void Logging::exit()
     flushLogBuffer();
     if (logFile != nullptr) {
         fclose(logFile);
+        logFile = nullptr;
     }
+}
+
+namespace {
+    std::terminate_handler prevTerminate = nullptr;
+
+    [[noreturn]] void terminateHandler()
+    {
+        // Guard against re-entry: if formatting/logging below throws (e.g. the
+        // terminate was an OOM and std::format allocates again), don't recurse
+        // into ourselves — bail straight to abort so Atmosphere still reports.
+        static std::atomic<bool> handling{false};
+        if (handling.exchange(true)) {
+            std::abort();
+        }
+
+        std::string what = "no active C++ exception (abort / noexcept / memory fault)";
+        if (std::exception_ptr ex = std::current_exception()) {
+            try {
+                std::rethrow_exception(ex);
+            }
+            catch (const std::exception& e) {
+                what = std::string("std::exception: ") + e.what();
+            }
+            catch (...) {
+                what = "non-standard exception";
+            }
+        }
+
+        try {
+            Logging::error("[FATAL] std::terminate: {}", what);
+            Logging::exit(); // flush + close so the breadcrumb survives the crash
+        }
+        catch (...) {
+        }
+
+        // Hand back to the default handler so Atmosphere's creport still fires
+        // with the faulting PC (feed that to tools/nx-crash-bt.py).
+        if (prevTerminate) {
+            prevTerminate();
+        }
+        std::abort();
+    }
+}
+
+void Logging::installCrashHandlers()
+{
+    prevTerminate = std::set_terminate(terminateHandler);
 }

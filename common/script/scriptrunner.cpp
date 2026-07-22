@@ -25,6 +25,7 @@
  */
 
 #include "scriptrunner.hpp"
+#include "logging.hpp"
 #include "scriptengine.hpp"
 #include "thread.hpp"
 
@@ -44,9 +45,15 @@ bool ScriptRunner::start(std::string scriptPath, std::string displayName, std::s
     mBridge.reset();
     ckpt_script_abort_reset();
 
+    // Breadcrumb the start on the main thread: if the worker faults mid-run the
+    // "exited with" line from ScriptEngine::run never appears, so this line being
+    // the last script trace pins the crash to this script's execution.
+    Logging::info("[script] starting '{}' ({}), title {}", mName, mPath, mTitleIdHex.empty() ? "<none>" : mTitleIdHex);
+
     mState.store(State::Running);
     if (!Threads::create(std::optional<size_t>(THREAD_STACK), ScriptRunner::runThread)) {
         mState.store(State::Idle);
+        Logging::error("[script] worker thread creation failed for '{}'", mName);
         return false;
     }
     return true;

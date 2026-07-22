@@ -80,6 +80,9 @@ Result servicesInit(void)
     // file so /logs/file and on-disk logging work too.
     Logging::init();
     Logging::initFileLogging();
+    // Now that the log file is open, catch any uncaught throw with a disk
+    // breadcrumb before the process dies.
+    Logging::installCrashHandlers();
 
     Logging::info("Starting Checkpoint loading...");
 
