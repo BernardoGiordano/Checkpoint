@@ -95,6 +95,11 @@ CFLAGS	+=	$(INCLUDE) -DARM11 -D__3DS__ -D_GNU_SOURCE=1
 # CFILES below): it makes ParseStatement call DebugCheckStatement, which
 # ../common/script/scriptabort.c implements as the script-abort kill switch.
 CFLAGS	+=	-DUNIX_HOST -DDEBUGGER
+# picoc's C frames carry no unwind info by default, so a C++ exception thrown in
+# a script binding (e.g. std::bad_alloc parsing a large web response) cannot
+# unwind back through them and std::terminate()s the process. Emit unwind tables
+# so such a throw reaches the catch in ScriptEngine::run instead of aborting.
+CFLAGS	+=	-funwind-tables
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -std=gnu++23
 

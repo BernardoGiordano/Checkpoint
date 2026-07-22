@@ -27,6 +27,7 @@
 #include "scriptengine.hpp"
 #include "logging.hpp"
 #include <algorithm>
+#include <exception>
 #include <unistd.h>
 
 extern "C" {
@@ -61,15 +62,31 @@ ScriptEngine::Outcome ScriptEngine::run(const std::string& path, const std::vect
     // Anything that fails inside picoc — a parse error, a script exit() — longjmps
     // back to here with PicocExitValue set, so no C++ frame holding a resource may
     // live between this setjmp and PicocCleanup.
-    if (!PicocPlatformSetExitPoint(&pc)) {
-        std::vector<char*> argv;
-        argv.reserve(args.size());
-        for (const auto& arg : args) {
-            argv.push_back(const_cast<char*>(arg.c_str()));
-        }
+    //
+    // A binding can also throw (std::bad_alloc while a script builds a big string
+    // or parses a large web response is the realistic one). picoc's C frames are
+    // compiled with -funwind-tables so the throw can unwind back to here rather
+    // than std::terminate()ing the app; catch it and report a failed run. The
+    // catch sits outside the setjmp region so a normal longjmp bypasses it.
+    try {
+        if (!PicocPlatformSetExitPoint(&pc)) {
+            std::vector<char*> argv;
+            argv.reserve(args.size());
+            for (const auto& arg : args) {
+                argv.push_back(const_cast<char*>(arg.c_str()));
+            }
 
-        PicocPlatformScanFile(&pc, path.c_str());
-        PicocCallMain(&pc, (int)argv.size(), argv.data());
+            PicocPlatformScanFile(&pc, path.c_str());
+            PicocCallMain(&pc, (int)argv.size(), argv.data());
+        }
+    }
+    catch (const std::exception& e) {
+        Logging::error("[script] uncaught exception: {}", e.what());
+        pc.PicocExitValue = -1;
+    }
+    catch (...) {
+        Logging::error("[script] uncaught non-standard exception");
+        pc.PicocExitValue = -1;
     }
 
     Outcome outcome;
