@@ -39,16 +39,21 @@ namespace {
     }
 }
 
-bool Threads::create(std::optional<size_t> stackSize, void (*entrypoint)(void))
+void Threads::join(void)
 {
-    // Reap the previous worker before reusing the slot. The sole caller
-    // (ScriptRunner) only creates a new thread once the previous run's result
-    // was collected, so this wait is at most the tail of a returning thread.
     if (gThreadLive) {
         threadWaitForExit(&gThread);
         threadClose(&gThread);
         gThreadLive = false;
     }
+}
+
+bool Threads::create(std::optional<size_t> stackSize, void (*entrypoint)(void))
+{
+    // Reap the previous worker before reusing the slot. The sole caller
+    // (ScriptRunner) only creates a new thread once the previous run's result
+    // was collected, so this wait is at most the tail of a returning thread.
+    join();
 
     // Stack size must be page-aligned or threadCreate fails with
     // LibnxError_BadInput (see the network thread in main.cpp).

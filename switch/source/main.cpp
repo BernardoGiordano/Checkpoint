@@ -30,6 +30,7 @@
 #include "colors.hpp"
 #include "logging.hpp"
 #include "scriptrunner.hpp"
+#include "thread.hpp"
 #include "titlecatalog.hpp"
 #include "transfer.hpp"
 #include "transferjob.hpp"
@@ -140,6 +141,15 @@ int main(void)
     // Stop the backup-size worker and join it before tearing down the fs services
     // it walks (aborts any long scan in progress).
     BackupSizeCache::get().shutdown();
+
+    // A forced applet exit can end the loop mid-script. Ask a running script to
+    // abort (this unparks any UI-bridge wait so the worker can reach its exit
+    // path) and reap the worker before servicesExit tears down the fs services
+    // it may still be touching.
+    if (ScriptRunner::get().active()) {
+        ScriptRunner::get().requestCancel();
+    }
+    Threads::join();
 
     g_shouldExitNetworkLoop = true;
     threadWaitForExit(&networkThread);

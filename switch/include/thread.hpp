@@ -37,6 +37,14 @@
 // already finished).
 namespace Threads {
     bool create(std::optional<size_t> stackSize, void (*entrypoint)(void));
+
+    // Reap the worker if one is still live (wait for it to exit, close the
+    // handle, free its stack). A no-op when none was ever created. create()
+    // calls it before reusing the slot; the shutdown path calls it before
+    // servicesExit so a still-running script's thread can't be left touching
+    // the fs services being torn down. The caller must first ask any running
+    // script to stop, or this blocks until it finishes on its own.
+    void join(void);
 }
 
 #endif
