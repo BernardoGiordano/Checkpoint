@@ -515,6 +515,52 @@ namespace {
     {
         return ckpt_script_abort_requested();
     }
+
+    // "\n"-separated "Key: Value" lines into a curl slist ("" => none). Empty
+    // lines and a trailing newline are skipped.
+    struct curl_slist* headerSlist(const char* headers)
+    {
+        struct curl_slist* hl = nullptr;
+        if (headers && headers[0]) {
+            std::string all(headers);
+            size_t start = 0;
+            while (start < all.size()) {
+                const size_t nl  = all.find('\n', start);
+                std::string line = all.substr(start, nl == std::string::npos ? std::string::npos : nl - start);
+                if (!line.empty()) {
+                    hl = curl_slist_append(hl, line.c_str());
+                }
+                if (nl == std::string::npos) {
+                    break;
+                }
+                start = nl + 1;
+            }
+        }
+        return hl;
+    }
+
+    // web_upload_file progress: appends " <pct>%" to the gui_status line the
+    // script set before the upload (throttled to whole-percent changes), and
+    // aborts when the script is being cancelled.
+    struct UploadProgress {
+        std::string base;
+        int lastPct = -1;
+    };
+    int curlUploadProgress(void* p, curl_off_t, curl_off_t, curl_off_t ultotal, curl_off_t ulnow)
+    {
+        if (ckpt_script_abort_requested()) {
+            return 1;
+        }
+        UploadProgress* up = (UploadProgress*)p;
+        if (up && ultotal > 0) {
+            const int pct = (int)((ulnow * 100) / ultotal);
+            if (pct != up->lastPct) {
+                up->lastPct = pct;
+                bridge().setStatus(up->base + " " + std::to_string(pct) + "%");
+            }
+        }
+        return 0;
+    }
 }
 
 void ckpt_net_ip(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
@@ -662,6 +708,104 @@ void ckpt_web_request(struct ParseState* Parser, struct Value* ReturnValue, stru
 
     if (code != CURLE_OK) {
         Logging::warning("[script] web_request {} '{}' failed: {}", method, url, curl_easy_strerror(code));
+        ReturnValue->Val->Integer = -((int)code + 100);
+        return;
+    }
+
+    char* buf = (char*)malloc(data.size() + 1);
+    if (!buf) {
+        ReturnValue->Val->Integer = -1;
+        return;
+    }
+    memcpy(buf, data.data(), data.size());
+    buf[data.size()] = '\0';
+    *out             = buf;
+    *outSize         = (int)data.size();
+    if (respHeaders) {
+        *respHeaders = (char*)strToRet(rhdr);
+    }
+    ReturnValue->Val->Integer = (int)status;
+}
+
+void ckpt_web_upload_file(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    const char* method   = (char*)Param[0]->Val->Pointer;
+    const char* url      = (char*)Param[1]->Val->Pointer;
+    const char* headers  = (char*)Param[2]->Val->Pointer;
+    const char* filePath = (char*)Param[3]->Val->Pointer;
+    char** out           = (char**)Param[4]->Val->Pointer;
+    int* outSize         = (int*)Param[5]->Val->Pointer;
+    char** respHeaders   = (char**)Param[6]->Val->Pointer;
+    *out                 = nullptr;
+    *outSize             = 0;
+    if (respHeaders) {
+        *respHeaders = nullptr;
+    }
+
+    // The body is the file's bytes, streamed by curl's default fread reader — it
+    // never enters the interpreter heap, so a multi-MB save is fine.
+    FILE* f = fopen(filePath, "rb");
+    if (!f) {
+        Logging::warning("[script] web_upload_file can't open '{}'", filePath);
+        ReturnValue->Val->Integer = -1;
+        return;
+    }
+    fseek(f, 0, SEEK_END);
+    const long len = ftell(f);
+    rewind(f);
+    if (len < 0) {
+        fclose(f);
+        ReturnValue->Val->Integer = -1;
+        return;
+    }
+
+    static bool curlReady = false;
+    if (!curlReady) {
+        curlReady = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
+    }
+    CURL* curl = curlReady ? curl_easy_init() : nullptr;
+    if (!curl) {
+        fclose(f);
+        ReturnValue->Val->Integer = -1;
+        return;
+    }
+
+    struct curl_slist* hl = headerSlist(headers);
+    UploadProgress prog{bridge().statusText()};
+    std::string data, rhdr;
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);           // streamed request body
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method); // "PUT" for the resumable session
+    if (hl) {
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hl);
+    }
+    curl_easy_setopt(curl, CURLOPT_READDATA, f);
+    curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)len);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteToString);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, curlWriteToString);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &rhdr);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, curlUploadProgress);
+    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &prog);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Checkpoint-curl");
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 300L);
+    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 10L);
+
+    const CURLcode code = curl_easy_perform(curl);
+    long status         = 0;
+    if (code == CURLE_OK) {
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+    }
+    if (hl) {
+        curl_slist_free_all(hl);
+    }
+    curl_easy_cleanup(curl);
+    fclose(f);
+
+    if (code != CURLE_OK) {
+        Logging::warning("[script] web_upload_file {} '{}' failed: {}", method, url, curl_easy_strerror(code));
         ReturnValue->Val->Integer = -((int)code + 100);
         return;
     }

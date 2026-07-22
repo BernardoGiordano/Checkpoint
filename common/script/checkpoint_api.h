@@ -71,8 +71,13 @@ CKPT_BINDING(ckpt_sav_close);
 CKPT_BINDING(ckpt_net_ip);
 CKPT_BINDING(ckpt_web_get);
 CKPT_BINDING(ckpt_web_request);
+CKPT_BINDING(ckpt_web_upload_file);
 CKPT_BINDING(ckpt_url_encode);
 CKPT_BINDING(ckpt_http_header_value);
+
+/* zip (common, wraps TransferProto store-only zip over stdio) */
+CKPT_BINDING(ckpt_zip_dir);
+CKPT_BINDING(ckpt_unzip);
 
 /* gui (block the script thread on the UI bridge) */
 CKPT_BINDING(ckpt_gui_message);
