@@ -46,6 +46,7 @@
 #include "filesystem.hpp"
 #include "logging.hpp"
 #include "main.hpp"
+#include "paths.hpp"
 #include "scriptrunner.hpp"
 #include "title.hpp"
 #include "titlecatalog.hpp"
@@ -255,7 +256,14 @@ void ckpt_title_backup_path(struct ParseState* Parser, struct Value* ReturnValue
 
 void ckpt_read_directory(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const std::string dir = (char*)Param[0]->Val->Pointer;
+    std::string dir = (char*)Param[0]->Val->Pointer;
+    // Drop trailing slashes before joining so entries never contain "//": a dir
+    // from title_backup_path ends in '/', and "dir//name" opens here (this call)
+    // but the FS rejects the empty component when a later opendir/stat (e.g.
+    // zip_dir's collect) walks the returned path — the symptom was an empty zip.
+    while (dir.size() > 1 && dir.back() == '/') {
+        dir.pop_back();
+    }
     std::vector<std::string> names;
     if (DIR* d = opendir(dir.c_str())) {
         while (struct dirent* ent = readdir(d)) {
@@ -950,6 +958,11 @@ void ckpt_script_log(struct ParseState* Parser, struct Value* ReturnValue, struc
 void ckpt_selected_title(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
     ReturnValue->Val->Pointer = strToRet(ScriptRunner::get().selectedTitle());
+}
+
+void ckpt_app_root(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    ReturnValue->Val->Pointer = strToRet(Paths::checkpointRoot());
 }
 
 void ckpt_script_lower_priority(void)

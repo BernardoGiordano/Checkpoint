@@ -34,6 +34,12 @@
 // which predates this header). Mirrors the 3DS Paths namespace so common code
 // and docs can talk about one rule.
 namespace Paths {
+    // "sdmc:/switch/Checkpoint" — the app root under which every backup tree
+    // lives. The "sdmc:" prefix is kept (unlike the 3DS bare "/3ds/Checkpoint")
+    // because the script API hands this to fopen/stat/opendir directly and the
+    // prefixed form is the one proven to resolve on Switch's fsdev.
+    const char* checkpointRoot(void);
+
     // "sdmc:/switch/Checkpoint/scripts" — the drop-in point for PicoC scripts.
     // Its "universal" subfolder holds title-independent scripts; a subfolder
     // named after a 16-hex-uppercase title id holds that title's own.

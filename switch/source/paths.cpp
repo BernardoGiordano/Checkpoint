@@ -27,6 +27,11 @@
 #include "paths.hpp"
 #include "util.hpp"
 
+const char* Paths::checkpointRoot(void)
+{
+    return "sdmc:/switch/Checkpoint";
+}
+
 const char* Paths::scriptsRoot(void)
 {
     return "sdmc:/switch/Checkpoint/scripts";

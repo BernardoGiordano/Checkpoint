@@ -143,6 +143,11 @@ struct LibraryFunction CheckpointFunctions[] =
     // misc
     { ckpt_script_log,         "void script_log(char* msg);" },
     { ckpt_selected_title,     "char* selected_title(void);" },
+    // The app's SD root ("/3ds/Checkpoint" on 3DS, "sdmc:/switch/Checkpoint" on
+    // Switch — each in the form that platform's script-side fopen/stat wants), so
+    // one cross-platform script can build its config/temp paths without spelling a
+    // per-console prefix. malloc'd; the script frees it.
+    { ckpt_app_root,           "char* app_root(void);" },
     { NULL, NULL }
 };
 // clang-format on
