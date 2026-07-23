@@ -95,6 +95,8 @@ namespace {
             return "Nederlands";
         if (code == "ja")
             return "日本語";
+        if (code == "zh")
+            return "简体中文";
         return "English";
     }
 

@@ -38,7 +38,7 @@ namespace i18n {
     // parse failure leaves the table empty and every t() falls back to the key.
     bool init(const std::string& path);
 
-    // Only "en", "it", "es", "fr", "de", "pt", "nl" and "ja" are accepted; anything else falls back to "en".
+    // Only "en", "it", "es", "fr", "de", "pt", "nl", "ja" and "zh" are accepted; anything else falls back to "en".
     void setLanguage(const std::string& code);
     const std::string& language(void);
 
