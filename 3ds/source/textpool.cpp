@@ -25,12 +25,16 @@
  */
 
 #include "textpool.hpp"
+#include "logging.hpp"
 #include "util.hpp"
 #include <algorithm>
 #include <cmath>
 #include <vector>
 
 namespace {
+    // Built by the root Makefile from switch/romfs/fonts/SpaceMono-Regular.ttf.
+    constexpr const char* MONO_FONT_PATH = "romfs:/fonts/SpaceMono.bcfnt";
+
     // Glyph capacity of the persistent buffer. When a parse would not fit, the
     // whole cache is rebuilt (C2D_TextBuf cannot free individual entries).
     constexpr size_t GLYPH_CAPACITY = 8192;
@@ -70,25 +74,30 @@ TextPool::TextPool(void)
 TextPool::~TextPool(void)
 {
     C2D_TextBufDelete(mBuf);
+    if (mMono != nullptr) {
+        C2D_FontFree(mMono);
+    }
 }
 
 void TextPool::rebuild(void)
 {
     C2D_TextBufClear(mBuf); // invalidates every cached C2D_Text with it
     mCache.clear();
+    mMonoCache.clear();
 }
 
 void TextPool::frameTick(void)
 {
-    if (++mFrame % TICK_INTERVAL == 0 && mCache.size() > MAX_ENTRIES) {
+    if (++mFrame % TICK_INTERVAL == 0 && mCache.size() + mMonoCache.size() > MAX_ENTRIES) {
         rebuild();
     }
 }
 
-const C2D_Text* TextPool::obtain(const std::string& s)
+const C2D_Text* TextPool::obtain(const std::string& s, C2D_Font font)
 {
-    auto it = mCache.find(s);
-    if (it != mCache.end()) {
+    auto& cache = font != nullptr ? mMonoCache : mCache;
+    auto it     = cache.find(s);
+    if (it != cache.end()) {
         return &it->second;
     }
     // s.size() over-estimates the glyph count for multi-byte UTF-8, which only
@@ -97,14 +106,69 @@ const C2D_Text* TextPool::obtain(const std::string& s)
         rebuild();
     }
     C2D_Text t;
-    C2D_TextParse(&t, mBuf, s.c_str());
+    C2D_TextFontParse(&t, font, mBuf, s.c_str());
     C2D_TextOptimize(&t);
-    return &mCache.emplace(s, t).first->second;
+    return &cache.emplace(s, t).first->second;
+}
+
+bool TextPool::monoReady(void)
+{
+    if (!mMonoTried) {
+        mMonoTried = true;
+        mMono      = C2D_FontLoad(MONO_FONT_PATH);
+        if (mMono == nullptr) {
+            Logging::error("Failed to load {}; the script log pane falls back to the system font.", MONO_FONT_PATH);
+        }
+        else {
+            // Every glyph in a monospace face advances the same, so one measure
+            // is the whole metric: the log pane multiplies it by a column count
+            // instead of measuring each line.
+            const C2D_Text* probe = obtain("0", mMono);
+            C2D_TextGetDimensions(probe, 1.0f, 1.0f, &mMonoAdvance, &mMonoHeight);
+
+            // citro2d hands out sizes in system-font units: it stretches every
+            // face to the shared font's line height, so a 7pt atlas would be
+            // drawn at ~30px rows — same size as the system font, only blurry
+            // and four times as coarse. Recover the atlas's own line height and
+            // work in that instead, so scale 1.0 is one texel per pixel.
+            const FINF_s* finf = C2D_FontGetInfo(mMono);
+            if (finf != nullptr && finf->lineFeed > 0 && mMonoHeight > 0.0f) {
+                mMonoScale = (float)finf->lineFeed / mMonoHeight;
+                mMonoAdvance *= mMonoScale;
+                mMonoHeight = (float)finf->lineFeed;
+            }
+            // Unfiltered: at 1:1 the sampler should hit texel centres exactly,
+            // and nearest keeps the stems hard if a caller ever nudges the pen.
+            C2D_FontSetFilter(mMono, GPU_NEAREST, GPU_NEAREST);
+        }
+    }
+    return mMono != nullptr && mMonoAdvance > 0.0f;
+}
+
+float TextPool::monoAdvance(float scale)
+{
+    return monoReady() ? mMonoAdvance * scale : StringUtils::textWidth("0", scale);
+}
+
+float TextPool::monoLineHeight(float scale)
+{
+    return monoReady() ? mMonoHeight * scale : StringUtils::textHeight("0", scale);
+}
+
+void TextPool::drawMono(const std::string& s, float x, float y, float scale, u32 color, float depth)
+{
+    if (!monoReady()) {
+        draw(s, x, y, scale, color, depth);
+        return;
+    }
+    const C2D_Text* t      = obtain(s, mMono);
+    const float atlasScale = scale * mMonoScale;
+    C2D_DrawText(t, C2D_WithColor, floorf(x + 0.5f), floorf(y + 0.5f), depth, atlasScale, atlasScale, color);
 }
 
 float TextPool::draw(const std::string& s, float x, float y, float scale, u32 color, float depth)
 {
-    const C2D_Text* t = obtain(s);
+    const C2D_Text* t = obtain(s, nullptr);
     // Snap the pen to whole pixels: the system font is a bitmap atlas, so
     // fractional origins smear glyph edges across two texels and read as blurry.
     C2D_DrawText(t, C2D_WithColor, floorf(x + 0.5f), floorf(y + 0.5f), depth, scale, scale, color);
@@ -115,14 +179,14 @@ void TextPool::drawCentered(const std::string& s, float x, float w, float y, flo
 {
     // truncate() returns `s` unchanged when it already fits, so the common
     // case costs one cached width measure.
-    const C2D_Text* t = obtain(truncate(s, w, scale));
+    const C2D_Text* t = obtain(truncate(s, w, scale), nullptr);
     const float cx    = x + (w - StringUtils::textWidth(*t, scale)) / 2;
     C2D_DrawText(t, C2D_WithColor, floorf(cx + 0.5f), floorf(y + 0.5f), depth, scale, scale, color);
 }
 
 void TextPool::drawWrapped(const std::string& s, float x, float y, float scale, u32 color, float maxWidth, float depth, u32 alignFlags)
 {
-    const C2D_Text* t = obtain(s);
+    const C2D_Text* t = obtain(s, nullptr);
     C2D_DrawText(t, C2D_WithColor | C2D_WordWrap | alignFlags, x, y, depth, scale, scale, color, maxWidth);
 }
 

@@ -31,20 +31,16 @@
 #include "util.hpp"
 
 ChoiceOverlay::ChoiceOverlay(Screen& screen, const std::string& text, Button first, Button second, u32 dismissKeys)
-    : Overlay(screen),
-      mText(StringUtils::wrap(text, SIZE, ModalChrome::TEXT_MAX_W)),
-      mButtons{std::move(first), std::move(second)},
-      mHid(2, 2),
-      mDismissKeys(dismissKeys)
+    : Overlay(screen), mText(text), mButtons{std::move(first), std::move(second)}, mHid(2, 2), mDismissKeys(dismissKeys)
 {
-    // Center the wrapped prompt in the card band above the button row (same
-    // math as MessageOverlay), so long text wraps instead of being ellipsized.
-    mPosx = ceilf((320 - StringUtils::textWidth(mText, SIZE)) / 2);
-    mPosy = 54 + ceilf((88 - StringUtils::textHeight(mText, SIZE)) / 2);
+    // Size the card to the wrapped prompt (same math as MessageOverlay), so a
+    // long prompt grows the box instead of spilling out of it.
+    mLayout = ModalChrome::fitText(mText, SIZE, false);
+    mPosx   = ceilf((320 - StringUtils::textWidth(mText, SIZE)) / 2);
 
     for (size_t i = 0; i < 2; i++) {
         mClick[i] = std::make_unique<Clickable>(
-            mButtons[i].x, ModalChrome::BTN_Y, ModalChrome::BTN_HALF_W, ModalChrome::BTN_H, mButtons[i].bg, mButtons[i].fg, mButtons[i].label, true);
+            mButtons[i].x, mLayout.btnY, ModalChrome::BTN_HALF_W, ModalChrome::BTN_H, mButtons[i].bg, mButtons[i].fg, mButtons[i].label, true);
     }
 }
 
@@ -56,14 +52,14 @@ void ChoiceOverlay::drawTop(void) const
 void ChoiceOverlay::drawBottom(void) const
 {
     ModalChrome::dimBottom();
-    ModalChrome::drawCard(COLOR_LINE);
-    TextPool::get().draw(mText, mPosx, mPosy, SIZE, COLOR_TEXT);
+    ModalChrome::drawCard(mLayout, COLOR_LINE);
+    TextPool::get().draw(mText, mPosx, mLayout.textY, SIZE, COLOR_TEXT);
 
     mClick[0]->draw(SIZE, COLOR_RING);
     mClick[1]->draw(SIZE, COLOR_RING);
 
     const size_t sel = mHid.index();
-    Gui::drawPulsingOutline(mButtons[sel].x, ModalChrome::BTN_Y, ModalChrome::BTN_HALF_W, ModalChrome::BTN_H, 2, COLOR_RING);
+    Gui::drawPulsingOutline(mButtons[sel].x, mLayout.btnY, ModalChrome::BTN_HALF_W, ModalChrome::BTN_H, 2, COLOR_RING);
 }
 
 void ChoiceOverlay::update(const InputState& input)

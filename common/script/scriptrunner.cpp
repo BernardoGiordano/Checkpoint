@@ -26,6 +26,7 @@
 
 #include "scriptrunner.hpp"
 #include "logging.hpp"
+#include "scriptconsole.hpp"
 #include "scriptengine.hpp"
 #include "thread.hpp"
 
@@ -43,6 +44,7 @@ bool ScriptRunner::start(std::string scriptPath, std::string displayName, std::s
     mName       = std::move(displayName);
     mTitleIdHex = std::move(titleIdHex);
     mBridge.reset();
+    ScriptConsole::get().reset();
     ckpt_script_abort_reset();
 
     // Breadcrumb the start on the main thread: if the worker faults mid-run the

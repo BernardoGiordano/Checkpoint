@@ -1,6 +1,6 @@
 /*
  *   This file is part of Checkpoint
- *   Copyright (C) 2017-2025 Bernardo Giordano, FlagBrew
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -24,34 +24,29 @@
  *         reasonable ways as different from the original version.
  */
 
-#ifndef YESNOOVERLAY_HPP
-#define YESNOOVERLAY_HPP
+#ifndef SCRIPTCONSOLE_C_H
+#define SCRIPTCONSOLE_C_H
 
-#include "ModalChrome.hpp"
-#include "Overlay.hpp"
-#include "clickable.hpp"
-#include "colors.hpp"
-#include "gfx.hpp"
-#include "hid.hpp"
-#include <functional>
-#include <memory>
-#include <string>
+#include <stdio.h>
 
-class Clickable;
+/* The C face of ScriptConsole, for picoc's stdlib and platform layer (both C).
+ * Everything a script prints goes through one of these two, so the log pane,
+ * the app log and the run's Outcome all see the same bytes. */
 
-class YesNoOverlay : public Overlay {
-public:
-    YesNoOverlay(Screen& screen, const std::string& mtext, const std::function<void()>& callbackYes, const std::function<void()>& callbackNo);
-    ~YesNoOverlay() = default;
-    void draw(void) const override;
-    void update(const InputState&) override;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-private:
-    std::string text;
-    ModalChrome::Layout layout;
-    std::unique_ptr<Clickable> buttonYes, buttonNo;
-    Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> hid;
-    std::function<void()> yesFunc, noFunc;
-};
+/* Raw output. `len` is a byte count, not a terminator-delimited length. */
+void ckpt_console_write(const char* data, int len);
+
+/* An unbuffered stream whose writes land in the console. Script printf() and
+ * friends print here instead of to the real stdout, which is nowhere on either
+ * console. Never NULL: degrades to stdout if the stream cannot be created. */
+FILE* ckpt_console_stdout(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

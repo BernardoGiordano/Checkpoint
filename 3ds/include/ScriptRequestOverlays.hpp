@@ -27,59 +27,136 @@
 #ifndef SCRIPTREQUESTOVERLAYS_HPP
 #define SCRIPTREQUESTOVERLAYS_HPP
 
-#include "ListPickerOverlay.hpp"
+#include "ListCursor.hpp"
+#include "Overlay.hpp"
+#include "ScriptTile.hpp"
 #include "clickable.hpp"
+#include "scriptuibridge.hpp"
 #include <memory>
 #include <string>
 #include <vector>
 
-// The overlays MainScreen raises for a script's blocking UI requests. Each one
+// The overlays ScriptScreen raises for a script's blocking UI requests. Each one
 // answers exactly one pending ScriptUiBridge request: it responds *before*
 // dismissing itself, so the script thread wakes as the overlay goes away.
-// Confirm reuses YesNoOverlay and Keyboard runs swkbd inline; only the shapes
-// with no existing widget live here.
+//
+// All of them own the bottom-screen tile and nothing else — drawTop() is empty
+// on purpose, because the top screen is the log tile and a dialog must never
+// cover the transcript the user is reading. That is why these are not
+// ChoiceOverlay / ListPickerOverlay configurations: those dim and draw across
+// both screens.
+//
+// They share one shape — header, body, hint line — so a message, a confirm and
+// the two pickers read as the same dialog changing its body, and the progress
+// bars the idle tile shows are the only thing a dialog takes away.
 
-// gui_message: MessageOverlay's chrome, but the dismissal answers the bridge.
-class ScriptMessageOverlay : public Overlay {
+// Shared chrome: the tile frame, its title header, and the hint line.
+// Subclasses fill the body and decide the input policy.
+class ScriptTileOverlay : public Overlay {
 public:
-    ScriptMessageOverlay(Screen& screen, const std::string& text);
-    void drawTop(void) const override;
+    void drawTop(void) const override {}
     void drawBottom(void) const override;
+
+protected:
+    // `title` is the header line. A short prompt is a good title; a whole
+    // message is not, which is why the message/confirm dialogs title themselves
+    // with the script's name and wrap their text in the body instead.
+    ScriptTileOverlay(Screen& screen, std::string title);
+
+    // The tile's body, between the header hairline and the hint line.
+    virtual void drawBody(int bodyY) const = 0;
+    virtual std::string hints(void) const  = 0;
+    // Right-aligned header note (a "n / total" counter for the list pickers).
+    virtual std::string headerNote(void) const { return ""; }
+
+    // Answers the bridge, then dismisses this overlay. Touch no member after it.
+    void answer(UiResponse resp);
+
+    // Wrapped body text, from `bodyY` down to the button row. Text taller than
+    // that is cut to what fits, ending in "...".
+    void drawWrappedBody(const std::string& text, int bodyY) const;
+
+    std::string mTitle;
+};
+
+// gui_message: one wrapped message and an OK button.
+class ScriptMessageOverlay : public ScriptTileOverlay {
+public:
+    ScriptMessageOverlay(Screen& screen, std::string text);
     void update(const InputState& input) override;
 
 private:
-    static constexpr float SIZE = 0.6f;
+    void drawBody(int bodyY) const override;
+    std::string hints(void) const override;
+
     std::string mText;
-    u32 mPosx, mPosy;
     std::unique_ptr<Clickable> mButton;
 };
 
+// gui_confirm: confirm / cancel, A activates the highlighted button, B cancels.
+// Same button order and default highlight as YesNoOverlay, which this replaces
+// for scripts (YesNoOverlay draws across both screens).
+class ScriptConfirmOverlay : public ScriptTileOverlay {
+public:
+    ScriptConfirmOverlay(Screen& screen, std::string text);
+    void update(const InputState& input) override;
+
+private:
+    void drawBody(int bodyY) const override;
+    std::string hints(void) const override;
+
+    std::string mText;
+    std::unique_ptr<Clickable> mConfirm, mCancel;
+    bool mConfirmSelected = true;
+};
+
+// Shared list body for the two pickers: rows, selection highlight and paging.
+class ScriptListOverlay : public ScriptTileOverlay {
+public:
+    // Rows that fit between the header hairline and the hint band. The pickers
+    // have no button row (A / START / B do the work), so they get one more row
+    // than the message and confirm dialogs have body.
+    static constexpr size_t VISIBLE = 6;
+
+protected:
+    ScriptListOverlay(Screen& screen, std::string prompt, size_t count);
+
+    void drawBody(int bodyY) const override;
+    std::string headerNote(void) const override;
+
+    // Row `k`, whose band starts at `rowY` and is ROW_H tall.
+    virtual void drawRow(size_t k, int rowY, bool selected) const = 0;
+
+    static constexpr int ROW_H = 26;
+
+    size_t mCount;
+    // ListCursor, not Hid: Hid binds L/R to page the list, and during a script
+    // run L/R belong to the log pane. D-Pad only here.
+    ListCursor mCursor;
+};
+
 // gui_pick_one: A responds with the row index, B with -1.
-class ScriptPickOneOverlay : public ListPickerOverlay {
+class ScriptPickOneOverlay : public ScriptListOverlay {
 public:
     ScriptPickOneOverlay(Screen& screen, const std::string& prompt, std::vector<std::string> items);
     void update(const InputState& input) override;
 
 private:
-    int rowCount(void) const override;
-    void drawEmptyMessage(void) const override;
-    void drawRowContent(int k, int rowY, bool selected) const override;
-    std::string bottomHints(void) const override;
+    void drawRow(size_t k, int rowY, bool selected) const override;
+    std::string hints(void) const override;
 
     std::vector<std::string> mItems;
 };
 
-// gui_pick_many: A toggles the row, START confirms the set, B cancels.
-class ScriptPickManyOverlay : public ListPickerOverlay {
+// gui_pick_many: A toggles the row, X confirms the set, B cancels.
+class ScriptPickManyOverlay : public ScriptListOverlay {
 public:
     ScriptPickManyOverlay(Screen& screen, const std::string& prompt, std::vector<std::string> items, std::vector<bool> preselected);
     void update(const InputState& input) override;
 
 private:
-    int rowCount(void) const override;
-    void drawEmptyMessage(void) const override;
-    void drawRowContent(int k, int rowY, bool selected) const override;
-    std::string bottomHints(void) const override;
+    void drawRow(size_t k, int rowY, bool selected) const override;
+    std::string hints(void) const override;
 
     std::vector<std::string> mItems;
     std::vector<bool> mSelected;

@@ -1,0 +1,323 @@
+/*
+ *   This file is part of Checkpoint
+ *   Copyright (C) 2017-2026 Bernardo Giordano, FlagBrew
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *   Additional Terms 7.b and 7.c of GPLv3 apply to this file:
+ *       * Requiring preservation of specified reasonable legal notices or
+ *         author attributions in that material or in the Appropriate Legal
+ *         Notices displayed by works containing it.
+ *       * Prohibiting misrepresentation of the origin of that material,
+ *         or requiring that modified versions of such material be marked in
+ *         reasonable ways as different from the original version.
+ */
+
+#include "scriptconsole.hpp"
+#include "scriptconsole_c.h"
+#include <algorithm>
+
+namespace {
+    // Tab stops, in columns.
+    constexpr size_t TAB_WIDTH = 4;
+    // Smallest and largest sensible wrap width; guards a platform that hands in
+    // a nonsense tile size before its geometry is known.
+    constexpr size_t MIN_WIDTH = 16, MAX_WIDTH = 200;
+}
+
+ScriptConsole& ScriptConsole::get(void)
+{
+    static ScriptConsole instance;
+    return instance;
+}
+
+void ScriptConsole::setWidth(size_t columns)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    mWidth = std::clamp(columns, MIN_WIDTH, MAX_WIDTH);
+}
+
+void ScriptConsole::reset(void)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    mLines.clear();
+    mOpen = false;
+    mGen++;
+    for (auto& layer : mLayers) {
+        layer = Layer{};
+    }
+    mIo         = Layer{};
+    mLayerSlots = 0;
+    mIoSlot     = false;
+}
+
+void ScriptConsole::appendChar(char c)
+{
+    if (!mOpen || mLines.empty() || mLines.back().size() >= mWidth) {
+        mLines.push_back(std::string());
+        mLines.back().reserve(mWidth);
+        mOpen = true;
+        while (mLines.size() > MAX_LINES) {
+            mLines.pop_front();
+        }
+    }
+    mLines.back().push_back(c);
+}
+
+void ScriptConsole::write(const char* data, size_t len)
+{
+    if (data == nullptr || len == 0) {
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(mMutex);
+    for (size_t i = 0; i < len; i++) {
+        const char c = data[i];
+        if (c == '\n') {
+            // Close the row. An empty run of newlines still produces blank
+            // rows, which is what a script printing "\n\n" means to see.
+            if (!mOpen) {
+                appendChar(' ');
+                mLines.back().clear();
+            }
+            mOpen = false;
+        }
+        else if (c == '\t') {
+            const size_t col = (mOpen && !mLines.empty()) ? mLines.back().size() : 0;
+            for (size_t pad = TAB_WIDTH - (col % TAB_WIDTH); pad > 0; pad--) {
+                appendChar(' ');
+            }
+        }
+        else if (c == '\r' || (unsigned char)c < 0x20 || c == 0x7F) {
+            continue; // control characters have no cell in the pane
+        }
+        else {
+            appendChar(c);
+        }
+    }
+    mGen++;
+}
+
+void ScriptConsole::log(const std::string& text)
+{
+    write(text.c_str(), text.size());
+    write("\n", 1);
+}
+
+void ScriptConsole::beginLayer(size_t layer, std::string label, long long total)
+{
+    if (layer >= MAX_LAYERS) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mMutex);
+    mLayers[layer]        = Layer{};
+    mLayers[layer].label  = std::move(label);
+    mLayers[layer].total  = total;
+    mLayers[layer].active = true;
+    mLayerSlots           = std::max(mLayerSlots, layer + 1);
+    // Moving on to a new item at this depth invalidates everything under it.
+    for (size_t deeper = layer + 1; deeper < MAX_LAYERS; deeper++) {
+        mLayers[deeper] = Layer{};
+    }
+    mIo = Layer{};
+}
+
+void ScriptConsole::setLayer(size_t layer, long long done)
+{
+    if (layer >= MAX_LAYERS) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mMutex);
+    if (mLayers[layer].active) {
+        mLayers[layer].done = done;
+    }
+}
+
+void ScriptConsole::setLayerLabel(size_t layer, std::string label)
+{
+    if (layer >= MAX_LAYERS) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mMutex);
+    if (mLayers[layer].active) {
+        mLayers[layer].label = std::move(label);
+    }
+}
+
+void ScriptConsole::endLayer(size_t layer)
+{
+    if (layer >= MAX_LAYERS) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mMutex);
+    for (size_t i = layer; i < MAX_LAYERS; i++) {
+        mLayers[i] = Layer{};
+    }
+    mIo = Layer{};
+}
+
+void ScriptConsole::clearProgress(void)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    for (auto& layer : mLayers) {
+        layer = Layer{};
+    }
+    mIo = Layer{};
+    // The one call that says "no progress at all any more", so it is also the
+    // one that gives the reserved slots back.
+    mLayerSlots = 0;
+    mIoSlot     = false;
+}
+
+void ScriptConsole::beginIo(std::string label, long long total)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    mIo        = Layer{};
+    mIo.label  = std::move(label);
+    mIo.total  = total;
+    mIo.active = true;
+    mIoSlot    = true;
+}
+
+void ScriptConsole::setIo(long long done)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    if (mIo.active) {
+        mIo.done = done;
+    }
+}
+
+void ScriptConsole::addIo(long long delta)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    if (mIo.active) {
+        mIo.done += delta;
+    }
+}
+
+void ScriptConsole::endIo(void)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    mIo = Layer{};
+}
+
+unsigned ScriptConsole::generation(void) const
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    return mGen;
+}
+
+size_t ScriptConsole::lineCount(void) const
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    return mLines.size();
+}
+
+void ScriptConsole::copyWindow(size_t first, size_t count, std::vector<std::string>& out) const
+{
+    out.clear();
+    std::lock_guard<std::mutex> lock(mMutex);
+    if (first >= mLines.size()) {
+        return;
+    }
+    const size_t last = std::min(mLines.size(), first + count);
+    out.reserve(last - first);
+    for (size_t i = first; i < last; i++) {
+        out.push_back(mLines[i]);
+    }
+}
+
+ScriptConsole::ProgressSnapshot ScriptConsole::progress(void) const
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    ProgressSnapshot snap;
+    for (size_t i = 0; i < MAX_LAYERS; i++) {
+        snap.layers[i] = mLayers[i];
+        if (mLayers[i].active) {
+            snap.layerCount = i + 1;
+        }
+    }
+    snap.io         = mIo;
+    snap.layerSlots = mLayerSlots;
+    snap.ioSlot     = mIoSlot;
+    return snap;
+}
+
+std::string ScriptConsole::tail(size_t maxBytes) const
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+
+    // Walk back from the newest line until the joined text would exceed the
+    // budget, so the tail always ends on the last thing the script said — which
+    // is where a picoc diagnostic is.
+    size_t bytes = 0, first = mLines.size();
+    while (first > 0) {
+        const size_t cost = mLines[first - 1].size() + 1;
+        if (bytes + cost > maxBytes) {
+            break;
+        }
+        bytes += cost;
+        first--;
+    }
+
+    std::string out;
+    out.reserve(bytes);
+    for (size_t i = first; i < mLines.size(); i++) {
+        out += mLines[i];
+        out += '\n';
+    }
+    return out;
+}
+
+/* ---- C shim ------------------------------------------------------------- */
+/* picoc's stdlib and platform layer are C; these are the only entry points
+ * they need. ckpt_console_stdout() hands them a stream whose bytes land in the
+ * console, replacing the "point stdout's buffer at a static array and read it
+ * back after the run" capture that made output invisible until the end. */
+
+extern "C" {
+
+void ckpt_console_write(const char* data, int len)
+{
+    if (len > 0) {
+        ScriptConsole::get().write(data, (size_t)len);
+    }
+}
+
+// newlib spells the length parameter with its own typedef (size_t on both
+// toolchains); using the macro keeps the signature funopen wants exactly.
+static int consoleStreamWrite(void* cookie, const char* buf, _READ_WRITE_BUFSIZE_TYPE n)
+{
+    (void)cookie;
+    ScriptConsole::get().write(buf, (size_t)n);
+    return (int)n;
+}
+
+FILE* ckpt_console_stdout(void)
+{
+    // Created once and never closed: picoc reinitialises per run, but the
+    // stream is stateless and shared. Unbuffered so each printf reaches the
+    // pane on the frame it happens, not whenever a 4 KB buffer fills.
+    static FILE* stream = nullptr;
+    if (stream == nullptr) {
+        stream = funopen(nullptr, nullptr, consoleStreamWrite, nullptr, nullptr);
+        if (stream != nullptr) {
+            setvbuf(stream, nullptr, _IONBF, 0);
+        }
+    }
+    // A failed funopen degrades to the real stdout: output goes nowhere
+    // visible (as before this change), but nothing crashes.
+    return stream != nullptr ? stream : stdout;
+}
+}

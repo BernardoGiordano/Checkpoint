@@ -85,7 +85,6 @@ protected:
     void startScriptPicker(void);
     // While a script runs: raises the overlay for a pending ScriptUiBridge
     // request (or answers Keyboard inline via swkbd).
-    void pumpScriptRequests(void);
 
 private:
     entryType_t type;

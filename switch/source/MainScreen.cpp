@@ -29,7 +29,7 @@
 #include "MenuOverlay.hpp"
 #include "ReceiveOverlay.hpp"
 #include "ScriptPickerOverlay.hpp"
-#include "ScriptRequestOverlays.hpp"
+#include "ScriptScreen.hpp"
 #include "SettingsScreen.hpp"
 #include "backupsize.hpp"
 #include "configuration.hpp"
@@ -551,36 +551,6 @@ void MainScreen::draw() const
         {"-", i18n::t("hint.menu")},
     });
 
-    // ---- Script status ----
-    // While a script runs, a small modal shows its name and last gui_status
-    // line; the script's own requests raise full overlays on top of this.
-    if (ScriptRunner::get().active()) {
-        Gfx::DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
-
-        const int mw = 540, mh = 160;
-        const int mx = (1280 - mw) / 2, my = (720 - mh) / 2;
-        Shapes::cardRound(mx, my, mw, mh, 0, COLOR_SURFACE, COLOR_STROKE2, 1);
-
-        std::string titleStr = i18n::t("scripts.running", {ScriptRunner::get().scriptName()});
-        u32 tw, th;
-        Gfx::GetTextDimensions(20, titleStr.c_str(), &tw, &th);
-        Gfx::DrawText(20, mx + (mw - (int)tw) / 2, my + 36, COLOR_TEXT, titleStr.c_str());
-
-        std::string status = ScriptRunner::get().bridge().statusText();
-        if (!status.empty()) {
-            status = trimToFit(status, mw - 48, 15);
-            u32 sw;
-            Gfx::GetTextDimensions(15, status.c_str(), &sw, NULL);
-            Gfx::DrawText(15, mx + (mw - (int)sw) / 2, my + 36 + (int)th + 18, COLOR_TEXT2, status.c_str());
-        }
-
-        // Hold-B abort hint (same wording as the transfer modal).
-        std::string hint = ScriptRunner::get().cancelRequested() ? i18n::t("transfer.cancelling") : i18n::t("transfer.cancel_hint");
-        u32 hw;
-        Gfx::GetTextDimensions(15, hint.c_str(), &hw, NULL);
-        Gfx::DrawText(15, mx + (mw - (int)hw) / 2, my + mh - 34, COLOR_TEXT2, hint.c_str());
-    }
-
     // ---- Transfer modal ----
     const TransferSnapshot transfer = TransferStatus::snapshot();
     if (transfer.active) {
@@ -759,33 +729,6 @@ void MainScreen::update(const InputState& input)
         return;
     }
 
-    // Script outcome / activity. While a script runs this screen only pumps its
-    // UI-bridge requests; normal input is ignored (same policy as TransferJob).
-    if (auto script = ScriptRunner::get().takeResult()) {
-        appletEndBlockingHomeButton();
-        if (script->cancelled) {
-            // User-requested abort: neutral info, not an error.
-            currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("scripts.aborted", {script->scriptName}));
-        }
-        else if (script->exitValue == 0) {
-            currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("scripts.success", {script->scriptName}));
-        }
-        else {
-            // The output tail carries picoc's diagnostic; the card fits a few lines.
-            std::string detail = script->output.size() > 120 ? script->output.substr(script->output.size() - 120) : script->output;
-            currentOverlay     = std::make_shared<ErrorOverlay>(
-                *this, script->exitValue, i18n::t("scripts.failed", {script->scriptName}) + (detail.empty() ? "" : "\n" + detail));
-        }
-        return;
-    }
-    if (ScriptRunner::get().active()) {
-        // The hold-B kill switch lives in main.cpp (it must keep counting
-        // while a script-raised overlay replaces this update); here we only
-        // pump the bridge.
-        pumpScriptRequests();
-        return;
-    }
-
     updateSelector(input);
     handleEvents(input);
 }
@@ -828,64 +771,18 @@ void MainScreen::startScriptPicker(void)
                     // HOME stays blocked for the whole run (PKSM precedent): picoc
                     // cannot be preempted, so a buggy script requires a reboot.
                     appletBeginBlockingHomeButton(0);
-                    if (!ScriptRunner::get().start(entry.path, entry.name, std::move(idHex))) {
+                    if (ScriptRunner::get().start(entry.path, entry.name, std::move(idHex))) {
+                        // The run owns the screen from here: ScriptScreen holds
+                        // this one alive and hands control back when it is closed.
+                        g_pendingScreen = std::make_shared<ScriptScreen>(g_screen, entry.name);
+                    }
+                    else {
                         appletEndBlockingHomeButton();
                         currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, i18n::t("scripts.start_failed"));
                     }
                 },
                 [this]() { this->removeOverlay(); });
         });
-}
-
-void MainScreen::pumpScriptRequests(void)
-{
-    ScriptUiBridge& bridge = ScriptRunner::get().bridge();
-    const UiRequest* req   = bridge.pending();
-    if (!req) {
-        return;
-    }
-
-    // This runs only while no overlay is up (an overlay's update replaces the
-    // screen's), so each pending request is mapped to its overlay exactly once;
-    // the overlay answers the bridge before dismissing itself.
-    switch (req->kind) {
-        case UiRequest::Kind::Message:
-            currentOverlay = std::make_shared<ScriptMessageOverlay>(*this, req->prompt);
-            break;
-        case UiRequest::Kind::Confirm:
-            currentOverlay = std::make_shared<YesNoOverlay>(
-                *this, req->prompt,
-                [this]() {
-                    UiResponse resp;
-                    resp.confirmed = true;
-                    ScriptRunner::get().bridge().respond(std::move(resp));
-                    this->removeOverlay();
-                },
-                [this]() {
-                    ScriptRunner::get().bridge().respond(UiResponse{});
-                    this->removeOverlay();
-                });
-            break;
-        case UiRequest::Kind::PickOne:
-            currentOverlay = std::make_shared<ScriptPickOneOverlay>(*this, req->prompt, req->items);
-            break;
-        case UiRequest::Kind::PickMany:
-            currentOverlay = std::make_shared<ScriptPickManyOverlay>(*this, req->prompt, req->items, req->preselected);
-            break;
-        case UiRequest::Kind::Keyboard: {
-            // swkbd runs on the main thread - the reason the bridge exists.
-            UiResponse resp;
-            resp.text = KeyboardManager::get().text("", req->prompt, req->maxChars > 0 ? (size_t)req->maxChars - 1 : 0);
-            bridge.respond(std::move(resp));
-            break;
-        }
-        case UiRequest::Kind::Numpad: {
-            UiResponse resp;
-            resp.index = KeyboardManager::get().numpad(req->prompt, req->numMin, req->numMax);
-            bridge.respond(std::move(resp));
-            break;
-        }
-    }
 }
 
 void MainScreen::updateSelector(const InputState& input)

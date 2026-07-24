@@ -92,7 +92,7 @@ struct LibraryFunction CheckpointFunctions[] =
     // from SD (never through the interpreter heap), for a multi-MB upload such as
     // the Google Drive resumable PUT. method/headers/out/outSize/respHeaders/return
     // match web_request; filePath is the local file to send. While it runs it
-    // appends " <pct>%" to the current gui_status line, and hold-B aborts it.
+    // drives the innermost progress bar itself (bytes sent), and hold-B aborts it.
     { ckpt_web_upload_file,    "int web_upload_file(char* method, char* url, char* headers, char* filePath, char** out, int* outSize, char** respHeaders);" },
     // Percent-encode a string for form bodies / query params (malloc'd).
     { ckpt_url_encode,         "char* url_encode(char* s);" },
@@ -122,6 +122,17 @@ struct LibraryFunction CheckpointFunctions[] =
     // (so pass a min >= 0 to keep the sentinel unambiguous).
     { ckpt_gui_numpad,         "int gui_numpad(char* prompt, int min, int max);" },
     { ckpt_gui_status,         "void gui_status(char* text);" },
+    // Progress bars: the log pane's companion. None of these block — a copy
+    // loop can report every chunk without ever waiting for a frame., outermost layer 0 (up to 3). progress_begin resets the
+    // layer to 0/total and drops every deeper layer, so beginning the next outer
+    // item cannot leave a stale inner bar behind. total <= 0 means "unknown":
+    // the bar renders indeterminate and shows the raw count. Long native calls
+    // (web_upload_file, zip_dir, unzip) drive an extra innermost bar themselves.
+    { ckpt_progress_begin,     "void progress_begin(int layer, char* label, int total);" },
+    { ckpt_progress_set,       "void progress_set(int layer, int done);" },
+    { ckpt_progress_label,     "void progress_label(int layer, char* label);" },
+    { ckpt_progress_end,       "void progress_end(int layer);" },
+    { ckpt_progress_clear,     "void progress_clear(void);" },
     // json (nlohmann wrappers; struct JSON* is an opaque handle)
     { ckpt_json_new,             "struct JSON* json_new(void);" },
     { ckpt_json_parse,           "void json_parse(struct JSON* obj, char* data);" },
@@ -141,6 +152,8 @@ struct LibraryFunction CheckpointFunctions[] =
     { ckpt_json_object_element,  "struct JSON* json_object_element(struct JSON* obj, char* name);" },
     { ckpt_json_object_key,      "char* json_object_key(struct JSON* obj, int index);" },
     // misc
+    // One line to both the app log (kept for bug reports) and the live console
+    // pane the user is watching. printf() reaches the pane only.
     { ckpt_script_log,         "void script_log(char* msg);" },
     { ckpt_selected_title,     "char* selected_title(void);" },
     // The app's SD root ("/3ds/Checkpoint" on 3DS, "sdmc:/switch/Checkpoint" on

@@ -50,6 +50,13 @@ GRAPHICS		:=	assets/gfx
 ROMFS			:=	assets/romfs
 GFXBUILD		:=	$(ROMFS)/gfx
 
+MONO_TTF		:=	../switch/romfs/fonts/SpaceMono-Regular.ttf
+MONO_BCFNT		:=	$(ROMFS)/fonts/SpaceMono.bcfnt
+# 7pt: mkbcfnt turns that into a 14px line feed and a 6px advance, so the pane
+# holds ~15 rows of ~62 columns on the 400x240 top screen. A transcript is
+# scanned rather than read line by line, so density beats size here.
+MONO_SIZE		:=	7
+
 # If left blank, will try to use "icon.png", "$(TARGET).png", or the default ctrulib icon, in that order
 ICON			:=	assets/icon.png
 
@@ -207,7 +214,7 @@ endif
 .PHONY: all clean format
 
 #---------------------------------------------------------------------------------
-all: sprites
+all: sprites $(MONO_BCFNT)
 	@mkdir -p $(BUILD) $(GFXBUILD) $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $(OUTPUT).3dsx
 	@bannertool makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o $(BUILD)/banner.bnr
@@ -216,7 +223,11 @@ all: sprites
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(GFXBUILD) $(OUTDIR)
+	@rm -fr $(BUILD) $(GFXBUILD) $(OUTDIR) $(MONO_BCFNT)
+#---------------------------------------------------------------------------------
+$(MONO_BCFNT): $(MONO_TTF) $(CURDIR)/Makefile
+	@mkdir -p $(dir $@)
+	@mkbcfnt -s $(MONO_SIZE) -o $@ $<
 #---------------------------------------------------------------------------------
 sprites:
 	@mkdir -p $(BUILD) $(GFXBUILD)

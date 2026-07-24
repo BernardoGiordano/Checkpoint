@@ -27,6 +27,7 @@
 #ifndef CHOICEOVERLAY_HPP
 #define CHOICEOVERLAY_HPP
 
+#include "ModalChrome.hpp"
 #include "Overlay.hpp"
 #include "clickable.hpp"
 #include "colors.hpp"
@@ -59,7 +60,8 @@ private:
     static constexpr float SIZE = 0.55f;
 
     std::string mText;
-    int mPosx, mPosy;
+    ModalChrome::Layout mLayout;
+    int mPosx;
     Button mButtons[2];
     std::unique_ptr<Clickable> mClick[2];
     Hid<HidDirection::HORIZONTAL, HidDirection::HORIZONTAL> mHid;

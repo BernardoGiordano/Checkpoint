@@ -42,8 +42,9 @@ namespace ScriptEngine {
         // failure: a non-zero return, an exit(), or a parse/runtime error, in
         // which case picoc's diagnostic is at the end of output.
         int exitValue = 0;
-        // Everything the script printed, plus any interpreter diagnostic.
-        // Truncated to the capture buffer (4 KB, as PKSM does).
+        // The tail of what the script printed, plus any interpreter
+        // diagnostic — enough for the result card. The full (scrollable) output
+        // lives in ScriptConsole, which is where it was streamed as it ran.
         std::string output;
     };
 

@@ -27,6 +27,7 @@
 #ifndef INFOOVERLAY_HPP
 #define INFOOVERLAY_HPP
 
+#include "ModalChrome.hpp"
 #include "Overlay.hpp"
 #include "clickable.hpp"
 #include "colors.hpp"
@@ -45,6 +46,7 @@ public:
 
 private:
     std::string text;
+    ModalChrome::Layout layout;
     std::unique_ptr<Clickable> button;
 };
 

@@ -28,7 +28,7 @@
 #include "KeyboardManager.hpp"
 #include "MenuOverlay.hpp"
 #include "ScriptPickerOverlay.hpp"
-#include "ScriptRequestOverlays.hpp"
+#include "ScriptScreen.hpp"
 #include "SettingsScreen.hpp"
 #include "backupsize.hpp"
 #include "backuptarget.hpp"
@@ -265,23 +265,7 @@ void MainScreen::drawTop(void) const
     static constexpr int TOP_FOOTER_TOP = 222;
     C2D_DrawRectSolid(0, TOP_FOOTER_TOP, 0.5f, 400, 240 - TOP_FOOTER_TOP, COLOR_SURFACE);
     C2D_DrawRectSolid(0, TOP_FOOTER_TOP - 1, 0.5f, 400, 1, COLOR_LINE);
-    if (ScriptRunner::get().active()) {
-        // Script status strip: name + last gui_status text from the worker,
-        // plus the hold-B abort hint.
-        std::string line = i18n::t("scripts.running", {ScriptRunner::get().scriptName()});
-        if (ScriptRunner::get().cancelRequested()) {
-            line += "  -  " + i18n::t("transfer.cancelling");
-        }
-        else {
-            std::string status = ScriptRunner::get().bridge().statusText();
-            if (!status.empty()) {
-                line += "  -  " + status;
-            }
-            line += "  -  " + i18n::t("transfer.cancel_hint");
-        }
-        drawHints(400, 224, line);
-    }
-    else if (multi) {
+    if (multi) {
         drawHints(400, 224, " Tag     hold all     Backup all     Clear");
     }
     else {
@@ -521,33 +505,6 @@ void MainScreen::update(const InputState& input)
         return;
     }
 
-    // Script outcome / activity. While a script runs this screen only pumps its
-    // UI-bridge requests; normal input is ignored (same policy as TransferJob).
-    if (auto script = ScriptRunner::get().takeResult()) {
-        aptSetHomeAllowed(true);
-        if (script->cancelled) {
-            // User-requested abort: neutral info, not an error.
-            currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("scripts.aborted", {script->scriptName}));
-        }
-        else if (script->exitValue == 0) {
-            currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("scripts.success", {script->scriptName}));
-        }
-        else {
-            // The output tail carries picoc's diagnostic; the card fits a few lines.
-            std::string detail = script->output.size() > 120 ? script->output.substr(script->output.size() - 120) : script->output;
-            currentOverlay     = std::make_shared<ErrorOverlay>(
-                *this, script->exitValue, i18n::t("scripts.failed", {script->scriptName}) + (detail.empty() ? "" : "\n" + detail));
-        }
-        return;
-    }
-    if (ScriptRunner::get().active()) {
-        // The hold-B kill switch lives in main.cpp (it must keep counting
-        // while a script-raised overlay replaces this update); here we only
-        // pump the bridge.
-        pumpScriptRequests();
-        return;
-    }
-
     if (Transfer::consumePendingRefresh() || g_titlesDirty) {
         g_titlesDirty = false;
         refreshTitlesFull();
@@ -746,64 +703,18 @@ void MainScreen::startScriptPicker(void)
                     // HOME stays blocked for the whole run (PKSM precedent): picoc
                     // cannot be preempted, so a buggy script requires a reboot.
                     aptSetHomeAllowed(false);
-                    if (!ScriptRunner::get().start(entry.path, entry.name, std::move(idHex))) {
+                    if (ScriptRunner::get().start(entry.path, entry.name, std::move(idHex))) {
+                        // The run owns both screens from here: ScriptScreen holds
+                        // this one alive and hands control back when it is closed.
+                        g_pendingScreen = std::make_shared<ScriptScreen>(g_screen, entry.name);
+                    }
+                    else {
                         aptSetHomeAllowed(true);
                         currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, i18n::t("scripts.start_failed"));
                     }
                 },
                 [this]() { this->removeOverlay(); });
         });
-}
-
-void MainScreen::pumpScriptRequests(void)
-{
-    ScriptUiBridge& bridge = ScriptRunner::get().bridge();
-    const UiRequest* req   = bridge.pending();
-    if (!req) {
-        return;
-    }
-
-    // This runs only while no overlay is up (an overlay's update replaces the
-    // screen's), so each pending request is mapped to its overlay exactly once;
-    // the overlay answers the bridge before dismissing itself.
-    switch (req->kind) {
-        case UiRequest::Kind::Message:
-            currentOverlay = std::make_shared<ScriptMessageOverlay>(*this, req->prompt);
-            break;
-        case UiRequest::Kind::Confirm:
-            currentOverlay = std::make_shared<YesNoOverlay>(
-                *this, req->prompt,
-                [this]() {
-                    UiResponse resp;
-                    resp.confirmed = true;
-                    ScriptRunner::get().bridge().respond(std::move(resp));
-                    this->removeOverlay();
-                },
-                [this]() {
-                    ScriptRunner::get().bridge().respond(UiResponse{});
-                    this->removeOverlay();
-                });
-            break;
-        case UiRequest::Kind::PickOne:
-            currentOverlay = std::make_shared<ScriptPickOneOverlay>(*this, req->prompt, req->items);
-            break;
-        case UiRequest::Kind::PickMany:
-            currentOverlay = std::make_shared<ScriptPickManyOverlay>(*this, req->prompt, req->items, req->preselected);
-            break;
-        case UiRequest::Kind::Keyboard: {
-            // swkbd runs on the main thread - the reason the bridge exists.
-            UiResponse resp;
-            resp.text = KeyboardManager::get().text("", req->prompt, req->maxChars > 0 ? (size_t)req->maxChars - 1 : 0);
-            bridge.respond(std::move(resp));
-            break;
-        }
-        case UiRequest::Kind::Numpad: {
-            UiResponse resp;
-            resp.index = KeyboardManager::get().numpad(req->prompt, req->numMin, req->numMax);
-            bridge.respond(std::move(resp));
-            break;
-        }
-    }
 }
 
 void MainScreen::handleEvents(const InputState& input)

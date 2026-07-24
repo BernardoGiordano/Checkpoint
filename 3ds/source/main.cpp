@@ -26,6 +26,7 @@
 
 #include "main.hpp"
 #include "MainScreen.hpp"
+#include "ScriptScreen.hpp"
 #include "backupsize.hpp"
 #include "colors.hpp"
 #include "configuration.hpp"
@@ -69,6 +70,9 @@ int main()
         // Match the color tokens to the persisted theme before any screen draws.
         Colors::apply(Configuration::getInstance().theme());
 
+        // Fixes the script log pane's wrap column before any script can print.
+        ScriptScreen::configureLogWidth();
+
         g_screen       = std::make_unique<MainScreen>();
         auto uiIsReady = std::chrono::high_resolution_clock::now();
         Logging::info("Loading took {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(uiIsReady - start).count());
@@ -98,6 +102,41 @@ int main()
             }
             else {
                 scriptCancelHold = 0;
+            }
+
+            // Log pane scrolling, here for the same reason as the kill switch:
+            // a script-raised overlay owns update(), and the pane underneath it
+            // must stay scrollable while the user answers.
+            static int scrollHold = 0;
+            if (ScriptScreen::showing()) {
+                const u32 kDown = hidKeysDown();
+                if (kDown & KEY_L) {
+                    ScriptScreen::scrollLog(-1);
+                }
+                else if (kDown & KEY_R) {
+                    ScriptScreen::scrollLog(1);
+                }
+
+                // Line-by-line on the D-Pad, but only while the pane is what
+                // the D-Pad would otherwise do nothing to: an overlay's list
+                // owns up/down for its own selection.
+                const u32 kHeld = hidKeysHeld() & (KEY_DUP | KEY_DDOWN);
+                if (kHeld && !g_screen->hasOverlay()) {
+                    // Tap moves one line; holding waits out a short delay and
+                    // then repeats every other frame, so a long transcript is
+                    // still reachable without mashing.
+                    constexpr int DELAY = 20, RATE = 2;
+                    if (scrollHold == 0 || (scrollHold >= DELAY && (scrollHold - DELAY) % RATE == 0)) {
+                        ScriptScreen::scrollLogLines((kHeld & KEY_DUP) ? 1 : -1);
+                    }
+                    scrollHold++;
+                }
+                else {
+                    scrollHold = 0;
+                }
+            }
+            else {
+                scrollHold = 0;
             }
 
             C3D_FrameBegin(C3D_FRAME_SYNCDRAW);

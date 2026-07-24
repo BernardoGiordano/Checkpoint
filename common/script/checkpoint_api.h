@@ -88,6 +88,14 @@ CKPT_BINDING(ckpt_gui_keyboard);
 CKPT_BINDING(ckpt_gui_numpad);
 CKPT_BINDING(ckpt_gui_status);
 
+/* progress (common, common/script/progress_api.cpp): the one-way half of the
+ * script UI. Non-blocking by construction — see the file header. */
+CKPT_BINDING(ckpt_progress_begin);
+CKPT_BINDING(ckpt_progress_set);
+CKPT_BINDING(ckpt_progress_label);
+CKPT_BINDING(ckpt_progress_end);
+CKPT_BINDING(ckpt_progress_clear);
+
 /* json (platform-neutral, common/script/json_api.cpp) */
 CKPT_BINDING(ckpt_json_new);
 CKPT_BINDING(ckpt_json_parse);

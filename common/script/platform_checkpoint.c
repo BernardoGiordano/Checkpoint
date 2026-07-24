@@ -1,5 +1,6 @@
 #include "interpreter.h"
 #include "picoc.h"
+#include "scriptconsole_c.h"
 
 #ifdef USE_READLINE
 #include <readline/history.h>
@@ -59,7 +60,10 @@ int PlatformGetCharacter()
 /* write a character to the console */
 void PlatformPutc(unsigned char OutCh, union OutputStreamInfo* Stream)
 {
-    putchar(OutCh);
+    /* "the console" is the live log pane, not the process stdout, which is
+     * nowhere on either device. */
+    char ch = (char)OutCh;
+    ckpt_console_write(&ch, 1);
 }
 
 /* read a file into memory */
