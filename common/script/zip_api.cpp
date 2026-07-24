@@ -33,10 +33,12 @@
 // picoc's ~32 KB heap. Scripts already open bare SD paths ("/3ds/..." / "/switch/...")
 // with fopen/opendir on both consoles, so no path prefixing is needed here.
 
+#include "scriptconsole.hpp"
 #include "transferprotocol.hpp"
 #include <cstdint>
 #include <cstdio>
 #include <dirent.h>
+#include <optional>
 #include <string>
 #include <sys/stat.h>
 #include <vector>
@@ -200,7 +202,8 @@ namespace {
         if (!collect(srcDir, "", files, dirs)) {
             return -1;
         }
-        if (!TransferProto::zipStreamSize(files, dirs)) {
+        const std::optional<uint64_t> totalBytes = TransferProto::zipStreamSize(files, dirs);
+        if (!totalBytes) {
             return -1; // exceeds the 4 GB store-only ceiling (no save comes close)
         }
 
@@ -211,7 +214,13 @@ namespace {
         FileSink sink(f);
         StdFileReader reader;
         bool wasCancelled = false;
-        const bool ok     = TransferProto::sendZipStream(sink, files, dirs, reader, scriptCancelled, nullptr, wasCancelled);
+        // Drives the reserved innermost bar so a script gets a byte-level bar
+        // under whatever item-level bar it drives itself, without writing any
+        // progress code around the call.
+        ScriptConsole::get().beginIo("zip", (long long)*totalBytes);
+        const bool ok = TransferProto::sendZipStream(
+            sink, files, dirs, reader, scriptCancelled, [](size_t n) { ScriptConsole::get().addIo((long long)n); }, wasCancelled);
+        ScriptConsole::get().endIo();
         fclose(f);
         if (!ok) {
             remove(outZipPath);
@@ -236,7 +245,10 @@ namespace {
         StdByteReader reader(f);
         DirExtractSink sink(outDir);
         std::string err;
-        const bool ok = TransferProto::extractZip(reader, (uint64_t)len, sink, scriptCancelled, nullptr, err);
+        ScriptConsole::get().beginIo("unzip", (long long)len);
+        const bool ok =
+            TransferProto::extractZip(reader, (uint64_t)len, sink, scriptCancelled, [](size_t n) { ScriptConsole::get().addIo((long long)n); }, err);
+        ScriptConsole::get().endIo();
         fclose(f);
         return ok ? 0 : -1;
     }

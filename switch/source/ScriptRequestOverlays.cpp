@@ -25,132 +25,214 @@
  */
 
 #include "ScriptRequestOverlays.hpp"
-#include "ModalChrome.hpp"
 #include "colors.hpp"
+#include "gfx.hpp"
 #include "gfxutils.hpp"
 #include "i18n.hpp"
 #include "scriptrunner.hpp"
 #include "shapes.hpp"
 #include "uikit.hpp"
-#include <cmath>
+#include <algorithm>
 
 namespace {
-    // Same panel geometry as the script/title pickers.
-    constexpr int PANEL_X = 290, PANEL_Y = 100, PANEL_W = 700, PANEL_H = 520;
-    constexpr int LIST_X = PANEL_X + 20, LIST_Y = PANEL_Y + 64;
-    constexpr int LIST_W  = PANEL_W - 40;
-    constexpr int ROW_H   = 52;
-    constexpr int ROW_GAP = 6;
-    constexpr int VISIBLE = (PANEL_H - 64 - 20) / (ROW_H + ROW_GAP);
+    constexpr int INNER_X = ScriptTile::UI_X + ScriptTile::PAD;
+    constexpr int INNER_W = ScriptTile::UI_W - 2 * ScriptTile::PAD;
 
     ScriptUiBridge& bridge(void)
     {
         return ScriptRunner::get().bridge();
     }
+}
 
-    void drawListPanel(const std::string& prompt, const std::vector<std::string>& items, int cursor, int scroll, const std::vector<bool>* selected)
-    {
-        Gfx::DrawRect(0, 0, 1280, 720, COLOR_SCRIM);
-        Shapes::cardRound(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 0, COLOR_SURFACE, COLOR_STROKE2, 1);
+/* ---- shared tile chrome ------------------------------------------------- */
 
-        Gfx::DrawText(20, LIST_X, PANEL_Y + 20, COLOR_TEXT, trimToFit(prompt, LIST_W, 20).c_str());
+ScriptTileOverlay::ScriptTileOverlay(Screen& screen, std::string title) : Overlay(screen), mTitle(std::move(title)) {}
 
-        if (items.empty()) {
-            Gfx::DrawText(15, LIST_X, LIST_Y + 8, COLOR_TEXT2, i18n::t("scripts.no_items").c_str());
-        }
+void ScriptTileOverlay::draw(void) const
+{
+    // uiFrame dims the log and centres the card over it: the transcript stays
+    // legible around the dialog, which is usually the context for the answer.
+    const int bodyY = ScriptTile::uiFrame(mTitle, headerNote());
+    drawBody(bodyY);
+    ScriptTile::uiHints(hints());
+}
 
-        for (int i = scroll; i < (int)items.size() && i < scroll + VISIBLE; i++) {
-            const int y      = LIST_Y + (i - scroll) * (ROW_H + ROW_GAP);
-            const bool focus = i == cursor;
-            Shapes::fillRound(LIST_X, y, LIST_W, ROW_H, 0, focus ? COLOR_ACCENT_TINT : COLOR_FILL1);
-            const Color fg = focus ? COLOR_TEXT : COLOR_TEXT2;
+void ScriptTileOverlay::answer(UiResponse resp)
+{
+    bridge().respond(std::move(resp));
+    me.reset();
+}
 
-            int textX = LIST_X + 14;
-            if (selected) {
-                // Checkbox: a small square, filled accent with a check when on.
-                const int boxY = y + (ROW_H - 22) / 2;
-                if ((*selected)[i]) {
-                    Shapes::fillRound(textX, boxY, 22, 22, 4, COLOR_ACCENT);
-                    u32 gw, gh;
-                    Gfx::GetTextDimensions(14, "", &gw, &gh);
-                    Gfx::DrawText(14, textX + (22 - (int)gw) / 2, boxY + (22 - (int)gh) / 2 + 2, COLOR_WHITE, "");
-                }
-                else {
-                    Shapes::strokeRound(textX, boxY, 22, 22, 4, 2, COLOR_STROKE3);
-                }
-                textX += 22 + 12;
-            }
+void ScriptTileOverlay::drawWrappedBody(const std::string& text, int bodyY) const
+{
+    Gfx::DrawTextBox(ScriptTile::BODY_SIZE, INNER_X, bodyY, COLOR_TEXT, INNER_W, text.c_str());
+}
 
-            u32 nh;
-            Gfx::GetTextDimensions(15, "Ag", NULL, &nh);
-            std::string name = trimToFit(items[i], LIST_X + LIST_W - 14 - textX, 15);
-            Gfx::DrawText(15, textX, y + (ROW_H - (int)nh) / 2, fg, name.c_str());
-            if (focus) {
-                Shapes::focusRing(LIST_X, y, LIST_W, ROW_H, 0, COLOR_ACCENT);
-            }
-        }
-    }
-
-    void moveCursor(const InputState& input, int count, int& cursor, int& scroll)
-    {
-        if (count <= 0) {
-            return;
-        }
-        if (input.kDown & HidNpadButton_Up) {
-            cursor = cursor > 0 ? cursor - 1 : count - 1;
-        }
-        else if (input.kDown & HidNpadButton_Down) {
-            cursor = cursor < count - 1 ? cursor + 1 : 0;
-        }
-        if (cursor < scroll)
-            scroll = cursor;
-        else if (cursor >= scroll + VISIBLE)
-            scroll = cursor - VISIBLE + 1;
+void ScriptTileOverlay::drawButton(int x, int w, const std::string& label, bool focused) const
+{
+    // Square fill, not fillRound: focusRing is a square pulsing outline (it
+    // ignores its radius), so a rounded body would leave the corners of the
+    // selected button sticking out of its own ring.
+    Gfx::DrawRect(x, buttonRowY(), w, BTN_H, focused ? COLOR_ACCENT : COLOR_FILL1);
+    u32 lw, lh;
+    Gfx::GetTextDimensions(ScriptTile::BODY_SIZE, label.c_str(), &lw, &lh);
+    Gfx::DrawText(
+        ScriptTile::BODY_SIZE, x + (w - (int)lw) / 2, buttonRowY() + (BTN_H - (int)lh) / 2, focused ? COLOR_WHITE : COLOR_TEXT2, label.c_str());
+    if (focused) {
+        Shapes::focusRing(x, buttonRowY(), w, BTN_H, 8, COLOR_ACCENT);
     }
 }
 
-/* ---- gui_message ------------------------------------------------------- */
+/* ---- gui_message -------------------------------------------------------- */
 
-ScriptMessageOverlay::ScriptMessageOverlay(Screen& screen, const std::string& text) : Overlay(screen), mText(text) {}
-
-void ScriptMessageOverlay::draw(void) const
+ScriptMessageOverlay::ScriptMessageOverlay(Screen& screen, std::string text)
+    : ScriptTileOverlay(screen, ScriptRunner::get().scriptName()), mText(std::move(text))
 {
-    // InfoOverlay's chrome, redrawn here because the dismissal must answer the
-    // bridge instead of just closing.
-    ModalChrome::dim();
-    ModalChrome::drawCard(COLOR_SURFACE);
-    ModalChrome::drawText(mText, COLOR_TEXT);
+}
 
-    Shapes::fillRound(ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, 0, COLOR_SURFACE);
-    u32 ow, oh;
-    Gfx::GetTextDimensions(ModalChrome::BTN_SIZE, "OK", &ow, &oh);
-    Gfx::DrawText(ModalChrome::BTN_SIZE, ModalChrome::BTN_WIDE_X + (ModalChrome::BTN_WIDE_W - (int)ow) / 2,
-        ModalChrome::BTN_Y + (ModalChrome::BTN_H - (int)oh) / 2, COLOR_ACCENT, "OK");
-    drawPulsingOutline(ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, 4, COLOR_ACCENT);
+void ScriptMessageOverlay::drawBody(int bodyY) const
+{
+    drawWrappedBody(mText, bodyY);
+    drawButton(INNER_X, INNER_W, "OK", true);
+}
+
+std::string ScriptMessageOverlay::hints(void) const
+{
+    // Only this dialog's own keys: the L/R log hint sits on the tile's hint
+    // line, which the card does not reach, so every script dialog's hint line
+    // is about the dialog and nothing else.
+    return UiKit::buttonGlyph("A") + " OK";
 }
 
 void ScriptMessageOverlay::update(const InputState& input)
 {
     if (input.kDown & (HidNpadButton_A | HidNpadButton_B)) {
-        bridge().respond(UiResponse{});
-        me.reset();
+        answer(UiResponse{});
     }
 }
 
-/* ---- gui_pick_one ------------------------------------------------------ */
+/* ---- gui_confirm -------------------------------------------------------- */
 
-ScriptPickOneOverlay::ScriptPickOneOverlay(Screen& screen, const std::string& prompt, std::vector<std::string> items)
-    : Overlay(screen), mPrompt(prompt), mItems(std::move(items))
+ScriptConfirmOverlay::ScriptConfirmOverlay(Screen& screen, std::string text)
+    : ScriptTileOverlay(screen, ScriptRunner::get().scriptName()), mText(std::move(text))
 {
 }
 
-void ScriptPickOneOverlay::draw(void) const
+void ScriptConfirmOverlay::drawBody(int bodyY) const
 {
-    drawListPanel(mPrompt, mItems, mCursor, mScroll, nullptr);
-    UiKit::drawHintBar({
-        {"A", i18n::t("overlay.choose")},
-        {"B", i18n::t("common.cancel")},
-    });
+    drawWrappedBody(mText, bodyY);
+    // Two half-width buttons, confirm on the left — the order YesNoOverlay uses
+    // everywhere else in the app.
+    const int half = (INNER_W - BTN_GAP) / 2;
+    drawButton(INNER_X, half, i18n::t("hint.confirm"), mConfirmSelected);
+    drawButton(INNER_X + half + BTN_GAP, half, i18n::t("common.cancel"), !mConfirmSelected);
+}
+
+std::string ScriptConfirmOverlay::hints(void) const
+{
+    // A activates whichever button is highlighted, which is not always Confirm —
+    // so the hint says "choose", the same word the pickers use for A.
+    return UiKit::buttonGlyph("A") + " " + i18n::t("overlay.choose") + "   " + UiKit::buttonGlyph("B") + " " + i18n::t("common.cancel");
+}
+
+void ScriptConfirmOverlay::update(const InputState& input)
+{
+    if (input.kDown & (HidNpadButton_Left | HidNpadButton_Right)) {
+        mConfirmSelected = (input.kDown & HidNpadButton_Left) != 0;
+    }
+
+    UiResponse resp;
+    if ((input.kDown & HidNpadButton_A) && mConfirmSelected) {
+        resp.confirmed = true;
+        answer(std::move(resp));
+        return;
+    }
+    if (input.kDown & (HidNpadButton_A | HidNpadButton_B)) {
+        answer(std::move(resp));
+    }
+}
+
+/* ---- shared list body --------------------------------------------------- */
+
+ScriptListOverlay::ScriptListOverlay(Screen& screen, std::string prompt, size_t count) : ScriptTileOverlay(screen, std::move(prompt)), mCount(count)
+{
+}
+
+int ScriptListOverlay::visibleRows(void) const
+{
+    // The list ends where the hint band starts; there is no button row here.
+    const int room = ScriptTile::uiBodyBottom() - (ScriptTile::UI_Y + ScriptTile::HEADER_H + 18);
+    return std::max(1, room / (ROW_H + ROW_GAP));
+}
+
+std::string ScriptListOverlay::headerNote(void) const
+{
+    return mCount > 0 ? std::to_string(mCursor + 1) + " / " + std::to_string(mCount) : "";
+}
+
+void ScriptListOverlay::drawBody(int bodyY) const
+{
+    if (mCount == 0) {
+        Gfx::DrawText(ScriptTile::BODY_SIZE, INNER_X, bodyY, COLOR_TEXT3, i18n::t("scripts.no_items").c_str());
+        return;
+    }
+
+    const int rows = visibleRows();
+    for (size_t i = 0; i < (size_t)rows && mScroll + i < mCount; i++) {
+        const size_t k     = mScroll + i;
+        const int rowY     = bodyY + (int)i * (ROW_H + ROW_GAP);
+        const bool focused = k == mCursor;
+        Shapes::fillRound(INNER_X, rowY, INNER_W, ROW_H, 8, focused ? COLOR_ACCENT_TINT : COLOR_FILL1);
+        drawRow(k, rowY, focused);
+        if (focused) {
+            Shapes::focusRing(INNER_X, rowY, INNER_W, ROW_H, 8, COLOR_ACCENT);
+        }
+    }
+}
+
+void ScriptListOverlay::moveCursor(const InputState& input)
+{
+    if (mCount == 0) {
+        return;
+    }
+    if (input.kDown & HidNpadButton_Up) {
+        mCursor = mCursor > 0 ? mCursor - 1 : mCount - 1;
+    }
+    else if (input.kDown & HidNpadButton_Down) {
+        mCursor = mCursor + 1 < mCount ? mCursor + 1 : 0;
+    }
+
+    const size_t rows = (size_t)visibleRows();
+    if (mCursor < mScroll) {
+        mScroll = mCursor;
+    }
+    else if (mCursor >= mScroll + rows) {
+        mScroll = mCursor - rows + 1;
+    }
+}
+
+/* ---- gui_pick_one ------------------------------------------------------- */
+
+ScriptPickOneOverlay::ScriptPickOneOverlay(Screen& screen, const std::string& prompt, std::vector<std::string> items)
+    : ScriptListOverlay(screen, prompt, items.size()), mItems(std::move(items))
+{
+}
+
+void ScriptPickOneOverlay::drawRow(size_t k, int rowY, bool focused) const
+{
+    u32 th;
+    Gfx::GetTextDimensions(ScriptTile::NOTE_SIZE, "Ag", NULL, &th);
+    const int textX          = INNER_X + 14;
+    const std::string fitted = trimToFit(mItems[k], INNER_X + INNER_W - 14 - textX, ScriptTile::NOTE_SIZE);
+    Gfx::DrawText(ScriptTile::NOTE_SIZE, textX, rowY + (ROW_H - (int)th) / 2, focused ? COLOR_TEXT : COLOR_TEXT2, fitted.c_str());
+}
+
+std::string ScriptPickOneOverlay::hints(void) const
+{
+    if (mCount == 0) {
+        return UiKit::buttonGlyph("B") + " " + i18n::t("common.cancel");
+    }
+    return UiKit::buttonGlyph("A") + " " + i18n::t("overlay.choose") + "   " + UiKit::buttonGlyph("B") + " " + i18n::t("common.cancel");
 }
 
 void ScriptPickOneOverlay::update(const InputState& input)
@@ -158,50 +240,67 @@ void ScriptPickOneOverlay::update(const InputState& input)
     if (input.kDown & HidNpadButton_B) {
         UiResponse resp;
         resp.index = -1;
-        bridge().respond(std::move(resp));
-        me.reset();
+        answer(std::move(resp));
         return;
     }
 
-    moveCursor(input, (int)mItems.size(), mCursor, mScroll);
+    moveCursor(input);
 
-    if ((input.kDown & HidNpadButton_A) && !mItems.empty()) {
+    if ((input.kDown & HidNpadButton_A) && mCount > 0) {
         UiResponse resp;
-        resp.index = mCursor;
-        bridge().respond(std::move(resp));
-        me.reset();
+        resp.index = (int)mCursor;
+        answer(std::move(resp));
     }
 }
 
-/* ---- gui_pick_many ----------------------------------------------------- */
+/* ---- gui_pick_many ------------------------------------------------------ */
 
 ScriptPickManyOverlay::ScriptPickManyOverlay(Screen& screen, const std::string& prompt, std::vector<std::string> items, std::vector<bool> preselected)
-    : Overlay(screen), mPrompt(prompt), mItems(std::move(items)), mSelected(std::move(preselected))
+    : ScriptListOverlay(screen, prompt, items.size()), mItems(std::move(items)), mSelected(std::move(preselected))
 {
     mSelected.resize(mItems.size(), false);
 }
 
-void ScriptPickManyOverlay::draw(void) const
+void ScriptPickManyOverlay::drawRow(size_t k, int rowY, bool focused) const
 {
-    drawListPanel(mPrompt, mItems, mCursor, mScroll, &mSelected);
-    UiKit::drawHintBar({
-        {"A", i18n::t("scripts.toggle")},
-        {"X", i18n::t("overlay.choose")},
-        {"B", i18n::t("common.cancel")},
-    });
+    // Checkbox: a small square, filled accent with a check when on.
+    const int boxX = INNER_X + 14, boxY = rowY + (ROW_H - 22) / 2;
+    if (mSelected[k]) {
+        Shapes::fillRound(boxX, boxY, 22, 22, 4, COLOR_ACCENT);
+        u32 gw, gh;
+        Gfx::GetTextDimensions(14, "", &gw, &gh);
+        Gfx::DrawText(14, boxX + (22 - (int)gw) / 2, boxY + (22 - (int)gh) / 2 + 2, COLOR_WHITE, "");
+    }
+    else {
+        Shapes::strokeRound(boxX, boxY, 22, 22, 4, 2, COLOR_STROKE3);
+    }
+
+    u32 th;
+    Gfx::GetTextDimensions(ScriptTile::NOTE_SIZE, "Ag", NULL, &th);
+    const int textX          = boxX + 22 + 12;
+    const std::string fitted = trimToFit(mItems[k], INNER_X + INNER_W - 14 - textX, ScriptTile::NOTE_SIZE);
+    Gfx::DrawText(ScriptTile::NOTE_SIZE, textX, rowY + (ROW_H - (int)th) / 2, focused ? COLOR_TEXT : COLOR_TEXT2, fitted.c_str());
+}
+
+std::string ScriptPickManyOverlay::hints(void) const
+{
+    if (mCount == 0) {
+        return UiKit::buttonGlyph("B") + " " + i18n::t("common.cancel");
+    }
+    return UiKit::buttonGlyph("A") + " " + i18n::t("scripts.toggle") + "   " + UiKit::buttonGlyph("X") + " " + i18n::t("hint.confirm") + "   " +
+           UiKit::buttonGlyph("B") + " " + i18n::t("common.cancel");
 }
 
 void ScriptPickManyOverlay::update(const InputState& input)
 {
     if (input.kDown & HidNpadButton_B) {
-        bridge().respond(UiResponse{}); // confirmed = false
-        me.reset();
+        answer(UiResponse{}); // confirmed = false
         return;
     }
 
-    moveCursor(input, (int)mItems.size(), mCursor, mScroll);
+    moveCursor(input);
 
-    if ((input.kDown & HidNpadButton_A) && !mItems.empty()) {
+    if ((input.kDown & HidNpadButton_A) && mCount > 0) {
         mSelected[mCursor] = !mSelected[mCursor];
     }
 
@@ -209,7 +308,6 @@ void ScriptPickManyOverlay::update(const InputState& input)
         UiResponse resp;
         resp.confirmed = true;
         resp.selected  = mSelected;
-        bridge().respond(std::move(resp));
-        me.reset();
+        answer(std::move(resp));
     }
 }

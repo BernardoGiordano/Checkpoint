@@ -26,9 +26,8 @@
 
 #include "scriptengine.hpp"
 #include "logging.hpp"
-#include <algorithm>
+#include "scriptconsole.hpp"
 #include <exception>
-#include <unistd.h>
 
 extern "C" {
 #include "picoc.h"
@@ -41,21 +40,17 @@ namespace {
     // has a deeper parse tree and more locals, so give scripts 64 KB of margin.
     constexpr int PICOC_STACKSIZE = 64 * 1024;
 
-    // Script printf() goes through picoc's stdlib to the real stdout, which is
-    // nowhere on a 3DS. Point stdout's buffer at ours for the duration of the
-    // run and read it back afterwards — PKSM's trick, and process-global, which
-    // is why only one script may run at a time.
-    constexpr size_t CAPTURE_SIZE = 4096;
-    char g_capture[CAPTURE_SIZE];
+    // How much of the tail the Outcome carries. Same budget as the old static
+    // capture buffer, but now a view over the console rather than the only copy
+    // of the output — the pane holds (and scrolls) far more than this.
+    constexpr size_t OUTPUT_TAIL = 4096;
 }
 
 ScriptEngine::Outcome ScriptEngine::run(const std::string& path, const std::vector<std::string>& args)
 {
-    std::fill_n(g_capture, CAPTURE_SIZE, '\0');
-
-    const int stdoutSave = dup(STDOUT_FILENO);
-    setvbuf(stdout, g_capture, _IOFBF, CAPTURE_SIZE);
-
+    // Script printf() and every picoc diagnostic land in ScriptConsole (see
+    // ckpt_console_stdout): the run's output is readable while it happens, not
+    // only once it ends. ScriptRunner clears the console before starting.
     Picoc pc;
     PicocInitialize(&pc, PICOC_STACKSIZE);
 
@@ -94,11 +89,7 @@ ScriptEngine::Outcome ScriptEngine::run(const std::string& path, const std::vect
 
     PicocCleanup(&pc);
 
-    dup2(stdoutSave, STDOUT_FILENO);
-    close(stdoutSave);
-
-    g_capture[CAPTURE_SIZE - 1] = '\0';
-    outcome.output              = g_capture;
+    outcome.output = ScriptConsole::get().tail(OUTPUT_TAIL);
 
     Logging::info("[script] {} exited with {}", path, outcome.exitValue);
     if (!outcome.output.empty()) {

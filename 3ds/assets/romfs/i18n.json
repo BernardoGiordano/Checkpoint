@@ -1714,5 +1714,82 @@
     "nl": "Wisselen",
     "ja": "切り替え",
     "zh": "切换"
+  },
+  "scripts.log_title": {
+    "en": "Script log",
+    "it": "Log dello script",
+    "es": "Registro del script",
+    "fr": "Journal du script",
+    "de": "Skript-Protokoll",
+    "pt": "Registro do script",
+    "nl": "Scriptlogboek",
+    "ja": "スクリプトログ",
+    "zh": "脚本日志"
+  },
+  "scripts.scroll_logs": {
+    "en": "L / R / D-Pad scroll log",
+    "it": "L / R / D-Pad scorri log",
+    "es": "L / R / Cruceta desplazar registro",
+    "fr": "L / R / Croix défiler le journal",
+    "de": "L / R / Steuerkreuz Protokoll scrollen",
+    "pt": "L / R / D-Pad rolar registro",
+    "nl": "L / R / D-pad log scrollen",
+    "ja": "L / R / 十字キー でログをスクロール",
+    "zh": "L / R / 十字键 滚动日志"
+  },
+  "scripts.close": {
+    "en": "Close",
+    "it": "Chiudi",
+    "es": "Cerrar",
+    "fr": "Fermer",
+    "de": "Schließen",
+    "pt": "Fechar",
+    "nl": "Sluiten",
+    "ja": "閉じる",
+    "zh": "关闭"
+  },
+  "scripts.waiting": {
+    "en": "Waiting for your answer…",
+    "it": "In attesa della tua risposta…",
+    "es": "Esperando tu respuesta…",
+    "fr": "En attente de votre réponse…",
+    "de": "Warte auf deine Antwort…",
+    "pt": "Aguardando sua resposta…",
+    "nl": "Wacht op je antwoord…",
+    "ja": "入力を待っています…",
+    "zh": "等待你的回答…"
+  },
+  "scripts.working": {
+    "en": "Working…",
+    "it": "Elaborazione…",
+    "es": "Trabajando…",
+    "fr": "Traitement…",
+    "de": "Arbeitet…",
+    "pt": "Trabalhando…",
+    "nl": "Bezig…",
+    "ja": "処理中…",
+    "zh": "处理中…"
+  },
+  "scripts.log_empty": {
+    "en": "The script has not printed anything yet.",
+    "it": "Lo script non ha ancora stampato nulla.",
+    "es": "El script aún no ha impreso nada.",
+    "fr": "Le script n'a encore rien affiché.",
+    "de": "Das Skript hat noch nichts ausgegeben.",
+    "pt": "O script ainda não imprimiu nada.",
+    "nl": "Het script heeft nog niets afgedrukt.",
+    "ja": "スクリプトはまだ何も出力していません。",
+    "zh": "脚本尚未输出任何内容。"
+  },
+  "scripts.exit_code": {
+    "en": "exit {0}",
+    "it": "uscita {0}",
+    "es": "salida {0}",
+    "fr": "sortie {0}",
+    "de": "Ende {0}",
+    "pt": "saída {0}",
+    "nl": "afsluitcode {0}",
+    "ja": "終了コード {0}",
+    "zh": "退出 {0}"
   }
 }

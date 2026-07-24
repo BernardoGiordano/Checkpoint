@@ -27,6 +27,7 @@
 #ifndef MESSAGEOVERLAY_HPP
 #define MESSAGEOVERLAY_HPP
 
+#include "ModalChrome.hpp"
 #include "Overlay.hpp"
 #include "clickable.hpp"
 #include "colors.hpp"
@@ -55,7 +56,8 @@ private:
     static constexpr float SIZE = 0.6f;
     Style mStyle;
     std::string mText;
-    u32 mPosx, mPosy;
+    ModalChrome::Layout mLayout;
+    u32 mPosx;
     std::unique_ptr<Clickable> mButton;
 };
 

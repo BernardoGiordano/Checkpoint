@@ -26,6 +26,7 @@
 
 #include "main.hpp"
 #include "MainScreen.hpp"
+#include "ScriptScreen.hpp"
 #include "backupsize.hpp"
 #include "colors.hpp"
 #include "logging.hpp"
@@ -72,6 +73,9 @@ int main(void)
     // Match the color tokens to the persisted theme before any screen draws.
     Colors::apply(Configuration::getInstance().theme());
 
+    // Fixes the script log pane's wrap column before any script can print.
+    ScriptScreen::configureLogWidth();
+
     InputState input;
     g_input = &input;
     PadState pad;
@@ -104,7 +108,9 @@ int main(void)
         // Don't exit mid-copy (the worker is touching the save filesystem, and
         // tearing down services under it would crash) or mid-script (picoc
         // cannot be preempted).
-        if ((input.kDown & HidNpadButton_Plus) && !TransferJob::get().active() && !ScriptRunner::get().active())
+        // allowsExit() is what keeps Plus from quitting out of a finished script
+        // session, where the runner is already idle but the log pane is still up.
+        if ((input.kDown & HidNpadButton_Plus) && g_screen->allowsExit() && !TransferJob::get().active() && !ScriptRunner::get().active())
             break;
 
         input.kHeld = padGetButtons(&pad);
@@ -124,6 +130,40 @@ int main(void)
         }
         else {
             scriptCancelHold = 0;
+        }
+
+        // Log pane scrolling, here for the same reason as the kill switch: a
+        // script-raised overlay owns update(), and the pane beside it must stay
+        // scrollable while the user answers.
+        static int scrollHold = 0;
+        if (ScriptScreen::showing()) {
+            if (input.kDown & HidNpadButton_L) {
+                ScriptScreen::scrollLog(-1);
+            }
+            else if (input.kDown & HidNpadButton_R) {
+                ScriptScreen::scrollLog(1);
+            }
+
+            // Line-by-line on the D-Pad, but only while the pane is what the
+            // D-Pad would otherwise do nothing to: an overlay's list owns
+            // up/down for its own selection.
+            const u64 kHeld = input.kHeld & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_AnyUp | HidNpadButton_AnyDown);
+            if (kHeld && !g_screen->hasOverlay()) {
+                // Tap moves one line; holding waits out a short delay and then
+                // repeats every other frame, so a long transcript is still
+                // reachable without mashing.
+                constexpr int DELAY = 20, RATE = 2;
+                if (scrollHold == 0 || (scrollHold >= DELAY && (scrollHold - DELAY) % RATE == 0)) {
+                    ScriptScreen::scrollLogLines((kHeld & (HidNpadButton_Up | HidNpadButton_AnyUp)) ? 1 : -1);
+                }
+                scrollHold++;
+            }
+            else {
+                scrollHold = 0;
+            }
+        }
+        else {
+            scrollHold = 0;
         }
 
         g_screen->doDraw();

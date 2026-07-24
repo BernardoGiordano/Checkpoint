@@ -25,19 +25,24 @@
  */
 
 #include "ScriptRequestOverlays.hpp"
-#include "ModalChrome.hpp"
 #include "colors.hpp"
 #include "glyphs.hpp"
+#include "gui.hpp"
 #include "i18n.hpp"
 #include "scriptrunner.hpp"
 #include "textpool.hpp"
 #include "util.hpp"
 #include <3ds.h>
+#include <algorithm>
 
 namespace {
-    void respond(UiResponse resp)
+    constexpr float BODY_SIZE = 0.5f, ROW_SIZE = 0.46f, BTN_SIZE = 0.5f;
+    // Button row along the tile's lower edge, above the hint line.
+    constexpr int BTN_H = 30, BTN_GAP = 10;
+
+    int buttonRowY(void)
     {
-        ScriptRunner::get().bridge().respond(std::move(resp));
+        return ScriptTile::uiBodyBottom() - BTN_H - 6;
     }
 
     // List rows are single-line, but script-supplied strings can carry newlines
@@ -64,147 +69,266 @@ namespace {
     }
 }
 
-/* ---- gui_message ------------------------------------------------------- */
+/* ---- shared tile chrome ------------------------------------------------- */
 
-ScriptMessageOverlay::ScriptMessageOverlay(Screen& screen, const std::string& text) : Overlay(screen)
+ScriptTileOverlay::ScriptTileOverlay(Screen& screen, std::string title) : Overlay(screen), mTitle(std::move(title)) {}
+
+void ScriptTileOverlay::drawBottom(void) const
+{
+    // No dim: the tile covers the whole bottom screen already, and the top
+    // screen must stay untouched so the log pane keeps reading.
+    const int bodyY = ScriptTile::uiFrame(mTitle, headerNote(), COLOR_ACCENT, ScriptTile::Z);
+    drawBody(bodyY);
+    ScriptTile::uiHints(hints(), ScriptTile::Z);
+}
+
+void ScriptTileOverlay::answer(UiResponse resp)
+{
+    ScriptRunner::get().bridge().respond(std::move(resp));
+    screen.removeOverlay();
+}
+
+void ScriptTileOverlay::drawWrappedBody(const std::string& text, int bodyY) const
+{
+    TextPool& text_pool = TextPool::get();
+    const float maxW    = (float)(ScriptTile::UI_W - 2 * ScriptTile::PAD);
+    std::string wrapped = StringUtils::wrap(text, BODY_SIZE, maxW);
+
+    // Cut to the lines that fit above the button row rather than letting the
+    // paragraph run under it.
+    const float lineH  = StringUtils::textHeight("A", BODY_SIZE);
+    const int maxLines = std::max(1, (int)((buttonRowY() - 6 - bodyY) / (lineH > 0 ? lineH : 1)));
+    int lines          = 1;
+    for (size_t i = 0; i < wrapped.size(); i++) {
+        if (wrapped[i] == '\n' && ++lines > maxLines) {
+            wrapped = wrapped.substr(0, i) + "...";
+            break;
+        }
+    }
+    text_pool.drawWrapped(wrapped, (float)(ScriptTile::UI_X + ScriptTile::PAD), (float)bodyY, BODY_SIZE, COLOR_TEXT, maxW, ScriptTile::Z);
+}
+
+/* ---- gui_message -------------------------------------------------------- */
+
+ScriptMessageOverlay::ScriptMessageOverlay(Screen& screen, std::string text)
+    : ScriptTileOverlay(screen, ScriptRunner::get().scriptName()), mText(std::move(text))
 {
     mButton = std::make_unique<Clickable>(
-        ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, COLOR_ACCENT, COLOR_WHITE, " OK", true);
+        ScriptTile::UI_X + ScriptTile::PAD, buttonRowY(), ScriptTile::UI_W - 2 * ScriptTile::PAD, BTN_H, COLOR_ACCENT, COLOR_WHITE, " OK", true);
     mButton->selected(true);
-    mText = StringUtils::wrap(text, SIZE, ModalChrome::TEXT_MAX_W);
-    mPosx = ceilf((320 - StringUtils::textWidth(mText, SIZE)) / 2);
-    mPosy = 54 + ceilf((88 - StringUtils::textHeight(mText, SIZE)) / 2);
 }
 
-void ScriptMessageOverlay::drawTop(void) const
+void ScriptMessageOverlay::drawBody(int bodyY) const
 {
-    ModalChrome::dimTop();
+    drawWrappedBody(mText, bodyY);
+    mButton->draw(BTN_SIZE, COLOR_RING);
+    Gui::drawPulsingOutline(ScriptTile::UI_X + ScriptTile::PAD, buttonRowY(), ScriptTile::UI_W - 2 * ScriptTile::PAD, BTN_H, 2, COLOR_RING);
 }
 
-void ScriptMessageOverlay::drawBottom(void) const
+std::string ScriptMessageOverlay::hints(void) const
 {
-    ModalChrome::dimBottom();
-    ModalChrome::drawCard(COLOR_LINE);
-    TextPool::get().draw(mText, mPosx, mPosy, SIZE, COLOR_TEXT);
-    mButton->draw(0.55f, COLOR_RING);
-    Gui::drawPulsingOutline(ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, 2, COLOR_RING);
+    // Only this dialog's own keys: the L/R log hint lives on the top screen,
+    // which no dialog covers, so every script dialog's hint line is about the
+    // dialog and nothing else.
+    return std::string(GLYPH_A) + " OK";
 }
 
 void ScriptMessageOverlay::update(const InputState& input)
 {
     (void)input;
     if (mButton->released() || (hidKeysDown() & (KEY_A | KEY_B))) {
-        respond(UiResponse{});
-        screen.removeOverlay();
+        answer(UiResponse{});
     }
 }
 
-/* ---- gui_pick_one ------------------------------------------------------ */
+/* ---- gui_confirm -------------------------------------------------------- */
+
+namespace {
+    // Two half-width buttons on the tile's button row, confirm on the left, the
+    // same order YesNoOverlay uses everywhere else in the app.
+    constexpr int confirmHalf(void)
+    {
+        return (ScriptTile::UI_W - 2 * ScriptTile::PAD - BTN_GAP) / 2;
+    }
+    constexpr int confirmLeftX(void)
+    {
+        return ScriptTile::UI_X + ScriptTile::PAD;
+    }
+    constexpr int confirmRightX(void)
+    {
+        return confirmLeftX() + confirmHalf() + BTN_GAP;
+    }
+}
+
+ScriptConfirmOverlay::ScriptConfirmOverlay(Screen& screen, std::string text)
+    : ScriptTileOverlay(screen, ScriptRunner::get().scriptName()), mText(std::move(text))
+{
+    mConfirm = std::make_unique<Clickable>(
+        confirmLeftX(), buttonRowY(), confirmHalf(), BTN_H, COLOR_ACCENT, COLOR_WHITE, " " + i18n::t("hint.confirm"), true);
+    mCancel = std::make_unique<Clickable>(
+        confirmRightX(), buttonRowY(), confirmHalf(), BTN_H, COLOR_RAISED, COLOR_TEXT, " " + i18n::t("common.cancel"), true);
+}
+
+void ScriptConfirmOverlay::drawBody(int bodyY) const
+{
+    drawWrappedBody(mText, bodyY);
+    mConfirm->selected(mConfirmSelected);
+    mCancel->selected(!mConfirmSelected);
+    mConfirm->draw(BTN_SIZE, COLOR_RING);
+    mCancel->draw(BTN_SIZE, COLOR_RING);
+    Gui::drawPulsingOutline(mConfirmSelected ? confirmLeftX() : confirmRightX(), buttonRowY(), confirmHalf(), BTN_H, 2, COLOR_RING);
+}
+
+std::string ScriptConfirmOverlay::hints(void) const
+{
+    // A activates whichever button is highlighted, which is not always Confirm —
+    // so the hint says "select", the same word the pickers use for A.
+    return std::string(GLYPH_A) + " " + i18n::t("overlay.select") + "     " + GLYPH_B + " " + i18n::t("common.cancel");
+}
+
+void ScriptConfirmOverlay::update(const InputState& input)
+{
+    (void)input;
+    const u32 kDown = hidKeysDown();
+    if (kDown & (KEY_LEFT | KEY_RIGHT)) {
+        mConfirmSelected = (kDown & KEY_LEFT) != 0;
+    }
+
+    UiResponse resp;
+    if (mConfirm->released() || ((kDown & KEY_A) && mConfirmSelected)) {
+        resp.confirmed = true;
+        answer(std::move(resp));
+        return;
+    }
+    if (mCancel->released() || (kDown & KEY_B) || (kDown & KEY_A)) {
+        answer(std::move(resp));
+    }
+}
+
+/* ---- shared list body --------------------------------------------------- */
+
+ScriptListOverlay::ScriptListOverlay(Screen& screen, std::string prompt, size_t count)
+    : ScriptTileOverlay(screen, std::move(prompt)), mCount(count), mCursor(VISIBLE)
+{
+    mCursor.setCount(count);
+}
+
+std::string ScriptListOverlay::headerNote(void) const
+{
+    return mCount > 0 ? StringUtils::format("%zu / %zu", mCursor.index() + 1, mCount) : "";
+}
+
+void ScriptListOverlay::drawBody(int bodyY) const
+{
+    if (mCount == 0) {
+        TextPool::get().drawCentered(
+            i18n::t("scripts.no_items"), ScriptTile::UI_X, ScriptTile::UI_W, bodyY + 30, BODY_SIZE, COLOR_FAINT, ScriptTile::Z);
+        return;
+    }
+
+    const size_t first = mCursor.offset();
+    for (size_t i = 0; i < VISIBLE && first + i < mCount; i++) {
+        const size_t k = first + i;
+        const int rowY = bodyY + (int)i * ROW_H;
+        const bool sel = k == mCursor.index();
+        if (sel) {
+            C2D_DrawRectSolid(
+                (float)(ScriptTile::UI_X + 4), (float)rowY, ScriptTile::Z, (float)(ScriptTile::UI_W - 8), (float)(ROW_H - 2), COLOR_ROW_SELECT);
+            Gui::drawOutline(ScriptTile::UI_X + 4, rowY, ScriptTile::UI_W - 8, ROW_H - 2, 1, COLOR_ACCENT);
+        }
+        drawRow(k, rowY, sel);
+    }
+}
+
+/* ---- gui_pick_one ------------------------------------------------------- */
 
 ScriptPickOneOverlay::ScriptPickOneOverlay(Screen& screen, const std::string& prompt, std::vector<std::string> items)
-    : ListPickerOverlay(screen, prompt, 48, 28, 0.5f), mItems(std::move(items))
+    : ScriptListOverlay(screen, prompt, items.size()), mItems(std::move(items))
 {
 }
 
-int ScriptPickOneOverlay::rowCount(void) const
+void ScriptPickOneOverlay::drawRow(size_t k, int rowY, bool selected) const
 {
-    return (int)mItems.size();
+    TextPool& text   = TextPool::get();
+    const float maxW = ScriptTile::UI_W - 2 * ScriptTile::PAD - 8;
+    text.draw(text.truncate(flattenLine(mItems[k]), maxW, ROW_SIZE), ScriptTile::UI_X + ScriptTile::PAD, rowY + 5, ROW_SIZE,
+        selected ? COLOR_TEXT : COLOR_MUTED, ScriptTile::Z);
 }
 
-void ScriptPickOneOverlay::drawEmptyMessage(void) const
+std::string ScriptPickOneOverlay::hints(void) const
 {
-    TextPool::get().drawCentered(i18n::t("scripts.no_items"), 0, 400, 110, 0.5f, COLOR_MUTED, OVERLAY_Z);
-}
-
-void ScriptPickOneOverlay::drawRowContent(int k, int rowY, bool selected) const
-{
-    TextPool& text = TextPool::get();
-    text.draw(text.truncate(flattenLine(mItems[k]), 324, 0.46f), 40, rowY + 5, 0.46f, selected ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
-}
-
-std::string ScriptPickOneOverlay::bottomHints(void) const
-{
-    return std::string(GLYPH_A) + " " + i18n::t("overlay.select") + "      " + GLYPH_B + " " + i18n::t("common.cancel");
+    if (mCount == 0) {
+        return std::string(GLYPH_B) + " " + i18n::t("common.cancel");
+    }
+    return std::string(GLYPH_A) + " " + i18n::t("overlay.select") + "     " + GLYPH_B + " " + i18n::t("common.cancel");
 }
 
 void ScriptPickOneOverlay::update(const InputState& input)
 {
     (void)input;
-    const int count = rowCount();
-    mHid.update(count > 0 ? count : 1);
+    const u32 kDown = hidKeysDown();
+    mCursor.update(kDown, hidKeysHeld(), svcGetSystemTick());
 
-    u32 kDown = hidKeysDown();
-    if ((kDown & KEY_A) && count > 0) {
+    if ((kDown & KEY_A) && mCount > 0) {
         UiResponse resp;
-        resp.index = (int)mHid.fullIndex();
-        respond(std::move(resp));
-        screen.removeOverlay();
+        resp.index = (int)mCursor.index();
+        answer(std::move(resp));
         return;
     }
     if (kDown & KEY_B) {
         UiResponse resp;
         resp.index = -1;
-        respond(std::move(resp));
-        screen.removeOverlay();
-        return;
+        answer(std::move(resp));
     }
 }
 
-/* ---- gui_pick_many ----------------------------------------------------- */
+/* ---- gui_pick_many ------------------------------------------------------ */
 
 ScriptPickManyOverlay::ScriptPickManyOverlay(Screen& screen, const std::string& prompt, std::vector<std::string> items, std::vector<bool> preselected)
-    : ListPickerOverlay(screen, prompt, 48, 28, 0.47f), mItems(std::move(items)), mSelected(std::move(preselected))
+    : ScriptListOverlay(screen, prompt, items.size()), mItems(std::move(items)), mSelected(std::move(preselected))
 {
     mSelected.resize(mItems.size(), false);
 }
 
-int ScriptPickManyOverlay::rowCount(void) const
+void ScriptPickManyOverlay::drawRow(size_t k, int rowY, bool selected) const
 {
-    return (int)mItems.size();
+    TextPool& text   = TextPool::get();
+    const int textX  = ScriptTile::UI_X + ScriptTile::PAD + 26;
+    const float maxW = (float)(ScriptTile::UI_X + ScriptTile::UI_W - ScriptTile::PAD - 4 - textX);
+    text.draw(mSelected[k] ? "[x]" : "[ ]", ScriptTile::UI_X + ScriptTile::PAD, rowY + 5, ROW_SIZE, mSelected[k] ? COLOR_ACCENT : COLOR_FAINT,
+        ScriptTile::Z);
+    text.draw(text.truncate(flattenLine(mItems[k]), maxW, ROW_SIZE), textX, rowY + 5, ROW_SIZE, selected ? COLOR_TEXT : COLOR_MUTED, ScriptTile::Z);
 }
 
-void ScriptPickManyOverlay::drawEmptyMessage(void) const
+std::string ScriptPickManyOverlay::hints(void) const
 {
-    TextPool::get().drawCentered(i18n::t("scripts.no_items"), 0, 400, 110, 0.5f, COLOR_MUTED, OVERLAY_Z);
-}
-
-void ScriptPickManyOverlay::drawRowContent(int k, int rowY, bool selected) const
-{
-    TextPool& text = TextPool::get();
-    text.draw(mSelected[k] ? "[x]" : "[  ]", 40, rowY + 5, 0.46f, mSelected[k] ? COLOR_ACCENT : COLOR_FAINT, OVERLAY_Z);
-    text.draw(text.truncate(flattenLine(mItems[k]), 300, 0.46f), 66, rowY + 5, 0.46f, selected ? COLOR_TEXT : COLOR_MUTED, OVERLAY_Z);
-}
-
-std::string ScriptPickManyOverlay::bottomHints(void) const
-{
-    return std::string(GLYPH_A) + " " + i18n::t("scripts.toggle") + "      START " + i18n::t("hint.confirm") + "      " + GLYPH_B + " " +
+    if (mCount == 0) {
+        return std::string(GLYPH_B) + " " + i18n::t("common.cancel");
+    }
+    // X confirms, not START: it is the same key the Switch build uses, and START
+    // already means "close the finished run" on this screen.
+    return std::string(GLYPH_A) + " " + i18n::t("scripts.toggle") + "   " + GLYPH_X + " " + i18n::t("hint.confirm") + "   " + GLYPH_B + " " +
            i18n::t("common.cancel");
 }
 
 void ScriptPickManyOverlay::update(const InputState& input)
 {
     (void)input;
-    const int count = rowCount();
-    mHid.update(count > 0 ? count : 1);
+    const u32 kDown = hidKeysDown();
+    mCursor.update(kDown, hidKeysHeld(), svcGetSystemTick());
 
-    u32 kDown = hidKeysDown();
-    if ((kDown & KEY_A) && count > 0) {
-        const size_t k = mHid.fullIndex();
+    if ((kDown & KEY_A) && mCount > 0) {
+        const size_t k = mCursor.index();
         mSelected[k]   = !mSelected[k];
     }
-    if (kDown & KEY_START) {
+    if (kDown & KEY_X) {
         UiResponse resp;
         resp.confirmed = true;
         resp.selected  = mSelected;
-        respond(std::move(resp));
-        screen.removeOverlay();
+        answer(std::move(resp));
         return;
     }
     if (kDown & KEY_B) {
-        UiResponse resp;
-        resp.confirmed = false;
-        respond(std::move(resp));
-        screen.removeOverlay();
-        return;
+        answer(UiResponse{});
     }
 }

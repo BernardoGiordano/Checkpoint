@@ -31,22 +31,24 @@
 
 ErrorOverlay::ErrorOverlay(Screen& screen, Result mres, const std::string& mtext) : Overlay(screen)
 {
-    res    = mres;
-    text   = mtext;
+    res  = mres;
+    text = mtext;
+    // hasHeader: reserve the band the "Error: 0x..." line draws into.
+    layout = ModalChrome::fitText(text, ModalChrome::TEXT_SIZE, true);
     button = std::make_unique<Clickable>(
-        ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, COLOR_BG, COLOR_WHITE, "OK", true);
+        ModalChrome::BTN_WIDE_X, layout.btnY, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, COLOR_BG, COLOR_WHITE, "OK", true);
     button->selected(true);
 }
 
 void ErrorOverlay::draw(void) const
 {
     ModalChrome::dim();
-    ModalChrome::drawCard(COLOR_BLACK);
-    Gfx::DrawText(20, ModalChrome::TEXT_X, ModalChrome::CARD_Y + 16, COLOR_DANGER,
-        StringUtils::format("%s: 0x%0llX", i18n::t("common.error").c_str(), res).c_str());
-    ModalChrome::drawText(text, COLOR_WHITE);
+    ModalChrome::drawCard(layout, COLOR_BLACK);
+    Gfx::DrawText(
+        20, ModalChrome::TEXT_X, layout.headerY, COLOR_DANGER, StringUtils::format("%s: 0x%0llX", i18n::t("common.error").c_str(), res).c_str());
+    ModalChrome::drawText(layout, text, COLOR_WHITE);
     button->draw(ModalChrome::BTN_SIZE, COLOR_DANGER);
-    drawPulsingOutline(ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, 4, COLOR_DANGER);
+    drawPulsingOutline(ModalChrome::BTN_WIDE_X, layout.btnY, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, 4, COLOR_DANGER);
 }
 
 void ErrorOverlay::update(const InputState& input)

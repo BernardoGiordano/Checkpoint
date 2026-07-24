@@ -73,6 +73,28 @@ public:
     // UTF-8 codepoint boundaries and never parses.
     std::string truncate(const std::string& s, float maxWidth, float scale) const;
 
+    // ---- monospace ---------------------------------------------------------
+    // The script log pane's font: a bundled Space Mono built into a .bcfnt by
+    // the root Makefile. The shared system font has no monospace face, and the
+    // pane needs a fixed advance so one stored log line is exactly one row.
+    // Loaded lazily on first use (romfs is mounted well before then).
+
+    // In all three calls below `scale` is relative to the atlas: 1.0 draws the
+    // glyphs at the point size the .bcfnt was rasterised at, one texel per
+    // pixel, which is the only scale that stays crisp.
+
+    // False when the font could not be loaded; callers fall back to draw().
+    bool monoReady(void);
+
+    // Width of one character at `scale`. Fixed, so a full line is `n` times it.
+    float monoAdvance(float scale);
+
+    // Height of one line at `scale`, for stacking log rows.
+    float monoLineHeight(float scale);
+
+    // Draws `s` in the monospace font. Same pen-snapping as draw().
+    void drawMono(const std::string& s, float x, float y, float scale, u32 color, float depth = 0.5f);
+
 private:
     TextPool(void);
     ~TextPool(void);
@@ -81,12 +103,23 @@ private:
 
     // Returns the cached parse of `s`, parsing (and, if the buffer is nearly
     // full, rebuilding) as needed. The pointer is valid until the next rebuild.
-    const C2D_Text* obtain(const std::string& s);
+    // `font` selects the face; nullptr is the system font.
+    const C2D_Text* obtain(const std::string& s, C2D_Font font);
     void rebuild(void);
 
     C2D_TextBuf mBuf;
-    std::unordered_map<std::string, C2D_Text> mCache;
-    u32 mFrame = 0;
+    // One cache per face: the same string parsed in two fonts is two different
+    // glyph runs, so they cannot share a key.
+    std::unordered_map<std::string, C2D_Text> mCache, mMonoCache;
+    C2D_Font mMono     = nullptr;
+    bool mMonoTried    = false;
+    float mMonoAdvance = 0.0f; // both measured once, in atlas pixels
+    float mMonoHeight  = 0.0f;
+    // citro2d normalises every font to the system font's line height, so its
+    // scale 1.0 blows a small atlas up to ~30px rows. This factor divides that
+    // back out: the mono* calls take scale 1.0 to mean one atlas pixel.
+    float mMonoScale = 1.0f;
+    u32 mFrame       = 0;
 };
 
 #endif

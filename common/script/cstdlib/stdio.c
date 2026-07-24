@@ -4,6 +4,12 @@
 #include <stdio.h>
 
 #include "interpreter.h"
+#include "scriptconsole_c.h"
+
+/* Checkpoint: neither console has a real stdout, so everything a script prints
+ * goes to the live log pane instead. CKPT_STDOUT stands in for `stdout` at
+ * every point where picoc's stdlib means "the script's console". */
+#define CKPT_STDOUT (ckpt_console_stdout())
 
 #define MAX_FORMAT (80)
 #define MAX_SCANF_ARGS (10)
@@ -45,9 +51,9 @@ struct StdVararg
 /* initializes the I/O system so error reporting works */
 void BasicIOInit(Picoc* pc)
 {
-    pc->CStdOut = stdout;
+    pc->CStdOut = CKPT_STDOUT;
     stdinValue  = stdin;
-    stdoutValue = stdout;
+    stdoutValue = CKPT_STDOUT;
     stderrValue = stderr;
 }
 
@@ -747,7 +753,7 @@ void StdioPutc(
 void StdioPutchar(
     struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = putchar(Param[0]->Val->Integer);
+    ReturnValue->Val->Integer = putc(Param[0]->Val->Integer, CKPT_STDOUT);
 }
 
 void StdioSetbuf(
@@ -772,7 +778,8 @@ void StdioUngetc(
 void StdioPuts(
     struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = puts(Param[0]->Val->Pointer);
+    ReturnValue->Val->Integer = fputs(Param[0]->Val->Pointer, CKPT_STDOUT);
+    fputc('\n', CKPT_STDOUT);
 }
 
 void StdioGets(
@@ -803,14 +810,14 @@ void StdioPrintf(
     PrintfArgs.Param   = Param;
     PrintfArgs.NumArgs = NumArgs - 1;
     ReturnValue->Val->Integer =
-        StdioBasePrintf(Parser, stdout, NULL, 0, Param[0]->Val->Pointer, &PrintfArgs);
+        StdioBasePrintf(Parser, CKPT_STDOUT, NULL, 0, Param[0]->Val->Pointer, &PrintfArgs);
 }
 
 void StdioVprintf(
     struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
     ReturnValue->Val->Integer =
-        StdioBasePrintf(Parser, stdout, NULL, 0, Param[0]->Val->Pointer, Param[1]->Val->Pointer);
+        StdioBasePrintf(Parser, CKPT_STDOUT, NULL, 0, Param[0]->Val->Pointer, Param[1]->Val->Pointer);
 }
 
 void StdioFprintf(

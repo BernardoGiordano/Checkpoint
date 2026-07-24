@@ -53,6 +53,9 @@ public:
     // Whether pressing START should quit the app from this screen.
     virtual bool allowsExit() const { return true; }
     void removeOverlay() { currentOverlay.reset(); }
+    // True while an overlay owns update(). The main loop asks before routing a
+    // key it also gives to overlays (the D-Pad, on the script log pane).
+    bool hasOverlay() const { return currentOverlay != nullptr; }
     void setOverlay(std::shared_ptr<Overlay>& overlay) { currentOverlay = overlay; }
 
 protected:

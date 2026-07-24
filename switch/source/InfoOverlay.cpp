@@ -30,19 +30,22 @@
 
 InfoOverlay::InfoOverlay(Screen& screen, const std::string& mtext) : Overlay(screen)
 {
+    // Grow the card to the message before anything is placed: the button row
+    // rides on the card's bottom edge, so its y comes out of the layout too.
     text   = mtext;
+    layout = ModalChrome::fitText(text);
     button = std::make_unique<Clickable>(
-        ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, COLOR_SURFACE, COLOR_TEXT, "OK", true);
+        ModalChrome::BTN_WIDE_X, layout.btnY, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, COLOR_SURFACE, COLOR_TEXT, "OK", true);
     button->selected(true);
 }
 
 void InfoOverlay::draw(void) const
 {
     ModalChrome::dim();
-    ModalChrome::drawCard(COLOR_SURFACE);
-    ModalChrome::drawText(text, COLOR_TEXT);
+    ModalChrome::drawCard(layout, COLOR_SURFACE);
+    ModalChrome::drawText(layout, text, COLOR_TEXT);
     button->draw(ModalChrome::BTN_SIZE, COLOR_ACCENT);
-    drawPulsingOutline(ModalChrome::BTN_WIDE_X, ModalChrome::BTN_Y, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, 4, COLOR_ACCENT);
+    drawPulsingOutline(ModalChrome::BTN_WIDE_X, layout.btnY, ModalChrome::BTN_WIDE_W, ModalChrome::BTN_H, 4, COLOR_ACCENT);
 }
 
 void InfoOverlay::update(const InputState& input)

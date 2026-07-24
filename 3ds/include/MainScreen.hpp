@@ -90,7 +90,6 @@ protected:
     void startScriptPicker(void);
     // While a script runs: raises the overlay for a pending ScriptUiBridge
     // request (or answers a Keyboard request inline via swkbd).
-    void pumpScriptRequests(void);
     // Runs a restore of the current title's cellIndex backup, gated by the
     // "Confirm before restore" setting: shows a Yes/No prompt when enabled,
     // otherwise restores immediately.

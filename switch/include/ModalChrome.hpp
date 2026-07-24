@@ -37,8 +37,9 @@
 // hit-tests can never drift apart (mirrors the 3DS ModalChrome).
 namespace ModalChrome {
     // Centered card on the 1280x720 screen. Wider than the old 640-wide box so
-    // it reads as a dialog rather than a floating chip.
-    constexpr int CARD_X = 192, CARD_Y = 190, CARD_W = 896, CARD_H = 300;
+    // it reads as a dialog rather than a floating chip. Its height is not fixed:
+    // fitText() grows it to the wrapped message (see below).
+    constexpr int CARD_X = 192, CARD_W = 896;
     constexpr int PAD = 32;
 
     // Message body: wrapped to this width, smaller than the old size-28 so long
@@ -50,21 +51,43 @@ namespace ModalChrome {
     // Button row along the bottom of the card: one wide button, or a split pair.
     constexpr int BTN_H       = 56;
     constexpr int BTN_SIZE    = 24;
-    constexpr int BTN_Y       = CARD_Y + CARD_H - 24 - BTN_H; // 410
-    constexpr int BTN_WIDE_X  = CARD_X + PAD;                 // 224
-    constexpr int BTN_WIDE_W  = CARD_W - 2 * PAD;             // 832
+    constexpr int BTN_PAD     = 24;               // card bottom edge -> button row
+    constexpr int BTN_WIDE_X  = CARD_X + PAD;     // 224
+    constexpr int BTN_WIDE_W  = CARD_W - 2 * PAD; // 832
     constexpr int BTN_GAP     = 16;
     constexpr int BTN_HALF_W  = (BTN_WIDE_W - BTN_GAP) / 2;        // 408
     constexpr int BTN_LEFT_X  = BTN_WIDE_X;                        // 224
     constexpr int BTN_RIGHT_X = BTN_WIDE_X + BTN_HALF_W + BTN_GAP; // 648
 
+    // Auto-sizing: the card keeps `PAD` above the text, `TEXT_GAP` between text
+    // and button row, `BTN_PAD` below it, and `HEADER_H` for the optional error
+    // line. It never shrinks below CARD_MIN_H (the old fixed box, so short
+    // dialogs look unchanged) nor grows past CARD_MAX_H, which leaves
+    // SCREEN_MARGIN against both screen edges. The card stays centered on
+    // CARD_CENTER_Y, so CARD_MAX_H is exactly twice its headroom.
+    constexpr int TEXT_GAP = 16, HEADER_H = 40;
+    constexpr int CARD_CENTER_Y = 340, SCREEN_MARGIN = 40;
+    constexpr int CARD_MIN_H = 300, CARD_MAX_H = 2 * (CARD_CENTER_Y - SCREEN_MARGIN);
+
+    // Where an auto-sized card and its contents landed.
+    struct Layout {
+        int cardY, cardH;
+        int headerY;      // error line, valid only when fitText was told there is one
+        int textX, textY; // top-left of the wrapped text block
+        int btnY;         // top of the button row
+    };
+
+    // Sizes a card around `text` wrapped to TEXT_MAX_W and returns that
+    // geometry. Text taller than the biggest allowed card is cut to what fits,
+    // ending in "...".
+    Layout fitText(std::string& text, int size = TEXT_SIZE, bool hasHeader = false);
+
     // Full-screen dimmed scrim behind the card.
     void dim(void);
     // The card itself, filled with `surface`.
-    void drawCard(Color surface);
-    // Wrap `text` to the card width and draw it centered in the band between the
-    // card top and the button row.
-    void drawText(const std::string& text, Color color, int size = TEXT_SIZE);
+    void drawCard(const Layout& layout, Color surface);
+    // The message, wrapped to the card width and placed by `layout`.
+    void drawText(const Layout& layout, const std::string& text, Color color, int size = TEXT_SIZE);
 }
 
 #endif

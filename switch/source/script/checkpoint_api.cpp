@@ -47,6 +47,7 @@
 #include "logging.hpp"
 #include "main.hpp"
 #include "paths.hpp"
+#include "scriptconsole.hpp"
 #include "scriptrunner.hpp"
 #include "title.hpp"
 #include "titlecatalog.hpp"
@@ -547,11 +548,11 @@ namespace {
         return hl;
     }
 
-    // web_upload_file progress: appends " <pct>%" to the gui_status line the
-    // script set before the upload (throttled to whole-percent changes), and
-    // aborts when the script is being cancelled.
+    // web_upload_file progress: drives the console's reserved innermost bar, so
+    // a script uploading N files gets a byte-level bar under its own file-level
+    // bar without writing any progress code around the call. Also the abort
+    // seam — the per-statement kill switch cannot reach a script parked in curl.
     struct UploadProgress {
-        std::string base;
         int lastPct = -1;
     };
     int curlUploadProgress(void* p, curl_off_t, curl_off_t, curl_off_t ultotal, curl_off_t ulnow)
@@ -563,8 +564,17 @@ namespace {
         if (up && ultotal > 0) {
             const int pct = (int)((ulnow * 100) / ultotal);
             if (pct != up->lastPct) {
+                if (up->lastPct < 0) {
+                    // First callback: the total is only known once curl has it.
+                    // The label names the *phase*, never the script's status
+                    // text: a script that also drives an item bar would
+                    // otherwise show the same string on two stacked bars and
+                    // read as a duplicate. "zip" / "unzip" in zip_api.cpp are
+                    // the same convention.
+                    ScriptConsole::get().beginIo("upload", (long long)ultotal);
+                }
                 up->lastPct = pct;
-                bridge().setStatus(up->base + " " + std::to_string(pct) + "%");
+                ScriptConsole::get().setIo((long long)ulnow);
             }
         }
         return 0;
@@ -779,7 +789,7 @@ void ckpt_web_upload_file(struct ParseState* Parser, struct Value* ReturnValue, 
     }
 
     struct curl_slist* hl = headerSlist(headers);
-    UploadProgress prog{bridge().statusText()};
+    UploadProgress prog;
     std::string data, rhdr;
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);           // streamed request body
@@ -811,6 +821,7 @@ void ckpt_web_upload_file(struct ParseState* Parser, struct Value* ReturnValue, 
     }
     curl_easy_cleanup(curl);
     fclose(f);
+    ScriptConsole::get().endIo();
 
     if (code != CURLE_OK) {
         Logging::warning("[script] web_upload_file {} '{}' failed: {}", method, url, curl_easy_strerror(code));
@@ -952,7 +963,11 @@ void ckpt_gui_status(struct ParseState* Parser, struct Value* ReturnValue, struc
 
 void ckpt_script_log(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    Logging::info("[script] {}", (char*)Param[0]->Val->Pointer);
+    const char* msg = (const char*)Param[0]->Val->Pointer;
+    // Both destinations on purpose: the app log survives the run for a bug
+    // report, the console pane is what the user is watching while it happens.
+    Logging::info("[script] {}", msg);
+    ScriptConsole::get().log(msg);
 }
 
 void ckpt_selected_title(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
