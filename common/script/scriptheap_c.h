@@ -24,28 +24,30 @@
  *         reasonable ways as different from the original version.
  */
 
-// Platform-neutral pieces of the network script API. web_request/web_upload_file
-// and url_encode are per-platform (they drive curl next to web_get in each
-// checkpoint_api.cpp), but header parsing is pure string logic, so it reuses the
-// same TransferProto::headerValue the wireless transfer relies on — one copy for
-// both consoles.
+#ifndef SCRIPTHEAP_C_H
+#define SCRIPTHEAP_C_H
 
-#include "scriptheap.hpp"
-#include "transferprotocol.hpp"
-#include <cstdlib>
-#include <cstring>
-#include <string>
+#include <stddef.h>
 
+/* The C face of ScriptHeap, for picoc's stdlib (C). A script's malloc() and
+ * free() are these, so an aborted run reclaims what the script allocated as
+ * well as what the bindings handed it — see scriptheap.hpp for why the script's
+ * own free() cannot be trusted to run. */
+
+#ifdef __cplusplus
 extern "C" {
-#include "checkpoint_api.h"
-#include "interpreter.h"
-}
+#endif
 
-void ckpt_http_header_value(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
-{
-    (void)Parser;
-    (void)NumArgs;
-    const char* headers       = (char*)Param[0]->Val->Pointer;
-    const char* key           = (char*)Param[1]->Val->Pointer;
-    ReturnValue->Val->Pointer = strToRet(TransferProto::headerValue(headers ? headers : "", key ? key : ""));
+void* ckpt_script_malloc(size_t size);
+void* ckpt_script_calloc(size_t count, size_t size);
+void* ckpt_script_realloc(void* ptr, size_t size);
+
+/* Frees a block this heap owns. A pointer it does not own — a borrowed json
+ * element, a double free — is ignored instead of reaching the real free(). */
+void ckpt_script_free(void* ptr);
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif

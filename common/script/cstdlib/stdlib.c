@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "interpreter.h"
+#include "scriptheap_c.h"
 
 static int Stdlib_ZeroValue = 0;
 
@@ -46,25 +47,25 @@ void StdlibStrtoul(
 void StdlibMalloc(
     struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Pointer = malloc(Param[0]->Val->Integer);
+    ReturnValue->Val->Pointer = ckpt_script_malloc(Param[0]->Val->Integer);
 }
 
 void StdlibCalloc(
     struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Pointer = calloc(Param[0]->Val->Integer, Param[1]->Val->Integer);
+    ReturnValue->Val->Pointer = ckpt_script_calloc(Param[0]->Val->Integer, Param[1]->Val->Integer);
 }
 
 void StdlibRealloc(
     struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Pointer = realloc(Param[0]->Val->Pointer, Param[1]->Val->Integer);
+    ReturnValue->Val->Pointer = ckpt_script_realloc(Param[0]->Val->Pointer, Param[1]->Val->Integer);
 }
 
 void StdlibFree(
     struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    free(Param[0]->Val->Pointer);
+    ckpt_script_free(Param[0]->Val->Pointer);
 }
 
 void StdlibRand(
