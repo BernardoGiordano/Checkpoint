@@ -35,6 +35,7 @@
 // objects holding resources exist.
 
 #include "common.hpp"
+#include "httpcall.hpp"
 #include "logging.hpp"
 #include "paths.hpp"
 #include "scriptconsole.hpp"
@@ -44,7 +45,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <curl/curl.h>
 #include <dirent.h>
 #include <string>
 #include <sys/stat.h>
@@ -367,72 +367,37 @@ void ckpt_sav_close_all(void)
 /* ---- network ----------------------------------------------------------- */
 
 namespace {
-    size_t curlWriteToString(char* ptr, size_t size, size_t nmemb, void* userdata)
+    // Every web_* binding is argument marshalling over Http::perform
+    // (httpcall.hpp), which owns the option set, the abort polling, the upload
+    // progress bar and the allocation-safe write callback. This turns one
+    // response into the script's (return code, out buffer, out size) triple.
+    int webResult(const char* what, const char* url, const Http::Response& res, char** out, int* outSize, char** respHeaders)
     {
-        ((std::string*)userdata)->append(ptr, size * nmemb);
-        return size * nmemb;
-    }
-
-    // Nonzero aborts the transfer: a script being aborted mustn't sit in a
-    // download it can't reach the per-statement abort hook from.
-    int curlAbortOnScriptCancel(void*, curl_off_t, curl_off_t, curl_off_t, curl_off_t)
-    {
-        return ckpt_script_abort_requested();
-    }
-
-    // "\n"-separated "Key: Value" lines into a curl slist ("" => none). Empty
-    // lines and a trailing newline are skipped.
-    struct curl_slist* headerSlist(const char* headers)
-    {
-        struct curl_slist* hl = nullptr;
-        if (headers && headers[0]) {
-            std::string all(headers);
-            size_t start = 0;
-            while (start < all.size()) {
-                const size_t nl  = all.find('\n', start);
-                std::string line = all.substr(start, nl == std::string::npos ? std::string::npos : nl - start);
-                if (!line.empty()) {
-                    hl = curl_slist_append(hl, line.c_str());
-                }
-                if (nl == std::string::npos) {
-                    break;
-                }
-                start = nl + 1;
-            }
+        switch (res.result) {
+            case Http::Result::Ok:
+                break;
+            case Http::Result::TransferFailed:
+                Logging::warning("[script] {} '{}' failed: {}", what, url, Http::strerror(res.code));
+                return -((int)res.code + 100);
+            case Http::Result::OutOfMemory:
+                Logging::warning("[script] {} '{}' ran out of memory for the response", what, url);
+                return -1;
+            default:
+                return -1;
         }
-        return hl;
-    }
 
-    // web_upload_file progress: drives the console's reserved innermost bar, so
-    // a script uploading N files gets a byte-level bar under its own file-level
-    // bar without writing any progress code around the call. Also the abort
-    // seam — the per-statement kill switch cannot reach a script parked in curl.
-    struct UploadProgress {
-        int lastPct = -1;
-    };
-    int curlUploadProgress(void* p, curl_off_t, curl_off_t, curl_off_t ultotal, curl_off_t ulnow)
-    {
-        if (ckpt_script_abort_requested()) {
-            return 1;
+        // Run-scoped copy (scriptheap.hpp), NUL-terminated past the length the
+        // script gets: an abort mid-script no longer strands the whole body.
+        char* buf = (char*)strToRet(res.body);
+        if (!buf) {
+            return -1;
         }
-        UploadProgress* up = (UploadProgress*)p;
-        if (up && ultotal > 0) {
-            const int pct = (int)((ulnow * 100) / ultotal);
-            if (pct != up->lastPct) {
-                if (up->lastPct < 0) {
-                    // First callback: the total is only known once curl has it.
-                    // The label names the *phase*, never the script's status
-                    // text: a script that also drives an item bar would
-                    // otherwise show the same string on two stacked bars and
-                    // read as a duplicate. "zip" / "unzip" in zip_api.cpp are
-                    // the same convention.
-                    ScriptConsole::get().beginIo("upload", (long long)ultotal);
-                }
-                up->lastPct = pct;
-                ScriptConsole::get().setIo((long long)ulnow);
-            }
+        *out     = buf;
+        *outSize = (int)res.body.size();
+        if (respHeaders) {
+            *respHeaders = (char*)strToRet(res.headers);
         }
-        return 0;
+        return (int)res.httpStatus;
     }
 }
 
@@ -449,53 +414,10 @@ void ckpt_web_get(struct ParseState* Parser, struct Value* ReturnValue, struct V
     *out         = nullptr;
     *outSize     = 0;
 
-    // Lazy so curl costs nothing until a script actually fetches. Single script
-    // thread + one run at a time, so no init race.
-    static bool curlReady = false;
-    if (!curlReady) {
-        curlReady = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
-    }
-    CURL* curl = curlReady ? curl_easy_init() : nullptr;
-    if (!curl) {
-        ReturnValue->Val->Integer = -1;
-        return;
-    }
+    Http::Request req;
+    req.url = url;
 
-    std::string data;
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteToString);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, curlAbortOnScriptCancel);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Checkpoint-curl");
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 300L);
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 10L);
-
-    const CURLcode code = curl_easy_perform(curl);
-    long status         = 0;
-    if (code == CURLE_OK) {
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
-    }
-    curl_easy_cleanup(curl);
-
-    if (code != CURLE_OK) {
-        Logging::warning("[script] web_get '{}' failed: {}", url, curl_easy_strerror(code));
-        ReturnValue->Val->Integer = -((int)code + 100);
-        return;
-    }
-
-    // Run-scoped copy (scriptheap.hpp), NUL-terminated past the length the
-    // script gets: an abort mid-script no longer strands the whole body.
-    char* buf = (char*)strToRet(data);
-    if (!buf) {
-        ReturnValue->Val->Integer = -1;
-        return;
-    }
-    *out                      = buf;
-    *outSize                  = (int)data.size();
-    ReturnValue->Val->Integer = (int)status;
+    ReturnValue->Val->Integer = webResult("web_get", url, Http::perform(req), out, outSize, nullptr);
 }
 
 void ckpt_web_request(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
@@ -514,68 +436,15 @@ void ckpt_web_request(struct ParseState* Parser, struct Value* ReturnValue, stru
         *respHeaders = nullptr;
     }
 
-    static bool curlReady = false;
-    if (!curlReady) {
-        curlReady = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
-    }
-    CURL* curl = curlReady ? curl_easy_init() : nullptr;
-    if (!curl) {
-        ReturnValue->Val->Integer = -1;
-        return;
-    }
+    Http::Request req;
+    req.method         = method; // GET/POST/PUT/PATCH/DELETE
+    req.url            = url;
+    req.headers        = headers;
+    req.body           = body;
+    req.bodySize       = bodySize;
+    req.captureHeaders = respHeaders != nullptr;
 
-    struct curl_slist* hl = headerSlist(headers);
-    std::string data, rhdr;
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method); // GET/POST/PUT/PATCH/DELETE
-    if (hl) {
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hl);
-    }
-    if (bodySize > 0 && body) {
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)bodySize);
-    }
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteToString);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, curlWriteToString);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &rhdr);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, curlAbortOnScriptCancel);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Checkpoint-curl");
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 300L);
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 10L);
-
-    const CURLcode code = curl_easy_perform(curl);
-    long status         = 0;
-    if (code == CURLE_OK) {
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
-    }
-    if (hl) {
-        curl_slist_free_all(hl);
-    }
-    curl_easy_cleanup(curl);
-
-    if (code != CURLE_OK) {
-        Logging::warning("[script] web_request {} '{}' failed: {}", method, url, curl_easy_strerror(code));
-        ReturnValue->Val->Integer = -((int)code + 100);
-        return;
-    }
-
-    // Run-scoped copy (scriptheap.hpp), NUL-terminated past the length the
-    // script gets: an abort mid-script no longer strands the whole body.
-    char* buf = (char*)strToRet(data);
-    if (!buf) {
-        ReturnValue->Val->Integer = -1;
-        return;
-    }
-    *out     = buf;
-    *outSize = (int)data.size();
-    if (respHeaders) {
-        *respHeaders = (char*)strToRet(rhdr);
-    }
-    ReturnValue->Val->Integer = (int)status;
+    ReturnValue->Val->Integer = webResult("web_request", url, Http::perform(req), out, outSize, respHeaders);
 }
 
 void ckpt_web_upload_file(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
@@ -593,109 +462,28 @@ void ckpt_web_upload_file(struct ParseState* Parser, struct Value* ReturnValue, 
         *respHeaders = nullptr;
     }
 
-    // The body is the file's bytes, streamed by curl's default fread reader — it
-    // never enters the interpreter heap, so a multi-MB save is fine.
-    FILE* f = fopen(filePath, "rb");
-    if (!f) {
+    Http::Request req;
+    req.method     = method; // "PUT" for the resumable session
+    req.url        = url;
+    req.headers    = headers;
+    req.uploadPath = filePath;
+    // A redirect would re-send the body without rewinding the stream.
+    req.followRedirects = false;
+    req.captureHeaders  = respHeaders != nullptr;
+
+    const Http::Response res = Http::perform(req);
+    if (res.result == Http::Result::FileError) {
         Logging::warning("[script] web_upload_file can't open '{}'", filePath);
         ReturnValue->Val->Integer = -1;
         return;
     }
-    fseek(f, 0, SEEK_END);
-    const long len = ftell(f);
-    rewind(f);
-    if (len < 0) {
-        fclose(f);
-        ReturnValue->Val->Integer = -1;
-        return;
-    }
-
-    static bool curlReady = false;
-    if (!curlReady) {
-        curlReady = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
-    }
-    CURL* curl = curlReady ? curl_easy_init() : nullptr;
-    if (!curl) {
-        fclose(f);
-        ReturnValue->Val->Integer = -1;
-        return;
-    }
-
-    struct curl_slist* hl = headerSlist(headers);
-    UploadProgress prog;
-    std::string data, rhdr;
-    curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);            // streamed request body
-    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method); // "PUT" for the resumable session
-    if (hl) {
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hl);
-    }
-    curl_easy_setopt(curl, CURLOPT_READDATA, f);
-    curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, (curl_off_t)len);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteToString);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &data);
-    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, curlWriteToString);
-    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &rhdr);
-    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
-    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, curlUploadProgress);
-    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &prog);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "Checkpoint-curl");
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 300L);
-    curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 10L);
-
-    const CURLcode code = curl_easy_perform(curl);
-    long status         = 0;
-    if (code == CURLE_OK) {
-        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
-    }
-    if (hl) {
-        curl_slist_free_all(hl);
-    }
-    curl_easy_cleanup(curl);
-    fclose(f);
-    ScriptConsole::get().endIo();
-
-    if (code != CURLE_OK) {
-        Logging::warning("[script] web_upload_file {} '{}' failed: {}", method, url, curl_easy_strerror(code));
-        ReturnValue->Val->Integer = -((int)code + 100);
-        return;
-    }
-
-    // Run-scoped copy (scriptheap.hpp), NUL-terminated past the length the
-    // script gets: an abort mid-script no longer strands the whole body.
-    char* buf = (char*)strToRet(data);
-    if (!buf) {
-        ReturnValue->Val->Integer = -1;
-        return;
-    }
-    *out     = buf;
-    *outSize = (int)data.size();
-    if (respHeaders) {
-        *respHeaders = (char*)strToRet(rhdr);
-    }
-    ReturnValue->Val->Integer = (int)status;
+    ReturnValue->Val->Integer = webResult("web_upload_file", url, res, out, outSize, respHeaders);
 }
 
 void ckpt_url_encode(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const char* s = (char*)Param[0]->Val->Pointer;
-
-    static bool curlReady = false;
-    if (!curlReady) {
-        curlReady = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
-    }
-    CURL* curl = curlReady ? curl_easy_init() : nullptr;
-    if (!curl) {
-        ReturnValue->Val->Pointer = strToRet("");
-        return;
-    }
-    char* enc                 = curl_easy_escape(curl, s ? s : "", 0);
-    ReturnValue->Val->Pointer = strToRet(enc ? enc : "");
-    if (enc) {
-        curl_free(enc);
-    }
-    curl_easy_cleanup(curl);
+    const char* s             = (char*)Param[0]->Val->Pointer;
+    ReturnValue->Val->Pointer = strToRet(Http::encode(s));
 }
 
 /* ---- gui -------------------------------------------------------------- */
