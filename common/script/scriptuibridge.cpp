@@ -34,11 +34,13 @@ UiResponse ScriptUiBridge::request(UiRequest req)
         // reaches its next statement (where picoc's abort hook fails the run).
         return UiResponse{};
     }
-    mReq = std::move(req);
+    mReq   = std::move(req);
+    mTaken = false;
     mCv.wait(lock, [this] { return mResp.has_value(); });
     UiResponse out = std::move(*mResp);
     mReq.reset();
     mResp.reset();
+    mTaken = false;
     return out;
 }
 
@@ -48,10 +50,14 @@ void ScriptUiBridge::setStatus(std::string text)
     mStatus = std::move(text);
 }
 
-const UiRequest* ScriptUiBridge::pending(void)
+std::optional<UiRequest> ScriptUiBridge::take(void)
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    return (mReq && !mResp) ? &*mReq : nullptr;
+    if (!mReq || mResp || mTaken) {
+        return std::nullopt;
+    }
+    mTaken = true;
+    return mReq;
 }
 
 void ScriptUiBridge::respond(UiResponse resp)
@@ -87,5 +93,6 @@ void ScriptUiBridge::reset(void)
     mStatus.clear();
     mReq.reset();
     mResp.reset();
+    mTaken     = false;
     mCancelled = false;
 }

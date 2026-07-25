@@ -228,7 +228,7 @@ void ScriptScreen::update(const InputState& input)
     if (ScriptRunner::get().active()) {
         // The hold-B kill switch and the L/R log scrolling live in main.cpp:
         // both must keep working while a script-raised overlay owns update().
-        pumpScriptRequests();
+        pumpScriptRequests(ScriptRunner::get().bridge(), *this);
         return;
     }
 
@@ -237,42 +237,33 @@ void ScriptScreen::update(const InputState& input)
     }
 }
 
-void ScriptScreen::pumpScriptRequests(void)
+void ScriptScreen::showMessage(const std::string& prompt)
 {
-    ScriptUiBridge& bridge = ScriptRunner::get().bridge();
-    const UiRequest* req   = bridge.pending();
-    if (!req) {
-        return;
-    }
+    currentOverlay = std::make_shared<ScriptMessageOverlay>(*this, prompt);
+}
 
-    // This runs only while no overlay is up (an overlay's update replaces the
-    // screen's), so each pending request is mapped to its overlay exactly once;
-    // the overlay answers the bridge before dismissing itself.
-    switch (req->kind) {
-        case UiRequest::Kind::Message:
-            currentOverlay = std::make_shared<ScriptMessageOverlay>(*this, req->prompt);
-            break;
-        case UiRequest::Kind::Confirm:
-            currentOverlay = std::make_shared<ScriptConfirmOverlay>(*this, req->prompt);
-            break;
-        case UiRequest::Kind::PickOne:
-            currentOverlay = std::make_shared<ScriptPickOneOverlay>(*this, req->prompt, req->items);
-            break;
-        case UiRequest::Kind::PickMany:
-            currentOverlay = std::make_shared<ScriptPickManyOverlay>(*this, req->prompt, req->items, req->preselected);
-            break;
-        case UiRequest::Kind::Keyboard: {
-            // swkbd runs on the main thread - the reason the bridge exists.
-            UiResponse resp;
-            resp.text = KeyboardManager::get().text("", req->prompt, req->maxChars > 0 ? (size_t)req->maxChars - 1 : 0);
-            bridge.respond(std::move(resp));
-            break;
-        }
-        case UiRequest::Kind::Numpad: {
-            UiResponse resp;
-            resp.index = KeyboardManager::get().numpad(req->prompt, req->numMin, req->numMax);
-            bridge.respond(std::move(resp));
-            break;
-        }
-    }
+void ScriptScreen::showConfirm(const std::string& prompt)
+{
+    currentOverlay = std::make_shared<ScriptConfirmOverlay>(*this, prompt);
+}
+
+void ScriptScreen::showPickOne(const std::string& prompt, const std::vector<std::string>& items)
+{
+    currentOverlay = std::make_shared<ScriptPickOneOverlay>(*this, prompt, items);
+}
+
+void ScriptScreen::showPickMany(const std::string& prompt, const std::vector<std::string>& items, const std::vector<bool>& preselected)
+{
+    currentOverlay = std::make_shared<ScriptPickManyOverlay>(*this, prompt, items, preselected);
+}
+
+std::string ScriptScreen::keyboard(const std::string& prompt, size_t maxChars)
+{
+    // swkbd runs on the main thread - the reason the bridge exists.
+    return KeyboardManager::get().text("", prompt, maxChars);
+}
+
+int ScriptScreen::numpad(const std::string& prompt, int min, int max)
+{
+    return KeyboardManager::get().numpad(prompt, min, max);
 }
