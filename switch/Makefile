@@ -37,8 +37,8 @@ APP_VERSION	:=	${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_MICRO}
 TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out
 BUILD			:=	build
-FORMATSOURCES	:=	source ../common ../common/script
-SOURCES			:=	$(FORMATSOURCES) source/gfx source/script ../3rd-party/ftp \
+FORMATSOURCES	:=	source source/script ../common ../common/script
+SOURCES			:=	$(FORMATSOURCES) source/gfx ../3rd-party/ftp \
 					../common/script/cstdlib \
 					../3rd-party/picoc/source/interpreter
 DATA			:=	data

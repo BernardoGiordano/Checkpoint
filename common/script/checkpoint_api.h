@@ -32,7 +32,8 @@
 // Declarations of the native bindings scripts reach through <checkpoint.h>.
 // Every binding has picoc's fixed signature; the prototypes scripts actually
 // see live in the table in library_checkpoint.c, and the implementations are
-// per-platform (3ds/source/script/checkpoint_api.cpp).
+// one copy for both consoles (common/script/checkpoint_api.cpp), over the
+// ScriptHost seam (scripthost.hpp) the platforms differ across.
 
 #ifdef __cplusplus
 extern "C" {
@@ -133,7 +134,7 @@ void ckpt_script_abort_request(void);
 int ckpt_script_abort_requested(void);
 void ckpt_script_abort_reset(void);
 
-/* not a binding (per-platform): the worker calls this once at entry to drop
+/* not a binding: the worker calls this once at entry to drop
  * its own scheduler priority just below the main thread. A syscall-free script
  * (e.g. a pure `while (1)` compute loop) never yields its core, so if it ran at
  * or above the main thread's priority it would starve the loop that samples the

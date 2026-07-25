@@ -24,25 +24,23 @@
  *         reasonable ways as different from the original version.
  */
 
-// Native implementations of the <checkpoint.h> script API, 3DS flavour. All of
-// these run on the script worker thread: TitleCatalog reads are safe (recursive
-// mutex since arch-review S4), gui_* park the thread on the ScriptUiBridge, and
-// nothing here may trigger a catalog refresh. A binding must close every RAII
-// scope before calling back into picoc — ProgramFail longjmps to the run's exit
-// point, so it is only ever called before C++ objects holding resources exist.
+// Native implementations of the <checkpoint.h> script API — one copy for both
+// consoles. Everything the two platforms disagree about sits behind ScriptHost
+// (scripthost.hpp): the catalog index space and the save archive handle table.
+//
+// All of these run on the script worker thread: gui_* park it on the
+// ScriptUiBridge, and nothing here may trigger a catalog refresh. A binding
+// must close every RAII scope before calling back into picoc — ProgramFail
+// longjmps to the run's exit point, so it is only ever called before C++
+// objects holding resources exist.
 
-#include "backuptarget.hpp"
 #include "common.hpp"
-#include "directory.hpp"
-#include "fsstream.hpp"
-#include "loader.hpp"
 #include "logging.hpp"
 #include "paths.hpp"
 #include "scriptconsole.hpp"
 #include "scriptheap.hpp"
+#include "scripthost.hpp"
 #include "scriptrunner.hpp"
-#include "title.hpp"
-#include "util.hpp"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -59,25 +57,39 @@ extern "C" {
 
 namespace {
 
-    int titleCount(void)
+    ScriptHost& host(void)
     {
-        return TitleCatalog::get().getTitleCount(BackupKind::Save);
+        return ScriptHost::get();
     }
 
-    // Copies the idx-th title of the Save list — the catalog index space every
-    // titles_* binding shares. Fails the script on a bad index (longjmp; called
-    // before any local C++ object exists in the binding).
-    Title titleAt(struct ParseState* Parser, int idx)
+    // Fails the script on a bad index (longjmp; called before any local C++
+    // object exists in the binding).
+    void checkTitleIndex(struct ParseState* Parser, int idx)
     {
-        if (idx < 0 || idx >= titleCount()) {
+        if (idx < 0 || idx >= host().titleCount()) {
             ProgramFail(Parser, "title index %d out of range", idx);
         }
-        Title title;
-        TitleCatalog::get().getTitle(title, idx, BackupKind::Save);
+    }
+
+    HostTitle titleAt(struct ParseState* Parser, int idx)
+    {
+        checkTitleIndex(Parser, idx);
+        HostTitle title;
+        host().titleAt(idx, title);
         return title;
     }
 
-    std::string idToHex(u64 id)
+    // Same rule as above: fails the script on a stale/invalid handle, so call
+    // it before any local C++ object exists in the binding.
+    int savAt(struct ParseState* Parser, int handle)
+    {
+        if (!host().savValid(handle)) {
+            ProgramFail(Parser, "invalid save handle %d", handle);
+        }
+        return handle;
+    }
+
+    std::string idToHex(uint64_t id)
     {
         return StringUtils::format("%016llX", (unsigned long long)id);
     }
@@ -118,54 +130,23 @@ namespace {
         }
         return ret;
     }
-
-    // sav_* handle table. Slots hold the opened archive plus what commit means
-    // for it; ckpt_sav_close_all wipes it after every run.
-    struct SavSlot {
-        ArchiveHandle arch;
-        bool commitable = false; // CTR save archive: commit + secure-value fix
-        u32 uniqueId    = 0;     // for the secure-value fix
-    };
-    constexpr int MAX_SAV_HANDLES = 8;
-    SavSlot savSlots[MAX_SAV_HANDLES];
-
-    // Fails the script on a stale/invalid handle (longjmp; call it before any
-    // local C++ object exists in the binding).
-    SavSlot& savAt(struct ParseState* Parser, int h)
-    {
-        if (h < 0 || h >= MAX_SAV_HANDLES || !savSlots[h].arch) {
-            ProgramFail(Parser, "invalid save handle %d", h);
-        }
-        return savSlots[h];
-    }
-
-    // Script paths are archive-absolute; tolerate a missing leading slash.
-    std::u16string archivePath(const char* path)
-    {
-        std::string p = path;
-        if (p.empty() || p[0] != '/') {
-            p = "/" + p;
-        }
-        return StringUtils::UTF8toUTF16(p.c_str());
-    }
 }
 
 /* ---- titles ---------------------------------------------------------- */
 
 void ckpt_titles_count(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = titleCount();
+    ReturnValue->Val->Integer = host().titleCount();
 }
 
 void ckpt_title_find(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const u64 id    = strtoull((char*)Param[0]->Val->Pointer, nullptr, 16);
-    const int count = titleCount();
-    int found       = -1;
+    const uint64_t id = strtoull((char*)Param[0]->Val->Pointer, nullptr, 16);
+    const int count   = host().titleCount();
+    int found         = -1;
     for (int i = 0; i < count && found < 0; i++) {
-        Title title;
-        TitleCatalog::get().getTitle(title, i, BackupKind::Save);
-        if (title.id() == id) {
+        HostTitle title;
+        if (host().titleAt(i, title) && title.id == id) {
             found = i;
         }
     }
@@ -174,38 +155,38 @@ void ckpt_title_find(struct ParseState* Parser, struct Value* ReturnValue, struc
 
 void ckpt_title_id(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    Title title               = titleAt(Parser, Param[0]->Val->Integer);
-    ReturnValue->Val->Pointer = strToRet(idToHex(title.id()));
+    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
+    ReturnValue->Val->Pointer = strToRet(idToHex(title.id));
 }
 
 void ckpt_title_name(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    Title title               = titleAt(Parser, Param[0]->Val->Integer);
-    ReturnValue->Val->Pointer = strToRet(title.longDescription());
+    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
+    ReturnValue->Val->Pointer = strToRet(title.name);
 }
 
 void ckpt_title_product_code(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    Title title               = titleAt(Parser, Param[0]->Val->Integer);
+    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
     ReturnValue->Val->Pointer = strToRet(title.productCode);
 }
 
 void ckpt_title_is_cart(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    Title title               = titleAt(Parser, Param[0]->Val->Integer);
-    ReturnValue->Val->Integer = title.mediaType() == MEDIATYPE_GAME_CARD ? 1 : 0;
+    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
+    ReturnValue->Val->Integer = title.isCart ? 1 : 0;
 }
 
 void ckpt_title_has_save(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    Title title               = titleAt(Parser, Param[0]->Val->Integer);
-    ReturnValue->Val->Integer = title.accessibleSave() ? 1 : 0;
+    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
+    ReturnValue->Val->Integer = title.hasSave ? 1 : 0;
 }
 
 void ckpt_title_has_extdata(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    Title title               = titleAt(Parser, Param[0]->Val->Integer);
-    ReturnValue->Val->Integer = title.accessibleExtdata() ? 1 : 0;
+    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
+    ReturnValue->Val->Integer = title.hasExtdata ? 1 : 0;
 }
 
 void ckpt_title_backup_path(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
@@ -214,9 +195,15 @@ void ckpt_title_backup_path(struct ParseState* Parser, struct Value* ReturnValue
     if (kind != 0 && kind != 1) {
         ProgramFail(Parser, "backup kind %d must be 0 (save) or 1 (extdata)", kind);
     }
-    Title title               = titleAt(Parser, Param[0]->Val->Integer);
-    BackupTarget target       = title.backup(kind == 0 ? BackupKind::Save : BackupKind::Extdata);
-    ReturnValue->Val->Pointer = strToRet(StringUtils::UTF16toUTF8(target.rootPath()) + "/");
+    checkTitleIndex(Parser, Param[0]->Val->Integer);
+
+    // "" stays "": that is how a script is told the platform has no backup of
+    // that kind, and "/" would read as the SD root.
+    std::string path = host().titleBackupPath(Param[0]->Val->Integer, kind);
+    if (!path.empty() && path.back() != '/') {
+        path += '/';
+    }
+    ReturnValue->Val->Pointer = strToRet(path);
 }
 
 /* ---- sd card --------------------------------------------------------- */
@@ -247,13 +234,17 @@ void ckpt_read_directory(struct ParseState* Parser, struct Value* ReturnValue, s
 
 void ckpt_delete_directory(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
+    // Through ScriptHeap, not free(): makeDirData allocated these, so the heap
+    // still owns them and a raw free() would leave it holding dangling keys to
+    // free again at the end of the run.
     dirData* dir = (dirData*)Param[0]->Val->Pointer;
     if (dir) {
+        ScriptHeap& heap = ScriptHeap::get();
         for (int i = 0; i < dir->count; i++) {
-            free(dir->files[i]);
+            heap.release(dir->files[i]);
         }
-        free(dir->files);
-        free(dir);
+        heap.release(dir->files);
+        heap.release(dir);
     }
 }
 
@@ -264,9 +255,9 @@ void ckpt_sd_mkdirs(struct ParseState* Parser, struct Value* ReturnValue, struct
     // mkdir -p: create every component; existing ones fail harmlessly, and the
     // final stat is the actual success check.
     for (size_t pos = path.find('/', strlen("sdmc:/")); pos != std::string::npos; pos = path.find('/', pos + 1)) {
-        mkdir(path.substr(0, pos).c_str(), 777);
+        mkdir(path.substr(0, pos).c_str(), 0777);
     }
-    mkdir(path.c_str(), 777);
+    mkdir(path.c_str(), 0777);
 
     struct stat st;
     ReturnValue->Val->Integer = (stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) ? 0 : -1;
@@ -286,158 +277,50 @@ void ckpt_sav_open(struct ParseState* Parser, struct Value* ReturnValue, struct 
     if (kind != 0 && kind != 1) {
         ProgramFail(Parser, "save kind %d must be 0 (save) or 1 (extdata)", kind);
     }
-    Title title = titleAt(Parser, Param[0]->Val->Integer);
-
-    int slot = -1;
-    for (int i = 0; i < MAX_SAV_HANDLES && slot < 0; i++) {
-        if (!savSlots[i].arch) {
-            slot = i;
-        }
-    }
-    if (slot < 0) {
-        ReturnValue->Val->Integer = -2;
-        return;
-    }
-
-    // Only regular CTR saves and extdata are file-level archives; GBA VC
-    // (FSPXI raw), DSiWare (TWL FAT) and SPI cart saves are not reachable here.
-    if (kind == 0) {
-        const bool spiCart = title.mediaType() == MEDIATYPE_GAME_CARD && title.cardType() != CARD_CTR;
-        if (!title.accessibleSave() || title.isGBAVC() || title.isDSiWare() || spiCart) {
-            ReturnValue->Val->Integer = -1;
-            return;
-        }
-    }
-    else if (!title.accessibleExtdata()) {
-        ReturnValue->Val->Integer = -1;
-        return;
-    }
-
-    Result res           = 0;
-    ArchiveHandle handle = title.backup(kind == 0 ? BackupKind::Save : BackupKind::Extdata).open(res);
-    if (!handle) {
-        ReturnValue->Val->Integer = R_FAILED(res) ? (int)res : -1;
-        return;
-    }
-
-    savSlots[slot].arch       = std::move(handle);
-    savSlots[slot].commitable = kind == 0;
-    savSlots[slot].uniqueId   = title.uniqueId();
-    ReturnValue->Val->Integer = slot;
+    checkTitleIndex(Parser, Param[0]->Val->Integer);
+    ReturnValue->Val->Integer = host().savOpen(Param[0]->Val->Integer, kind);
 }
 
 void ckpt_sav_open_shared(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    // A shared-extdata archive belongs to the console, not a title, so it is keyed
-    // by id instead of a catalog index. The id crosses the boundary as a 16-hex
-    // string like a title id (picoc has no reliable 64-bit ints): its low 32 bits
-    // are the extdata id, its high 32 the archive magic (0x00048000 for the Home
-    // Menu shared extdata that holds Play Coins).
-    const u64 id = strtoull((char*)Param[0]->Val->Pointer, nullptr, 16);
-
-    int slot = -1;
-    for (int i = 0; i < MAX_SAV_HANDLES && slot < 0; i++) {
-        if (!savSlots[i].arch) {
-            slot = i;
-        }
-    }
-    if (slot < 0) {
-        ReturnValue->Val->Integer = -2;
-        return;
-    }
-
-    FS_Archive archive;
-    const u32 path[3] = {MEDIATYPE_NAND, (u32)id, (u32)(id >> 32)};
-    Result res        = FSUSER_OpenArchive(&archive, ARCHIVE_SHARED_EXTDATA, {PATH_BINARY, 0xC, path});
-    if (R_FAILED(res)) {
-        ReturnValue->Val->Integer = (int)res;
-        return;
-    }
-
-    // Shared extdata is a file-level archive like ordinary extdata: it needs no
-    // commit and no secure-value fix, so sav_commit is a no-op on this handle.
-    savSlots[slot].arch       = ArchiveHandle::fromFs(archive);
-    savSlots[slot].commitable = false;
-    savSlots[slot].uniqueId   = 0;
-    ReturnValue->Val->Integer = slot;
+    // A shared archive belongs to the console, not a title, so it is keyed by
+    // id instead of a catalog index. The id crosses the boundary as a 16-hex
+    // string like a title id (picoc has no reliable 64-bit ints); what its
+    // halves mean is the platform's business.
+    const uint64_t id         = strtoull((char*)Param[0]->Val->Pointer, nullptr, 16);
+    ReturnValue->Val->Integer = host().savOpenShared(id);
 }
 
 void ckpt_sav_read(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    SavSlot& slot = savAt(Parser, Param[0]->Val->Integer);
-    char** out    = (char**)Param[2]->Val->Pointer;
-    int* outSize  = (int*)Param[3]->Val->Pointer;
-    *out          = nullptr;
-    *outSize      = 0;
+    const int handle = savAt(Parser, Param[0]->Val->Integer);
+    char** out       = (char**)Param[2]->Val->Pointer;
+    int* outSize     = (int*)Param[3]->Val->Pointer;
+    *out             = nullptr;
+    *outSize         = 0;
 
-    FSStream stream(slot.arch.fs(), archivePath((char*)Param[1]->Val->Pointer), FS_OPEN_READ);
-    if (!stream.good()) {
-        const Result res = stream.result();
-        stream.close();
-        ReturnValue->Val->Integer = (int)res;
-        return;
-    }
-
-    const u32 size = stream.size();
-    char* buf      = (char*)ScriptHeap::get().alloc(size + 1);
-    if (!buf) {
-        stream.close();
-        ReturnValue->Val->Integer = -3;
-        return;
-    }
-
-    const u32 read   = stream.read(buf, size);
-    const Result res = stream.result();
-    stream.close();
-    if (read != size && R_FAILED(res)) {
-        ScriptHeap::get().release(buf);
-        ReturnValue->Val->Integer = (int)res;
-        return;
-    }
-
-    buf[read]                 = '\0';
-    *out                      = buf;
-    *outSize                  = (int)read;
-    ReturnValue->Val->Integer = 0;
+    ReturnValue->Val->Integer = host().savRead(handle, (char*)Param[1]->Val->Pointer, out, outSize);
 }
 
 void ckpt_sav_write(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    SavSlot& slot  = savAt(Parser, Param[0]->Val->Integer);
-    const int size = Param[3]->Val->Integer;
+    const int handle = savAt(Parser, Param[0]->Val->Integer);
+    const int size   = Param[3]->Val->Integer;
     if (size < 0) {
         ProgramFail(Parser, "sav_write size must not be negative");
     }
-
-    // Create/replace: the create-on-open path keeps an existing file's size, so
-    // drop it first (a missing file fails harmlessly).
-    const std::u16string path = archivePath((char*)Param[1]->Val->Pointer);
-    FSUSER_DeleteFile(slot.arch.fs(), fsMakePath(PATH_UTF16, path.data()));
-
-    FSStream stream(slot.arch.fs(), path, FS_OPEN_WRITE, (u32)size);
-    if (!stream.good()) {
-        const Result res = stream.result();
-        stream.close();
-        ReturnValue->Val->Integer = (int)res;
-        return;
-    }
-
-    const u32 written = stream.write(Param[2]->Val->Pointer, (u32)size);
-    const Result res  = stream.result();
-    stream.close();
-    ReturnValue->Val->Integer = written == (u32)size ? 0 : (R_FAILED(res) ? (int)res : -3);
+    ReturnValue->Val->Integer = host().savWrite(handle, (char*)Param[1]->Val->Pointer, Param[2]->Val->Pointer, (size_t)size);
 }
 
 void ckpt_sav_delete(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    SavSlot& slot             = savAt(Parser, Param[0]->Val->Integer);
-    const std::u16string path = archivePath((char*)Param[1]->Val->Pointer);
-    ReturnValue->Val->Integer = (int)FSUSER_DeleteFile(slot.arch.fs(), fsMakePath(PATH_UTF16, path.data()));
+    const int handle          = savAt(Parser, Param[0]->Val->Integer);
+    ReturnValue->Val->Integer = host().savDelete(handle, (char*)Param[1]->Val->Pointer);
 }
 
 void ckpt_sav_list(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    SavSlot& slot = savAt(Parser, Param[0]->Val->Integer);
+    const int handle = savAt(Parser, Param[0]->Val->Integer);
 
     // Returned entries are archive-absolute like read_directory's; folders get
     // a trailing '/'.
@@ -449,53 +332,36 @@ void ckpt_sav_list(struct ParseState* Parser, struct Value* ReturnValue, struct 
         prefix += '/';
     }
 
-    Directory items(slot.arch.fs(), StringUtils::UTF8toUTF16(prefix.c_str()));
-    if (!items.good()) {
+    std::vector<HostDirEntry> entries;
+    if (!host().savList(handle, prefix, entries)) {
         ReturnValue->Val->Pointer = nullptr;
         return;
     }
 
     std::vector<std::string> names;
-    for (size_t i = 0, sz = items.size(); i < sz; i++) {
-        names.push_back(prefix + StringUtils::UTF16toUTF8(items.entry(i)) + (items.folder(i) ? "/" : ""));
+    names.reserve(entries.size());
+    for (const HostDirEntry& entry : entries) {
+        names.push_back(prefix + entry.name + (entry.folder ? "/" : ""));
     }
     ReturnValue->Val->Pointer = makeDirData(names);
 }
 
 void ckpt_sav_commit(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    SavSlot& slot = savAt(Parser, Param[0]->Val->Integer);
-    if (!slot.commitable) {
-        ReturnValue->Val->Integer = 0; // extdata needs no commit
-        return;
-    }
-
-    Result res = FSUSER_ControlArchive(slot.arch.fs(), ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
-    if (R_SUCCEEDED(res)) {
-        // Same epilogue as restore: drop the secure value so the game accepts
-        // the modified save instead of flagging a rollback.
-        u8 out;
-        u64 secureValue = ((u64)SECUREVALUE_SLOT_SD << 32) | (slot.uniqueId << 8);
-        res             = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &secureValue, 8, &out, 1);
-    }
-    ReturnValue->Val->Integer = (int)res;
+    const int handle          = savAt(Parser, Param[0]->Val->Integer);
+    ReturnValue->Val->Integer = host().savCommit(handle);
 }
 
 void ckpt_sav_close(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
     // Lenient on purpose: closing an already-closed or bogus handle is a no-op
     // so cleanup paths in scripts can close unconditionally.
-    const int h = Param[0]->Val->Integer;
-    if (h >= 0 && h < MAX_SAV_HANDLES) {
-        savSlots[h] = SavSlot{};
-    }
+    host().savClose(Param[0]->Val->Integer);
 }
 
 void ckpt_sav_close_all(void)
 {
-    for (int i = 0; i < MAX_SAV_HANDLES; i++) {
-        savSlots[i] = SavSlot{};
-    }
+    host().savCloseAll();
 }
 
 /* ---- network ----------------------------------------------------------- */
@@ -658,25 +524,7 @@ void ckpt_web_request(struct ParseState* Parser, struct Value* ReturnValue, stru
         return;
     }
 
-    // "\n"-separated "Key: Value" lines into a curl slist. Empty lines (and a
-    // trailing newline) are skipped, so "" means "no request headers".
-    struct curl_slist* hl = nullptr;
-    if (headers && headers[0]) {
-        std::string all(headers);
-        size_t start = 0;
-        while (start < all.size()) {
-            const size_t nl    = all.find('\n', start);
-            std::string line   = all.substr(start, nl == std::string::npos ? std::string::npos : nl - start);
-            if (!line.empty()) {
-                hl = curl_slist_append(hl, line.c_str());
-            }
-            if (nl == std::string::npos) {
-                break;
-            }
-            start = nl + 1;
-        }
-    }
-
+    struct curl_slist* hl = headerSlist(headers);
     std::string data, rhdr;
     curl_easy_setopt(curl, CURLOPT_URL, url);
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method); // GET/POST/PUT/PATCH/DELETE
@@ -722,8 +570,8 @@ void ckpt_web_request(struct ParseState* Parser, struct Value* ReturnValue, stru
         ReturnValue->Val->Integer = -1;
         return;
     }
-    *out             = buf;
-    *outSize         = (int)data.size();
+    *out     = buf;
+    *outSize = (int)data.size();
     if (respHeaders) {
         *respHeaders = (char*)strToRet(rhdr);
     }
@@ -777,7 +625,7 @@ void ckpt_web_upload_file(struct ParseState* Parser, struct Value* ReturnValue, 
     UploadProgress prog;
     std::string data, rhdr;
     curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);           // streamed request body
+    curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);            // streamed request body
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, method); // "PUT" for the resumable session
     if (hl) {
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, hl);
@@ -821,8 +669,8 @@ void ckpt_web_upload_file(struct ParseState* Parser, struct Value* ReturnValue, 
         ReturnValue->Val->Integer = -1;
         return;
     }
-    *out             = buf;
-    *outSize         = (int)data.size();
+    *out     = buf;
+    *outSize = (int)data.size();
     if (respHeaders) {
         *respHeaders = (char*)strToRet(rhdr);
     }
@@ -967,12 +815,5 @@ void ckpt_app_root(struct ParseState* Parser, struct Value* ReturnValue, struct 
 
 void ckpt_script_lower_priority(void)
 {
-    // The thread pool spawns the worker one step ABOVE the main thread (prio-1),
-    // so a syscall-free compute loop would starve the UI thread outright; +2
-    // lands it just below main, letting the UI thread always preempt to sample
-    // the hold-B abort.
-    s32 prio = 0;
-    if (R_SUCCEEDED(svcGetThreadPriority(&prio, CUR_THREAD_HANDLE))) {
-        svcSetThreadPriority(CUR_THREAD_HANDLE, prio + 2);
-    }
+    host().lowerPriority();
 }
