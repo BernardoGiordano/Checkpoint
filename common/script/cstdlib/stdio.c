@@ -112,6 +112,23 @@ void StdioOutPuts(const char* Str, StdOutStream* Stream)
     }
 }
 
+/* Advance the string cursor after a bounded conversion. snprintf() returns the
+    length it *would* have written, so on truncation the raw return walks the
+    cursor past the caller's buffer and drives StrOutLen negative - which every
+    write path here reads as "unbounded", and the next conversion scribbles off
+    the end. Advance by what was actually stored instead, leaving StrOutLen at 1
+    so the terminator still has a cell. Only ever called with StrOutLen >= 0. */
+static void StdioStrAdvance(StdOutStream* Stream, int CCount)
+{
+    int Room    = Stream->StrOutLen > 0 ? Stream->StrOutLen - 1 : 0;
+    int Written = CCount > Room ? Room : CCount;
+
+    Stream->StrOutPtr += Written;
+    Stream->StrOutLen -= Written;
+    /* the count stays the untruncated one: that is what snprintf() returns */
+    Stream->CharCount += CCount;
+}
+
 /* printf-style format of an int or other word-sized object */
 void StdioFprintfWord(StdOutStream* Stream, const char* Format, unsigned int Value)
 {
@@ -126,9 +143,7 @@ void StdioFprintfWord(StdOutStream* Stream, const char* Format, unsigned int Val
 #else
         int CCount = _snprintf(Stream->StrOutPtr, Stream->StrOutLen, Format, Value);
 #endif
-        Stream->StrOutPtr += CCount;
-        Stream->StrOutLen -= CCount;
-        Stream->CharCount += CCount;
+        StdioStrAdvance(Stream, CCount);
     }
     else
     {
@@ -194,9 +209,7 @@ void StdioFprintfLong(StdOutStream* Stream, const char* Format, uint64_t Value)
 #else
         int CCount = _snprintf(Stream->StrOutPtr, Stream->StrOutLen, PlatformFormat, Value);
 #endif
-        Stream->StrOutPtr += CCount;
-        Stream->StrOutLen -= CCount;
-        Stream->CharCount += CCount;
+        StdioStrAdvance(Stream, CCount);
     }
     else
     {
@@ -220,9 +233,7 @@ void StdioFprintfFP(StdOutStream* Stream, const char* Format, double Value)
 #else
         int CCount = _snprintf(Stream->StrOutPtr, Stream->StrOutLen, Format, Value);
 #endif
-        Stream->StrOutPtr += CCount;
-        Stream->StrOutLen -= CCount;
-        Stream->CharCount += CCount;
+        StdioStrAdvance(Stream, CCount);
     }
     else
     {
@@ -246,9 +257,7 @@ void StdioFprintfPointer(StdOutStream* Stream, const char* Format, void* Value)
 #else
         int CCount = _snprintf(Stream->StrOutPtr, Stream->StrOutLen, Format, Value);
 #endif
-        Stream->StrOutPtr += CCount;
-        Stream->StrOutLen -= CCount;
-        Stream->CharCount += CCount;
+        StdioStrAdvance(Stream, CCount);
     }
     else
     {
@@ -541,8 +550,11 @@ int StdioBasePrintf(struct ParseState* Parser, FILE* Stream, char* StrOut, int S
         }
     }
 
-    /* null-terminate */
-    if (SOStream.StrOutPtr != NULL && SOStream.StrOutLen > 0)
+    /* null-terminate. A negative StrOutLen is the unbounded (sprintf) case, not
+       "no room left": upstream only terminated when it was positive, so every
+       sprintf() left its buffer unterminated and the tail of whatever was in it
+       before showed up glued to the new text. */
+    if (SOStream.StrOutPtr != NULL && SOStream.StrOutLen != 0)
     {
         *SOStream.StrOutPtr = '\0';
     }
