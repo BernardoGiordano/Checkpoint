@@ -64,8 +64,12 @@ struct JSON* loadDatabase()
     free(data);
     if (!json_is_valid(root) || !json_is_object(root)) {
         json_delete(root);
+        script_log("cheats.json is not a valid cheat database");
         return NULL;
     }
+    char line[64];
+    sprintf(line, "database loaded: %d title(s)", json_array_size(root));
+    script_log(line);
     return root;
 }
 
@@ -76,9 +80,15 @@ struct JSON* loadDatabase()
 int downloadDatabase()
 {
     gui_status("Downloading cheats from Sharkive...");
+    char line[128];
+    sprintf(line, "GET %s", SHARKIVE_URL);
+    script_log(line);
+
     char* body = NULL;
     int size   = 0;
     int status = web_get(&body, &size, SHARKIVE_URL);
+    sprintf(line, "http %d, %d KB", status, size / 1024);
+    script_log(line);
 
     if (status != 200 || body == NULL || size == 0) {
         char msg[192];
@@ -91,6 +101,7 @@ int downloadDatabase()
         if (body != NULL) {
             free(body);
         }
+        script_log(msg);
         gui_message(msg);
         return 0;
     }
@@ -102,6 +113,7 @@ int downloadDatabase()
     json_delete(check);
     if (!valid) {
         free(body);
+        script_log("the download is not a cheat database; kept the old one");
         gui_message("The downloaded file is not a valid cheat database.\nYour existing database was kept.");
         return 0;
     }
@@ -118,6 +130,7 @@ int downloadDatabase()
     free(body);
     if (wrote != size) {
         remove(CHEATS_TMP);
+        script_log("short write to the SD card");
         gui_message("Write failed (SD card full?).\nYour existing database was kept.");
         return 0;
     }
@@ -128,7 +141,8 @@ int downloadDatabase()
         gui_message("Could not replace the existing database file.");
         return 0;
     }
-    script_log("sharkive: database updated");
+    sprintf(line, "database updated (%d KB written)", wrote / 1024);
+    script_log(line);
     return 1;
 }
 
@@ -171,12 +185,18 @@ void preselectFromExisting(char* outPath, char** names, int count, int* selected
 void writeCheatFile(char* outPath, struct JSON* titleCheats, char** cheatNames, int* selected, int count)
 {
     gui_status("Writing cheats...");
+    char line[224];
+    sprintf(line, "writing %s", outPath);
+    script_log(line);
+
     if (sd_mkdirs("/cheats") != 0) {
+        script_log("could not create /cheats");
         gui_message("Could not create the /cheats folder on your SD card.");
         return;
     }
     FILE* f = fopen(outPath, "w");
     if (f == NULL) {
+        script_log("could not open the cheat file for writing");
         gui_message("Could not open the cheat file for writing.");
         return;
     }
@@ -205,9 +225,13 @@ void writeCheatFile(char* outPath, struct JSON* titleCheats, char** cheatNames, 
 
     if (written == 0) {
         remove(outPath);
+        script_log("nothing selected; cheat file removed");
         gui_message("All cheats disabled for this game.");
         return;
     }
+    sprintf(line, "%d of %d cheat(s) written", written, count);
+    script_log(line);
+
     char msg[224];
     sprintf(msg,
         "%d cheat(s) saved. Make sure Luma3DS cheat patching is enabled.",
@@ -249,6 +273,10 @@ void applyCheats(struct JSON* root)
         free(sel);
     }
 
+    char line[320];
+    sprintf(line, "%d of %d installed title(s) have cheats", n, total);
+    script_log(line);
+
     if (n == 0) {
         gui_message("None of your installed games have cheats in the database.");
         free(ids);
@@ -258,6 +286,8 @@ void applyCheats(struct JSON* root)
 
     int pick = gui_pick_one("Select a game", names, n);
     if (pick >= 0) {
+        sprintf(line, "> %s [%s]", names[pick], ids[pick]);
+        script_log(line);
         char* id                 = ids[pick];
         struct JSON* titleCheats = json_object_element(root, id);
         int count                = json_array_size(titleCheats);
