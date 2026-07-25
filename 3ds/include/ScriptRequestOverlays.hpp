@@ -130,8 +130,8 @@ protected:
     static constexpr int ROW_H = 26;
 
     size_t mCount;
-    // ListCursor, not Hid: Hid binds L/R to page the list, and during a script
-    // run L/R belong to the log pane. D-Pad only here.
+    // ListCursor, not Hid: Hid binds L/R to page the list, and a script dialog
+    // has no use for the shoulder buttons. D-Pad only here.
     ListCursor mCursor;
 };
 

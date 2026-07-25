@@ -27,6 +27,7 @@
 #include "ScriptTile.hpp"
 #include "gfx.hpp"
 #include "gfxutils.hpp"
+#include "scriptbar.hpp"
 #include "shapes.hpp"
 #include <algorithm>
 #include <string>
@@ -78,7 +79,7 @@ void ScriptTile::uiHints(const std::string& text)
 
 void ScriptTile::bar(int x, int y, int w, const ScriptConsole::Layer& layer)
 {
-    const float frac = layer.total > 0 ? std::clamp((float)layer.done / (float)layer.total, 0.0f, 1.0f) : 0.0f;
+    const float frac = ScriptBar::fraction(layer);
 
     Shapes::fillRound(x, y, w, BAR_H, BAR_H / 2, COLOR_FILL2);
     const int fillW = (int)(w * frac);
@@ -86,18 +87,20 @@ void ScriptTile::bar(int x, int y, int w, const ScriptConsole::Layer& layer)
         Shapes::fillRound(x, y, std::max(fillW, BAR_H), BAR_H, BAR_H / 2, COLOR_ACCENT);
     }
 
-    // A reserved but idle slot: the empty track holds the row, and a count or a
-    // percentage under it would be inventing progress nothing is making.
-    if (!layer.active) {
-        return;
-    }
+    // An idle slot still says what it is and where it got to, dimmed: a bare
+    // track with nothing under it reads as a bar that is stuck.
+    const Color labelColor = layer.active ? COLOR_TEXT2 : COLOR_TEXT3;
+    const Color rightColor = layer.active ? COLOR_TEXT : COLOR_TEXT3;
 
-    // No known total: the raw count is the only honest thing to show.
-    const std::string right = layer.total > 0 ? std::to_string((int)(frac * 100)) + "%" : std::to_string(layer.done);
-    u32 rw, rh;
-    Gfx::GetTextDimensions(NOTE_SIZE, right.c_str(), &rw, &rh);
-    Gfx::DrawText(NOTE_SIZE, x + w - (int)rw, y + BAR_H + 6, COLOR_TEXT, right.c_str());
-    Gfx::DrawText(NOTE_SIZE, x, y + BAR_H + 6, COLOR_TEXT2, trimToFit(layer.label, w - (int)rw - 12, NOTE_SIZE).c_str());
+    const std::string right = ScriptBar::rightText(layer);
+    u32 rw = 0, rh = 0;
+    if (!right.empty()) {
+        Gfx::GetTextDimensions(NOTE_SIZE, right.c_str(), &rw, &rh);
+        Gfx::DrawText(NOTE_SIZE, x + w - (int)rw, y + BAR_H + 6, rightColor, right.c_str());
+    }
+    if (!layer.label.empty()) {
+        Gfx::DrawText(NOTE_SIZE, x, y + BAR_H + 6, labelColor, trimToFit(layer.label, w - (int)rw - 12, NOTE_SIZE).c_str());
+    }
 }
 
 size_t ScriptTile::collectBars(const ScriptConsole::ProgressSnapshot& snapshot, ScriptConsole::Layer* out)

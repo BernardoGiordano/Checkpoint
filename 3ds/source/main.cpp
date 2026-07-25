@@ -118,17 +118,18 @@ int main()
             // must stay scrollable while the user answers.
             static int scrollHold = 0;
             if (ScriptScreen::showing()) {
+                // Everything on the D-Pad: up/down by a line, left/right by a
+                // page. The shoulder buttons used to page and no longer do —
+                // one pad for one job is less to explain than two.
+                //
+                // All of it only while the pane is what the D-Pad would
+                // otherwise do nothing to: an overlay's list owns the D-Pad for
+                // its own selection.
                 const u32 kDown = hidKeysDown();
-                if (kDown & KEY_L) {
-                    ScriptLogView::get().scrollPages(-1);
-                }
-                else if (kDown & KEY_R) {
-                    ScriptLogView::get().scrollPages(1);
+                if ((kDown & (KEY_DLEFT | KEY_DRIGHT)) && !g_screen->hasOverlay()) {
+                    ScriptLogView::get().scrollPages((kDown & KEY_DLEFT) ? -1 : 1);
                 }
 
-                // Line-by-line on the D-Pad, but only while the pane is what
-                // the D-Pad would otherwise do nothing to: an overlay's list
-                // owns up/down for its own selection.
                 const u32 kHeld = hidKeysHeld() & (KEY_DUP | KEY_DDOWN);
                 if (kHeld && !g_screen->hasOverlay()) {
                     // Tap moves one line; holding waits out a short delay and

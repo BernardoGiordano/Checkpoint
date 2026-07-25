@@ -95,6 +95,7 @@ CKPT_BINDING(ckpt_progress_begin);
 CKPT_BINDING(ckpt_progress_set);
 CKPT_BINDING(ckpt_progress_label);
 CKPT_BINDING(ckpt_progress_end);
+CKPT_BINDING(ckpt_progress_note);
 CKPT_BINDING(ckpt_progress_clear);
 
 /* json (platform-neutral, common/script/json_api.cpp) */

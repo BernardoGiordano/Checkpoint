@@ -146,16 +146,11 @@ int main(void)
         // scrollable while the user answers.
         static int scrollHold = 0;
         if (ScriptScreen::showing()) {
-            if (input.kDown & HidNpadButton_L) {
-                ScriptLogView::get().scrollPages(-1);
-            }
-            else if (input.kDown & HidNpadButton_R) {
-                ScriptLogView::get().scrollPages(1);
+            const u64 kPage = input.kDown & (HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_AnyLeft | HidNpadButton_AnyRight);
+            if (kPage && !g_screen->hasOverlay()) {
+                ScriptLogView::get().scrollPages((kPage & (HidNpadButton_Left | HidNpadButton_AnyLeft)) ? -1 : 1);
             }
 
-            // Line-by-line on the D-Pad, but only while the pane is what the
-            // D-Pad would otherwise do nothing to: an overlay's list owns
-            // up/down for its own selection.
             const u64 kHeld = input.kHeld & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_AnyUp | HidNpadButton_AnyDown);
             if (kHeld && !g_screen->hasOverlay()) {
                 // Tap moves one line; holding waits out a short delay and then

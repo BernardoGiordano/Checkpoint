@@ -180,7 +180,7 @@ void ScriptScreen::update(const InputState& input)
     }
 
     if (ScriptRunner::get().active()) {
-        // The hold-B kill switch and the L/R log scrolling live in main.cpp:
+        // The hold-B kill switch and the D-Pad log scrolling live in main.cpp:
         // both must keep working while a script-raised overlay owns update().
         pumpScriptRequests(ScriptRunner::get().bridge(), *this);
         return;

@@ -138,6 +138,11 @@ struct LibraryFunction CheckpointFunctions[] =
     { ckpt_progress_set,       "void progress_set(int layer, int done);" },
     { ckpt_progress_label,     "void progress_label(int layer, char* label);" },
     { ckpt_progress_end,       "void progress_end(int layer);" },
+    // What that innermost bar says while no native call is running: the stage
+    // the script is in ("preparing", "creating the folder"). Setting it also
+    // puts the bar on screen, so the row is labelled from the first stage
+    // rather than appearing blank when a zip starts.
+    { ckpt_progress_note,      "void progress_note(char* text);" },
     { ckpt_progress_clear,     "void progress_clear(void);" },
     // json (nlohmann wrappers; struct JSON* is an opaque handle)
     { ckpt_json_new,             "struct JSON* json_new(void);" },

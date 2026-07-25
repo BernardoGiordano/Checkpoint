@@ -26,6 +26,7 @@
 
 #include "ScriptTile.hpp"
 #include "gui.hpp"
+#include "scriptbar.hpp"
 #include "textpool.hpp"
 #include "util.hpp"
 #include <algorithm>
@@ -70,7 +71,7 @@ void ScriptTile::uiHints(const std::string& hints, float z)
 void ScriptTile::bar(int x, int y, int w, const ScriptConsole::Layer& layer, float z)
 {
     TextPool& text   = TextPool::get();
-    const float frac = layer.total > 0 ? std::clamp((float)layer.done / (float)layer.total, 0.0f, 1.0f) : 0.0f;
+    const float frac = ScriptBar::fraction(layer);
 
     C2D_DrawRectSolid((float)x, (float)y, z, (float)w, (float)BAR_H, COLOR_BLACK_MEDIUM);
     const float fillW = w * frac;
@@ -78,18 +79,20 @@ void ScriptTile::bar(int x, int y, int w, const ScriptConsole::Layer& layer, flo
         C2D_DrawRectSolid((float)x, (float)y, z, fillW, (float)BAR_H, COLOR_ACCENT);
     }
 
-    // A reserved but idle slot: the empty track holds the row, and a count or a
-    // percentage under it would be inventing progress nothing is making.
-    if (!layer.active) {
-        return;
-    }
+    // An idle slot still says what it is and where it got to, dimmed: a bare
+    // track with nothing under it reads as a bar that is stuck.
+    const u32 labelColor = layer.active ? COLOR_MUTED : COLOR_FAINT;
+    const u32 rightColor = layer.active ? COLOR_TEXT : COLOR_FAINT;
 
-    // No known total: the raw count is the only honest thing to show.
-    const std::string right = layer.total > 0 ? StringUtils::format("%d%%", (int)(frac * 100)) : std::to_string(layer.done);
-    const float rightW      = text.width(right, BAR_LABEL_SIZE);
+    const std::string right = ScriptBar::rightText(layer);
+    const float rightW      = right.empty() ? 0.0f : text.width(right, BAR_LABEL_SIZE);
     const float labelY      = y + BAR_H + 2;
-    text.draw(right, x + w - rightW, labelY, BAR_LABEL_SIZE, COLOR_TEXT, z);
-    text.draw(text.truncate(layer.label, w - rightW - 8, BAR_LABEL_SIZE), x, labelY, BAR_LABEL_SIZE, COLOR_MUTED, z);
+    if (!right.empty()) {
+        text.draw(right, x + w - rightW, labelY, BAR_LABEL_SIZE, rightColor, z);
+    }
+    if (!layer.label.empty()) {
+        text.draw(text.truncate(layer.label, w - rightW - 8, BAR_LABEL_SIZE), x, labelY, BAR_LABEL_SIZE, labelColor, z);
+    }
 }
 
 size_t ScriptTile::collectBars(const ScriptConsole::ProgressSnapshot& snapshot, ScriptConsole::Layer* out)

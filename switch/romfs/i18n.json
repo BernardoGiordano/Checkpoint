@@ -1704,15 +1704,15 @@
     "zh": "脚本日志"
   },
   "scripts.scroll_logs": {
-    "en": "L / R / D-Pad scroll log",
-    "it": "L / R / D-Pad scorri log",
-    "es": "L / R / Cruceta desplazar registro",
-    "fr": "L / R / Croix défiler le journal",
-    "de": "L / R / Steuerkreuz Protokoll scrollen",
-    "pt": "L / R / D-Pad rolar registro",
-    "nl": "L / R / D-pad log scrollen",
-    "ja": "L / R / 十字キー でログをスクロール",
-    "zh": "L / R / 十字键 滚动日志"
+    "en": "D-Pad scroll log",
+    "it": "D-Pad scorri log",
+    "es": "Cruceta desplazar registro",
+    "fr": "Croix défiler le journal",
+    "de": "Steuerkreuz Protokoll scrollen",
+    "pt": "D-Pad rolar registro",
+    "nl": "D-pad log scrollen",
+    "ja": "十字キー でログをスクロール",
+    "zh": "十字键 滚动日志"
   },
   "scripts.close": {
     "en": "Close",

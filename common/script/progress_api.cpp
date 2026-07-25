@@ -79,6 +79,12 @@ void ckpt_progress_end(struct ParseState* Parser, struct Value* ReturnValue, str
     ScriptConsole::get().endLayer(layerArg(ScriptArgs(Parser, Param, NumArgs, "progress_end")));
 }
 
+void ckpt_progress_note(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    const ScriptArgs args(Parser, Param, NumArgs, "progress_note");
+    ScriptConsole::get().setIoNote(args.strOr(0, ""));
+}
+
 void ckpt_progress_clear(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
     ScriptConsole::get().clearProgress();

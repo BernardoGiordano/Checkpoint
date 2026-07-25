@@ -127,7 +127,7 @@ void ScriptMessageOverlay::drawBody(int bodyY) const
 
 std::string ScriptMessageOverlay::hints(void) const
 {
-    // Only this dialog's own keys: the L/R log hint lives on the top screen,
+    // Only this dialog's own keys: the log scroll hint lives on the top screen,
     // which no dialog covers, so every script dialog's hint line is about the
     // dialog and nothing else.
     return std::string(GLYPH_A) + " OK";

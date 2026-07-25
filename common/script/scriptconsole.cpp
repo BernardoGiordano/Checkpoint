@@ -57,9 +57,28 @@ void ScriptConsole::reset(void)
     for (auto& layer : mLayers) {
         layer = Layer{};
     }
-    mIo         = Layer{};
+    mIo = Layer{};
+    mIoNote.clear();
+    mIoRateDone = 0;
     mLayerSlots = 0;
     mIoSlot     = false;
+}
+
+// Stops a bar without emptying it: what it reached, and what it was working
+// on, stay on screen. Only a rate is dropped — nothing is moving any more.
+void ScriptConsole::idle(Layer& layer)
+{
+    layer.active = false;
+    layer.rate   = 0.0;
+}
+
+// The IO bar between phases: no counts (the next phase measures something
+// else entirely), and the script's stage note as its label, so the row says
+// what is going on even while nothing native is running.
+void ScriptConsole::idleIo(void)
+{
+    mIo       = Layer{};
+    mIo.label = mIoNote;
 }
 
 void ScriptConsole::appendChar(char c)
@@ -126,11 +145,13 @@ void ScriptConsole::beginLayer(size_t layer, std::string label, long long total)
     mLayers[layer].total  = total;
     mLayers[layer].active = true;
     mLayerSlots           = std::max(mLayerSlots, layer + 1);
-    // Moving on to a new item at this depth invalidates everything under it.
+    // Moving on to a new item at this depth invalidates everything under it:
+    // those labels name work that has stopped, so they are dropped rather than
+    // left to sit under a bar as if they were still current.
     for (size_t deeper = layer + 1; deeper < MAX_LAYERS; deeper++) {
         mLayers[deeper] = Layer{};
     }
-    mIo = Layer{};
+    idleIo();
 }
 
 void ScriptConsole::setLayer(size_t layer, long long done)
@@ -150,9 +171,9 @@ void ScriptConsole::setLayerLabel(size_t layer, std::string label)
         return;
     }
     std::lock_guard<std::mutex> lock(mMutex);
-    if (mLayers[layer].active) {
-        mLayers[layer].label = std::move(label);
-    }
+    // Not gated on `active`: relabelling an idle bar is how a script says what
+    // the pause between items is for.
+    mLayers[layer].label = std::move(label);
 }
 
 void ScriptConsole::endLayer(size_t layer)
@@ -162,9 +183,9 @@ void ScriptConsole::endLayer(size_t layer)
     }
     std::lock_guard<std::mutex> lock(mMutex);
     for (size_t i = layer; i < MAX_LAYERS; i++) {
-        mLayers[i] = Layer{};
+        idle(mLayers[i]);
     }
-    mIo = Layer{};
+    idleIo();
 }
 
 void ScriptConsole::clearProgress(void)
@@ -174,20 +195,55 @@ void ScriptConsole::clearProgress(void)
         layer = Layer{};
     }
     mIo = Layer{};
+    mIoNote.clear();
     // The one call that says "no progress at all any more", so it is also the
     // one that gives the reserved slots back.
     mLayerSlots = 0;
     mIoSlot     = false;
 }
 
+void ScriptConsole::setIoNote(std::string note)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    mIoNote = std::move(note);
+    // Claiming the slot here is the point: the bar is on screen, labelled with
+    // the stage, before any native IO has started.
+    mIoSlot = true;
+    if (!mIo.active) {
+        idleIo();
+    }
+}
+
 void ScriptConsole::beginIo(std::string label, long long total)
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    mIo        = Layer{};
-    mIo.label  = std::move(label);
-    mIo.total  = total;
-    mIo.active = true;
-    mIoSlot    = true;
+    mIo         = Layer{};
+    mIo.label   = std::move(label);
+    mIo.total   = total;
+    mIo.active  = true;
+    mIo.bytes   = true;
+    mIoSlot     = true;
+    mIoRateDone = 0;
+    mIoRateAt   = std::chrono::steady_clock::now();
+}
+
+void ScriptConsole::sampleIoRate(void)
+{
+    // The window closes twice a second: often enough to react to a stall,
+    // seldom enough that the figure on screen is a speed and not a flicker.
+    // The clock read itself is per call — it lands on the copy loop, so keep
+    // this function to exactly that one syscall-free read and no allocation.
+    const auto now    = std::chrono::steady_clock::now();
+    const double secs = std::chrono::duration<double>(now - mIoRateAt).count();
+    if (secs < 0.5) {
+        return;
+    }
+    const double sample = (double)(mIo.done - mIoRateDone) / secs;
+    // Smoothed, or the figure jitters by megabytes between frames and reads as
+    // noise rather than as a speed.
+    mIo.rate    = mIo.rate > 0.0 ? mIo.rate * 0.6 + sample * 0.4 : sample;
+    mIoRateAt   = now;
+    mIoRateDone = mIo.done;
 }
 
 void ScriptConsole::setIo(long long done)
@@ -195,6 +251,7 @@ void ScriptConsole::setIo(long long done)
     std::lock_guard<std::mutex> lock(mMutex);
     if (mIo.active) {
         mIo.done = done;
+        sampleIoRate();
     }
 }
 
@@ -203,13 +260,14 @@ void ScriptConsole::addIo(long long delta)
     std::lock_guard<std::mutex> lock(mMutex);
     if (mIo.active) {
         mIo.done += delta;
+        sampleIoRate();
     }
 }
 
 void ScriptConsole::endIo(void)
 {
     std::lock_guard<std::mutex> lock(mMutex);
-    mIo = Layer{};
+    idleIo();
 }
 
 unsigned ScriptConsole::generation(void) const

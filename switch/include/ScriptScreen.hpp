@@ -59,7 +59,7 @@ public:
     bool allowsExit(void) const override { return false; }
 
     // True while a script session owns the screen. main.cpp asks before routing
-    // L/R to the log pane; "a script is running" is not the same thing — the
+    // the D-Pad to the log pane; "a script is running" is not the same thing — the
     // pane stays up, and scrollable, after the run has finished.
     static bool showing(void);
 

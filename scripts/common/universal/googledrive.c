@@ -599,6 +599,7 @@ char* find_existing_file(char* name, char* folderId)
  * PUT the bytes (streamed from SD). 1 on success. */
 int upload_zip(char* zipPath, char* zipName, char* folderId)
 {
+    progress_note("looking for an earlier copy on Drive");
     char* existing = find_existing_file(zipName, folderId);
 
     char h[AUTHN + 128];
@@ -610,6 +611,7 @@ int upload_zip(char* zipPath, char* zipName, char* folderId)
     char* rh  = NULL;
     int n     = 0;
 
+    progress_note("opening the upload session");
     if (existing[0] != '\0') {
         /* update in place — metadata stays as-is, so an empty JSON body */
         script_log("  replacing the copy already on Drive");
@@ -681,10 +683,11 @@ int file_size(char* path)
 
 /* Zip one backup folder and upload it under the title's Drive folder. 1 ok.
  *
- * Progress contract: the caller owns the item bar (layer 1) and only its label
- * mentions the title/backup. zip_dir and web_upload_file drive the reserved
- * innermost bar themselves and label it by phase ("zip", "upload"), so nothing
- * here restates what a bar above it already says. */
+ * Progress contract: the caller owns the item bar and its label names the
+ * title; zip_dir and web_upload_file drive the reserved innermost bar
+ * themselves and label it by phase ("zip", "upload"). Between those phases the
+ * same bar shows this function's progress_note, so the row always says what is
+ * happening — never a bare track. No bar restates what another bar says. */
 int sync_backup(char* titleName, char* backupPath, char* backupName, char* rootId)
 {
     char st[512];
@@ -694,6 +697,7 @@ int sync_backup(char* titleName, char* backupPath, char* backupName, char* rootI
     sprintf(st, "> %s / %s", titleName, backupName);
     script_log(st);
 
+    progress_note(backupName);
     if (zip_dir(backupPath, g_tmp_zip) != 0) {
         remove(g_tmp_zip);
         script_log("  zip failed (out of space, or cancelled)");
@@ -707,6 +711,7 @@ int sync_backup(char* titleName, char* backupPath, char* backupName, char* rootI
     sprintf(st, "  zipped %d KB", zkb);
     script_log(st);
 
+    progress_note("finding the title's Drive folder");
     char* folderId = ensure_folder(titleName, rootId);
     int ok         = 0;
     if (folderId[0] == '\0') {
@@ -751,11 +756,6 @@ int sync_title(int idx, char* rootId, int* done, int* failed, int lvl)
     for (i = 0; i < d->count; i++) {
         char bname[256];
         basename_of(d->files[i], bname, 256);
-        /* The item bar names the backup being worked on; its count is the
-         * position within this title. The phase bar under it stays "zip" /
-         * "upload", so no two bars ever say the same thing. */
-        sprintf(st, "%s: %s", name, bname);
-        progress_label(lvl, st);
         if (sync_backup(name, d->files[i], bname, rootId)) {
             *done = *done + 1;
         }
@@ -794,6 +794,7 @@ void sync_one_backup(char* rootId, int* done, int* failed)
     char* names[MAX_PICK];
     int n = 0;
     int i;
+    progress_note("looking for titles with backups");
     for (i = 0; i < total && n < MAX_PICK; i++) {
         if (title_has_save(i) && title_has_backups(i)) {
             idxs[n]  = i;
@@ -823,20 +824,12 @@ void sync_one_backup(char* rootId, int* done, int* failed)
             }
             int bpick = gui_pick_one("Pick a backup", bnames, bn);
             if (bpick >= 0) {
-                /* One item, but still an item bar: without it the only bar on
-                 * screen would be the phase bar, with nothing naming what is
-                 * being uploaded. */
-                char st[512];
-                sprintf(st, "%s: %s", names[tpick], bnames[bpick]);
-                progress_begin(0, st, 1);
                 if (sync_backup(names[tpick], d->files[bpick], bnames[bpick], rootId)) {
                     *done = *done + 1;
                 }
                 else {
                     *failed = *failed + 1;
                 }
-                progress_set(0, 1);
-                progress_end(0);
             }
             for (k = 0; k < bn; k++) {
                 free(bnames[k]);
@@ -866,6 +859,9 @@ int main(int argc, char** argv)
 
     gui_status("Preparing the Drive folder...");
     script_log("preparing Checkpoint/<console> on Drive");
+    /* Claims the phase bar before any transfer starts, so the row is on screen
+     * with a stage under it rather than appearing blank at the first zip. */
+    progress_note("preparing the Drive folder");
     char* cpId = ensure_folder("Checkpoint", "root");
     if (cpId[0] == '\0') {
         gui_message("Signed in, but could not create the\n\"Checkpoint\" folder in Google Drive.");
@@ -920,6 +916,7 @@ int main(int argc, char** argv)
         int total = titles_count();
         int i;
         int eligible = 0;
+        progress_note("looking for titles with backups");
         for (i = 0; i < total; i++) {
             if (title_has_save(i) && title_has_backups(i)) {
                 eligible = eligible + 1;

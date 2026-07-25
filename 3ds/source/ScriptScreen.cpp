@@ -97,8 +97,9 @@ void ScriptScreen::drawTop(void) const
     // ---- header: what is running, and how far the pane is scrolled back ----
     text.draw(text.truncate(mName, innerW - 120, TITLE_SIZE), innerX, ScriptTile::LOG_Y + ScriptTile::LOG_PAD, TITLE_SIZE, COLOR_TEXT, 0.5f);
     {
-        // The L/R hint lives here, on the screen no dialog covers, so the bottom
-        // tile's hint line is free to describe only whatever is asking there.
+        // The scroll hint lives here, on the screen no dialog covers, so the
+        // bottom tile's hint line is free to describe only whatever is asking
+        // there.
         const int back         = log.scrollBack();
         const std::string note = back > 0 ? StringUtils::format("-%d", back) : i18n::t("scripts.scroll_logs");
         const float w          = text.width(note, SMALL_SIZE);
@@ -198,7 +199,7 @@ void ScriptScreen::update(const InputState& input)
     }
 
     if (ScriptRunner::get().active()) {
-        // The hold-B kill switch and the L/R log scrolling live in main.cpp:
+        // The hold-B kill switch and the D-Pad log scrolling live in main.cpp:
         // both must keep working while a script-raised overlay owns update().
         pumpScriptRequests(ScriptRunner::get().bridge(), *this);
         return;

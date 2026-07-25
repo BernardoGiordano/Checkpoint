@@ -54,7 +54,7 @@ public:
     ~ScriptScreen(void) override;
 
     // True while a script session owns the screens. main.cpp asks before routing
-    // L/R to the log pane; a plain type test is out (the build has no RTTI), and
+    // the D-Pad to the log pane; a plain type test is out (no RTTI in this build), and
     // "a script is running" is not the same thing — the pane stays up, and
     // scrollable, after the run has finished.
     static bool showing(void);

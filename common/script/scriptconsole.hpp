@@ -27,6 +27,7 @@
 #ifndef SCRIPTCONSOLE_HPP
 #define SCRIPTCONSOLE_HPP
 
+#include <chrono>
 #include <cstddef>
 #include <deque>
 #include <mutex>
@@ -54,11 +55,22 @@ public:
 
     // One progress bar. `total <= 0` means "no known total": the pane draws an
     // indeterminate bar and shows the raw `done` count instead of a percentage.
+    //
+    // An inactive layer may still carry a label: a bar that has finished keeps
+    // naming what it finished, and the IO bar falls back to the script's note
+    // ("preparing", "talking to Drive") between phases. Only a slot invalidated
+    // from above — an outer layer moving to the next item — is blanked, since
+    // its old label would then name work that is no longer happening.
     struct Layer {
         std::string label;
         long long done  = 0;
         long long total = 0;
         bool active     = false;
+        // Byte counts rather than item counts: the pane shows a percentage and
+        // a transfer rate instead of "k of n". Set by beginIo() only.
+        bool bytes = false;
+        // Bytes per second, smoothed, 0 until the first sample window closes.
+        double rate = 0.0;
     };
 
     // Flat copy for the UI, cheap enough to take every frame.
@@ -109,6 +121,12 @@ public:
     // Ends `layer` and every layer deeper than it.
     void endLayer(size_t layer);
     void clearProgress(void);
+
+    // What the IO bar says while no native IO is running: the stage the script
+    // is in ("preparing", "creating the folder"). Claims the IO slot, so the
+    // bar is on screen and labelled from the first stage on rather than
+    // appearing blank the moment a zip starts. Kept across begin/endIo.
+    void setIoNote(std::string note);
 
     // The reserved innermost bar. Native bindings frame their own IO with
     // these; scripts never touch them.
@@ -161,9 +179,22 @@ private:
     unsigned mGen = 0;
     Layer mLayers[MAX_LAYERS];
     Layer mIo;
+    // What the IO bar falls back to whenever no native IO is running.
+    std::string mIoNote;
+    // Rate sampling for the IO bar: bytes and time at the last window close.
+    std::chrono::steady_clock::time_point mIoRateAt;
+    long long mIoRateDone = 0;
     // High-water marks behind ProgressSnapshot's slot counts.
     size_t mLayerSlots = 0;
     bool mIoSlot       = false;
+
+    // Stops a bar, keeping what it says and what it reached. Caller holds the
+    // lock.
+    static void idle(Layer& layer);
+    // Puts the IO bar back to the script's stage note. Caller holds the lock.
+    void idleIo(void);
+    // Folds a fresh sample into mIo.rate. Caller holds the lock.
+    void sampleIoRate(void);
 };
 
 #endif

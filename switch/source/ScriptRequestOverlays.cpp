@@ -98,7 +98,7 @@ void ScriptMessageOverlay::drawBody(int bodyY) const
 
 std::string ScriptMessageOverlay::hints(void) const
 {
-    // Only this dialog's own keys: the L/R log hint sits on the tile's hint
+    // Only this dialog's own keys: the log scroll hint sits on the tile's hint
     // line, which the card does not reach, so every script dialog's hint line
     // is about the dialog and nothing else.
     return UiKit::buttonGlyph("A") + " OK";
