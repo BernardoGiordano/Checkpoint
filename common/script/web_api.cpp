@@ -29,6 +29,7 @@
 // themselves live in httpcall.hpp, behind the web_* bindings in
 // checkpoint_api.cpp.
 
+#include "scriptargs.hpp"
 #include "scriptheap.hpp"
 #include "transferprotocol.hpp"
 #include <cstdlib>
@@ -42,9 +43,10 @@ extern "C" {
 
 void ckpt_http_header_value(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    (void)Parser;
-    (void)NumArgs;
-    const char* headers       = (char*)Param[0]->Val->Pointer;
-    const char* key           = (char*)Param[1]->Val->Pointer;
-    ReturnValue->Val->Pointer = strToRet(TransferProto::headerValue(headers ? headers : "", key ? key : ""));
+    const ScriptArgs args(Parser, Param, NumArgs, "http_header_value");
+    // A NULL header block is what web_request leaves behind on a failed
+    // transfer, so it reads as "no headers" rather than as a script error.
+    const char* headers       = args.strOr(0, "");
+    const char* key           = args.str(1);
+    ReturnValue->Val->Pointer = strToRet(TransferProto::headerValue(headers, key));
 }
