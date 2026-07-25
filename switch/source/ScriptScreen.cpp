@@ -34,6 +34,7 @@
 #include "i18n.hpp"
 #include "main.hpp"
 #include "scriptconsole.hpp"
+#include "scriptlogview.hpp"
 #include "shapes.hpp"
 #include "uikit.hpp"
 #include <algorithm>
@@ -52,14 +53,12 @@ namespace {
     }
 }
 
-int ScriptScreen::sScrollBack = 0;
-int ScriptScreen::sRows       = 1;
-bool ScriptScreen::sShowing   = false;
+bool ScriptScreen::sShowing = false;
 
 ScriptScreen::ScriptScreen(std::shared_ptr<Screen> previous, std::string scriptName) : mPrevious(std::move(previous)), mName(std::move(scriptName))
 {
-    sScrollBack = 0;
-    sShowing    = true;
+    ScriptLogView::get().reset();
+    sShowing = true;
 }
 
 ScriptScreen::~ScriptScreen(void)
@@ -84,22 +83,10 @@ void ScriptScreen::configureLogWidth(void)
     }
 }
 
-void ScriptScreen::scrollLogLines(int lines)
-{
-    const int total   = (int)ScriptConsole::get().lineCount();
-    const int maxBack = std::max(0, total - sRows);
-    sScrollBack       = std::clamp(sScrollBack + lines, 0, maxBack);
-}
-
-void ScriptScreen::scrollLog(int pages)
-{
-    // A page keeps one row of context, the way a pager does.
-    scrollLogLines(pages * std::max(1, sRows - 1));
-}
-
 void ScriptScreen::draw(void) const
 {
     ScriptConsole& console = ScriptConsole::get();
+    ScriptLogView& log     = ScriptLogView::get();
     Gfx::ClearScreen(COLOR_BG);
 
     /* ---- the one tile: the transcript, headed by the run's status -------- */
@@ -132,8 +119,8 @@ void ScriptScreen::draw(void) const
     // Scrollback marker, left-aligned on the hint row: the header's right edge
     // already belongs to the status note, and the hint row's right edge is now
     // the button hints.
-    if (sScrollBack > 0) {
-        const std::string back = "-" + std::to_string(sScrollBack);
+    if (log.scrollBack() > 0) {
+        const std::string back = "-" + std::to_string(log.scrollBack());
         u32 bw, bh;
         Gfx::GetTextDimensions(ScriptTile::NOTE_SIZE, back.c_str(), &bw, &bh);
         (void)bw;
@@ -152,38 +139,26 @@ void ScriptScreen::draw(void) const
 
     const int rowH    = logRowHeight();
     const int listTop = bodyY;
-    sRows             = std::max(1, (logBottom - listTop) / rowH);
+    log.setViewportRows((logBottom - listTop) / rowH);
 
-    const size_t total = console.lineCount();
-    if (total == 0) {
+    const ScriptLogView::Window win = log.window();
+    if (win.total == 0) {
         Gfx::DrawTextBox(ScriptTile::NOTE_SIZE, innerX, listTop, COLOR_TEXT3, innerW, i18n::t("scripts.log_empty").c_str());
         return;
     }
 
-    // Pinned to the tail unless the user scrolled back, so a talking script
-    // pushes the view along instead of scrolling out from under them.
-    const size_t maxFirst = total > (size_t)sRows ? total - (size_t)sRows : 0;
-    const size_t first    = maxFirst - std::min((size_t)sScrollBack, maxFirst);
-
-    // Re-copy only when the content or the window actually moved: at 60 fps a
-    // chatty script would otherwise cost hundreds of string copies a frame.
-    const unsigned gen = console.generation();
-    if (gen != mSeenGeneration || first != mSeenFirst || mVisible.size() != (size_t)sRows) {
-        console.copyWindow(first, (size_t)sRows, mVisible);
-        mSeenGeneration = gen;
-        mSeenFirst      = first;
-    }
-
     int y = listTop;
-    for (const std::string& line : mVisible) {
+    for (const std::string& line : log.rows()) {
         Gfx::DrawText(ScriptTile::LOG_SIZE, innerX, y, COLOR_TEXT2, line.c_str(), FontFamily::Mono);
         y += rowH;
     }
 
-    if (total > (size_t)sRows) {
+    // The thumb is never shorter than a grabbable stub, whatever fraction of
+    // the log fits on screen.
+    if (win.scrollbar) {
         const int trackY = listTop, trackH = logBottom - listTop;
-        const int thumbH = std::max(24, (int)((float)trackH * (float)sRows / (float)total));
-        const int thumbY = trackY + (int)((float)(trackH - thumbH) * (float)first / (float)maxFirst);
+        const int thumbH = std::max(24, (int)((float)trackH * win.thumbSpan));
+        const int thumbY = trackY + (int)((float)(trackH - thumbH) * win.thumbTravel);
         const int barX   = ScriptTile::LOG_X + ScriptTile::LOG_W - ScriptTile::PAD + 6;
         Shapes::fillRound(barX, trackY, 3, trackH, 1, COLOR_FILL2);
         Shapes::fillRound(barX, thumbY, 3, thumbH, 1, COLOR_ACCENT);

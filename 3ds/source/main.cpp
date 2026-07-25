@@ -32,6 +32,7 @@
 #include "configuration.hpp"
 #include "ftpserver.hpp"
 #include "loader.hpp"
+#include "scriptlogview.hpp"
 #include "scriptrunner.hpp"
 #include "server.hpp"
 #include "textpool.hpp"
@@ -119,10 +120,10 @@ int main()
             if (ScriptScreen::showing()) {
                 const u32 kDown = hidKeysDown();
                 if (kDown & KEY_L) {
-                    ScriptScreen::scrollLog(-1);
+                    ScriptLogView::get().scrollPages(-1);
                 }
                 else if (kDown & KEY_R) {
-                    ScriptScreen::scrollLog(1);
+                    ScriptLogView::get().scrollPages(1);
                 }
 
                 // Line-by-line on the D-Pad, but only while the pane is what
@@ -135,7 +136,7 @@ int main()
                     // still reachable without mashing.
                     constexpr int DELAY = 20, RATE = 2;
                     if (scrollHold == 0 || (scrollHold >= DELAY && (scrollHold - DELAY) % RATE == 0)) {
-                        ScriptScreen::scrollLogLines((kHeld & KEY_DUP) ? 1 : -1);
+                        ScriptLogView::get().scrollLines((kHeld & KEY_DUP) ? 1 : -1);
                     }
                     scrollHold++;
                 }
