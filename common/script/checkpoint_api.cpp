@@ -32,12 +32,15 @@
 // ScriptUiBridge, and nothing here may trigger a catalog refresh. A binding
 // must close every RAII scope before calling back into picoc — ProgramFail
 // longjmps to the run's exit point, so it is only ever called before C++
-// objects holding resources exist.
+// objects holding resources exist. Arguments therefore come out of ScriptArgs
+// (scriptargs.hpp) in one block at the top of each binding, before any local
+// that owns anything: every accessor validates, and validation fails the run.
 
 #include "common.hpp"
 #include "httpcall.hpp"
 #include "logging.hpp"
 #include "paths.hpp"
+#include "scriptargs.hpp"
 #include "scriptconsole.hpp"
 #include "scriptheap.hpp"
 #include "scripthost.hpp"
@@ -62,29 +65,38 @@ namespace {
         return ScriptHost::get();
     }
 
-    // Fails the script on a bad index (longjmp; called before any local C++
-    // object exists in the binding).
-    void checkTitleIndex(struct ParseState* Parser, int idx)
+    // The three argument kinds ScriptArgs cannot check on its own, because
+    // what makes them valid lives behind ScriptHost. Each fails the script on a
+    // bad value (longjmp; called before any local C++ object exists in the
+    // binding), naming the argument the way every other check does.
+
+    // A catalog index, the same index space as the Save list — a script gets
+    // one from titles_count()/title_find().
+    int titleIndexArg(const ScriptArgs& args, int i)
     {
-        if (idx < 0 || idx >= host().titleCount()) {
-            ProgramFail(Parser, "title index %d out of range", idx);
+        const int idx   = args.num(i);
+        const int count = host().titleCount();
+        if (idx < 0 || idx >= count) {
+            args.fail("argument %d is title index %d, out of range (%d titles)", i + 1, idx, count);
         }
+        return idx;
     }
 
-    HostTitle titleAt(struct ParseState* Parser, int idx)
+    HostTitle titleArg(const ScriptArgs& args, int i)
     {
-        checkTitleIndex(Parser, idx);
+        const int idx = titleIndexArg(args, i);
         HostTitle title;
         host().titleAt(idx, title);
         return title;
     }
 
-    // Same rule as above: fails the script on a stale/invalid handle, so call
-    // it before any local C++ object exists in the binding.
-    int savAt(struct ParseState* Parser, int handle)
+    // An open save-archive handle: a stale one (closed, or from a previous run)
+    // is as much a script bug as an out-of-range index.
+    int savArg(const ScriptArgs& args, int i)
     {
+        const int handle = args.num(i);
         if (!host().savValid(handle)) {
-            ProgramFail(Parser, "invalid save handle %d", handle);
+            args.fail("argument %d is %d, not an open save handle", i + 1, handle);
         }
         return handle;
     }
@@ -141,7 +153,8 @@ void ckpt_titles_count(struct ParseState* Parser, struct Value* ReturnValue, str
 
 void ckpt_title_find(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const uint64_t id = strtoull((char*)Param[0]->Val->Pointer, nullptr, 16);
+    const ScriptArgs args(Parser, Param, NumArgs, "title_find");
+    const uint64_t id = strtoull(args.str(0), nullptr, 16);
     const int count   = host().titleCount();
     int found         = -1;
     for (int i = 0; i < count && found < 0; i++) {
@@ -155,51 +168,49 @@ void ckpt_title_find(struct ParseState* Parser, struct Value* ReturnValue, struc
 
 void ckpt_title_id(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
+    HostTitle title           = titleArg(ScriptArgs(Parser, Param, NumArgs, "title_id"), 0);
     ReturnValue->Val->Pointer = strToRet(idToHex(title.id));
 }
 
 void ckpt_title_name(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
+    HostTitle title           = titleArg(ScriptArgs(Parser, Param, NumArgs, "title_name"), 0);
     ReturnValue->Val->Pointer = strToRet(title.name);
 }
 
 void ckpt_title_product_code(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
+    HostTitle title           = titleArg(ScriptArgs(Parser, Param, NumArgs, "title_product_code"), 0);
     ReturnValue->Val->Pointer = strToRet(title.productCode);
 }
 
 void ckpt_title_is_cart(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
+    HostTitle title           = titleArg(ScriptArgs(Parser, Param, NumArgs, "title_is_cart"), 0);
     ReturnValue->Val->Integer = title.isCart ? 1 : 0;
 }
 
 void ckpt_title_has_save(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
+    HostTitle title           = titleArg(ScriptArgs(Parser, Param, NumArgs, "title_has_save"), 0);
     ReturnValue->Val->Integer = title.hasSave ? 1 : 0;
 }
 
 void ckpt_title_has_extdata(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    HostTitle title           = titleAt(Parser, Param[0]->Val->Integer);
+    HostTitle title           = titleArg(ScriptArgs(Parser, Param, NumArgs, "title_has_extdata"), 0);
     ReturnValue->Val->Integer = title.hasExtdata ? 1 : 0;
 }
 
 void ckpt_title_backup_path(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const int kind = Param[1]->Val->Integer;
-    if (kind != 0 && kind != 1) {
-        ProgramFail(Parser, "backup kind %d must be 0 (save) or 1 (extdata)", kind);
-    }
-    checkTitleIndex(Parser, Param[0]->Val->Integer);
+    const ScriptArgs args(Parser, Param, NumArgs, "title_backup_path");
+    const int kind = args.numInRange(1, 0, 1); // 0 = save, 1 = extdata
+    const int idx  = titleIndexArg(args, 0);
 
     // "" stays "": that is how a script is told the platform has no backup of
     // that kind, and "/" would read as the SD root.
-    std::string path = host().titleBackupPath(Param[0]->Val->Integer, kind);
+    std::string path = host().titleBackupPath(idx, kind);
     if (!path.empty() && path.back() != '/') {
         path += '/';
     }
@@ -210,7 +221,7 @@ void ckpt_title_backup_path(struct ParseState* Parser, struct Value* ReturnValue
 
 void ckpt_read_directory(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    std::string dir = (char*)Param[0]->Val->Pointer;
+    std::string dir = ScriptArgs(Parser, Param, NumArgs, "read_directory").str(0);
     // Drop trailing slashes before joining so entries never contain "//": a dir
     // from title_backup_path ends in '/', and "dir//name" opens here (this call)
     // but the FS rejects the empty component when a later opendir/stat (e.g.
@@ -237,20 +248,32 @@ void ckpt_delete_directory(struct ParseState* Parser, struct Value* ReturnValue,
     // Through ScriptHeap, not free(): makeDirData allocated these, so the heap
     // still owns them and a raw free() would leave it holding dangling keys to
     // free again at the end of the run.
-    dirData* dir = (dirData*)Param[0]->Val->Pointer;
-    if (dir) {
-        ScriptHeap& heap = ScriptHeap::get();
-        for (int i = 0; i < dir->count; i++) {
-            heap.release(dir->files[i]);
-        }
-        heap.release(dir->files);
-        heap.release(dir);
+    //
+    // NULL is accepted — sav_list answers NULL on error and a cleanup path
+    // should be able to hand that straight back — but anything else must be a
+    // struct the heap handed out, because the loop below walks it. Same rule as
+    // json_delete: a pointer this heap does not own is a script mistake, and
+    // this is the only place that can still say where it was made.
+    const ScriptArgs args(Parser, Param, NumArgs, "delete_directory");
+    dirData* dir = (dirData*)args.ptrOrNull(0);
+    if (dir == nullptr) {
+        return;
     }
+    ScriptHeap& heap = ScriptHeap::get();
+    if (!heap.owns(dir)) {
+        args.fail("argument 1 is not a directory from read_directory/sav_list");
+    }
+
+    for (int i = 0; i < dir->count; i++) {
+        heap.release(dir->files[i]);
+    }
+    heap.release(dir->files);
+    heap.release(dir);
 }
 
 void ckpt_sd_mkdirs(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const std::string path = sdmcPrefixed((char*)Param[0]->Val->Pointer);
+    const std::string path = sdmcPrefixed(ScriptArgs(Parser, Param, NumArgs, "sd_mkdirs").str(0));
 
     // mkdir -p: create every component; existing ones fail harmlessly, and the
     // final stat is the actual success check.
@@ -265,20 +288,19 @@ void ckpt_sd_mkdirs(struct ParseState* Parser, struct Value* ReturnValue, struct
 
 void ckpt_sd_exists(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
+    const char* path = ScriptArgs(Parser, Param, NumArgs, "sd_exists").str(0);
     struct stat st;
-    ReturnValue->Val->Integer = stat((char*)Param[0]->Val->Pointer, &st) == 0 ? 1 : 0;
+    ReturnValue->Val->Integer = stat(path, &st) == 0 ? 1 : 0;
 }
 
 /* ---- save archives ----------------------------------------------------- */
 
 void ckpt_sav_open(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const int kind = Param[1]->Val->Integer;
-    if (kind != 0 && kind != 1) {
-        ProgramFail(Parser, "save kind %d must be 0 (save) or 1 (extdata)", kind);
-    }
-    checkTitleIndex(Parser, Param[0]->Val->Integer);
-    ReturnValue->Val->Integer = host().savOpen(Param[0]->Val->Integer, kind);
+    const ScriptArgs args(Parser, Param, NumArgs, "sav_open");
+    const int kind            = args.numInRange(1, 0, 1); // 0 = save, 1 = extdata
+    const int idx             = titleIndexArg(args, 0);
+    ReturnValue->Val->Integer = host().savOpen(idx, kind);
 }
 
 void ckpt_sav_open_shared(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
@@ -287,44 +309,51 @@ void ckpt_sav_open_shared(struct ParseState* Parser, struct Value* ReturnValue, 
     // id instead of a catalog index. The id crosses the boundary as a 16-hex
     // string like a title id (picoc has no reliable 64-bit ints); what its
     // halves mean is the platform's business.
-    const uint64_t id         = strtoull((char*)Param[0]->Val->Pointer, nullptr, 16);
+    const uint64_t id         = strtoull(ScriptArgs(Parser, Param, NumArgs, "sav_open_shared").str(0), nullptr, 16);
     ReturnValue->Val->Integer = host().savOpenShared(id);
 }
 
 void ckpt_sav_read(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const int handle = savAt(Parser, Param[0]->Val->Integer);
-    char** out       = (char**)Param[2]->Val->Pointer;
-    int* outSize     = (int*)Param[3]->Val->Pointer;
+    const ScriptArgs args(Parser, Param, NumArgs, "sav_read");
+    const int handle = savArg(args, 0);
+    const char* path = args.str(1);
+    char** out       = args.outStr(2);
+    int* outSize     = args.outInt(3);
     *out             = nullptr;
     *outSize         = 0;
 
-    ReturnValue->Val->Integer = host().savRead(handle, (char*)Param[1]->Val->Pointer, out, outSize);
+    ReturnValue->Val->Integer = host().savRead(handle, path, out, outSize);
 }
 
 void ckpt_sav_write(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const int handle = savAt(Parser, Param[0]->Val->Integer);
-    const int size   = Param[3]->Val->Integer;
-    if (size < 0) {
-        ProgramFail(Parser, "sav_write size must not be negative");
-    }
-    ReturnValue->Val->Integer = host().savWrite(handle, (char*)Param[1]->Val->Pointer, Param[2]->Val->Pointer, (size_t)size);
+    const ScriptArgs args(Parser, Param, NumArgs, "sav_write");
+    const int handle  = savArg(args, 0);
+    const char* path  = args.str(1);
+    const size_t size = args.byteCount(3);
+    // The data pointer only has to be real when there are bytes to read from
+    // it; a zero-length write of NULL is a legitimate way to truncate.
+    const void* data = size > 0 ? args.ptr(2) : args.ptrOrNull(2);
+
+    ReturnValue->Val->Integer = host().savWrite(handle, path, data, size);
 }
 
 void ckpt_sav_delete(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const int handle          = savAt(Parser, Param[0]->Val->Integer);
-    ReturnValue->Val->Integer = host().savDelete(handle, (char*)Param[1]->Val->Pointer);
+    const ScriptArgs args(Parser, Param, NumArgs, "sav_delete");
+    const int handle          = savArg(args, 0);
+    ReturnValue->Val->Integer = host().savDelete(handle, args.str(1));
 }
 
 void ckpt_sav_list(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const int handle = savAt(Parser, Param[0]->Val->Integer);
+    const ScriptArgs args(Parser, Param, NumArgs, "sav_list");
+    const int handle = savArg(args, 0);
 
     // Returned entries are archive-absolute like read_directory's; folders get
     // a trailing '/'.
-    std::string prefix = (char*)Param[1]->Val->Pointer;
+    std::string prefix = args.str(1);
     if (prefix.empty() || prefix[0] != '/') {
         prefix = "/" + prefix;
     }
@@ -348,15 +377,16 @@ void ckpt_sav_list(struct ParseState* Parser, struct Value* ReturnValue, struct 
 
 void ckpt_sav_commit(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const int handle          = savAt(Parser, Param[0]->Val->Integer);
+    const int handle          = savArg(ScriptArgs(Parser, Param, NumArgs, "sav_commit"), 0);
     ReturnValue->Val->Integer = host().savCommit(handle);
 }
 
 void ckpt_sav_close(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
     // Lenient on purpose: closing an already-closed or bogus handle is a no-op
-    // so cleanup paths in scripts can close unconditionally.
-    host().savClose(Param[0]->Val->Integer);
+    // so cleanup paths in scripts can close unconditionally — hence num() and
+    // not savArg().
+    host().savClose(ScriptArgs(Parser, Param, NumArgs, "sav_close").num(0));
 }
 
 void ckpt_sav_close_all(void)
@@ -408,11 +438,12 @@ void ckpt_net_ip(struct ParseState* Parser, struct Value* ReturnValue, struct Va
 
 void ckpt_web_get(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    char** out   = (char**)Param[0]->Val->Pointer;
-    int* outSize = (int*)Param[1]->Val->Pointer;
-    char* url    = (char*)Param[2]->Val->Pointer;
-    *out         = nullptr;
-    *outSize     = 0;
+    const ScriptArgs args(Parser, Param, NumArgs, "web_get");
+    char** out      = args.outStr(0);
+    int* outSize    = args.outInt(1);
+    const char* url = args.str(2);
+    *out            = nullptr;
+    *outSize        = 0;
 
     Http::Request req;
     req.url = url;
@@ -422,16 +453,19 @@ void ckpt_web_get(struct ParseState* Parser, struct Value* ReturnValue, struct V
 
 void ckpt_web_request(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const char* method  = (char*)Param[0]->Val->Pointer;
-    const char* url     = (char*)Param[1]->Val->Pointer;
-    const char* headers = (char*)Param[2]->Val->Pointer;
-    const char* body    = (char*)Param[3]->Val->Pointer;
-    const int bodySize  = Param[4]->Val->Integer;
-    char** out          = (char**)Param[5]->Val->Pointer;
-    int* outSize        = (int*)Param[6]->Val->Pointer;
-    char** respHeaders  = (char**)Param[7]->Val->Pointer;
-    *out                = nullptr;
-    *outSize            = 0;
+    const ScriptArgs args(Parser, Param, NumArgs, "web_request");
+    const char* method  = args.str(0);
+    const char* url     = args.str(1);
+    const char* headers = args.strOr(2, "");
+    const int bodySize  = (int)args.byteCount(4);
+    const char* body    = bodySize > 0 ? args.str(3) : args.strOr(3, "");
+    char** out          = args.outStr(5);
+    int* outSize        = args.outInt(6);
+    // respHeaders stays optional: the prototype asks for a valid char**, but a
+    // script that does not care about the response headers may pass NULL.
+    char** respHeaders = args.outStrOrNull(7);
+    *out               = nullptr;
+    *outSize           = 0;
     if (respHeaders) {
         *respHeaders = nullptr;
     }
@@ -449,13 +483,14 @@ void ckpt_web_request(struct ParseState* Parser, struct Value* ReturnValue, stru
 
 void ckpt_web_upload_file(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const char* method   = (char*)Param[0]->Val->Pointer;
-    const char* url      = (char*)Param[1]->Val->Pointer;
-    const char* headers  = (char*)Param[2]->Val->Pointer;
-    const char* filePath = (char*)Param[3]->Val->Pointer;
-    char** out           = (char**)Param[4]->Val->Pointer;
-    int* outSize         = (int*)Param[5]->Val->Pointer;
-    char** respHeaders   = (char**)Param[6]->Val->Pointer;
+    const ScriptArgs args(Parser, Param, NumArgs, "web_upload_file");
+    const char* method   = args.str(0);
+    const char* url      = args.str(1);
+    const char* headers  = args.strOr(2, "");
+    const char* filePath = args.str(3);
+    char** out           = args.outStr(4);
+    int* outSize         = args.outInt(5);
+    char** respHeaders   = args.outStrOrNull(6);
     *out                 = nullptr;
     *outSize             = 0;
     if (respHeaders) {
@@ -482,7 +517,7 @@ void ckpt_web_upload_file(struct ParseState* Parser, struct Value* ReturnValue, 
 
 void ckpt_url_encode(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const char* s             = (char*)Param[0]->Val->Pointer;
+    const char* s             = ScriptArgs(Parser, Param, NumArgs, "url_encode").str(0);
     ReturnValue->Val->Pointer = strToRet(Http::encode(s));
 }
 
@@ -490,28 +525,34 @@ void ckpt_url_encode(struct ParseState* Parser, struct Value* ReturnValue, struc
 
 void ckpt_gui_message(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
+    const char* text = ScriptArgs(Parser, Param, NumArgs, "gui_message").str(0);
+
     UiRequest req;
     req.kind   = UiRequest::Kind::Message;
-    req.prompt = (char*)Param[0]->Val->Pointer;
+    req.prompt = text;
     bridge().request(std::move(req));
 }
 
 void ckpt_gui_confirm(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
+    const char* text = ScriptArgs(Parser, Param, NumArgs, "gui_confirm").str(0);
+
     UiRequest req;
     req.kind                  = UiRequest::Kind::Confirm;
-    req.prompt                = (char*)Param[0]->Val->Pointer;
+    req.prompt                = text;
     ReturnValue->Val->Integer = bridge().request(std::move(req)).confirmed ? 1 : 0;
 }
 
 void ckpt_gui_pick_one(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    char** items    = (char**)Param[1]->Val->Pointer;
-    const int count = Param[2]->Val->Integer;
+    const ScriptArgs args(Parser, Param, NumArgs, "gui_pick_one");
+    const char* prompt = args.str(0);
+    const int count    = args.count(2);
+    char* const* items = args.strArray(1, count);
 
     UiRequest req;
     req.kind   = UiRequest::Kind::PickOne;
-    req.prompt = (char*)Param[0]->Val->Pointer;
+    req.prompt = prompt;
     for (int i = 0; i < count; i++) {
         req.items.push_back(items[i]);
     }
@@ -520,13 +561,17 @@ void ckpt_gui_pick_one(struct ParseState* Parser, struct Value* ReturnValue, str
 
 void ckpt_gui_pick_many(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    char** items    = (char**)Param[1]->Val->Pointer;
-    const int count = Param[2]->Val->Integer;
-    int* selected   = (int*)Param[3]->Val->Pointer;
+    const ScriptArgs args(Parser, Param, NumArgs, "gui_pick_many");
+    const char* prompt = args.str(0);
+    const int count    = args.count(2);
+    char* const* items = args.strArray(1, count);
+    // The same count sizes the selection array: it is both an in and an out
+    // parameter, so a short one would be written past as well as read past.
+    int* selected = args.intArray(3, count);
 
     UiRequest req;
     req.kind   = UiRequest::Kind::PickMany;
-    req.prompt = (char*)Param[0]->Val->Pointer;
+    req.prompt = prompt;
     for (int i = 0; i < count; i++) {
         req.items.push_back(items[i]);
         req.preselected.push_back(selected[i] != 0);
@@ -543,33 +588,35 @@ void ckpt_gui_pick_many(struct ParseState* Parser, struct Value* ReturnValue, st
 
 void ckpt_gui_keyboard(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    char* out          = (char*)Param[0]->Val->Pointer;
-    const int maxChars = Param[2]->Val->Integer;
-    if (maxChars <= 0) {
-        ProgramFail(Parser, "gui_keyboard maxChars must be positive");
-    }
+    const ScriptArgs args(Parser, Param, NumArgs, "gui_keyboard");
+    // maxChars is the out buffer's size, terminator included (PKSM semantics),
+    // so it is the buffer's length as well as the input limit.
+    const int maxChars = args.num(2);
+    char* out          = args.outBuf(0, maxChars);
+    const char* hint   = args.strOr(1, "");
 
     UiRequest req;
     req.kind     = UiRequest::Kind::Keyboard;
-    req.prompt   = (char*)Param[1]->Val->Pointer;
+    req.prompt   = hint;
     req.maxChars = maxChars;
 
-    // maxChars is the out buffer's size, terminator included (PKSM semantics).
     UiResponse resp = bridge().request(std::move(req));
     snprintf(out, (size_t)maxChars, "%s", resp.text.c_str());
 }
 
 void ckpt_gui_numpad(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const int min = Param[1]->Val->Integer;
-    const int max = Param[2]->Val->Integer;
+    const ScriptArgs args(Parser, Param, NumArgs, "gui_numpad");
+    const char* prompt = args.str(0);
+    const int min      = args.num(1);
+    const int max      = args.num(2);
     if (max < min) {
-        ProgramFail(Parser, "gui_numpad max %d is below min %d", max, min);
+        args.fail("argument 3 is a max of %d, below the min of %d", max, min);
     }
 
     UiRequest req;
     req.kind                  = UiRequest::Kind::Numpad;
-    req.prompt                = (char*)Param[0]->Val->Pointer;
+    req.prompt                = prompt;
     req.numMin                = min;
     req.numMax                = max;
     ReturnValue->Val->Integer = bridge().request(std::move(req)).index;
@@ -577,14 +624,14 @@ void ckpt_gui_numpad(struct ParseState* Parser, struct Value* ReturnValue, struc
 
 void ckpt_gui_status(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    bridge().setStatus((char*)Param[0]->Val->Pointer);
+    bridge().setStatus(ScriptArgs(Parser, Param, NumArgs, "gui_status").strOr(0, ""));
 }
 
 /* ---- misc -------------------------------------------------------------- */
 
 void ckpt_script_log(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    const char* msg = (const char*)Param[0]->Val->Pointer;
+    const char* msg = ScriptArgs(Parser, Param, NumArgs, "script_log").strOr(0, "");
     // Both destinations on purpose: the app log survives the run for a bug
     // report, the console pane is what the user is watching while it happens.
     Logging::info("[script] {}", msg);

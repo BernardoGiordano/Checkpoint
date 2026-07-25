@@ -30,6 +30,7 @@
 // ProgramFail instead of letting nlohmann throw through the interpreter.
 
 #include "json.hpp"
+#include "scriptargs.hpp"
 #include "scriptheap.hpp"
 #include <cstdlib>
 #include <cstring>
@@ -41,9 +42,12 @@ extern "C" {
 }
 
 namespace {
-    nlohmann::json* arg(struct Value** Param, int i)
+    // struct JSON* is opaque to scripts, so the only thing checkable at the
+    // boundary is that a pointer was passed at all — a NULL one used to fault
+    // inside nlohmann, several frames from the call that got it wrong.
+    nlohmann::json* tree(const ScriptArgs& args, int i)
     {
-        return (nlohmann::json*)Param[i]->Val->Pointer;
+        return (nlohmann::json*)args.ptr(i);
     }
 
     // The heap's destroy function for a tree: json_new's `new`, undone.
@@ -67,8 +71,9 @@ void ckpt_json_new(struct ParseState* Parser, struct Value* ReturnValue, struct 
 
 void ckpt_json_parse(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    nlohmann::json* out = arg(Param, 0);
-    *out                = nlohmann::json::parse((char*)Param[1]->Val->Pointer, nullptr, false);
+    const ScriptArgs args(Parser, Param, NumArgs, "json_parse");
+    nlohmann::json* out = tree(args, 0);
+    *out                = nlohmann::json::parse(args.str(1), nullptr, false);
 }
 
 void ckpt_json_delete(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
@@ -78,64 +83,68 @@ void ckpt_json_delete(struct ParseState* Parser, struct Value* ReturnValue, stru
     // the one place that can tell the two apart: only a root json_new adopted
     // is in the heap. Deleting a borrowed element used to corrupt the
     // allocator; now it fails the script where the mistake was made.
-    if (!ScriptHeap::get().release(arg(Param, 0))) {
-        ProgramFail(Parser, "json_delete on a value that is not a json_new root");
+    const ScriptArgs args(Parser, Param, NumArgs, "json_delete");
+    if (!ScriptHeap::get().release(tree(args, 0))) {
+        args.fail("argument 1 is not a json_new root");
     }
 }
 
 void ckpt_json_is_valid(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = arg(Param, 0)->is_discarded() ? 0 : 1;
+    ReturnValue->Val->Integer = tree(ScriptArgs(Parser, Param, NumArgs, "json_is_valid"), 0)->is_discarded() ? 0 : 1;
 }
 
 void ckpt_json_is_int(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = arg(Param, 0)->is_number_integer() ? 1 : 0;
+    ReturnValue->Val->Integer = tree(ScriptArgs(Parser, Param, NumArgs, "json_is_int"), 0)->is_number_integer() ? 1 : 0;
 }
 
 void ckpt_json_is_bool(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = arg(Param, 0)->is_boolean() ? 1 : 0;
+    ReturnValue->Val->Integer = tree(ScriptArgs(Parser, Param, NumArgs, "json_is_bool"), 0)->is_boolean() ? 1 : 0;
 }
 
 void ckpt_json_is_string(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = arg(Param, 0)->is_string() ? 1 : 0;
+    ReturnValue->Val->Integer = tree(ScriptArgs(Parser, Param, NumArgs, "json_is_string"), 0)->is_string() ? 1 : 0;
 }
 
 void ckpt_json_is_array(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = arg(Param, 0)->is_array() ? 1 : 0;
+    ReturnValue->Val->Integer = tree(ScriptArgs(Parser, Param, NumArgs, "json_is_array"), 0)->is_array() ? 1 : 0;
 }
 
 void ckpt_json_is_object(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = arg(Param, 0)->is_object() ? 1 : 0;
+    ReturnValue->Val->Integer = tree(ScriptArgs(Parser, Param, NumArgs, "json_is_object"), 0)->is_object() ? 1 : 0;
 }
 
 void ckpt_json_get_int(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    nlohmann::json* get = arg(Param, 0);
+    const ScriptArgs args(Parser, Param, NumArgs, "json_get_int");
+    nlohmann::json* get = tree(args, 0);
     if (!get->is_number()) {
-        ProgramFail(Parser, "json_get_int on a non-number value");
+        args.fail("argument 1 is not a number");
     }
     ReturnValue->Val->Integer = get->get<int>();
 }
 
 void ckpt_json_get_bool(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    nlohmann::json* get = arg(Param, 0);
+    const ScriptArgs args(Parser, Param, NumArgs, "json_get_bool");
+    nlohmann::json* get = tree(args, 0);
     if (!get->is_boolean()) {
-        ProgramFail(Parser, "json_get_bool on a non-boolean value");
+        args.fail("argument 1 is not a boolean");
     }
     ReturnValue->Val->Integer = get->get<bool>() ? 1 : 0;
 }
 
 void ckpt_json_get_string(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    nlohmann::json* get = arg(Param, 0);
+    const ScriptArgs args(Parser, Param, NumArgs, "json_get_string");
+    nlohmann::json* get = tree(args, 0);
     if (!get->is_string()) {
-        ProgramFail(Parser, "json_get_string on a non-string value");
+        args.fail("argument 1 is not a string");
     }
     ReturnValue->Val->Pointer = strToRet(get->get_ref<std::string&>());
 }
@@ -143,40 +152,44 @@ void ckpt_json_get_string(struct ParseState* Parser, struct Value* ReturnValue, 
 // nlohmann's size(): array/object element count, 1 for scalars, 0 for null.
 void ckpt_json_array_size(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = (int)arg(Param, 0)->size();
+    ReturnValue->Val->Integer = (int)tree(ScriptArgs(Parser, Param, NumArgs, "json_array_size"), 0)->size();
 }
 
 void ckpt_json_array_element(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    nlohmann::json* get = arg(Param, 0);
-    const int index     = Param[1]->Val->Integer;
+    const ScriptArgs args(Parser, Param, NumArgs, "json_array_element");
+    nlohmann::json* get = tree(args, 0);
+    const int index     = args.num(1);
     if (!get->is_array() || index < 0 || index >= (int)get->size()) {
-        ProgramFail(Parser, "json_array_element index %d out of range", index);
+        args.fail("argument 2 is index %d, out of range", index);
     }
     ReturnValue->Val->Pointer = &(*get)[index];
 }
 
 void ckpt_json_object_contains(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Integer = arg(Param, 0)->contains((char*)Param[1]->Val->Pointer) ? 1 : 0;
+    const ScriptArgs args(Parser, Param, NumArgs, "json_object_contains");
+    ReturnValue->Val->Integer = tree(args, 0)->contains(args.str(1)) ? 1 : 0;
 }
 
 void ckpt_json_object_element(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    nlohmann::json* get = arg(Param, 0);
-    const char* name    = (char*)Param[1]->Val->Pointer;
+    const ScriptArgs args(Parser, Param, NumArgs, "json_object_element");
+    nlohmann::json* get = tree(args, 0);
+    const char* name    = args.str(1);
     if (!get->is_object() || !get->contains(name)) {
-        ProgramFail(Parser, "json_object_element: no member '%s'", name);
+        args.fail("no member '%s'", name);
     }
     ReturnValue->Val->Pointer = &(*get)[name];
 }
 
 void ckpt_json_object_key(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    nlohmann::json* get = arg(Param, 0);
-    const int index     = Param[1]->Val->Integer;
+    const ScriptArgs args(Parser, Param, NumArgs, "json_object_key");
+    nlohmann::json* get = tree(args, 0);
+    const int index     = args.num(1);
     if (!get->is_object() || index < 0 || index >= (int)get->size()) {
-        ProgramFail(Parser, "json_object_key index %d out of range", index);
+        args.fail("argument 2 is index %d, out of range", index);
     }
     auto it = get->cbegin();
     std::advance(it, index);

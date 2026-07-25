@@ -33,6 +33,7 @@
 // picoc's ~32 KB heap. Scripts already open bare SD paths ("/3ds/..." / "/switch/...")
 // with fopen/opendir on both consoles, so no path prefixing is needed here.
 
+#include "scriptargs.hpp"
 #include "scriptconsole.hpp"
 #include "transferprotocol.hpp"
 #include <cstdint>
@@ -256,14 +257,16 @@ namespace {
 
 void ckpt_zip_dir(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    (void)Parser;
-    (void)NumArgs;
-    ReturnValue->Val->Integer = zipDir((char*)Param[0]->Val->Pointer, (char*)Param[1]->Val->Pointer);
+    const ScriptArgs args(Parser, Param, NumArgs, "zip_dir");
+    const char* srcDir        = args.str(0);
+    const char* outZipPath    = args.str(1);
+    ReturnValue->Val->Integer = zipDir(srcDir, outZipPath);
 }
 
 void ckpt_unzip(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    (void)Parser;
-    (void)NumArgs;
-    ReturnValue->Val->Integer = unzipTo((char*)Param[0]->Val->Pointer, (char*)Param[1]->Val->Pointer);
+    const ScriptArgs args(Parser, Param, NumArgs, "unzip");
+    const char* zipPath       = args.str(0);
+    const char* outDir        = args.str(1);
+    ReturnValue->Val->Integer = unzipTo(zipPath, outDir);
 }

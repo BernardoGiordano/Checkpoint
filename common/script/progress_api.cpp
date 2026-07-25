@@ -32,6 +32,7 @@
 // wait for a frame, so unlike the gui_* bindings none of these touch
 // ScriptUiBridge. The UI thread reads a snapshot whenever it happens to draw.
 
+#include "scriptargs.hpp"
 #include "scriptconsole.hpp"
 
 extern "C" {
@@ -40,31 +41,42 @@ extern "C" {
 }
 
 namespace {
-    const char* str(struct Value** Param, int i)
+    // A layer index used to be cast straight to size_t and handed to
+    // ScriptConsole, whose range check then swallowed a negative one whole: the
+    // bar simply never appeared and the script had no way to find out. Checked
+    // here instead, so the mistake is reported at the call that made it.
+    size_t layerArg(const ScriptArgs& args)
     {
-        const char* s = (const char*)Param[i]->Val->Pointer;
-        return s != nullptr ? s : "";
+        return (size_t)args.numInRange(0, 0, (int)ScriptConsole::MAX_LAYERS - 1);
     }
 }
 
 void ckpt_progress_begin(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ScriptConsole::get().beginLayer((size_t)Param[0]->Val->Integer, str(Param, 1), Param[2]->Val->Integer);
+    const ScriptArgs args(Parser, Param, NumArgs, "progress_begin");
+    const size_t layer = layerArg(args);
+    const char* label  = args.strOr(1, "");
+    ScriptConsole::get().beginLayer(layer, label, args.num(2));
 }
 
 void ckpt_progress_set(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ScriptConsole::get().setLayer((size_t)Param[0]->Val->Integer, Param[1]->Val->Integer);
+    const ScriptArgs args(Parser, Param, NumArgs, "progress_set");
+    const size_t layer = layerArg(args);
+    ScriptConsole::get().setLayer(layer, args.num(1));
 }
 
 void ckpt_progress_label(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ScriptConsole::get().setLayerLabel((size_t)Param[0]->Val->Integer, str(Param, 1));
+    const ScriptArgs args(Parser, Param, NumArgs, "progress_label");
+    const size_t layer = layerArg(args);
+    const char* label  = args.strOr(1, "");
+    ScriptConsole::get().setLayerLabel(layer, label);
 }
 
 void ckpt_progress_end(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ScriptConsole::get().endLayer((size_t)Param[0]->Val->Integer);
+    ScriptConsole::get().endLayer(layerArg(ScriptArgs(Parser, Param, NumArgs, "progress_end")));
 }
 
 void ckpt_progress_clear(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
