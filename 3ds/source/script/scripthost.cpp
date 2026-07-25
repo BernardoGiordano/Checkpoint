@@ -41,6 +41,8 @@
 #include "scriptheap.hpp"
 #include "title.hpp"
 #include <3ds.h>
+#include <cstring>
+#include <mbedtls/sha256.h>
 #include <string>
 #include <vector>
 
@@ -264,6 +266,73 @@ namespace {
             for (int i = 0; i < MAX_SAV_HANDLES; i++) {
                 mSlots[i] = SavSlot{};
             }
+        }
+
+        // The NAND CID: 16 bytes burnt into this console's internal storage,
+        // reachable only by asking FS (already initialised, so no service of our
+        // own to open and no way for this to start failing later). Deliberately
+        // NOT the SD CID as well — that would tie a sealed credential to the
+        // card it sits on, and cloning an SD onto a bigger one is a thing users
+        // routinely do; the console is what we mean to bind to.
+        int deviceSecret(uint8_t* out, int want) override
+        {
+            if (want != DeviceKeySourceBest && want != DeviceKeySourceCtrNand) {
+                return -1;
+            }
+            u8 cid[16] = {0};
+            if (R_FAILED(FSUSER_GetNandCid(cid, sizeof(cid)))) {
+                return -1;
+            }
+            // Hashed rather than handed over raw, so the only thing that ever
+            // leaves this function is a value the CID cannot be read back out of.
+            mbedtls_sha256_context ctx;
+            mbedtls_sha256_init(&ctx);
+            mbedtls_sha256_starts_ret(&ctx, 0);
+            mbedtls_sha256_update_ret(&ctx, (const unsigned char*)"Checkpoint 3DS NAND CID v1", 26);
+            mbedtls_sha256_update_ret(&ctx, cid, sizeof(cid));
+            mbedtls_sha256_finish_ret(&ctx, out);
+            mbedtls_sha256_free(&ctx);
+            memset(cid, 0, sizeof(cid));
+            return DeviceKeySourceCtrNand;
+        }
+
+        bool randomBytes(void* out, size_t size) override
+        {
+            // ps:ps owns the hardware RNG. Opened and closed around the call
+            // rather than held: this runs a handful of times per script run.
+            if (R_SUCCEEDED(psInit())) {
+                const Result res = PS_GenerateRandomBytes(out, size);
+                psExit();
+                if (R_SUCCEEDED(res)) {
+                    return true;
+                }
+            }
+            // ps unavailable. Every seal draws a fresh salt as well as a fresh
+            // nonce, and the salt is what the key is derived from, so what this
+            // fallback has to guarantee is not secrecy but that two seals never
+            // come out with the same pair — a tick counter that never repeats
+            // within a boot, hashed with a call counter, does that.
+            static u32 calls = 0;
+            uint8_t* dest    = (uint8_t*)out;
+            while (size > 0) {
+                const u64 tick = svcGetSystemTick();
+                const u64 now  = osGetTime();
+                const u32 seq  = calls++;
+                uint8_t digest[32];
+                mbedtls_sha256_context ctx;
+                mbedtls_sha256_init(&ctx);
+                mbedtls_sha256_starts_ret(&ctx, 0);
+                mbedtls_sha256_update_ret(&ctx, (const unsigned char*)&tick, sizeof(tick));
+                mbedtls_sha256_update_ret(&ctx, (const unsigned char*)&now, sizeof(now));
+                mbedtls_sha256_update_ret(&ctx, (const unsigned char*)&seq, sizeof(seq));
+                mbedtls_sha256_finish_ret(&ctx, digest);
+                mbedtls_sha256_free(&ctx);
+                const size_t chunk = size < sizeof(digest) ? size : sizeof(digest);
+                memcpy(dest, digest, chunk);
+                dest += chunk;
+                size -= chunk;
+            }
+            return true;
         }
 
         void lowerPriority(void) override

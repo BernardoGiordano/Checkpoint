@@ -76,6 +76,14 @@ CKPT_BINDING(ckpt_web_upload_file);
 CKPT_BINDING(ckpt_url_encode);
 CKPT_BINDING(ckpt_http_header_value);
 
+/* sealed storage for a script's own small secrets (common/script/seal_api.cpp):
+ * AES-256-GCM under a key mixed from console-bound material that is never
+ * written to the SD card and an optional user passphrase. Read that file's
+ * header before telling a user anything about what it protects. */
+CKPT_BINDING(ckpt_device_seal);
+CKPT_BINDING(ckpt_device_unseal);
+CKPT_BINDING(ckpt_seal_needs_passphrase);
+
 /* zip (common, wraps TransferProto store-only zip over stdio) */
 CKPT_BINDING(ckpt_zip_dir);
 CKPT_BINDING(ckpt_unzip);

@@ -26,7 +26,8 @@
  *   8. Shared data  — sav_open_shared (3DS: Play Coins)
  *   9. Network      — net_ip, web_get, web_request, url_encode
  *  10. JSON         — parsing and walking a document
- *  11. Abort        — how hold-B cancellation reaches your script
+ *  11. Sealed store — keeping a credential on the card without leaving it bare
+ *  12. Abort        — how hold-B cancellation reaches your script
  *
  * ---------------------------------------------------------------------------
  * THE INTERPRETER
@@ -852,7 +853,108 @@ void section_json(void)
 }
 
 /* ------------------------------------------------------------------------- */
-/* 11. Abort: how a script gets cancelled                                     */
+/* 11. Sealed storage: a credential that survives the run                     */
+/* ------------------------------------------------------------------------- */
+
+/* device_seal / device_unseal are for the one thing a script should never write
+ * plainly: a credential it needs again next run (an OAuth refresh token, an API
+ * key). AES-256-GCM under a key mixed from material only this console's own
+ * services can answer for — which is never written to the card — plus, when you
+ * pass a non-empty passphrase, a PBKDF2 stretch of that.
+ *
+ * Be exact with users about what that is worth. Because the console-bound half
+ * never touches the card, a card read on a PC, an SD image, or a config folder
+ * the user shares all come away with nothing, and a blob does not work on another
+ * console. But neither console isolates homebrew and Checkpoint is open source,
+ * so other homebrew on THIS console can reproduce that half by reading
+ * common/script/seal_api.cpp. Only the passphrase is a real boundary. Claiming
+ * more than that in a gui_message is the actual mistake to avoid here.
+ *
+ * The blob is binary and carries its own salt, nonce and tag: write it with "wb"
+ * and read its length back with ftell, never strlen. */
+void section_seal(void)
+{
+    char path[PATHN];
+    char* plain = "{\"token\":\"pretend-this-is-secret\"}";
+    char* blob  = NULL;
+    char* back  = NULL;
+    int bn      = 0;
+    int rn      = 0;
+    int rc;
+    FILE* f;
+    char line[LINEN];
+
+    sd_mkdirs(g_scratch);
+    sprintf(path, "%s/demo.vault", g_scratch);
+
+    /* Seal without a passphrase: console-bound only. */
+    rc = device_seal(plain, strlen(plain), "", &blob, &bn);
+    if (rc != 0) {
+        sprintf(line, "device_seal failed: %d", rc);
+        logline(line);
+        gui_message("device_seal failed — see the console pane.");
+        return;
+    }
+    sprintf(line, "sealed %d bytes into %d (60 of that is the header)", strlen(plain), bn);
+    logline(line);
+
+    f = fopen(path, "wb");
+    if (f != NULL) {
+        fwrite(blob, 1, bn, f);
+        fclose(f);
+    }
+    free(blob);
+
+    /* Read it back the only correct way: the byte count comes from the file. */
+    f = fopen(path, "rb");
+    if (f == NULL) {
+        gui_message("Could not reopen the demo vault.");
+        return;
+    }
+    fseek(f, 0, SEEK_END);
+    rn = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    blob = malloc(rn + 1);
+    if (blob == NULL) {
+        fclose(f);
+        gui_message("Out of memory reading the demo vault.");
+        return;
+    }
+    fread(blob, 1, rn, f);
+    fclose(f);
+
+    /* Ask the blob what it needs before prompting the user for anything. */
+    sprintf(line, "seal_needs_passphrase: %d", seal_needs_passphrase(blob, rn));
+    logline(line);
+
+    rc = device_unseal(blob, rn, "", &back, &bn);
+    if (rc == 0) {
+        printf("unsealed: %s\n", back);
+        free(back);
+    }
+    else {
+        sprintf(line, "device_unseal failed: %d", rc);
+        logline(line);
+    }
+
+    /* -5 is what a wrong passphrase, a different console and a tampered file all
+     * look like. GCM checks the tag before anything comes back, so a failed
+     * unseal hands you nothing — you can never mistake garbage for your config. */
+    back = NULL;
+    rc   = device_unseal(blob, rn, "not-the-passphrase", &back, &bn);
+    sprintf(line, "unseal with a bogus passphrase: %d (out is %s)", rc, back == NULL ? "NULL" : "set");
+    logline(line);
+    if (back != NULL) {
+        free(back);
+    }
+    free(blob);
+
+    remove(path);
+    gui_message("Seal round trip finished — see the console pane.");
+}
+
+/* ------------------------------------------------------------------------- */
+/* 12. Abort: how a script gets cancelled                                     */
 /* ------------------------------------------------------------------------- */
 
 /* Holding B while a script runs kills it: the interpreter fails the run at the
@@ -890,7 +992,7 @@ void section_abort(void)
 int main(int argc, char** argv)
 {
     char* root;
-    char* items[12];
+    char* items[13];
     int pick;
 
     logline("example: started");
@@ -915,16 +1017,17 @@ int main(int argc, char** argv)
     items[7]  = "8. Shared extdata (3DS Play Coins)";
     items[8]  = "9. Network";
     items[9]  = "10. JSON";
-    items[10] = "11. Abort with hold-B";
-    items[11] = "Clean up and exit";
+    items[10] = "11. Sealed storage (device_seal)";
+    items[11] = "12. Abort with hold-B";
+    items[12] = "Clean up and exit";
 
     /* A menu loop is the shape most non-trivial scripts want: one place that
      * decides what to do, and a function per job. gui_pick_one returning -1
      * (the user pressed B) is treated exactly like the explicit exit row. */
     pick = 0;
-    while (pick >= 0 && pick < 11) {
+    while (pick >= 0 && pick < 12) {
         gui_status("Checkpoint scripting example");
-        pick = gui_pick_one("Pick a demo", items, 12);
+        pick = gui_pick_one("Pick a demo", items, 13);
 
         if (pick == 0) {
             section_context(argc, argv);
@@ -957,6 +1060,9 @@ int main(int argc, char** argv)
             section_json();
         }
         else if (pick == 10) {
+            section_seal();
+        }
+        else if (pick == 11) {
             section_abort();
         }
     }

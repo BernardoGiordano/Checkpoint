@@ -111,6 +111,32 @@ struct LibraryFunction CheckpointFunctions[] =
     // interpreter heap. zipName entries carry '/'-separated relative paths.
     { ckpt_zip_dir,            "int zip_dir(char* srcDir, char* outZipPath);" },
     { ckpt_unzip,              "int unzip(char* zipPath, char* outDir);" },
+    // Sealed storage for a credential a script has to keep between runs (an
+    // OAuth refresh token, an API key). device_seal encrypts with AES-256-GCM
+    // under a key mixed from material only this console's services can answer
+    // for — which is never written to the SD card — plus, when passphrase is not
+    // "", a PBKDF2 stretch of that passphrase. The blob is binary and carries
+    // its own salt/nonce/tag: write it to SD as-is and hand it back verbatim.
+    //
+    // What that is worth, exactly: an SD card read on a PC, an SD image, or a
+    // config folder the user shares carries nothing usable, and the blob does
+    // not travel to another console. It is NOT protection from other homebrew on
+    // the same console — nothing on either console isolates homebrew, and
+    // Checkpoint is open source, so the console-bound half is reproducible by
+    // anyone who reads common/script/seal_api.cpp. Only the passphrase half is a
+    // real boundary. Never tell a user otherwise.
+    //
+    // Both return 0 on success, or: -1 = not a sealed blob / nothing to seal,
+    // -2 = blob from a newer Checkpoint, -3 = out of memory, -4 = no console key
+    // source and no passphrase either, -5 = wrong passphrase, wrong console or
+    // tampered blob, -6 = the console would not produce a salt/nonce. out is
+    // malloc'd (the script frees it) and stays NULL/0 on failure — a failed
+    // unseal never yields plaintext, so garbage can't be mistaken for config.
+    { ckpt_device_seal,        "int device_seal(char* plain, int plainSize, char* passphrase, char** out, int* outSize);" },
+    { ckpt_device_unseal,      "int device_unseal(char* blob, int blobSize, char* passphrase, char** out, int* outSize);" },
+    // 1 if unsealing this blob needs a passphrase, 0 if not, -1 if it is not a
+    // sealed blob: what to ask the user for before calling device_unseal.
+    { ckpt_seal_needs_passphrase, "int seal_needs_passphrase(char* blob, int blobSize);" },
     // sd card (plus full picoc stdio: fopen("/3ds/...", ...) works)
     { ckpt_read_directory,     "struct directory* read_directory(char* dir);" },
     { ckpt_delete_directory,   "void delete_directory(struct directory* dir);" },

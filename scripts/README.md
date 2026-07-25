@@ -637,6 +637,53 @@ anything worth keeping in a bug report.
 `app_root()` returns the prefix in the form that platform's `fopen`/`stat` wants,
 which is the whole trick to writing one script for both consoles.
 
+### 7.10 Sealed storage
+
+For a credential a script has to keep between runs — an OAuth refresh token, an
+API key — instead of leaving it in a JSON file on the card.
+
+| Signature | Returns |
+| --- | --- |
+| `int device_seal(char* plain, int plainSize, char* passphrase, char** out, int* outSize)` | `0` ok, else negative (below) |
+| `int device_unseal(char* blob, int blobSize, char* passphrase, char** out, int* outSize)` | `0` ok, else negative |
+| `int seal_needs_passphrase(char* blob, int blobSize)` | `1`/`0`, `-1` if not a sealed blob |
+
+AES-256-GCM under a key mixed from two halves: material only this console's own
+services can answer for (never written to the SD card), and — when `passphrase`
+is not `""` — a PBKDF2 stretch of that passphrase. Pass `""` for no passphrase.
+
+Failure codes, shared by both calls:
+
+| Code | Meaning |
+| --- | --- |
+| `-1` | not a sealed blob, or `plainSize` was 0 |
+| `-2` | blob written by a newer Checkpoint |
+| `-3` | out of memory |
+| `-4` | no console key source *and* no passphrase — nothing to derive from |
+| `-5` | wrong passphrase, different console, or a tampered blob |
+| `-6` | the console would not produce a salt/nonce |
+
+`out` is a `malloc`'d block you `free()`, and stays `NULL`/`0` on failure. A
+failed unseal never yields plaintext: GCM verifies the tag first, so garbage can
+never be mistaken for your config.
+
+The blob is **binary** and carries its own salt, nonce and tag. Write it to the SD
+card with `fopen(..., "wb")`/`fwrite` and hand it back verbatim — and read it back
+with the byte count from `ftell`, not `strlen`, since it is full of embedded NULs.
+
+**Be accurate with users about what this protects.** Because the console-bound
+half is never on the card: a card read on a PC, an SD image, or a `config/` folder
+the user shares all come away with nothing, and a blob does not travel to another
+console. Because neither console isolates homebrew and Checkpoint is open source:
+other homebrew on the same console *can* reproduce that half by reading
+[`common/script/seal_api.cpp`](../common/script/seal_api.cpp). Only the passphrase
+is a real boundary. Never tell a user otherwise — see `googledrive.c` and
+[`googledrive.md`](googledrive.md) for wording that holds up.
+
+Also worth doing alongside a seal, because encryption is the weakest of the three:
+keep the credential's scope as narrow as the API allows, and give the user a way
+to revoke it.
+
 ---
 
 ## 8. Recipes

@@ -1,6 +1,9 @@
 /*
  * googledrive.c — Google Drive save sync (Checkpoint script)
  *
+ * End-user setup (Google Cloud project, credentials, usage, troubleshooting):
+ * scripts/googledrive.md, next to the scripting manual in scripts/README.md.
+ *
  * Uploads Checkpoint save backups to the user's own Google Drive. One script
  * serves both consoles: every path is built from app_root() ("/3ds/Checkpoint"
  * or "sdmc:/switch/Checkpoint"), so there is nothing platform-specific to edit.
@@ -19,10 +22,29 @@
  * it can never see the rest of the user's Drive. The consent screen stays benign.
  *
  * On-SD layout (paths relative to app_root()):
- *   config/client_secret.json   (you copy this in from the Google Cloud Console)
- *   config/gdrive_token.json     (written here: {"refresh_token":...})
+ *   config/gdrive.vault         everything, sealed (device_seal): the client id
+ *                               and secret plus the refresh token
+ *   config/client_secret.json   the file you copy in from the Google Cloud
+ *                               Console. Read once, folded into the vault, then
+ *                               DELETED — same for a config/gdrive_token.json
+ *                               left over from an older version of this script.
  *
- * Only <checkpoint.h>, <stdio.h>, <stdlib.h>, <string.h>, <unistd.h> (sleep).
+ * Credential storage, and what it is worth. The refresh token is the asset here:
+ * it mints access tokens until it is revoked. It is never on the card in the
+ * clear — device_seal encrypts the vault with a key derived from material only
+ * this console's own services can answer for. So a card read on a PC, a config
+ * folder the user shares, and a scraper hunting for *token*.json all come away
+ * with nothing, and the vault does not work on a different console.
+ *
+ * It is NOT protection from other homebrew on this console: neither console
+ * isolates homebrew and Checkpoint is open source, so the console-bound half of
+ * the key is reproducible by anyone who reads common/script/seal_api.cpp. The
+ * passphrase in "Security..." is the half that is a real boundary — it lives
+ * nowhere but in the user's head, at the cost of one keyboard prompt per run.
+ *
+ * The rest of the damage control: the scope is drive.file (a leaked token
+ * reaches only the backups this script uploaded, never the rest of the Drive),
+ * and "Security..." can revoke the token outright.
  */
 
 #include <checkpoint.h>
@@ -33,6 +55,7 @@
 
 #define DEVICE_CODE_URL "https://oauth2.googleapis.com/device/code"
 #define TOKEN_URL       "https://oauth2.googleapis.com/token"
+#define REVOKE_URL      "https://oauth2.googleapis.com/revoke"
 #define FILES_URL       "https://www.googleapis.com/drive/v3/files"
 #define UPLOAD_URL      "https://www.googleapis.com/upload/drive/v3/files"
 
@@ -46,15 +69,26 @@
 #define TOKN  2560
 #define AUTHN 2624   /* "Authorization: Bearer " + up to TOKN of access token */
 #define PATHN 512
+#define PASSN 65     /* passphrase buffer, terminator included (gui_keyboard) */
+#define VAULTN 6272  /* the vault's JSON document. Sized for the worst case the
+                      * buffers above allow — all three values at full length
+                      * and every character escaped — because picoc's whole
+                      * interpreter stack is 64 KB and this is one frame. */
 #define MAX_PICK 128 /* cap on the "One backup" pick lists (titles / backups) */
 
-char g_id[IDN];         /* installed.client_id     */
-char g_secret[SECN];    /* installed.client_secret */
-char g_access[TOKN];    /* current access token    */
-char g_auth[AUTHN];     /* "Authorization: Bearer <access>" request header */
+char g_id[IDN];      /* installed.client_id     */
+char g_secret[SECN]; /* installed.client_secret */
+char g_rtoken[TOKN]; /* refresh token: the thing the vault exists to protect */
+char g_access[TOKN]; /* current access token    */
+char g_auth[AUTHN];  /* "Authorization: Bearer <access>" request header */
+
+/* The passphrase for this run, "" when the vault has none. Held only in this
+ * global for the length of the run — never written anywhere. */
+char g_pass[PASSN];
 
 /* paths built once from app_root() so one script serves 3DS and Switch */
 char g_cfg_dir[PATHN];     /* <root>/config                     */
+char g_vault_path[PATHN];  /* <root>/config/gdrive.vault        */
 char g_secret_path[PATHN]; /* <root>/config/client_secret.json  */
 char g_token_path[PATHN];  /* <root>/config/gdrive_token.json   */
 char g_tmp_zip[PATHN];     /* <root>/config/_gdrive_tmp.zip     */
@@ -62,8 +96,17 @@ char g_platform[16];       /* "3ds" or "switch": Drive subfolder */
 
 void init_paths(void)
 {
+    /* picoc does not promise zeroed globals, and every "is there one?" test
+     * below is a [0] == '\0' check */
+    g_id[0]     = '\0';
+    g_secret[0] = '\0';
+    g_rtoken[0] = '\0';
+    g_access[0] = '\0';
+    g_pass[0]   = '\0';
+
     char* root = app_root(); /* malloc'd */
     sprintf(g_cfg_dir, "%s/config", root);
+    sprintf(g_vault_path, "%s/config/gdrive.vault", root);
     sprintf(g_secret_path, "%s/config/client_secret.json", root);
     sprintf(g_token_path, "%s/config/gdrive_token.json", root);
     sprintf(g_tmp_zip, "%s/config/_gdrive_tmp.zip", root);
@@ -85,29 +128,41 @@ void init_paths(void)
 
 /* ---- tiny helpers ------------------------------------------------------- */
 
-/* read a whole SD file into a malloc'd NUL-terminated buffer; NULL on error */
-char* slurp(char* path)
+/* Read a whole SD file into a malloc'd buffer, NUL-terminated one byte past the
+ * end so a text caller can treat it as a string. *size gets the byte count,
+ * which is what the vault needs: it is binary and full of embedded NULs, so its
+ * length cannot be recovered with strlen. NULL (and *size 0) on error. */
+char* slurp_n(char* path, int* size)
 {
+    size[0] = 0;
     FILE* f = fopen(path, "rb");
     if (f == NULL) {
         return NULL;
     }
     fseek(f, 0, SEEK_END);
-    int size = ftell(f);
+    int bytes = ftell(f);
     fseek(f, 0, SEEK_SET);
-    if (size <= 0) {
+    if (bytes <= 0) {
         fclose(f);
         return NULL;
     }
-    char* buf = malloc(size + 1);
+    char* buf = malloc(bytes + 1);
     if (buf == NULL) {
         fclose(f);
         return NULL;
     }
-    int got = fread(buf, 1, size, f);
+    int got = fread(buf, 1, bytes, f);
     fclose(f);
     buf[got] = '\0';
+    size[0]  = got;
     return buf;
+}
+
+/* slurp_n for text, where the length is the string's own */
+char* slurp(char* path)
+{
+    int n = 0;
+    return slurp_n(path, &n);
 }
 
 /* Copy string member `key` of object `o` into dest[size], NUL-terminated; dest
@@ -177,6 +232,53 @@ void json_escape(char* src, char* dst, int size)
         i = i + 1;
     }
     dst[j] = '\0';
+}
+
+/* Append the verbatim `raw`, then `value` JSON-escaped, to whatever is already in
+ * `dst` — refusing (0) rather than truncating if the result would not fit
+ * `limit` bytes including the terminator.
+ *
+ * Two reasons this is not json_escape into a scratch buffer: picoc's whole
+ * interpreter stack is 64 KB, so a second array the size of a token is not free;
+ * and a silently truncated credential would be sealed into the vault and only
+ * fail at Google days later. Index-only. */
+int json_append(char* dst, char* raw, char* value, int limit)
+{
+    int j = strlen(dst);
+    int i = 0;
+    while (raw[i] != '\0') {
+        if (j + 1 >= limit) {
+            return 0;
+        }
+        dst[j] = raw[i];
+        j      = j + 1;
+        i      = i + 1;
+    }
+    i = 0;
+    while (value[i] != '\0') {
+        char c   = value[i];
+        int need = 1;
+        if (c == '\\' || c == '"') {
+            need = 2;
+        }
+        if (j + need >= limit) {
+            return 0;
+        }
+        if (need == 2) {
+            dst[j] = '\\';
+            j      = j + 1;
+        }
+        if (c == '\n' || c == '\r' || c == '\t') {
+            dst[j] = ' ';
+        }
+        else {
+            dst[j] = c;
+        }
+        j = j + 1;
+        i = i + 1;
+    }
+    dst[j] = '\0';
+    return 1;
 }
 
 /* Escape `src` into `dst[size]` for a Drive query single-quoted literal:
@@ -271,11 +373,173 @@ struct JSON* post_form(char* url, char* form)
     return j;
 }
 
-/* ---- auth --------------------------------------------------------------- */
+/* ---- credential vault --------------------------------------------------- */
 
-/* Load client_id / client_secret from client_secret.json. Google nests them
- * under "installed"; some exports are flat, so fall back to the root. */
-int load_client_secret(void)
+/* One line of plain English for a device_seal / device_unseal result code, so
+ * the user is told which of the several very different failures happened
+ * (a mistyped passphrase and a vault from another console are both -5, and only
+ * the user knows which). `dst` needs 160 bytes. */
+void seal_error_text(int rc, char* dst)
+{
+    if (rc == -5) {
+        strcpy(dst, "Wrong passphrase, or this vault was\nsealed on a different console.");
+    }
+    else if (rc == -4) {
+        strcpy(dst, "This console would not give up a key\nand the vault has no passphrase.");
+    }
+    else if (rc == -2) {
+        strcpy(dst, "This vault was written by a newer\nversion of Checkpoint.");
+    }
+    else if (rc == -3) {
+        strcpy(dst, "Out of memory.");
+    }
+    else if (rc == -6) {
+        strcpy(dst, "This console would not produce the\nrandom bytes needed to seal a vault.");
+    }
+    else {
+        sprintf(dst, "The vault could not be read (%d).", rc);
+    }
+}
+
+/* Seal g_id / g_secret / g_rtoken under g_pass and write config/gdrive.vault.
+ * 1 on success. Called on first sign-in, when Google rotates the refresh token,
+ * and whenever the passphrase changes. */
+int vault_write(void)
+{
+    /* A Google token is drawn from a URL-safe alphabet, but hand-building JSON is
+     * no place to bet on that, so every value goes through the escaper. */
+    char json[VAULTN];
+    strcpy(json, "{");
+    int ok = json_append(json, "\"client_id\":\"", g_id, VAULTN);
+    ok     = ok && json_append(json, "\",\"client_secret\":\"", g_secret, VAULTN);
+    ok     = ok && json_append(json, "\",\"refresh_token\":\"", g_rtoken, VAULTN);
+    ok     = ok && json_append(json, "\"}", "", VAULTN);
+    if (!ok) {
+        script_log("the credentials do not fit the vault document buffer");
+        gui_message("The credentials are too long to store.\nThis is a bug — please report it.");
+        return 0;
+    }
+
+    char* blob = NULL;
+    int bn     = 0;
+    gui_status("Sealing the credentials...");
+    int rc = device_seal(json, strlen(json), g_pass, &blob, &bn);
+    if (rc != 0) {
+        char msg[160];
+        seal_error_text(rc, msg);
+        script_log("device_seal failed");
+        gui_message(msg);
+        return 0;
+    }
+
+    sd_mkdirs(g_cfg_dir);
+    FILE* f = fopen(g_vault_path, "wb");
+    if (f == NULL) {
+        free(blob);
+        script_log("could not open gdrive.vault for writing");
+        gui_message("Could not write config/gdrive.vault.");
+        return 0;
+    }
+    int wrote = fwrite(blob, 1, bn, f);
+    fclose(f);
+    free(blob);
+    if (wrote != bn) {
+        script_log("gdrive.vault was written short");
+        gui_message("config/gdrive.vault was written short.\nThe SD card may be full.");
+        return 0;
+    }
+    if (g_pass[0] != '\0') {
+        script_log("vault sealed (console key + passphrase)");
+    }
+    else {
+        script_log("vault sealed (console key)");
+    }
+    return 1;
+}
+
+/* Open config/gdrive.vault into g_id / g_secret / g_rtoken, prompting for the
+ * passphrase if the vault says it has one.
+ *
+ * 1 = loaded, 0 = there is no vault yet, -1 = there is one but it could not be
+ * opened. The caller must keep -1 and 0 apart: writing a fresh vault over one
+ * whose passphrase was merely mistyped would throw away a working sign-in. */
+int vault_read(void)
+{
+    int n     = 0;
+    char* raw = slurp_n(g_vault_path, &n);
+    if (raw == NULL) {
+        return 0;
+    }
+
+    int needs = seal_needs_passphrase(raw, n);
+    if (needs < 0) {
+        free(raw);
+        script_log("gdrive.vault is not a sealed file");
+        gui_message("config/gdrive.vault is damaged.\nDelete it to sign in from scratch.");
+        return -1;
+    }
+
+    /* Up to three goes at the passphrase: a typo on an on-screen keyboard is not
+     * the same event as a wrong passphrase, and making the user relaunch the
+     * script for each attempt would be its own reason to turn the feature off. */
+    char* json = NULL;
+    int jn     = 0;
+    int rc     = 0;
+    int tries  = 0;
+    while (tries < 3) {
+        g_pass[0] = '\0';
+        if (needs == 1) {
+            gui_keyboard(g_pass, "Google Drive passphrase", PASSN);
+            if (g_pass[0] == '\0') {
+                free(raw);
+                script_log("cancelled at the passphrase prompt");
+                return -1;
+            }
+        }
+
+        gui_status("Opening the credential vault...");
+        rc = device_unseal(raw, n, g_pass, &json, &jn);
+        if (rc == 0) {
+            break;
+        }
+        tries = tries + 1;
+        /* Only a rejected key is worth retrying; every other code means the
+         * passphrase was never the problem. */
+        if (rc != -5 || needs != 1 || tries == 3) {
+            break;
+        }
+        gui_message("That passphrase did not open the vault.\nTry again.");
+    }
+    free(raw);
+    if (rc != 0) {
+        char msg[160];
+        seal_error_text(rc, msg);
+        script_log("device_unseal failed");
+        gui_message(msg);
+        return -1;
+    }
+
+    struct JSON* v = json_new();
+    json_parse(v, json);
+    free(json);
+    jget(v, "client_id", g_id, IDN);
+    jget(v, "client_secret", g_secret, SECN);
+    jget(v, "refresh_token", g_rtoken, TOKN);
+    json_delete(v);
+
+    if (g_id[0] == '\0') {
+        script_log("the vault opened but carries no client_id");
+        gui_message("The vault opened but has no client id.\nDelete config/gdrive.vault to sign in\nfrom scratch.");
+        return -1;
+    }
+    script_log("vault opened");
+    return 1;
+}
+
+/* Read client_id / client_secret out of the client_secret.json the user copied
+ * in from the Google Cloud Console. Google nests them under "installed"; some
+ * exports are flat, so fall back to the root. 1 on success. */
+int import_client_secret(void)
 {
     g_id[0]     = '\0';
     g_secret[0] = '\0';
@@ -311,28 +575,133 @@ int load_client_secret(void)
         gui_message("client_secret.json has no client_id.");
         return 0;
     }
-    script_log("client secret loaded");
+    script_log("client secret imported");
     return 1;
 }
 
-/* Exchange a stored refresh token for a fresh access token. 1 on success. */
-int refresh_token(char* rtoken)
+/* Ask for a passphrase twice and leave it in g_pass on agreement. 1 = a
+ * passphrase was set, 0 = the user backed out (g_pass untouched).
+ *
+ * The minimum length is enforced rather than warned about: a four-character
+ * passphrase is guessed offline in no time at all, and a user who typed one
+ * would walk away believing the vault was protected by it. */
+int ask_new_passphrase(void)
+{
+    char first[PASSN];
+    char again[PASSN];
+    gui_keyboard(first, "New passphrase (8+ characters)", PASSN);
+    if (first[0] == '\0') {
+        return 0;
+    }
+    if (strlen(first) < 8) {
+        gui_message("That passphrase is too short.\nUse at least 8 characters — a short one\nis guessed in seconds by anyone holding\nthe file.");
+        return 0;
+    }
+    gui_keyboard(again, "Type it again", PASSN);
+    if (strcmp(first, again) != 0) {
+        gui_message("The two passphrases did not match.\nNothing was changed.");
+        return 0;
+    }
+    strcpy(g_pass, first);
+    return 1;
+}
+
+/* No vault yet: build one out of whatever plaintext is lying around, then delete
+ * that plaintext. The client id and secret come from client_secret.json; a
+ * refresh token written by an older version of this script (gdrive_token.json)
+ * is folded in as well, so upgrading does not cost the user a fresh sign-in.
+ * 1 on success. */
+int vault_bootstrap(void)
+{
+    if (!import_client_secret()) {
+        return 0;
+    }
+
+    g_rtoken[0] = '\0';
+    char* tj    = slurp(g_token_path);
+    if (tj != NULL) {
+        struct JSON* j = json_new();
+        json_parse(j, tj);
+        free(tj);
+        jget(j, "refresh_token", g_rtoken, TOKN);
+        json_delete(j);
+        if (g_rtoken[0] != '\0') {
+            script_log("carrying the old plaintext refresh token into the vault");
+        }
+    }
+
+    /* The one moment where asking costs the user nothing they were not already
+     * doing, so the honest trade-off is put to them here rather than buried in
+     * a menu. Both branches are real answers — the default is not a mistake. */
+    g_pass[0] = '\0';
+    if (gui_confirm("Protect the saved sign-in with a\npassphrase, typed on every run?\n\nWithout one it is still encrypted and\ntied to this console, but other homebrew\nhere could unseal it.")) {
+        ask_new_passphrase();
+    }
+
+    if (!vault_write()) {
+        return 0;
+    }
+
+    /* The plaintext goes now that the vault holds it. Announced, because a
+     * client_secret.json quietly vanishing from the SD card looks like a bug. */
+    int removed = 0;
+    if (sd_exists(g_secret_path)) {
+        remove(g_secret_path);
+        removed = removed + 1;
+    }
+    if (sd_exists(g_token_path)) {
+        remove(g_token_path);
+        removed = removed + 1;
+    }
+    if (removed > 0) {
+        script_log("plaintext credential files deleted");
+        gui_message("Credentials moved into\nconfig/gdrive.vault (encrypted, tied to\nthis console).\n\nclient_secret.json has been deleted —\nit is inside the vault now. Keep your\nown copy off-console if you want one.");
+    }
+    return 1;
+}
+
+/* Forget the sign-in locally: the vault file and the copies in memory. */
+void vault_forget(void)
+{
+    if (sd_exists(g_vault_path)) {
+        remove(g_vault_path);
+    }
+    g_rtoken[0] = '\0';
+    g_access[0] = '\0';
+    g_pass[0]   = '\0';
+}
+
+/* ---- auth --------------------------------------------------------------- */
+
+/* Exchange the stored refresh token for a fresh access token. 1 on success. */
+int refresh_access(void)
 {
     char form[4096]; /* holds id + secret + a (possibly long) refresh token */
     sprintf(form,
         "client_id=%s&client_secret=%s&refresh_token=%s&grant_type=refresh_token",
-        g_id, g_secret, rtoken);
+        g_id, g_secret, g_rtoken);
     struct JSON* j = post_form(TOKEN_URL, form);
     int ok         = jhas(j, "access_token");
     if (ok) {
         jget(j, "access_token", g_access, TOKN);
+        /* Google occasionally hands back a rotated refresh token. Re-seal when
+         * it does, or the next run signs in from scratch. */
+        if (jhas(j, "refresh_token")) {
+            char rotated[TOKN];
+            jget(j, "refresh_token", rotated, TOKN);
+            if (rotated[0] != '\0' && strcmp(rotated, g_rtoken) != 0) {
+                strcpy(g_rtoken, rotated);
+                script_log("google rotated the refresh token; re-sealing the vault");
+                vault_write();
+            }
+        }
     }
     json_delete(j);
     return ok;
 }
 
 /* First-run sign-in via the OAuth device flow. 1 on success (and the refresh
- * token is written to gdrive_token.json for silent re-auth next time). */
+ * token goes into the sealed vault for silent re-auth next time). */
 int device_flow(void)
 {
     char form[1024];
@@ -409,21 +778,19 @@ int device_flow(void)
 
         if (jhas(t, "access_token")) {
             jget(t, "access_token", g_access, TOKN);
-            char rtok[TOKN];
-            jget(t, "refresh_token", rtok, TOKN);
+            jget(t, "refresh_token", g_rtoken, TOKN);
             json_delete(t);
 
-            sd_mkdirs(g_cfg_dir);
-            FILE* f = fopen(g_token_path, "w");
-            if (f != NULL) {
-                fprintf(f, "{\"refresh_token\":\"%s\"}", rtok);
-                fclose(f);
-                script_log("signed in; refresh token saved");
+            /* A failed seal is not a failed sign-in: this run has its access
+             * token and can upload. Only the next run pays, by signing in again. */
+            if (vault_write()) {
+                script_log("signed in; refresh token sealed");
+                gui_message("Signed in to Google Drive.");
             }
             else {
-                script_log("signed in, but the token file could not be written");
+                script_log("signed in, but the vault could not be written");
+                gui_message("Signed in to Google Drive.\n\nThe sign-in could not be saved, so the\nnext run will ask you to sign in again.");
             }
-            gui_message("Signed in to Google Drive.");
             return 1;
         }
 
@@ -459,34 +826,139 @@ int device_flow(void)
     return 0;
 }
 
-/* Sign in: silent refresh if we have a stored token, else the device flow. */
+/* Sign in: open the vault, silently refresh if it holds a token, else run the
+ * device flow. 1 on success. */
 int ensure_signed_in(void)
 {
-    if (!load_client_secret()) {
+    int have = vault_read();
+    if (have < 0) {
+        /* The vault is there but shut. Deliberately no fallback to a fresh
+         * sign-in: that would write over a vault whose passphrase the user
+         * simply mistyped, and the message from vault_read already said so. */
         return 0;
     }
-    char* tj = slurp(g_token_path);
-    if (tj != NULL) {
-        struct JSON* j = json_new();
-        json_parse(j, tj);
-        free(tj);
-        int ok = 0;
-        if (jhas(j, "refresh_token")) {
-            char rtok[TOKN];
-            jget(j, "refresh_token", rtok, TOKN);
-            gui_status("Signing in to Google Drive...");
-            script_log("refreshing the stored access token");
-            ok = refresh_token(rtok);
-        }
-        json_delete(j);
-        if (ok) {
+    if (have == 0 && !vault_bootstrap()) {
+        return 0;
+    }
+
+    if (g_rtoken[0] != '\0') {
+        gui_status("Signing in to Google Drive...");
+        script_log("refreshing the stored access token");
+        if (refresh_access()) {
             script_log("signed in (stored token)");
-            return 1; /* silent re-auth worked */
+            return 1;
         }
-        /* refresh failed (revoked / rotated out) → fall through to device flow */
+        /* revoked at Google, or rotated out from under us */
         script_log("stored token rejected — signing in again");
     }
     return device_flow();
+}
+
+/* ---- security ----------------------------------------------------------- */
+
+/* Revoke the refresh token at Google, then delete the local vault. 1 when the
+ * sign-in is gone from this console (whatever Google said), 0 if the user backed
+ * out. Revoking is what actually helps after a leak, so the local delete happens
+ * even when the network call fails — with the manual step spelled out. */
+int revoke_access(void)
+{
+    if (!gui_confirm("Sign out of Google Drive?\n\nThe saved sign-in is revoked at Google\nand deleted from this console. Backups\nalready in Drive are left alone.")) {
+        return 0;
+    }
+
+    int status = 0;
+    if (g_rtoken[0] != '\0') {
+        /* url_encode is not optional here: a refresh token can carry '+' and '/',
+         * and a raw '+' in a form body decodes back as a space. */
+        char form[TOKN + 16];
+        char* te = url_encode(g_rtoken);
+        if (strlen(te) + 8 < TOKN + 16) {
+            char* out = NULL;
+            char* rh  = NULL;
+            int n     = 0;
+            sprintf(form, "token=%s", te);
+            gui_status("Revoking the token at Google...");
+            script_log("revoking the refresh token");
+            status = web_request("POST", REVOKE_URL, "Content-Type: application/x-www-form-urlencoded",
+                form, strlen(form), &out, &n, &rh);
+            if (out != NULL) {
+                free(out);
+            }
+            if (rh != NULL) {
+                free(rh);
+            }
+        }
+        else {
+            /* Deleting the vault below still happens: local removal is the half
+             * we control, and leaving the credential in place would be worse. */
+            script_log("the encoded token does not fit the revoke form buffer");
+        }
+        free(te);
+    }
+
+    vault_forget();
+    if (status == 200) {
+        script_log("token revoked at google; vault deleted");
+        gui_message("Signed out. The token is revoked at\nGoogle and the vault is deleted.");
+    }
+    else {
+        char msg[256];
+        sprintf(msg, "The vault is deleted from this console,\nbut Google did not confirm the revoke\n(HTTP %d).\n\nRevoke it by hand at\nmyaccount.google.com/permissions", status);
+        script_log("vault deleted, but the revoke was not confirmed");
+        gui_message(msg);
+    }
+    return 1;
+}
+
+/* The Security menu. Returns 1 when the sign-in is gone and the run should stop. */
+int security_menu(void)
+{
+    char* opts[3];
+    opts[0] = "Set or change passphrase";
+    opts[1] = "Remove passphrase";
+    opts[2] = "Sign out (revoke access)";
+    int c   = gui_pick_one("Security", opts, 3);
+    if (c < 0) {
+        return 0;
+    }
+
+    if (c == 0) {
+        char saved[PASSN];
+        strcpy(saved, g_pass);
+        if (!ask_new_passphrase()) {
+            return 0;
+        }
+        if (vault_write()) {
+            gui_message("Passphrase set. You will be asked for it\neach time this script runs.\n\nThere is no way to recover it: if you\nforget it, sign out and sign in again.");
+        }
+        else {
+            /* the vault on the card still wants the old passphrase */
+            strcpy(g_pass, saved);
+        }
+        return 0;
+    }
+
+    if (c == 1) {
+        if (g_pass[0] == '\0') {
+            gui_message("This vault has no passphrase.");
+            return 0;
+        }
+        if (!gui_confirm("Remove the passphrase?\n\nThe vault stays encrypted and tied to\nthis console, but other homebrew on this\nconsole would be able to unseal it.")) {
+            return 0;
+        }
+        char saved[PASSN];
+        strcpy(saved, g_pass);
+        g_pass[0] = '\0';
+        if (!vault_write()) {
+            strcpy(g_pass, saved);
+        }
+        else {
+            gui_message("Passphrase removed.");
+        }
+        return 0;
+    }
+
+    return revoke_access();
 }
 
 /* ---- drive -------------------------------------------------------------- */
@@ -857,6 +1329,41 @@ int main(int argc, char** argv)
     }
     build_auth_headers();
 
+    /* selected_title() / argv[0] carry the highlighted title's id (empty if
+     * none). Offer "This title" only when there is one. */
+    char* selId = (argc > 0) ? argv[0] : "";
+    int haveSel = selId != NULL && selId[0] != '\0';
+
+    char* opts[4];
+    int nopts        = 0;
+    opts[nopts++]    = "All titles";
+    int thisTitleRow = -1;
+    if (haveSel) {
+        thisTitleRow  = nopts;
+        opts[nopts++] = "This title";
+    }
+    int oneBackupRow = nopts;
+    opts[nopts++]    = "One backup...";
+    int securityRow  = nopts;
+    opts[nopts++]    = "Security...";
+
+    /* The mode picker comes before the Drive folders are touched, so reaching
+     * Security (in particular signing out) costs no network round trip and works
+     * even when Drive itself is misbehaving. */
+    int choice = gui_pick_one("Sync to Google Drive", opts, nopts);
+    if (choice < 0) {
+        script_log("cancelled at the mode picker");
+        return 0;
+    }
+    char pick[64];
+    sprintf(pick, "mode: %s", opts[choice]);
+    script_log(pick);
+
+    if (choice == securityRow) {
+        security_menu();
+        return 0;
+    }
+
     gui_status("Preparing the Drive folder...");
     script_log("preparing Checkpoint/<console> on Drive");
     /* Claims the phase bar before any transfer starts, so the row is on screen
@@ -880,32 +1387,6 @@ int main(int argc, char** argv)
         free(rootId);
         return 1;
     }
-
-    /* selected_title() / argv[0] carry the highlighted title's id (empty if
-     * none). Offer "This title" only when there is one. */
-    char* selId = (argc > 0) ? argv[0] : "";
-    int haveSel = selId != NULL && selId[0] != '\0';
-
-    char* opts[3];
-    int nopts        = 0;
-    opts[nopts++]    = "All titles";
-    int thisTitleRow = -1;
-    if (haveSel) {
-        thisTitleRow  = nopts;
-        opts[nopts++] = "This title";
-    }
-    int oneBackupRow = nopts;
-    opts[nopts++]    = "One backup...";
-
-    int choice = gui_pick_one("Sync to Google Drive", opts, nopts);
-    if (choice < 0) {
-        script_log("cancelled at the mode picker");
-        free(rootId);
-        return 0;
-    }
-    char pick[64];
-    sprintf(pick, "mode: %s", opts[choice]);
-    script_log(pick);
 
     int done   = 0;
     int failed = 0;

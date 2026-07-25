@@ -65,6 +65,18 @@ struct HostDirEntry {
     bool folder = false;
 };
 
+// Where a console-bound key came from. A sealed blob records the source it was
+// made with and asks for that exact one back, so a source that works today and
+// stops working after a firmware or CFW change cannot silently derive a
+// different key and lock the user out of their own credential.
+enum DeviceKeySource : int {
+    DeviceKeySourceNone    = 0, // no console binding (passphrase-only blob)
+    DeviceKeySourceBest    = 1, // request-only: give me the strongest you have
+    DeviceKeySourceCtrNand = 2, // 3DS: NAND CID
+    DeviceKeySourceNxSpl   = 3, // Switch: SPL device-unique key derivation
+    DeviceKeySourceNxCal   = 4, // Switch: console serial number (fallback)
+};
+
 class ScriptHost {
 public:
     virtual ~ScriptHost(void) = default;
@@ -129,6 +141,28 @@ public:
     // Called after every run whatever the exit path, so a script that forgot
     // sav_close never leaks an open archive into the next one.
     virtual void savCloseAll(void) = 0;
+
+    /* ---- console-bound key material -------------------------------------- */
+
+    // 32 bytes derived from state only the console's own services can answer
+    // for — never from anything stored on the SD card. That is the whole
+    // property the seal bindings rest on and the exact limit of what they can
+    // claim: an SD card read on a PC, or a config folder the user shares, does
+    // not contain it, while other homebrew on the same console can ask the same
+    // services and is not kept out by it.
+    //
+    // `want` is DeviceKeySourceBest to take the strongest source this platform
+    // has, or a specific DeviceKeySource to reproduce one earlier call's key.
+    // Returns the source actually used (> 0) so a caller can record it, or a
+    // negative value if that source is unavailable. `out` is untouched on
+    // failure. Deliberately not cached: a caller that needs the bytes twice
+    // asks twice, so nothing holds console key material alive between runs.
+    virtual int deviceSecret(uint8_t* out, int want) = 0;
+
+    // Cryptographically random bytes for salts and nonces. False if the
+    // platform could not produce them, which is a hard failure for a caller
+    // that was about to encrypt with them.
+    virtual bool randomBytes(void* out, size_t size) = 0;
 
     /* ---- worker thread --------------------------------------------------- */
 
