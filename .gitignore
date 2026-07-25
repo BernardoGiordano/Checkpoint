@@ -4,6 +4,7 @@ cppcheck.log
 3ds/out/
 3ds/assets/romfs/gfx/
 3ds/assets/romfs/cheats/
+3ds/assets/romfs/fonts/
 switch/build/
 switch/out/
 switch/romfs/cheats/
