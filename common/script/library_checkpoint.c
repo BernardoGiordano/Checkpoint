@@ -55,7 +55,9 @@ struct LibraryFunction CheckpointFunctions[] =
     // -2 when all 8 handles are taken, or a negative FS Result. Paths are
     // archive-absolute ("/file.bin"). sav_read/sav_write/sav_delete/sav_commit
     // return 0 on success or a negative Result; sav_read's out buffer is
-    // malloc'd (NUL-terminated for convenience). sav_list returns full paths,
+    // malloc'd (NUL-terminated for convenience) and stays NULL/0 on failure
+    // (-3 = out of memory, -4 = short read, i.e. the file could not be read
+    // whole — never a partial buffer). sav_list returns full paths,
     // folders with a trailing '/', NULL on error; free with delete_directory.
     // sav_commit also clears the title's secure value (as restore does);
     // it is a no-op on extdata.
@@ -74,9 +76,10 @@ struct LibraryFunction CheckpointFunctions[] =
     { ckpt_sav_commit,         "int sav_commit(int h);" },
     { ckpt_sav_close,          "void sav_close(int h);" },
     // network. web_get returns the HTTP status code, or a negative value on
-    // failure (-1 = curl unavailable, -(CURLcode+100) = transfer error); the
-    // out buffer is malloc'd and NUL-terminated, out/outSize are NULL/0 on
-    // failure. net_ip returns "0.0.0.0" with no network.
+    // failure (-1 = curl unavailable, -2 = the response did not fit in memory,
+    // -(CURLcode+100) = transfer error); the out buffer is malloc'd and
+    // NUL-terminated, out/outSize are NULL/0 on failure. -2 is the one worth
+    // retrying with a smaller request. net_ip returns "0.0.0.0" with no network.
     { ckpt_net_ip,             "char* net_ip(void);" },
     { ckpt_web_get,            "int web_get(char** out, int* outSize, char* url);" },
     // General HTTP for scripts that need methods/headers/bodies web_get can't do
@@ -86,13 +89,15 @@ struct LibraryFunction CheckpointFunctions[] =
     // is the malloc'd NUL-terminated response body (NULL/0 on failure) and
     // respHeaders the malloc'd raw response header block ("" if none) — pass a
     // valid char** for both; the script frees them. Returns the HTTP status, or
-    // negative like web_get (-1 = curl unavailable, -(CURLcode+100) = transfer).
+    // negative like web_get (-1 = curl unavailable, -2 = out of memory,
+    // -(CURLcode+100) = transfer).
     { ckpt_web_request,        "int web_request(char* method, char* url, char* headers, char* body, int bodySize, char** out, int* outSize, char** respHeaders);" },
     // Like web_request but the request body is a file's bytes streamed straight
     // from SD (never through the interpreter heap), for a multi-MB upload such as
     // the Google Drive resumable PUT. method/headers/out/outSize/respHeaders/return
-    // match web_request; filePath is the local file to send. While it runs it
-    // drives the innermost progress bar itself (bytes sent), and hold-B aborts it.
+    // match web_request, plus -3 = filePath could not be opened or sized (the
+    // file, not the network). While it runs it drives the innermost progress
+    // bar itself (bytes sent), and hold-B aborts it.
     { ckpt_web_upload_file,    "int web_upload_file(char* method, char* url, char* headers, char* filePath, char** out, int* outSize, char** respHeaders);" },
     // Percent-encode a string for form bodies / query params (malloc'd).
     { ckpt_url_encode,         "char* url_encode(char* s);" },
@@ -123,7 +128,8 @@ struct LibraryFunction CheckpointFunctions[] =
     { ckpt_gui_numpad,         "int gui_numpad(char* prompt, int min, int max);" },
     { ckpt_gui_status,         "void gui_status(char* text);" },
     // Progress bars: the log pane's companion. None of these block — a copy
-    // loop can report every chunk without ever waiting for a frame., outermost layer 0 (up to 3). progress_begin resets the
+    // loop can report every chunk without ever waiting for a frame. Layers nest,
+    // outermost layer 0 (up to 3). progress_begin resets the
     // layer to 0/total and drops every deeper layer, so beginning the next outer
     // item cannot leave a stale inner bar behind. total <= 0 means "unknown":
     // the bar renders indeterminate and shows the raw count. Long native calls

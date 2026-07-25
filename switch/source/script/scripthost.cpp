@@ -43,6 +43,7 @@
 
 #include "scripthost.hpp"
 #include "filesystem.hpp"
+#include "logging.hpp"
 #include "main.hpp"
 #include "scriptheap.hpp"
 #include "title.hpp"
@@ -82,6 +83,8 @@ namespace {
             out.hasSave = true;
             return true;
         }
+
+        int titleIndexOf(uint64_t id) override { return TitleCatalog::get().indexById(g_currentUId, (u64)id); }
 
         std::string titleBackupPath(int idx, int kind) override
         {
@@ -169,8 +172,11 @@ namespace {
             const size_t read = fread(buf, 1, (size_t)size, f);
             fclose(f);
             if (read != (size_t)size) {
+                // Same rule as the 3DS adapter: a short read never reaches the
+                // script as a whole file.
+                Logging::warning("[script] sav_read '{}': {} of {} bytes", path, read, size);
                 ScriptHeap::get().release(buf);
-                return -1;
+                return -4;
             }
 
             buf[read] = '\0';
@@ -279,9 +285,10 @@ namespace {
 
 ScriptHost& ScriptHost::get(void)
 {
-    // The slots hold fsdev mounts, which nothing unmounts on the way out of the
-    // app: ScriptRunner calls ckpt_sav_close_all() after every run, whatever
-    // the exit path, so the table is empty long before this instance dies.
-    static NxScriptHost host;
-    return host;
+    // Deliberately never destroyed, like the 3DS adapter: the slots hold fsdev
+    // mounts, and a static's destructor runs after the filesystem is torn down.
+    // ScriptRunner's ckpt_sav_close_all() empties the table after every run
+    // whatever the exit path, so there is nothing left to unmount anyway.
+    static NxScriptHost* host = new NxScriptHost();
+    return *host;
 }

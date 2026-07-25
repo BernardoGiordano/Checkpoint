@@ -67,6 +67,10 @@ public:
     // Copies just the short description of the i-th title of `kind`, avoiding a
     // full Title copy per row. Returns false if the index is out of range.
     bool descriptionByIndex(std::string& dst, int i, BackupKind kind);
+    // Index of the title with this id in the `kind` list, -1 if absent. One
+    // guarded scan and no copy, for callers that want the index rather than
+    // the Title (the script bindings' title_find).
+    int indexById(u64 id, BackupKind kind);
     bool getTitleByName(Title& dst, const std::string& name);
     int getTitleCount(BackupKind kind);
     C2D_Image icon(int i, BackupKind kind);

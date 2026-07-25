@@ -50,6 +50,12 @@ GRAPHICS		:=	assets/gfx
 ROMFS			:=	assets/romfs
 GFXBUILD		:=	$(ROMFS)/gfx
 
+# The bundled picoc scripts live in ../scripts: common/ ships on both consoles,
+# 3ds/ only here. Both trees are copied into romfs before packing, so
+# $(ROMFS)/scripts is generated and gitignored.
+SCRIPTSRC		:=	../scripts
+ROMFS_SCRIPTS	:=	$(ROMFS)/scripts
+
 MONO_TTF		:=	../switch/romfs/fonts/SpaceMono-Regular.ttf
 MONO_BCFNT		:=	$(ROMFS)/fonts/SpaceMono.bcfnt
 # 7pt: mkbcfnt turns that into a 14px line feed and a 6px advance, so the pane
@@ -211,10 +217,10 @@ ifneq ($(ROMFS),)
 	export _3DSXFLAGS += --romfs=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: all clean format
+.PHONY: all clean format scripts
 
 #---------------------------------------------------------------------------------
-all: sprites $(MONO_BCFNT)
+all: sprites $(MONO_BCFNT) scripts
 	@mkdir -p $(BUILD) $(GFXBUILD) $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $(OUTPUT).3dsx
 	@bannertool makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o $(BUILD)/banner.bnr
@@ -223,11 +229,17 @@ all: sprites $(MONO_BCFNT)
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(GFXBUILD) $(OUTDIR) $(MONO_BCFNT)
+	@rm -fr $(BUILD) $(GFXBUILD) $(OUTDIR) $(MONO_BCFNT) $(ROMFS_SCRIPTS)
 #---------------------------------------------------------------------------------
 $(MONO_BCFNT): $(MONO_TTF) $(CURDIR)/Makefile
 	@mkdir -p $(dir $@)
 	@mkbcfnt -s $(MONO_SIZE) -o $@ $<
+#---------------------------------------------------------------------------------
+scripts:
+	@rm -fr $(ROMFS_SCRIPTS)
+	@mkdir -p $(ROMFS_SCRIPTS)
+	@cp -R $(SCRIPTSRC)/common/. $(ROMFS_SCRIPTS)
+	@cp -R $(SCRIPTSRC)/3ds/. $(ROMFS_SCRIPTS)
 #---------------------------------------------------------------------------------
 sprites:
 	@mkdir -p $(BUILD) $(GFXBUILD)

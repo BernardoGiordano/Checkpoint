@@ -35,7 +35,9 @@
 // worker-thread owner (ScriptRunner) and the UI bridge are layered on top, so
 // the interpreter can be exercised headlessly without a running screen.
 //
-// One script at a time — the interpreter instance is a singleton owned here.
+// One script at a time — the interpreter instance is a local of run(), so a
+// second call would get a second interpreter; the single-run rule is enforced
+// by ScriptRunner's worker, not by this module holding state.
 namespace ScriptEngine {
     struct Outcome {
         // 0 = the script's main() returned 0. Anything else is a script-side
