@@ -30,6 +30,7 @@
 #include "backupsize.hpp"
 #include "colors.hpp"
 #include "logging.hpp"
+#include "scriptlogview.hpp"
 #include "scriptrunner.hpp"
 #include "thread.hpp"
 #include "titlecatalog.hpp"
@@ -146,10 +147,10 @@ int main(void)
         static int scrollHold = 0;
         if (ScriptScreen::showing()) {
             if (input.kDown & HidNpadButton_L) {
-                ScriptScreen::scrollLog(-1);
+                ScriptLogView::get().scrollPages(-1);
             }
             else if (input.kDown & HidNpadButton_R) {
-                ScriptScreen::scrollLog(1);
+                ScriptLogView::get().scrollPages(1);
             }
 
             // Line-by-line on the D-Pad, but only while the pane is what the
@@ -162,7 +163,7 @@ int main(void)
                 // reachable without mashing.
                 constexpr int DELAY = 20, RATE = 2;
                 if (scrollHold == 0 || (scrollHold >= DELAY && (scrollHold - DELAY) % RATE == 0)) {
-                    ScriptScreen::scrollLogLines((kHeld & (HidNpadButton_Up | HidNpadButton_AnyUp)) ? 1 : -1);
+                    ScriptLogView::get().scrollLines((kHeld & (HidNpadButton_Up | HidNpadButton_AnyUp)) ? 1 : -1);
                 }
                 scrollHold++;
             }

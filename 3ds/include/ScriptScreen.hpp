@@ -72,13 +72,6 @@ public:
     // START must not quit the app out from under a running script.
     bool allowsExit(void) const override { return false; }
 
-    // Main-loop hooks. Log scrolling is sampled in main.cpp next to the hold-B
-    // kill switch, for the same reason: while a script-raised overlay is up it
-    // owns update(), and scrolling has to keep working underneath it.
-    // L/R move a page; the D-Pad moves a line at a time, with hold-repeat.
-    static void scrollLog(int pages);
-    static void scrollLogLines(int lines);
-
 private:
     // ScriptRequestSink: the 3DS half of a script's UI request.
     void showMessage(const std::string& prompt) override;
@@ -88,13 +81,9 @@ private:
     std::string keyboard(const std::string& prompt, size_t maxChars) override;
     int numpad(const std::string& prompt, int min, int max) override;
 
-    // How far the pane is scrolled back from the newest line, in rows. 0 means
-    // pinned to the tail, which is where it stays while a script is talking:
-    // new output pushes the view along instead of scrolling out from under it.
-    // Static because exactly one script runs at a time and main.cpp drives it
-    // without holding the screen.
-    static int sScrollBack;
-    static int sRows;
+    // Static because exactly one script runs at a time, and main.cpp asks
+    // without holding the screen. Where the pane is scrolled to is
+    // ScriptLogView's business, not this screen's.
     static bool sShowing;
 
     std::shared_ptr<Screen> mPrevious;
@@ -105,12 +94,6 @@ private:
     // finished run stay readable.
     bool mFinished = false;
     ScriptRunner::Outcome mOutcome;
-
-    // Scratch for the visible log window, refilled each frame it changes. A
-    // member so drawing a frame costs no allocation once it has settled.
-    mutable std::vector<std::string> mVisible;
-    mutable unsigned mSeenGeneration = 0;
-    mutable size_t mSeenFirst        = 0;
 };
 
 #endif

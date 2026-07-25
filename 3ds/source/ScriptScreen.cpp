@@ -34,6 +34,7 @@
 #include "i18n.hpp"
 #include "main.hpp"
 #include "scriptconsole.hpp"
+#include "scriptlogview.hpp"
 #include "textpool.hpp"
 #include "util.hpp"
 #include <3ds.h>
@@ -48,14 +49,12 @@ namespace {
     constexpr float LOG_LINE_TIGHTEN = 1.0f;
 }
 
-int ScriptScreen::sScrollBack = 0;
-int ScriptScreen::sRows       = 1;
-bool ScriptScreen::sShowing   = false;
+bool ScriptScreen::sShowing = false;
 
 ScriptScreen::ScriptScreen(std::shared_ptr<Screen> previous, std::string scriptName) : mPrevious(std::move(previous)), mName(std::move(scriptName))
 {
-    sScrollBack = 0;
-    sShowing    = true;
+    ScriptLogView::get().reset();
+    sShowing = true;
 }
 
 ScriptScreen::~ScriptScreen(void)
@@ -79,23 +78,10 @@ void ScriptScreen::configureLogWidth(void)
     }
 }
 
-void ScriptScreen::scrollLogLines(int lines)
-{
-    const int total   = (int)ScriptConsole::get().lineCount();
-    const int maxBack = std::max(0, total - sRows);
-    sScrollBack       = std::clamp(sScrollBack + lines, 0, maxBack);
-}
-
-void ScriptScreen::scrollLog(int pages)
-{
-    // A page keeps one row of context, the way a pager does.
-    scrollLogLines(pages * std::max(1, sRows - 1));
-}
-
 void ScriptScreen::drawTop(void) const
 {
-    TextPool& text         = TextPool::get();
-    ScriptConsole& console = ScriptConsole::get();
+    TextPool& text     = TextPool::get();
+    ScriptLogView& log = ScriptLogView::get();
 
     // Every screen clears both targets and binds the top one before it draws:
     // main.cpp only binds g_bottom, between doDrawTop and doDrawBottom.
@@ -113,10 +99,10 @@ void ScriptScreen::drawTop(void) const
     {
         // The L/R hint lives here, on the screen no dialog covers, so the bottom
         // tile's hint line is free to describe only whatever is asking there.
-        const std::string note = sScrollBack > 0 ? StringUtils::format("-%d", sScrollBack) : i18n::t("scripts.scroll_logs");
+        const int back         = log.scrollBack();
+        const std::string note = back > 0 ? StringUtils::format("-%d", back) : i18n::t("scripts.scroll_logs");
         const float w          = text.width(note, SMALL_SIZE);
-        text.draw(
-            note, innerX + innerW - w, ScriptTile::LOG_Y + ScriptTile::LOG_PAD + 1, SMALL_SIZE, sScrollBack > 0 ? COLOR_RING : COLOR_FAINT, 0.5f);
+        text.draw(note, innerX + innerW - w, ScriptTile::LOG_Y + ScriptTile::LOG_PAD + 1, SMALL_SIZE, back > 0 ? COLOR_RING : COLOR_FAINT, 0.5f);
     }
     const int headerLineY = ScriptTile::LOG_Y + ScriptTile::LOG_HEADER_H;
     C2D_DrawRectSolid((float)innerX, (float)headerLineY, 0.5f, (float)innerW, 1.0f, COLOR_LINE);
@@ -127,40 +113,26 @@ void ScriptScreen::drawTop(void) const
     const int logBottom = ScriptTile::LOG_Y + ScriptTile::LOG_H - ScriptTile::LOG_PAD;
     const float rowH    = std::max(1.0f, text.monoLineHeight(LOG_SIZE) - LOG_LINE_TIGHTEN);
     const int listTop   = headerLineY + 4;
-    sRows               = std::max(1, (int)((logBottom - listTop) / rowH));
+    log.setViewportRows((int)((logBottom - listTop) / rowH));
 
-    const size_t total = console.lineCount();
-    if (total == 0) {
+    const ScriptLogView::Window win = log.window();
+    if (win.total == 0) {
         text.drawCentered(i18n::t("scripts.log_empty"), ScriptTile::LOG_X, ScriptTile::LOG_W, listTop + 20, SMALL_SIZE, COLOR_FAINT, 0.5f);
         return;
     }
 
-    // Pinned to the tail unless the user scrolled back, so a talking script
-    // pushes the view along instead of scrolling out from under them.
-    const size_t maxFirst = total > (size_t)sRows ? total - (size_t)sRows : 0;
-    const size_t back     = std::min((size_t)sScrollBack, maxFirst);
-    const size_t first    = maxFirst - back;
-
-    // Re-copy only when the content or the window actually moved: at 60 fps a
-    // chatty script would otherwise cost a few hundred string copies a frame.
-    const unsigned gen = console.generation();
-    if (gen != mSeenGeneration || first != mSeenFirst || mVisible.size() != (size_t)sRows) {
-        console.copyWindow(first, (size_t)sRows, mVisible);
-        mSeenGeneration = gen;
-        mSeenFirst      = first;
-    }
-
     float y = (float)listTop;
-    for (const std::string& line : mVisible) {
+    for (const std::string& line : log.rows()) {
         text.drawMono(line, (float)innerX, y, LOG_SIZE, COLOR_MUTED, 0.5f);
         y += rowH;
     }
 
-    // Scrollbar, only once there is more than one screenful.
-    if (total > (size_t)sRows) {
+    // Scrollbar, only once there is more than one screenful. The thumb is never
+    // thinner than a few pixels, whatever fraction of the log fits.
+    if (win.scrollbar) {
         const float trackY = (float)listTop, trackH = (float)(logBottom - listTop);
-        const float thumbH = std::max(12.0f, trackH * (float)sRows / (float)total);
-        const float thumbY = trackY + (trackH - thumbH) * (float)first / (float)maxFirst;
+        const float thumbH = std::max(12.0f, trackH * win.thumbSpan);
+        const float thumbY = trackY + (trackH - thumbH) * win.thumbTravel;
         const float barX   = (float)(ScriptTile::LOG_X + ScriptTile::LOG_W - 5);
         C2D_DrawRectSolid(barX, trackY, 0.5f, 2.0f, trackH, COLOR_LINE);
         C2D_DrawRectSolid(barX, thumbY, 0.5f, 2.0f, thumbH, COLOR_ACCENT);
