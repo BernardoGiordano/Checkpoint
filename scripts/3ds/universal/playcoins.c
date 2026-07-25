@@ -41,9 +41,14 @@ int main(int argc, char** argv)
     }
 
     gui_status("Opening Play Coin data...");
+    char line[64];
+    sprintf(line, "setting Play Coins to %d", coins);
+    script_log(line);
+
     int h = sav_open_shared(GAMECOIN_EXTDATA);
     if (h < 0) {
-        script_log("playcoins: sav_open_shared failed");
+        sprintf(line, "sav_open_shared failed (%d)", h);
+        script_log(line);
         gui_message("Could not open the Play Coin data.");
         return 1;
     }
@@ -55,12 +60,19 @@ int main(int argc, char** argv)
     int res = sav_read(h, GAMECOIN_FILE, &data, &size);
     if (res != 0 || size < COIN_OFFSET + 2) {
         printf("sav_read failed: res=%d size=%d\n", res, size);
+        script_log("gamecoin.dat could not be read");
         gui_message("Could not read gamecoin.dat.");
         sav_close(h);
         return 1;
     }
 
     /* Patch the little-endian u16 count in place. */
+    int lo  = data[COIN_OFFSET] & 0xFF;
+    int hi  = data[COIN_OFFSET + 1] & 0xFF;
+    int was = lo | (hi << 8);
+    sprintf(line, "gamecoin.dat: %d bytes, currently %d coins", size, was);
+    script_log(line);
+
     data[COIN_OFFSET]     = (char)(coins & 0xFF);
     data[COIN_OFFSET + 1] = (char)((coins >> 8) & 0xFF);
 
@@ -68,6 +80,7 @@ int main(int argc, char** argv)
     free(data);
     if (res != 0) {
         printf("sav_write failed: %d\n", res);
+        script_log("gamecoin.dat could not be written");
         gui_message("Could not write gamecoin.dat.");
         sav_close(h);
         return 1;
@@ -78,6 +91,7 @@ int main(int argc, char** argv)
     res = sav_commit(h);
     if (res != 0) {
         printf("sav_commit failed: %d\n", res);
+        script_log("the Play Coin archive could not be committed");
         gui_message("Could not commit the Play Coin data.");
         sav_close(h);
         return 1;
@@ -86,7 +100,7 @@ int main(int argc, char** argv)
 
     char done[64];
     sprintf(done, "Play Coins set to %d.", coins);
-    script_log("playcoins: done");
+    script_log(done);
     gui_message(done);
     return 0;
 }
