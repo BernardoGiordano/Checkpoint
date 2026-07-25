@@ -38,8 +38,8 @@ APP_AUTHOR		:=	Bernardo Giordano, FlagBrew
 TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out
 BUILD			:=	build
-FORMATSOURCES	:=	source ../common ../common/script
-SOURCES			:=	$(FORMATSOURCES) source/script ../3rd-party/sha256 ../3rd-party/ftp \
+FORMATSOURCES	:=	source source/script ../common ../common/script
+SOURCES			:=	$(FORMATSOURCES) ../3rd-party/sha256 ../3rd-party/ftp \
 					../common/script/cstdlib \
 					../3rd-party/picoc/source/interpreter
 DATA			:=	data
