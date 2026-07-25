@@ -28,7 +28,9 @@
 #define SCRIPTSCREEN_HPP
 
 #include "Screen.hpp"
+#include "scriptrequestpump.hpp"
 #include "scriptrunner.hpp"
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
@@ -41,8 +43,10 @@
 // beyond launching one.
 //
 // The run's own state lives in ScriptRunner (the worker) and ScriptConsole (the
-// output); this screen only renders them and pumps the UI bridge.
-class ScriptScreen : public Screen {
+// output); this screen only renders them and pumps the UI bridge. Which request
+// kind becomes which dialog is common/script's business (ScriptRequestSink);
+// this screen supplies the 3DS dialogs and nothing more.
+class ScriptScreen : public Screen, public ScriptRequestSink {
 public:
     // `previous` is the screen to return to once the user closes the finished
     // run — kept alive rather than rebuilt, so nothing is reloaded.
@@ -76,7 +80,13 @@ public:
     static void scrollLogLines(int lines);
 
 private:
-    void pumpScriptRequests(void);
+    // ScriptRequestSink: the 3DS half of a script's UI request.
+    void showMessage(const std::string& prompt) override;
+    void showConfirm(const std::string& prompt) override;
+    void showPickOne(const std::string& prompt, const std::vector<std::string>& items) override;
+    void showPickMany(const std::string& prompt, const std::vector<std::string>& items, const std::vector<bool>& preselected) override;
+    std::string keyboard(const std::string& prompt, size_t maxChars) override;
+    int numpad(const std::string& prompt, int min, int max) override;
 
     // How far the pane is scrolled back from the newest line, in rows. 0 means
     // pinned to the tail, which is where it stays while a script is talking:

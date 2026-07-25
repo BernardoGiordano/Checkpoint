@@ -65,9 +65,11 @@ public:
     // the script runs (the gui_status binding).
     void setStatus(std::string text);
 
-    // Main thread. Non-null while a request is waiting and not yet answered;
-    // the pointee is stable until respond() (the script thread parks meanwhile).
-    const UiRequest* pending(void);
+    // Main thread. Hands out the pending request by value, once: the second
+    // call returns nothing until respond() has answered this one and the script
+    // has asked again. Taking a copy is what makes the lifetime rule
+    // unstateable — the caller holds a request, not a pointer into the bridge.
+    std::optional<UiRequest> take(void);
 
     // Main thread. Wakes the script thread with the user's answer.
     void respond(UiResponse resp);
@@ -90,6 +92,9 @@ private:
     std::optional<UiRequest> mReq;
     std::optional<UiResponse> mResp;
     std::string mStatus;
+    // mReq stays put while the overlay it raised is up — cancelAll() needs to
+    // see that someone is parked on it — so "already handed out" is its own bit.
+    bool mTaken     = false;
     bool mCancelled = false;
 };
 
