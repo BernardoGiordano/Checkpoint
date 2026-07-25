@@ -154,16 +154,8 @@ void ckpt_titles_count(struct ParseState* Parser, struct Value* ReturnValue, str
 void ckpt_title_find(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
     const ScriptArgs args(Parser, Param, NumArgs, "title_find");
-    const uint64_t id = strtoull(args.str(0), nullptr, 16);
-    const int count   = host().titleCount();
-    int found         = -1;
-    for (int i = 0; i < count && found < 0; i++) {
-        HostTitle title;
-        if (host().titleAt(i, title) && title.id == id) {
-            found = i;
-        }
-    }
-    ReturnValue->Val->Integer = found;
+    const uint64_t id         = strtoull(args.str(0), nullptr, 16);
+    ReturnValue->Val->Integer = host().titleIndexOf(id);
 }
 
 void ckpt_title_id(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
@@ -411,16 +403,19 @@ namespace {
                 return -((int)res.code + 100);
             case Http::Result::OutOfMemory:
                 Logging::warning("[script] {} '{}' ran out of memory for the response", what, url);
-                return -1;
+                return -2;
             default:
                 return -1;
         }
 
         // Run-scoped copy (scriptheap.hpp), NUL-terminated past the length the
         // script gets: an abort mid-script no longer strands the whole body.
+        // A failed copy is the same "it did not fit" the script must retry
+        // smaller, so it reports as -2 rather than as "no network stack".
         char* buf = (char*)strToRet(res.body);
         if (!buf) {
-            return -1;
+            Logging::warning("[script] {} '{}': no room for a {}-byte response body", what, url, res.body.size());
+            return -2;
         }
         *out     = buf;
         *outSize = (int)res.body.size();
@@ -509,7 +504,7 @@ void ckpt_web_upload_file(struct ParseState* Parser, struct Value* ReturnValue, 
     const Http::Response res = Http::perform(req);
     if (res.result == Http::Result::FileError) {
         Logging::warning("[script] web_upload_file can't open '{}'", filePath);
-        ReturnValue->Val->Integer = -1;
+        ReturnValue->Val->Integer = -3; // the file, not the network: a script can retry a different path
         return;
     }
     ReturnValue->Val->Integer = webResult("web_upload_file", url, res, out, outSize, respHeaders);

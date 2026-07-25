@@ -5,9 +5,11 @@ cppcheck.log
 3ds/assets/romfs/gfx/
 3ds/assets/romfs/cheats/
 3ds/assets/romfs/fonts/
+3ds/assets/romfs/scripts/
 switch/build/
 switch/out/
 switch/romfs/cheats/
+switch/romfs/scripts/
 .vscode/
 .idea
 .DS_Store

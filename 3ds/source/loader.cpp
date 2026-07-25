@@ -106,6 +106,18 @@ bool TitleCatalog::nameById(std::string& dst, u64 id)
     return false;
 }
 
+int TitleCatalog::indexById(u64 id, BackupKind kind)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    const auto& vec = kind == BackupKind::Save ? mSaves : mExtdatas;
+    for (int i = 0; i < (int)vec.size(); i++) {
+        if (vec.at(i).id() == id) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 bool TitleCatalog::descriptionByIndex(std::string& dst, int i, BackupKind kind)
 {
     std::lock_guard<std::mutex> lock(mMutex);

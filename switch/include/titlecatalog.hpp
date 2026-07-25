@@ -58,6 +58,11 @@ public:
     // Raw (unfiltered) queries over one user's list.
     void getTitle(Title& dst, AccountUid uid, size_t i);
     size_t getTitleCount(AccountUid uid);
+    // Raw index of the title with this id, -1 if the user has no such title.
+    // One guarded scan and no Title copy, for callers that want the index
+    // rather than the title (the script bindings' title_find). Runs on the
+    // script worker thread, hence the mutex.
+    int indexById(AccountUid uid, u64 id);
 
     // Filtered queries: the UI shows one save-type at a time.
     size_t getFilteredTitleCount(AccountUid uid, saveTypeFilter_t filter);

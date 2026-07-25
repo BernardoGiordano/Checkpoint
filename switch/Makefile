@@ -49,6 +49,12 @@ EXEFS_SRC		:=	exefs_src
 ROMFS			:=	romfs
 SHADERS			:=	shaders
 
+# The bundled picoc scripts live in ../scripts: common/ ships on both consoles,
+# switch/ only here. Both trees are copied into romfs before packing, so
+# $(ROMFS)/scripts is generated and gitignored.
+SCRIPTSRC		:=	../scripts
+ROMFS_SCRIPTS	:=	$(ROMFS)/scripts
+
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
@@ -176,7 +182,7 @@ ifneq ($(ROMFS),)
 	export NROFLAGS += --romfsdir=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: $(BUILD) clean all format
+.PHONY: $(BUILD) clean all format scripts
 
 #---------------------------------------------------------------------------------
 # GLSL -> dksh (deko3d shaders), compiled into romfs before the main build.
@@ -186,7 +192,7 @@ DKSHFILES			:=	$(patsubst $(SHADERS)/%.glsl,$(ROMFS_SHADERS)/%.dksh,$(GLSLFILES)
 
 all: $(BUILD)
 
-$(BUILD): $(DKSHFILES)
+$(BUILD): $(DKSHFILES) scripts
 	@[ -d $@ ] || mkdir -p $@ $(BUILD) $(OUTDIR)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
@@ -201,9 +207,15 @@ $(ROMFS_SHADERS)/%_fsh.dksh: $(SHADERS)/%_fsh.glsl
 	@uam -s frag -o $@ $<
 
 #---------------------------------------------------------------------------------
+scripts:
+	@rm -fr $(ROMFS_SCRIPTS)
+	@mkdir -p $(ROMFS_SCRIPTS)
+	@cp -R $(SCRIPTSRC)/common/. $(ROMFS_SCRIPTS)
+	@cp -R $(SCRIPTSRC)/switch/. $(ROMFS_SCRIPTS)
+#---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTDIR) $(ROMFS_SHADERS)
+	@rm -fr $(BUILD) $(OUTDIR) $(ROMFS_SHADERS) $(ROMFS_SCRIPTS)
 #---------------------------------------------------------------------------------
 format:
 	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp) $(wildcard $(dir)/*.tcc)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))

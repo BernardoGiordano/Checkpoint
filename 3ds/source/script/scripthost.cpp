@@ -37,6 +37,7 @@
 #include "directory.hpp"
 #include "fsstream.hpp"
 #include "loader.hpp"
+#include "logging.hpp"
 #include "scriptheap.hpp"
 #include "title.hpp"
 #include <3ds.h>
@@ -83,6 +84,8 @@ namespace {
             out.hasExtdata  = title.accessibleExtdata();
             return true;
         }
+
+        int titleIndexOf(uint64_t id) override { return TitleCatalog::get().indexById((u64)id, BackupKind::Save); }
 
         std::string titleBackupPath(int idx, int kind) override
         {
@@ -179,9 +182,13 @@ namespace {
             const u32 read   = stream.read(buf, size);
             const Result res = stream.result();
             stream.close();
-            if (read != size && R_FAILED(res)) {
+            if (read != size) {
+                // A short read is a failure even when FS reported success: the
+                // script has no other way to know the buffer is not the file,
+                // and handing it back would make a truncated save look whole.
+                Logging::warning("[script] sav_read '{}': {} of {} bytes (res 0x{:08X})", path, read, size, (u32)res);
                 ScriptHeap::get().release(buf);
-                return (int)res;
+                return R_FAILED(res) ? (int)res : -4;
             }
 
             buf[read] = '\0';
@@ -288,10 +295,12 @@ namespace {
 
 ScriptHost& ScriptHost::get(void)
 {
-    // The slots hold FS archive handles and this outlives servicesExit(), so
-    // its destructor must never find an open one. That holds because
-    // ScriptRunner calls ckpt_sav_close_all() after every run, whatever the
-    // exit path — not because the table happens to be empty.
-    static CtrScriptHost host;
-    return host;
+    // Deliberately never destroyed. The slots hold FS archive handles, and a
+    // static's destructor runs after servicesExit(): closing an archive there
+    // would be a call into a service that is already gone. ScriptRunner's
+    // ckpt_sav_close_all() empties the table after every run whatever the exit
+    // path, so nothing is left open — and if a future path ever did leave one,
+    // the kernel reclaims it at process exit instead of the app faulting.
+    static CtrScriptHost* host = new CtrScriptHost();
+    return *host;
 }

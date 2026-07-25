@@ -80,6 +80,12 @@ public:
     // fails the script itself, before any C++ object of its own exists.
     virtual bool titleAt(int idx, HostTitle& out) = 0;
 
+    // Index of the title with this id, -1 if the catalog has none. Separate
+    // from titleAt because scanning with it would copy every name and product
+    // code out of the catalog to compare one integer — title_find in a script
+    // loop would copy the whole catalog per call.
+    virtual int titleIndexOf(uint64_t id) = 0;
+
     // Backup root for the title, without a trailing slash (the binding adds
     // it). "" when the platform has no such backup for that kind — Switch
     // extdata, for one — which the binding hands to the script verbatim.
@@ -99,7 +105,9 @@ public:
 
     // Reads the whole file into a ScriptHeap block, NUL-terminated one byte
     // past *outSize, and hands it to the script. 0 on success; the caller has
-    // already cleared *outBuf/*outSize.
+    // already cleared *outBuf/*outSize. -3 = no room for the buffer, -4 = the
+    // read came up short (nothing is handed over: a partial file must never
+    // reach the script as a whole one), otherwise a platform Result.
     virtual int savRead(int handle, const char* path, char** outBuf, int* outSize) = 0;
 
     // Create-or-replace: an existing file is dropped first, so a shrinking

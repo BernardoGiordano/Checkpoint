@@ -232,6 +232,21 @@ void TitleCatalog::getTitle(Title& dst, AccountUid uid, size_t i)
     }
 }
 
+int TitleCatalog::indexById(AccountUid uid, u64 id)
+{
+    std::lock_guard<std::recursive_mutex> lock(mMutex);
+    auto it = mTitles.find(uid);
+    if (it == mTitles.end()) {
+        return -1;
+    }
+    for (size_t i = 0; i < it->second.size(); i++) {
+        if (it->second.at(i).id() == id) {
+            return (int)i;
+        }
+    }
+    return -1;
+}
+
 size_t TitleCatalog::getTitleCount(AccountUid uid)
 {
     auto it = mTitles.find(uid);
