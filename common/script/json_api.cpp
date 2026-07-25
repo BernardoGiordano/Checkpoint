@@ -30,6 +30,7 @@
 // ProgramFail instead of letting nlohmann throw through the interpreter.
 
 #include "json.hpp"
+#include "scriptheap.hpp"
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -40,20 +41,15 @@ extern "C" {
 }
 
 namespace {
-    // Same contract as the other bindings' strToRet: scripts receive plain
-    // malloc'd copies they may free().
-    void* strToRet(const std::string& str)
-    {
-        char* ret = (char*)malloc(str.size() + 1);
-        if (ret) {
-            memcpy(ret, str.c_str(), str.size() + 1);
-        }
-        return (void*)ret;
-    }
-
     nlohmann::json* arg(struct Value** Param, int i)
     {
         return (nlohmann::json*)Param[i]->Val->Pointer;
+    }
+
+    // The heap's destroy function for a tree: json_new's `new`, undone.
+    void deleteJson(void* ptr)
+    {
+        delete (nlohmann::json*)ptr;
     }
 }
 
@@ -62,7 +58,10 @@ void ckpt_json_new(struct ParseState* Parser, struct Value* ReturnValue, struct 
     nlohmann::json* ret = new nlohmann::json;
     // explicitly set it to invalid, like PKSM: a json_new the script never
     // json_parse's answers 0 to json_is_valid
-    *ret                      = nlohmann::json::parse("{", nullptr, false);
+    *ret = nlohmann::json::parse("{", nullptr, false);
+    // Run-scoped from here on: a script that aborts between json_new and
+    // json_delete no longer strands the whole tree.
+    ScriptHeap::get().adopt(ret, deleteJson);
     ReturnValue->Val->Pointer = (void*)ret;
 }
 
@@ -74,7 +73,14 @@ void ckpt_json_parse(struct ParseState* Parser, struct Value* ReturnValue, struc
 
 void ckpt_json_delete(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    delete arg(Param, 0);
+    // json_array_element/json_object_element return borrowed pointers into a
+    // parent tree with the same struct JSON* type as an owned root, so this is
+    // the one place that can tell the two apart: only a root json_new adopted
+    // is in the heap. Deleting a borrowed element used to corrupt the
+    // allocator; now it fails the script where the mistake was made.
+    if (!ScriptHeap::get().release(arg(Param, 0))) {
+        ProgramFail(Parser, "json_delete on a value that is not a json_new root");
+    }
 }
 
 void ckpt_json_is_valid(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)

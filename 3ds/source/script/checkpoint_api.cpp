@@ -39,6 +39,7 @@
 #include "logging.hpp"
 #include "paths.hpp"
 #include "scriptconsole.hpp"
+#include "scriptheap.hpp"
 #include "scriptrunner.hpp"
 #include "title.hpp"
 #include "util.hpp"
@@ -57,17 +58,6 @@ extern "C" {
 }
 
 namespace {
-    // Strings returned to a script are plain malloc'd copies:
-    // the interpreter treats them as ordinary char* and they live until the
-    // process (or the script) frees them — acceptable for script-sized data.
-    void* strToRet(const std::string& str)
-    {
-        char* ret = (char*)malloc(str.size() + 1);
-        if (ret) {
-            memcpy(ret, str.c_str(), str.size() + 1);
-        }
-        return (void*)ret;
-    }
 
     int titleCount(void)
     {
@@ -112,10 +102,11 @@ namespace {
 
     dirData* makeDirData(const std::vector<std::string>& names)
     {
-        dirData* ret = (dirData*)malloc(sizeof(dirData));
+        ScriptHeap& heap = ScriptHeap::get();
+        dirData* ret     = (dirData*)heap.alloc(sizeof(dirData));
         if (ret) {
             ret->count = (int)names.size();
-            ret->files = names.empty() ? nullptr : (char**)malloc(sizeof(char*) * names.size());
+            ret->files = names.empty() ? nullptr : (char**)heap.alloc(sizeof(char*) * names.size());
             if (ret->files) {
                 for (size_t i = 0; i < names.size(); i++) {
                     ret->files[i] = (char*)strToRet(names[i]);
@@ -388,7 +379,7 @@ void ckpt_sav_read(struct ParseState* Parser, struct Value* ReturnValue, struct 
     }
 
     const u32 size = stream.size();
-    char* buf      = (char*)malloc(size + 1);
+    char* buf      = (char*)ScriptHeap::get().alloc(size + 1);
     if (!buf) {
         stream.close();
         ReturnValue->Val->Integer = -3;
@@ -399,7 +390,7 @@ void ckpt_sav_read(struct ParseState* Parser, struct Value* ReturnValue, struct 
     const Result res = stream.result();
     stream.close();
     if (read != size && R_FAILED(res)) {
-        free(buf);
+        ScriptHeap::get().release(buf);
         ReturnValue->Val->Integer = (int)res;
         return;
     }
@@ -629,13 +620,13 @@ void ckpt_web_get(struct ParseState* Parser, struct Value* ReturnValue, struct V
         return;
     }
 
-    char* buf = (char*)malloc(data.size() + 1);
+    // Run-scoped copy (scriptheap.hpp), NUL-terminated past the length the
+    // script gets: an abort mid-script no longer strands the whole body.
+    char* buf = (char*)strToRet(data);
     if (!buf) {
         ReturnValue->Val->Integer = -1;
         return;
     }
-    memcpy(buf, data.data(), data.size());
-    buf[data.size()]          = '\0';
     *out                      = buf;
     *outSize                  = (int)data.size();
     ReturnValue->Val->Integer = (int)status;
@@ -724,13 +715,13 @@ void ckpt_web_request(struct ParseState* Parser, struct Value* ReturnValue, stru
         return;
     }
 
-    char* buf = (char*)malloc(data.size() + 1);
+    // Run-scoped copy (scriptheap.hpp), NUL-terminated past the length the
+    // script gets: an abort mid-script no longer strands the whole body.
+    char* buf = (char*)strToRet(data);
     if (!buf) {
         ReturnValue->Val->Integer = -1;
         return;
     }
-    memcpy(buf, data.data(), data.size());
-    buf[data.size()] = '\0';
     *out             = buf;
     *outSize         = (int)data.size();
     if (respHeaders) {
@@ -823,13 +814,13 @@ void ckpt_web_upload_file(struct ParseState* Parser, struct Value* ReturnValue, 
         return;
     }
 
-    char* buf = (char*)malloc(data.size() + 1);
+    // Run-scoped copy (scriptheap.hpp), NUL-terminated past the length the
+    // script gets: an abort mid-script no longer strands the whole body.
+    char* buf = (char*)strToRet(data);
     if (!buf) {
         ReturnValue->Val->Integer = -1;
         return;
     }
-    memcpy(buf, data.data(), data.size());
-    buf[data.size()] = '\0';
     *out             = buf;
     *outSize         = (int)data.size();
     if (respHeaders) {

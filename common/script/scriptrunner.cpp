@@ -28,6 +28,7 @@
 #include "logging.hpp"
 #include "scriptconsole.hpp"
 #include "scriptengine.hpp"
+#include "scriptheap.hpp"
 #include "thread.hpp"
 
 extern "C" {
@@ -75,8 +76,12 @@ void ScriptRunner::run(void)
 
     ScriptEngine::Outcome out = ScriptEngine::run(mPath, {mTitleIdHex});
     // The run is over whatever the exit path was (return, exit(), parse-error
-    // longjmp): reclaim any archive handles the script left open.
+    // longjmp): reclaim any archive handles the script left open, and the
+    // native memory it (or the bindings) allocated on its behalf. Only a normal
+    // return runs the script's own free() calls, so this is the only reclaim
+    // that covers an abort — see scriptheap.hpp.
     ckpt_sav_close_all();
+    ScriptHeap::get().releaseAll();
     {
         std::lock_guard<std::mutex> lock(mMutex);
         // A script may still finish cleanly in the window before the abort
