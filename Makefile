@@ -1,6 +1,6 @@
 SUBDIRS = 3ds switch
 
-VERSION_MAJOR	:=	4
+VERSION_MAJOR	:=	5
 VERSION_MINOR	:=	0
 VERSION_MICRO	:=	0
 GIT_REV	:=	$(shell git rev-parse --short HEAD 2>/dev/null)
