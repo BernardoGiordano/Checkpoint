@@ -1727,15 +1727,15 @@
     "zh": "脚本日志"
   },
   "scripts.scroll_logs": {
-    "en": "D-Pad scroll log",
-    "it": "D-Pad scorri log",
-    "es": "Cruceta desplazar registro",
-    "fr": "Croix défiler le journal",
-    "de": "Steuerkreuz Protokoll scrollen",
-    "pt": "D-Pad rolar registro",
-    "nl": "D-pad log scrollen",
-    "ja": "十字キー でログをスクロール",
-    "zh": "十字键 滚动日志"
+    "en": "Scroll log",
+    "it": "Scorri log",
+    "es": "Desplazar registro",
+    "fr": "Défiler le journal",
+    "de": "Protokoll scrollen",
+    "pt": "Rolar registro",
+    "nl": "Log scrollen",
+    "ja": "ログをスクロール",
+    "zh": "滚动日志"
   },
   "scripts.close": {
     "en": "Close",

@@ -27,11 +27,14 @@
 #ifndef GLYPHS_HPP
 #define GLYPHS_HPP
 
-inline constexpr const char* GLYPH_A     = "\xEE\x80\x80"; // U+E000
-inline constexpr const char* GLYPH_B     = "\xEE\x80\x81"; // U+E001
-inline constexpr const char* GLYPH_X     = "\xEE\x80\x82"; // U+E002
-inline constexpr const char* GLYPH_Y     = "\xEE\x80\x83"; // U+E003
-inline constexpr const char* GLYPH_DPAD  = "\xEE\x80\x86"; // U+E006
-inline constexpr const char* GLYPH_EMPTY = "\xEE\x80\x8B"; // U+E00B sleepy emoticon (empty-state mark)
+inline constexpr const char* GLYPH_A    = "\xEE\x80\x80"; // U+E000
+inline constexpr const char* GLYPH_B    = "\xEE\x80\x81"; // U+E001
+inline constexpr const char* GLYPH_X    = "\xEE\x80\x82"; // U+E002
+inline constexpr const char* GLYPH_Y    = "\xEE\x80\x83"; // U+E003
+inline constexpr const char* GLYPH_L    = "\xEE\x80\x84"; // U+E004
+inline constexpr const char* GLYPH_R    = "\xEE\x80\x85"; // U+E005
+inline constexpr const char* GLYPH_DPAD = "\xEE\x80\x86"; // U+E006
+inline constexpr const char* GLYPH_DPAD_UD = "\xEE\x81\xBD"; // U+E07D
+inline constexpr const char* GLYPH_EMPTY   = "\xEE\x80\x8B"; // U+E00B sleepy emoticon (empty-state mark)
 
 #endif

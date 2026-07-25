@@ -25,6 +25,7 @@
  */
 
 #include "ScriptRequestOverlays.hpp"
+#include "ScriptScreen.hpp"
 #include "colors.hpp"
 #include "gfx.hpp"
 #include "gfxutils.hpp"
@@ -50,11 +51,34 @@ ScriptTileOverlay::ScriptTileOverlay(Screen& screen, std::string title) : Overla
 
 void ScriptTileOverlay::draw(void) const
 {
+    // Focused log: draw nothing at all, not even the scrim. The point is the
+    // lines the card was covering, and ScriptScreen's hint row is what says the
+    // dialog is still there.
+    if (ScriptScreen::logFocused()) {
+        return;
+    }
+
     // uiFrame dims the log and centres the card over it: the transcript stays
     // legible around the dialog, which is usually the context for the answer.
     const int bodyY = ScriptTile::uiFrame(mTitle, headerNote());
     drawBody(bodyY);
-    ScriptTile::uiHints(hints());
+    // Every dialog offers the same escape to the transcript, so the Y hint is
+    // appended here rather than repeated in four hints() overrides.
+    ScriptTile::uiHints(hints() + "   " + UiKit::buttonGlyph("Y") + " " + i18n::t("scripts.view_log"));
+}
+
+void ScriptTileOverlay::update(const InputState& input)
+{
+    if (input.kDown & HidNpadButton_Y) {
+        ScriptScreen::toggleLogFocus();
+        return;
+    }
+    // With the log focused the pad belongs to the transcript (main.cpp scrolls
+    // it), so no key can answer the request by accident while the card that
+    // asked it is off screen.
+    if (!ScriptScreen::logFocused()) {
+        handleInput(input);
+    }
 }
 
 void ScriptTileOverlay::answer(UiResponse resp)
@@ -104,7 +128,7 @@ std::string ScriptMessageOverlay::hints(void) const
     return UiKit::buttonGlyph("A") + " OK";
 }
 
-void ScriptMessageOverlay::update(const InputState& input)
+void ScriptMessageOverlay::handleInput(const InputState& input)
 {
     if (input.kDown & (HidNpadButton_A | HidNpadButton_B)) {
         answer(UiResponse{});
@@ -135,7 +159,7 @@ std::string ScriptConfirmOverlay::hints(void) const
     return UiKit::buttonGlyph("A") + " " + i18n::t("overlay.choose") + "   " + UiKit::buttonGlyph("B") + " " + i18n::t("common.cancel");
 }
 
-void ScriptConfirmOverlay::update(const InputState& input)
+void ScriptConfirmOverlay::handleInput(const InputState& input)
 {
     if (input.kDown & (HidNpadButton_Left | HidNpadButton_Right)) {
         mConfirmSelected = (input.kDown & HidNpadButton_Left) != 0;
@@ -235,7 +259,7 @@ std::string ScriptPickOneOverlay::hints(void) const
     return UiKit::buttonGlyph("A") + " " + i18n::t("overlay.choose") + "   " + UiKit::buttonGlyph("B") + " " + i18n::t("common.cancel");
 }
 
-void ScriptPickOneOverlay::update(const InputState& input)
+void ScriptPickOneOverlay::handleInput(const InputState& input)
 {
     if (input.kDown & HidNpadButton_B) {
         UiResponse resp;
@@ -291,7 +315,7 @@ std::string ScriptPickManyOverlay::hints(void) const
            UiKit::buttonGlyph("B") + " " + i18n::t("common.cancel");
 }
 
-void ScriptPickManyOverlay::update(const InputState& input)
+void ScriptPickManyOverlay::handleInput(const InputState& input)
 {
     if (input.kDown & HidNpadButton_B) {
         answer(UiResponse{}); // confirmed = false

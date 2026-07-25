@@ -118,26 +118,29 @@ int main()
             // must stay scrollable while the user answers.
             static int scrollHold = 0;
             if (ScriptScreen::showing()) {
-                // Everything on the D-Pad: up/down by a line, left/right by a
-                // page. The shoulder buttons used to page and no longer do —
-                // one pad for one job is less to explain than two.
-                //
-                // All of it only while the pane is what the D-Pad would
-                // otherwise do nothing to: an overlay's list owns the D-Pad for
-                // its own selection.
+                // D-Pad left/right pages, but only while no overlay is using the
+                // pad for its own selection.
                 const u32 kDown = hidKeysDown();
                 if ((kDown & (KEY_DLEFT | KEY_DRIGHT)) && !g_screen->hasOverlay()) {
                     ScriptLogView::get().scrollPages((kDown & KEY_DLEFT) ? -1 : 1);
                 }
 
-                const u32 kHeld = hidKeysHeld() & (KEY_DUP | KEY_DDOWN);
-                if (kHeld && !g_screen->hasOverlay()) {
+                // Line scrolling: D-Pad up/down, and L/R doing exactly the same.
+                // The shoulders are what makes the pane reachable while a script
+                // raises a picker on the bottom screen — its list owns the D-Pad
+                // for as long as the dialog is up, so L/R are ungated where the
+                // pad is not.
+                u32 kHeld = hidKeysHeld() & (KEY_L | KEY_R);
+                if (!g_screen->hasOverlay()) {
+                    kHeld |= hidKeysHeld() & (KEY_DUP | KEY_DDOWN);
+                }
+                if (kHeld) {
                     // Tap moves one line; holding waits out a short delay and
                     // then repeats every other frame, so a long transcript is
                     // still reachable without mashing.
                     constexpr int DELAY = 20, RATE = 2;
                     if (scrollHold == 0 || (scrollHold >= DELAY && (scrollHold - DELAY) % RATE == 0)) {
-                        ScriptLogView::get().scrollLines((kHeld & KEY_DUP) ? 1 : -1);
+                        ScriptLogView::get().scrollLines((kHeld & (KEY_DUP | KEY_L)) ? 1 : -1);
                     }
                     scrollHold++;
                 }

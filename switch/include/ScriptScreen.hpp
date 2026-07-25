@@ -63,6 +63,14 @@ public:
     // pane stays up, and scrollable, after the run has finished.
     static bool showing(void);
 
+    // Log focus: a script dialog is pending but hidden, so the transcript owns
+    // the whole screen and the pad. A card that pops up right after a burst of
+    // output otherwise buries the very lines the answer depends on, and the
+    // script cannot be told to wait — it is parked on the bridge. Y toggles it
+    // from either side; the request stays pending the whole time.
+    static bool logFocused(void);
+    static void toggleLogFocus(void);
+
     // Tells ScriptConsole how wide a log row is, in monospace columns, so it can
     // wrap output as it arrives and one stored line is exactly one drawn row.
     // Called once at startup: the width is fixed by the tile and the font, and
@@ -82,6 +90,7 @@ private:
     // without holding the screen. Where the pane is scrolled to is
     // ScriptLogView's business, not this screen's.
     static bool sShowing;
+    static bool sLogFocus;
 
     std::shared_ptr<Screen> mPrevious;
     std::string mName;

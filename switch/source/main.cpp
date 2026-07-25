@@ -146,19 +146,30 @@ int main(void)
         // scrollable while the user answers.
         static int scrollHold = 0;
         if (ScriptScreen::showing()) {
+            // A dialog the user pushed aside with Y leaves the pad free again:
+            // the pane reads exactly as it does with no dialog pending.
+            const bool padIsLog = !g_screen->hasOverlay() || ScriptScreen::logFocused();
+
             const u64 kPage = input.kDown & (HidNpadButton_Left | HidNpadButton_Right | HidNpadButton_AnyLeft | HidNpadButton_AnyRight);
-            if (kPage && !g_screen->hasOverlay()) {
+            if (kPage && padIsLog) {
                 ScriptLogView::get().scrollPages((kPage & (HidNpadButton_Left | HidNpadButton_AnyLeft)) ? -1 : 1);
             }
 
-            const u64 kHeld = input.kHeld & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_AnyUp | HidNpadButton_AnyDown);
-            if (kHeld && !g_screen->hasOverlay()) {
+            // Line scrolling: D-Pad up/down, and L/R doing exactly the same. The
+            // shoulders are what makes the pane reachable while a script raises a
+            // picker — its list owns the D-Pad for as long as the dialog is up,
+            // so L/R are ungated where the pad is not.
+            u64 kHeld = input.kHeld & (HidNpadButton_L | HidNpadButton_R);
+            if (padIsLog) {
+                kHeld |= input.kHeld & (HidNpadButton_Up | HidNpadButton_Down | HidNpadButton_AnyUp | HidNpadButton_AnyDown);
+            }
+            if (kHeld) {
                 // Tap moves one line; holding waits out a short delay and then
                 // repeats every other frame, so a long transcript is still
                 // reachable without mashing.
                 constexpr int DELAY = 20, RATE = 2;
                 if (scrollHold == 0 || (scrollHold >= DELAY && (scrollHold - DELAY) % RATE == 0)) {
-                    ScriptLogView::get().scrollLines((kHeld & (HidNpadButton_Up | HidNpadButton_AnyUp)) ? 1 : -1);
+                    ScriptLogView::get().scrollLines((kHeld & (HidNpadButton_Up | HidNpadButton_AnyUp | HidNpadButton_L)) ? 1 : -1);
                 }
                 scrollHold++;
             }

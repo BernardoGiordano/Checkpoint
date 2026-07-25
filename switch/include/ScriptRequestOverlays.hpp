@@ -48,6 +48,11 @@
 class ScriptTileOverlay : public Overlay {
 public:
     void draw(void) const override;
+    // Y is the same key in every script dialog — it hands the screen to the
+    // transcript without answering — so it is handled once here and the
+    // per-dialog keys live in handleInput. While the log has focus this
+    // overlay draws nothing and eats nothing: the request just stays pending.
+    void update(const InputState& input) final;
 
 protected:
     // `title` is the header line. A short prompt is a good title; a whole
@@ -58,6 +63,8 @@ protected:
     // The tile's body, between the header hairline and the hint line.
     virtual void drawBody(int bodyY) const = 0;
     virtual std::string hints(void) const  = 0;
+    // This dialog's own keys. Only called while the card is on screen.
+    virtual void handleInput(const InputState& input) = 0;
     // Right-aligned header note (a "n / total" counter for the list pickers).
     virtual std::string headerNote(void) const { return ""; }
 
@@ -79,7 +86,7 @@ protected:
 class ScriptMessageOverlay : public ScriptTileOverlay {
 public:
     ScriptMessageOverlay(Screen& screen, std::string text);
-    void update(const InputState& input) override;
+    void handleInput(const InputState& input) override;
 
 private:
     void drawBody(int bodyY) const override;
@@ -92,7 +99,7 @@ private:
 class ScriptConfirmOverlay : public ScriptTileOverlay {
 public:
     ScriptConfirmOverlay(Screen& screen, std::string text);
-    void update(const InputState& input) override;
+    void handleInput(const InputState& input) override;
 
 private:
     void drawBody(int bodyY) const override;
@@ -128,7 +135,7 @@ protected:
 class ScriptPickOneOverlay : public ScriptListOverlay {
 public:
     ScriptPickOneOverlay(Screen& screen, const std::string& prompt, std::vector<std::string> items);
-    void update(const InputState& input) override;
+    void handleInput(const InputState& input) override;
 
 private:
     void drawRow(size_t k, int rowY, bool focused) const override;
@@ -141,7 +148,7 @@ private:
 class ScriptPickManyOverlay : public ScriptListOverlay {
 public:
     ScriptPickManyOverlay(Screen& screen, const std::string& prompt, std::vector<std::string> items, std::vector<bool> preselected);
-    void update(const InputState& input) override;
+    void handleInput(const InputState& input) override;
 
 private:
     void drawRow(size_t k, int rowY, bool focused) const override;

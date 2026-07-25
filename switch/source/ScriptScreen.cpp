@@ -43,6 +43,12 @@ namespace {
     // Room the scrollbar track keeps clear on the log tile's right edge.
     constexpr int SCROLLBAR_W = 10;
 
+    // Shared-font glyphs for the scroll hint: the up/down half of the D-Pad,
+    // then L and R. Spelled out here rather than through UiKit::buttonGlyph
+    // because these are the flat outline shapes that read as a row, not the
+    // filled pills the button hints use.
+    const std::string SCROLL_GLYPHS = "";
+
     // Line pitch of the transcript, tighter than the face's own leading but
     // never so tight that 14px glyphs touch.
     int logRowHeight(void)
@@ -53,22 +59,35 @@ namespace {
     }
 }
 
-bool ScriptScreen::sShowing = false;
+bool ScriptScreen::sShowing  = false;
+bool ScriptScreen::sLogFocus = false;
 
 ScriptScreen::ScriptScreen(std::shared_ptr<Screen> previous, std::string scriptName) : mPrevious(std::move(previous)), mName(std::move(scriptName))
 {
     ScriptLogView::get().reset();
-    sShowing = true;
+    sShowing  = true;
+    sLogFocus = false;
 }
 
 ScriptScreen::~ScriptScreen(void)
 {
-    sShowing = false;
+    sShowing  = false;
+    sLogFocus = false;
 }
 
 bool ScriptScreen::showing(void)
 {
     return sShowing;
+}
+
+bool ScriptScreen::logFocused(void)
+{
+    return sLogFocus;
+}
+
+void ScriptScreen::toggleLogFocus(void)
+{
+    sLogFocus = !sLogFocus;
 }
 
 void ScriptScreen::configureLogWidth(void)
@@ -107,25 +126,26 @@ void ScriptScreen::draw(void) const
     const int innerX = ScriptTile::LOG_X + ScriptTile::PAD;
     const int innerW = ScriptTile::LOG_W - 2 * ScriptTile::PAD;
 
-    if (mFinished) {
-        ScriptTile::hints(ScriptTile::LOG_X, ScriptTile::logBodyBottom(), ScriptTile::LOG_W,
-            UiKit::buttonGlyph("A") + " " + i18n::t("scripts.close") + "   " + i18n::t("scripts.scroll_logs"));
-    }
-    else {
-        const std::string hint = cancelling ? i18n::t("transfer.cancelling") : (UiKit::buttonGlyph("B") + " " + i18n::t("main.to_cancel"));
-        ScriptTile::hints(ScriptTile::LOG_X, ScriptTile::logBodyBottom(), ScriptTile::LOG_W, hint + "   " + i18n::t("scripts.scroll_logs"));
-    }
+    const std::string lead = mFinished    ? (UiKit::buttonGlyph("A") + " " + i18n::t("scripts.close"))
+                             : cancelling ? i18n::t("transfer.cancelling")
+                                          : (UiKit::buttonGlyph("B") + " " + i18n::t("main.to_cancel"));
+    // The way back to a dialog the user pushed aside: while the log has focus
+    // its card is not drawn at all, so this hint is the only thing on screen
+    // saying the script is still waiting for an answer.
+    const std::string peek  = (sLogFocus && currentOverlay) ? UiKit::buttonGlyph("Y") + " " + i18n::t("scripts.back_to_dialog") + "   " : "";
+    const std::string hints = lead + "   " + peek + SCROLL_GLYPHS + " " + i18n::t("scripts.scroll_logs");
+    ScriptTile::hints(ScriptTile::LOG_X, ScriptTile::logBodyBottom(), ScriptTile::LOG_W, hints);
 
-    // Scrollback marker, left-aligned on the hint row: the header's right edge
-    // already belongs to the status note, and the hint row's right edge is now
-    // the button hints.
+    // Scrollback marker, immediately to the left of the hints rather than in
+    // place of them or off at the row's far edge: the keys stay named while the
+    // pane is off the tail, which is exactly when the user is looking for them.
     if (log.scrollBack() > 0) {
         const std::string back = "-" + std::to_string(log.scrollBack());
-        u32 bw, bh;
+        u32 bw, bh, hw;
         Gfx::GetTextDimensions(ScriptTile::NOTE_SIZE, back.c_str(), &bw, &bh);
-        (void)bw;
-        Gfx::DrawText(
-            ScriptTile::NOTE_SIZE, innerX, ScriptTile::logBodyBottom() + (ScriptTile::HINT_H - (int)bh) / 2, COLOR_ACCENT_LIGHT, back.c_str());
+        Gfx::GetTextDimensions(ScriptTile::NOTE_SIZE, hints.c_str(), &hw, NULL);
+        const int x = ScriptTile::LOG_X + ScriptTile::LOG_W - ScriptTile::PAD - (int)hw - (int)bw - 12;
+        Gfx::DrawText(ScriptTile::NOTE_SIZE, x, ScriptTile::logBodyBottom() + (ScriptTile::HINT_H - (int)bh) / 2, COLOR_ACCENT_LIGHT, back.c_str());
     }
 
     /* ---- progress bars, stacked up from above the hint line -------------- */
@@ -167,6 +187,11 @@ void ScriptScreen::draw(void) const
 
 void ScriptScreen::update(const InputState& input)
 {
+    // Reached only with no overlay up (Screen::doUpdate gives one the input),
+    // so there is no pending request left to go back to: the next dialog opens
+    // in front, not hidden behind a focus the user set two requests ago.
+    sLogFocus = false;
+
     if (auto result = ScriptRunner::get().takeResult()) {
         // HOME was blocked for the whole run (picoc cannot be preempted).
         appletEndBlockingHomeButton();

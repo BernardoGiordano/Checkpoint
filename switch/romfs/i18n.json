@@ -722,7 +722,19 @@
     "de": "Menü",
     "pt": "Menu",
     "nl": "Menu",
-    "ja": "メニュー"
+    "ja": "メニュー",
+    "zh": "菜单"
+  },
+  "hint.confirm": {
+    "en": "Confirm",
+    "it": "Conferma",
+    "es": "Confirmar",
+    "fr": "Confirmer",
+    "de": "Bestätigen",
+    "pt": "Confirmar",
+    "nl": "Bevestigen",
+    "ja": "確定",
+    "zh": "确认"
   },
   "common.unavailable": {
     "en": "Unavailable",
@@ -1704,15 +1716,37 @@
     "zh": "脚本日志"
   },
   "scripts.scroll_logs": {
-    "en": "D-Pad scroll log",
-    "it": "D-Pad scorri log",
-    "es": "Cruceta desplazar registro",
-    "fr": "Croix défiler le journal",
-    "de": "Steuerkreuz Protokoll scrollen",
-    "pt": "D-Pad rolar registro",
-    "nl": "D-pad log scrollen",
-    "ja": "十字キー でログをスクロール",
-    "zh": "十字键 滚动日志"
+    "en": "Scroll log",
+    "it": "Scorri log",
+    "es": "Desplazar registro",
+    "fr": "Défiler le journal",
+    "de": "Protokoll scrollen",
+    "pt": "Rolar registro",
+    "nl": "Log scrollen",
+    "ja": "ログをスクロール",
+    "zh": "滚动日志"
+  },
+  "scripts.view_log": {
+    "en": "View log",
+    "it": "Vedi log",
+    "es": "Ver registro",
+    "fr": "Voir le journal",
+    "de": "Protokoll ansehen",
+    "pt": "Ver registro",
+    "nl": "Log bekijken",
+    "ja": "ログを見る",
+    "zh": "查看日志"
+  },
+  "scripts.back_to_dialog": {
+    "en": "Back to dialog",
+    "it": "Torna al dialogo",
+    "es": "Volver al diálogo",
+    "fr": "Retour au dialogue",
+    "de": "Zurück zum Dialog",
+    "pt": "Voltar ao diálogo",
+    "nl": "Terug naar dialoog",
+    "ja": "ダイアログに戻る",
+    "zh": "返回对话框"
   },
   "scripts.close": {
     "en": "Close",

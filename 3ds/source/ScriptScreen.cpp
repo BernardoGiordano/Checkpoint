@@ -100,10 +100,19 @@ void ScriptScreen::drawTop(void) const
         // The scroll hint lives here, on the screen no dialog covers, so the
         // bottom tile's hint line is free to describe only whatever is asking
         // there.
-        const int back         = log.scrollBack();
-        const std::string note = back > 0 ? StringUtils::format("-%d", back) : i18n::t("scripts.scroll_logs");
-        const float w          = text.width(note, SMALL_SIZE);
-        text.draw(note, innerX + innerW - w, ScriptTile::LOG_Y + ScriptTile::LOG_PAD + 1, SMALL_SIZE, back > 0 ? COLOR_RING : COLOR_FAINT, 0.5f);
+        const float noteY      = ScriptTile::LOG_Y + ScriptTile::LOG_PAD + 1;
+        const std::string hint = std::string(GLYPH_DPAD_UD) + GLYPH_L + GLYPH_R + " " + i18n::t("scripts.scroll_logs");
+        const float hintX      = innerX + innerW - text.width(hint, SMALL_SIZE);
+        text.draw(hint, hintX, noteY, SMALL_SIZE, COLOR_FAINT, 0.5f);
+
+        // The scrollback marker sits to the left of the hint rather than in place
+        // of it: the keys stay named while the pane is off the tail, which is
+        // exactly when the user is looking for them.
+        const int back = log.scrollBack();
+        if (back > 0) {
+            const std::string marker = StringUtils::format("-%d", back);
+            text.draw(marker, hintX - text.width(marker, SMALL_SIZE) - 8, noteY, SMALL_SIZE, COLOR_RING, 0.5f);
+        }
     }
     const int headerLineY = ScriptTile::LOG_Y + ScriptTile::LOG_HEADER_H;
     C2D_DrawRectSolid((float)innerX, (float)headerLineY, 0.5f, (float)innerW, 1.0f, COLOR_LINE);
@@ -199,7 +208,7 @@ void ScriptScreen::update(const InputState& input)
     }
 
     if (ScriptRunner::get().active()) {
-        // The hold-B kill switch and the D-Pad log scrolling live in main.cpp:
+        // The hold-B kill switch and the log scrolling live in main.cpp:
         // both must keep working while a script-raised overlay owns update().
         pumpScriptRequests(ScriptRunner::get().bridge(), *this);
         return;
