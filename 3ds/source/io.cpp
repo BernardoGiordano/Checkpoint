@@ -41,6 +41,32 @@ static const Result RES_SHORT_WRITE = MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_F
 // FSFILE_GetSize reports. See copyFile's shrink-and-stop handling.
 static const u32 RES_FS_PAST_DATA = 0xD900458B;
 
+static std::u16string rawBackupFile(const std::u16string& folder)
+{
+    std::u16string canonical = folder + StringUtils::UTF8toUTF16("00000001.sav");
+    if (io::fileExists(Archive::sdmc(), canonical)) {
+        return canonical;
+    }
+
+    Directory dir(Archive::sdmc(), folder);
+    if (!dir.good()) {
+        return canonical;
+    }
+    std::u16string only;
+    for (size_t i = 0, sz = dir.size(); i < sz; i++) {
+        if (dir.folder(i)) {
+            continue;
+        }
+        if (!only.empty()) {
+            // More than one candidate: stay with the canonical name so the
+            // failure names the file Checkpoint expects.
+            return canonical;
+        }
+        only = folder + dir.entry(i);
+    }
+    return only.empty() ? canonical : only;
+}
+
 bool io::fileExists(const std::string& path)
 {
     struct stat buffer;
@@ -485,7 +511,7 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
         std::u16string fullSrc = srcPath + StringUtils::UTF8toUTF16("/");
 
         if (handle.isRaw()) {
-            fullSrc += StringUtils::UTF8toUTF16("00000001.sav");
+            fullSrc = rawBackupFile(fullSrc);
 
             sink.begin("Restore", 1);
             res = io::copyPxiSaveFile(handle.pxi(), Archive::sdmc(), fullSrc, false, sink);

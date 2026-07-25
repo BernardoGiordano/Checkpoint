@@ -300,8 +300,8 @@ func (rv *receiver) storeUpload(r *http.Request) (string, *Meta, error) {
 	}
 
 	if !meta.IsZip {
-		fileName := sanitizeComponent(filepath.Base(filepath.FromSlash(meta.FileName)))
-		if fileName == "_" || fileName == "" {
+		fileName := sanitizeFileName(meta.FileName)
+		if fileName == "" {
 			fileName = "received.bin"
 		}
 		dst := filepath.Join(backupRoot, fileName)

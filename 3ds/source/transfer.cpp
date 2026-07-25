@@ -431,18 +431,12 @@ namespace {
             TransferStatus::setBytesDone(fileLen);
         }
         else {
-            std::string fileName = meta.value("fileName", "");
-            if (fileName.empty()) {
-                fileName = "received.bin";
-            }
-            std::u16string safeFileName  = StringUtils::removeForbiddenCharacters(StringUtils::UTF8toUTF16(fileName.c_str()));
-            std::string safeFileNameUtf8 = StringUtils::UTF16toUTF8(safeFileName);
+            std::string safeFileNameUtf8 = sanitizeFileName(meta.value("fileName", ""));
             if (safeFileNameUtf8.empty()) {
                 safeFileNameUtf8 = "received.bin";
-                safeFileName     = StringUtils::UTF8toUTF16("received.bin");
             }
-            ensureDirectoryPath(backupRoot, safeFileNameUtf8);
-            std::u16string outputPath = backupRoot + safeFileName;
+            std::u16string safeFileName = StringUtils::UTF8toUTF16(safeFileNameUtf8.c_str());
+            std::u16string outputPath   = backupRoot + safeFileName;
 
             // Copy the file-part byte range straight out of the streamed body.
             FSStream input(Archive::sdmc(), bodyPath, FS_OPEN_READ);
@@ -454,6 +448,8 @@ namespace {
                 if (output.good()) {
                     output.close();
                 }
+                Logging::error("Failed to open {} to store the received file (source result 0x{:08X}, destination result 0x{:08X}).",
+                    StringUtils::UTF16toUTF8(outputPath), (u32)input.result(), (u32)output.result());
                 io::deleteFolderRecursively(Archive::sdmc(), backupRoot);
                 cleanup();
                 return {500, "application/json", "{\"ok\":false,\"error\":\"Failed to store file\"}"};
@@ -481,10 +477,13 @@ namespace {
             input.close();
             output.close();
             if (!copyOk) {
+                Logging::error(
+                    "Failed to store the received file {} ({} of {} bytes missing).", StringUtils::UTF16toUTF8(outputPath), remaining, (u64)fileLen);
                 io::deleteFolderRecursively(Archive::sdmc(), backupRoot);
                 cleanup();
                 return {500, "application/json", "{\"ok\":false,\"error\":\"Failed to store file\"}"};
             }
+            Logging::info("Received {} bytes into {}.", (u64)fileLen, StringUtils::UTF16toUTF8(outputPath));
         }
 
         cleanup();

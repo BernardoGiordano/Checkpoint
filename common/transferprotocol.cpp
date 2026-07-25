@@ -152,6 +152,31 @@ namespace TransferProto {
         return true;
     }
 
+    std::string sanitizeFileName(const std::string& name)
+    {
+        // A payload name never legitimately carries a directory: a backup with
+        // subfolders travels as a zip. Keep the basename and drop the rest.
+        size_t slash     = name.find_last_of("/\\");
+        std::string base = (slash == std::string::npos) ? name : name.substr(slash + 1);
+
+        std::string out;
+        out.reserve(base.size());
+        for (unsigned char c : base) {
+            // Control characters and the characters FAT rejects go; '.' and the
+            // bytes of a multi-byte UTF-8 sequence stay.
+            if (c < 0x20 || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
+                continue;
+            }
+            out.push_back((char)c);
+        }
+
+        // "." and ".." name directories, not files that can be created.
+        if (out == "." || out == "..") {
+            return "";
+        }
+        return out;
+    }
+
     std::string headerValue(const std::string& headers, const std::string& key)
     {
         std::string needle = key + ":";

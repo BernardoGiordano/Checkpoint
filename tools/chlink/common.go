@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -97,6 +98,33 @@ func sanitizeComponent(s string) string {
 	out := strings.TrimRight(b.String(), " ")
 	if out == "" {
 		out = "_"
+	}
+	return out
+}
+
+// sanitizeFileName mirrors TransferProto::sanitizeFileName: it cleans the
+// announced name of a single-file payload without touching the extension.
+// sanitizeComponent must not be used here — it blanks '.' out, so a received
+// "00000001.sav" would land as "00000001 sav" and no console could restore it.
+// Returns "" when nothing usable is left.
+func sanitizeFileName(name string) string {
+	// Split on both separators regardless of host OS: the name comes off the
+	// wire, so a Windows-style path must not survive on Linux either.
+	base := name
+	if i := strings.LastIndexAny(base, `/\`); i >= 0 {
+		base = base[i+1:]
+	}
+	base = filepath.Base(base)
+	var b strings.Builder
+	for _, r := range base {
+		if r < 0x20 || strings.ContainsRune(":*?\"<>|", r) {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	out := b.String()
+	if out == "." || out == ".." {
+		return ""
 	}
 	return out
 }

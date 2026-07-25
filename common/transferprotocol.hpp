@@ -87,6 +87,14 @@ namespace TransferProto {
     // received name before it touches the filesystem.
     bool isSafeZipRelativePath(const std::string& relPath);
 
+    // Turns the announced name of a single-file (non-zip) payload into a bare
+    // file name safe to create under the destination folder: directory
+    // components and the FAT-forbidden characters go, everything else — the
+    // extension above all — survives. A received "00000001.sav" must keep its
+    // dot, or the restore path, which opens exactly that name, cannot find it.
+    // Returns "" when nothing usable is left; the caller picks a fallback name.
+    std::string sanitizeFileName(const std::string& name);
+
     // Extracts an HTTP header value by key from a raw header block ("" if absent).
     std::string headerValue(const std::string& headers, const std::string& key);
 
