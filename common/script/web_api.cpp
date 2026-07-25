@@ -24,11 +24,10 @@
  *         reasonable ways as different from the original version.
  */
 
-// Platform-neutral pieces of the network script API. web_request/web_upload_file
-// and url_encode are per-platform (they drive curl next to web_get in each
-// checkpoint_api.cpp), but header parsing is pure string logic, so it reuses the
-// same TransferProto::headerValue the wireless transfer relies on — one copy for
-// both consoles.
+// Header parsing for the network script API: pure string logic, so it reuses the
+// same TransferProto::headerValue the wireless transfer relies on. The transfers
+// themselves live in httpcall.hpp, behind the web_* bindings in
+// checkpoint_api.cpp.
 
 #include "scriptheap.hpp"
 #include "transferprotocol.hpp"
