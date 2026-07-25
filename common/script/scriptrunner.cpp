@@ -88,8 +88,12 @@ void ScriptRunner::run(void)
         // hook fires; a zero exit is reported as success, not as an abort.
         const bool cancelled = ckpt_script_abort_requested() != 0 && out.exitValue != 0;
         mOutcome             = Outcome{mName, out.exitValue, std::move(out.output), cancelled};
+        // Publish Done under the same lock shutdown() evaluates its predicate
+        // under, or a store landing between that check and the wait would be
+        // missed and teardown would block forever.
+        mState.store(State::Done);
     }
-    mState.store(State::Done);
+    mDoneCv.notify_all();
 }
 
 void ScriptRunner::requestCancel(void)
@@ -101,6 +105,28 @@ void ScriptRunner::requestCancel(void)
     // cancelAll() can't issue another blocking request in between.
     ckpt_script_abort_request();
     mBridge.cancelAll();
+}
+
+void ScriptRunner::shutdown(void)
+{
+    if (mState.load() == State::Idle) {
+        return;
+    }
+
+    Logging::trace("[script] shutdown: aborting '{}' and reaping the worker", mName);
+    // requestCancel() is the whole "make it stop" half: abort flag first, then
+    // cancelAll() so a parked request() returns and every later one refuses to
+    // park. Without it the wait below (and the platform join after it) would
+    // never be answered.
+    requestCancel();
+
+    // Wait for run() to publish its outcome. It runs past the abort only as far
+    // as the script's next statement, plus whatever native binding it is inside
+    // right now — that call has to finish either way before it is safe to tear
+    // down the services underneath it.
+    std::unique_lock<std::mutex> lock(mMutex);
+    mDoneCv.wait(lock, [this] { return mState.load() != State::Running; });
+    Logging::trace("[script] shutdown: worker finished");
 }
 
 bool ScriptRunner::cancelRequested(void) const

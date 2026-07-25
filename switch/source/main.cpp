@@ -124,7 +124,15 @@ int main(void)
         // that screen's update.
         static int scriptCancelHold = 0;
         if (ScriptRunner::get().active() && (input.kHeld & HidNpadButton_B)) {
-            if (++scriptCancelHold >= 45 && !ScriptRunner::get().cancelRequested()) {
+            if ((input.kDown & HidNpadButton_B) && g_screen->hasOverlay()) {
+                // That press is the overlay's own B (dismiss a gui_message, back
+                // out of a picker), so the abort count starts from it rather
+                // than from whatever was already accumulated. Only the press is
+                // swallowed: holding B on through the overlays still aborts,
+                // which is what aborttest case 3 exercises.
+                scriptCancelHold = 0;
+            }
+            else if (++scriptCancelHold >= 45 && !ScriptRunner::get().cancelRequested()) {
                 ScriptRunner::get().requestCancel();
             }
         }
@@ -190,16 +198,13 @@ int main(void)
     Logging::trace("[shutdown] stopping backup-size worker...");
     BackupSizeCache::get().shutdown();
 
-    // A forced applet exit can end the loop mid-script. Ask a running script to
-    // abort (this unparks any UI-bridge wait so the worker can reach its exit
-    // path) and reap the worker before servicesExit tears down the fs services
-    // it may still be touching. A worker parked in a native FS binding won't see
-    // the abort until it returns, so this join is the prime suspect for a
+    // A forced applet exit can end the loop mid-script. shutdown() aborts a
+    // running script and unparks any UI-bridge wait so the worker can reach its
+    // exit path; it must run before servicesExit tears down the fs services the
+    // worker may still be touching. A worker parked in a native FS binding won't
+    // see the abort until it returns, so this is the prime suspect for a
     // close-time hang — the breadcrumb pair around it will show if it stalls.
-    if (ScriptRunner::get().active()) {
-        Logging::trace("[shutdown] script still running, requesting cancel...");
-        ScriptRunner::get().requestCancel();
-    }
+    ScriptRunner::get().shutdown();
     Logging::trace("[shutdown] joining script worker...");
     Threads::join();
 

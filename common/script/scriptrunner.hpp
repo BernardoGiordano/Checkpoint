@@ -29,6 +29,7 @@
 
 #include "scriptuibridge.hpp"
 #include <atomic>
+#include <condition_variable>
 #include <mutex>
 #include <optional>
 #include <string>
@@ -72,6 +73,15 @@ public:
     // Main thread, for the "Cancelling…" hint.
     bool cancelRequested(void) const;
 
+    // Main thread, at app teardown: the whole "stop the script and reap it"
+    // sequence in one call — raise the abort, unpark any bridge wait, then
+    // block until the worker has left run(). Both are required and in this
+    // order: a worker parked in mCv.wait is waiting on a main loop that no
+    // longer exists, so reaping it (Threads::exit on 3DS, Threads::join on
+    // Switch) without unparking it first deadlocks the app at exit. Call this
+    // before that reap on every exit path; no-op when no script is running.
+    void shutdown(void);
+
     // If the script finished, returns its outcome and resets to idle.
     std::optional<Outcome> takeResult(void);
 
@@ -99,7 +109,8 @@ private:
     enum class State { Idle, Running, Done };
 
     std::atomic<State> mState{State::Idle};
-    std::mutex mMutex; // guards mOutcome
+    std::mutex mMutex;               // guards mOutcome, and the Running -> Done transition
+    std::condition_variable mDoneCv; // signalled by the worker as it leaves run()
     Outcome mOutcome;
     std::string mPath, mName, mTitleIdHex;
     ScriptUiBridge mBridge;

@@ -96,7 +96,15 @@ int main()
             // overlay is swallowing that screen's update.
             static int scriptCancelHold = 0;
             if (ScriptRunner::get().active() && (hidKeysHeld() & KEY_B)) {
-                if (++scriptCancelHold >= 45 && !ScriptRunner::get().cancelRequested()) {
+                if ((hidKeysDown() & KEY_B) && g_screen->hasOverlay()) {
+                    // That press is the overlay's own B (dismiss a gui_message,
+                    // back out of a picker), so the abort count starts from it
+                    // rather than from whatever was already accumulated. Only
+                    // the press is swallowed: holding B on through the overlays
+                    // still aborts, which is what aborttest case 3 exercises.
+                    scriptCancelHold = 0;
+                }
+                else if (++scriptCancelHold >= 45 && !ScriptRunner::get().cancelRequested()) {
                     ScriptRunner::get().requestCancel();
                 }
             }
@@ -175,6 +183,11 @@ int main()
     Server::requestStop();
     FTPServer::requestStop();
     BackupSizeCache::shutdownStatic();
+    // A forced APT exit (or an exception out of doUpdate) can end the loop
+    // mid-script. The worker may be parked on the UI bridge waiting for the
+    // loop that just ended, so it has to be aborted and unparked before
+    // Threads::exit() tries to join it — see ScriptRunner::shutdown().
+    ScriptRunner::get().shutdown();
     Threads::exit();
     // ftp_exit() closes the listen socket / live sessions; must run only after
     // the loop thread above has been joined, never while it may be in ftp_loop.
