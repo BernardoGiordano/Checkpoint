@@ -17,3 +17,4 @@ switch/romfs/shaders/
 tools/chlink/chlink
 tools/chlink/chlink.exe
 tools/chlink/dist/
+__pycache__

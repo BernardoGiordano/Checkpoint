@@ -83,7 +83,9 @@ struct LibraryFunction CheckpointFunctions[] =
     { ckpt_net_ip,             "char* net_ip(void);" },
     { ckpt_web_get,            "int web_get(char** out, int* outSize, char* url);" },
     // General HTTP for scripts that need methods/headers/bodies web_get can't do
-    // (e.g. OAuth + Drive REST). method is "GET"/"POST"/"PUT"/"PATCH"/"DELETE";
+    // (e.g. OAuth + Drive REST). method reaches curl verbatim, so beyond
+    // "GET"/"POST"/"PUT"/"PATCH"/"DELETE" a server's own verb works too — the
+    // webdav script needs "MKCOL" and "PROPFIND";
     // headers is "\n"-separated "Key: Value" lines ("" for none); body/bodySize
     // is the request body ("" / 0 for none, small form/JSON payloads only). out
     // is the malloc'd NUL-terminated response body (NULL/0 on failure) and

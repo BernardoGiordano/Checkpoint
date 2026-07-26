@@ -518,7 +518,9 @@ Negative returns, shared by all three transfer calls:
 | `-3` | *(`web_upload_file` only)* `filePath` could not be opened or sized |
 | `-(CURLcode + 100)` | transfer error |
 
-- `method` is `"GET"`, `"POST"`, `"PUT"`, `"PATCH"` or `"DELETE"`.
+- `method` is usually `"GET"`, `"POST"`, `"PUT"`, `"PATCH"` or `"DELETE"`, but it
+  is passed to the HTTP stack verbatim, so a server-specific verb works too —
+  `webdav.c` builds folders with `"MKCOL"` and lists them with `"PROPFIND"`.
 - `headers` is `"\n"`-separated `"Key: Value"` lines, `""` for none.
 - `body`/`bodySize` is the request body (`""`/`0` for none) and should stay small —
   it passes through the interpreter heap. For anything large, use
@@ -995,6 +997,7 @@ gate before the console.
 | Script | Consoles | What it does |
 | --- | --- | --- |
 | [`common/universal/googledrive.c`](common/universal/googledrive.c) | both | Backs up save backups to the user's own Google Drive. OAuth 2.0 device flow, `drive.file` scope, store-only zip per backup folder, resumable upload. Setup guide: [`googledrive.md`](googledrive.md). |
+| [`common/universal/webdav.c`](common/universal/webdav.c) | both | Same job against any WebDAV server (Nextcloud, Synology, `rclone serve webdav`, …): HTTP Basic, `MKCOL`/`PROPFIND`/`PUT`, uploads skip what is already there, and it can download a backup back onto the console. Setup guide: [`webdav.md`](webdav.md). |
 | [`3ds/universal/sharkive.c`](3ds/universal/sharkive.c) | 3DS | Cheat manager: downloads [Sharkive](https://github.com/FlagBrew/Sharkive)'s `3ds.json`, ticks cheats per title, writes `/cheats/<TITLEID>.txt` for the Luma3DS patcher. |
 | [`switch/universal/sharkive.c`](switch/universal/sharkive.c) | Switch | Same, for Atmosphere: resolves the build id and writes `/atmosphere/contents/<TITLEID>/cheats/<BUILDID>.txt`. |
 | [`3ds/universal/playcoins.c`](3ds/universal/playcoins.c) | 3DS | Sets Play Coins by editing `/gamecoin.dat` in the Home Menu shared extdata. The shortest real example of `sav_open_shared`. |
