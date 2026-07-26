@@ -125,11 +125,11 @@ The scripting engine lives in a submodule, so a fresh clone needs:
 
 ### 3DS version
 
-`dkp-pacman -S libctru citro3d citro2d tex3ds`
+`dkp-pacman -S libctru citro3d citro2d tex3ds 3ds-curl 3ds-mbedtls`
 
 ### Switch version
 
-`dkp-pacman -S libnx switch-pkg-config deko3d switch-freetype switch-libjpeg-turbo`
+`dkp-pacman -S libnx switch-pkg-config deko3d switch-harfbuzz switch-freetype switch-libjpeg-turbo switch-curl switch-mbedtls`
 
 Build from the repository root with `make 3ds` or `make switch`.
 
