@@ -45,8 +45,9 @@ namespace FTPServer {
     // with the other loop-owning services in the teardown path.
     void requestStop(void);
 
-    // Stops the server and joins its thread. Must run before Configuration /
-    // Logging are torn down, since the loop reads both.
+    // Stops the server and joins its thread. Must run before socketExit() and
+    // before Configuration / Logging are torn down, since the loop reads all
+    // three.
     void exit(void);
 
     // "ftp://<ip>:50000" while listening, otherwise empty (FTP off, or no

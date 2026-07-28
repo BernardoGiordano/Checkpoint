@@ -1,0 +1,78 @@
+// Minimal stand-in for the parts of the Microsoft Guidelines Support Library
+// that ftpd uses (gsl::not_null, gsl::czstring, gsl::owner, gsl::narrow_cast).
+//
+// Upstream ftpd downloads GSL 4.2.0 at configure time; Checkpoint builds with
+// plain Makefiles and has no use for the rest of the library, so this header
+// supplies the four names instead of vendoring ~10k lines. Semantics match GSL
+// closely enough for ftpd's usage: not_null is a non-null pointer wrapper that
+// converts back to the raw pointer implicitly.
+//
+// Not part of ftpd upstream. Licensed the same as the rest of Checkpoint.
+
+#pragma once
+
+#include <cstddef>
+#include <type_traits>
+#include <utility>
+
+namespace gsl
+{
+/// \brief Pointer that is guaranteed (by contract) not to be null
+template <typename T>
+class not_null
+{
+public:
+	static_assert (std::is_convertible_v<decltype (std::declval<T &> () != nullptr), bool>,
+	    "T must be comparable to nullptr");
+
+	template <typename U, typename = std::enable_if_t<std::is_convertible_v<U, T>>>
+	constexpr not_null (U &&u_) : m_ptr (std::forward<U> (u_))
+	{
+	}
+
+	template <typename U, typename = std::enable_if_t<std::is_convertible_v<U, T>>>
+	constexpr not_null (not_null<U> const &that_) : m_ptr (that_.get ())
+	{
+	}
+
+	not_null (std::nullptr_t) = delete;
+	not_null &operator= (std::nullptr_t) = delete;
+
+	constexpr T const &get () const
+	{
+		return m_ptr;
+	}
+
+	constexpr operator T const & () const
+	{
+		return m_ptr;
+	}
+
+	constexpr decltype (auto) operator->() const
+	{
+		return m_ptr;
+	}
+
+	constexpr decltype (auto) operator* () const
+	{
+		return *m_ptr;
+	}
+
+private:
+	T m_ptr;
+};
+
+/// \brief Nul-terminated string
+using czstring = char const *;
+
+/// \brief Pointer whose lifetime the holder is responsible for
+template <typename T, typename = std::enable_if_t<std::is_pointer_v<T>>>
+using owner = T;
+
+/// \brief Cast that is expected to be lossless but is not checked
+template <typename T, typename U>
+constexpr T narrow_cast (U &&u_) noexcept
+{
+	return static_cast<T> (std::forward<U> (u_));
+}
+}

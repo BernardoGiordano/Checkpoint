@@ -43,8 +43,6 @@ inline std::shared_ptr<Screen> g_screen = nullptr;
 // (Minus: MainScreen -> SettingsScreen; B: SettingsScreen -> the MainScreen it
 // came from, which SettingsScreen holds alive so its state is preserved).
 inline std::shared_ptr<Screen> g_pendingScreen = nullptr;
-inline bool g_ftpAvailable                     = false;
-inline bool g_shouldExitNetworkLoop            = false;
 inline const InputState* g_input               = nullptr;
 
 #endif

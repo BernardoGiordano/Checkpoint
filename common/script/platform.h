@@ -20,7 +20,7 @@
 #include <unistd.h>
 #elif defined(WIN32) /*(predefined on MSVC)*/
 #else
-#error***** A platform must be explicitly defined! *****
+#error ***** A platform must be explicitly defined! *****
 #endif
 
 /* configurable options */

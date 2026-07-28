@@ -39,12 +39,13 @@ TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out
 BUILD			:=	build
 FORMATSOURCES	:=	source source/script ../common ../common/script
-SOURCES			:=	$(FORMATSOURCES) ../3rd-party/sha256 ../3rd-party/ftp \
+SOURCES			:=	$(FORMATSOURCES) ../3rd-party/sha256 \
+					../3rd-party/ftpd/source ../3rd-party/ftpd/source/posix \
 					../common/script/cstdlib \
 					../3rd-party/picoc/source/interpreter
 DATA			:=	data
 FORMATINCLUDES	:=	include ../common ../common/script
-INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/sha256 ../3rd-party/ftp \
+INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/sha256 ../3rd-party/ftpd/include \
 					../3rd-party/picoc/include
 GRAPHICS		:=	assets/gfx
 ROMFS			:=	assets/romfs
@@ -96,9 +97,7 @@ CFLAGS	:=	-g -gdwarf-4 -Wall -Wextra -Wno-psabi -O3 -mword-relocations -flto=aut
 			-DGIT_REV=\"${GIT_REV}\" \
 			-DJSON_HAS_FILESYSTEM=0 \
 			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
-			-DFILE_BUFFERSIZE=262144 \
-			-DXFER_BUFFERSIZE=32768 \
-			-DSOCK_BUFFERSIZE=32768
+			-DNO_IPV6
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D__3DS__ -D_GNU_SOURCE=1
 

@@ -32,9 +32,6 @@
 #include "io.hpp"
 #include <switch.h>
 #include <sys/stat.h>
-extern "C" {
-#include "ftp.h"
-}
 
 // debug
 #include <arpa/inet.h>
