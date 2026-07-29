@@ -24,7 +24,6 @@
 
 #include "ftpServer.h"
 
-#include "fs.h"
 #include "ftpConfig.h"
 #include "ftpSession.h"
 #include "log.h"
@@ -35,9 +34,6 @@
 #ifdef __3DS__
 #include <3ds.h>
 #endif
-
-#include <sys/statvfs.h>
-using statvfs_t = struct statvfs;
 
 #include <algorithm>
 #include <chrono>
@@ -68,12 +64,6 @@ auto const s_startTime = std::time (nullptr);
 /// \brief Timezone offset in seconds (only used on 3DS)
 int s_tzOffset = 0;
 #endif
-
-/// \brief Mutex for s_freeSpace
-platform::Mutex s_lock;
-
-/// \brief Free space string
-std::string s_freeSpace;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -98,8 +88,6 @@ FtpServer::FtpServer (UniqueFtpConfig config_, std::function<bool ()> enabled_)
 
 UniqueFtpServer FtpServer::create (std::uint16_t const port_, std::function<bool ()> enabled_)
 {
-	updateFreeSpace ();
-
 	auto config = FtpConfig::create ();
 	if (!config->setPort (port_))
 		error ("Invalid listen port %u\n", port_);
@@ -114,29 +102,6 @@ std::string FtpServer::address ()
 		return {};
 
 	return m_name;
-}
-
-std::string FtpServer::getFreeSpace ()
-{
-	auto const lock = std::scoped_lock (s_lock);
-	return s_freeSpace;
-}
-
-void FtpServer::updateFreeSpace ()
-{
-	statvfs_t st = {};
-#if defined(__3DS__) || defined(__SWITCH__)
-	if (::statvfs ("sdmc:/", &st) != 0)
-#else
-	if (::statvfs ("/", &st) != 0)
-#endif
-		return;
-
-	auto freeSpace = fs::printSize (static_cast<std::uint64_t> (st.f_bsize) * st.f_bfree);
-
-	auto const lock = std::scoped_lock (s_lock);
-	if (freeSpace != s_freeSpace)
-		s_freeSpace = std::move (freeSpace);
 }
 
 std::time_t FtpServer::startTime ()

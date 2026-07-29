@@ -80,6 +80,14 @@ private:
 // measure fast on real hardware — do not "tune" them without a before/after on
 // the console. They can be overridden from the command line for an A/B, e.g.
 //   make 3ds FTPD_XFER_BUFFERSIZE=32768
+//
+// What changed with the fs::File reshape is which buffer each number sizes, not
+// the numbers themselves. FILE_BUFFERSIZE used to size stdio's setvbuf buffer
+// and XFER_BUFFERSIZE sized m_xferBuffer, with a copy between them. Now
+// m_xferBuffer is the only buffer on the file's side of the transfer, so it
+// takes FILE_BUFFERSIZE and the SD read/write granularity is unchanged.
+// XFER_BUFFERSIZE keeps its socket-side roles: the Z-stream buffer and the
+// default socket buffer size off 3DS.
 #ifndef FTPD_XFER_BUFFERSIZE
 #define FTPD_XFER_BUFFERSIZE 65536
 #endif
@@ -100,10 +108,11 @@ private:
 #endif
 #endif
 
-	/// \brief Transfer buffersize
+	/// \brief Socket-side transfer buffersize (Z-stream buffer, socket buffers)
 	constexpr static auto XFER_BUFFERSIZE = FTPD_XFER_BUFFERSIZE;
 
-	/// \brief File buffersize
+	/// \brief Size of m_xferBuffer, and so the granularity of every SD read and
+	///        write a transfer performs
 	constexpr static auto FILE_BUFFERSIZE = FTPD_FILE_BUFFERSIZE;
 
 	/// \brief Socket buffer size
@@ -237,7 +246,16 @@ private:
 	bool retrieveTransfer ();
 
 	/// \brief Transfer upload
+	/// \note Coalesces received data in m_xferBuffer and only writes when it is
+	///       full or the peer is done, so one SD write covers many recv()s
 	bool storeTransfer ();
+
+	/// \brief Transfer upload in Z (deflate) mode
+	bool storeTransferDeflate ();
+
+	/// \brief Write m_xferBuffer out to the file being stored
+	/// \note Short writes leave the remainder buffered for the next pass
+	bool flushStoreBuffer ();
 
 #ifndef __NDS__
 	/// \brief Mutex
@@ -292,9 +310,6 @@ private:
 	std::uint64_t m_filePosition = 0;
 	/// \brief Current z-stream position
 	std::uint64_t m_zStreamPosition = 0;
-
-	/// \brief File size of current transfer
-	std::uint64_t m_fileSize = 0;
 
 	/// \brief Session state
 	State m_state = State::COMMAND;

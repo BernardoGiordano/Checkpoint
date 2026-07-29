@@ -24,27 +24,28 @@
 
 #include "ioBuffer.h"
 
-#include <gsl/gsl>
-
 #include <dirent.h>
 
+#include <cstddef>
 #include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 #include <memory>
-#include <string_view>
-#include <vector>
+#include <type_traits>
 
 namespace fs
 {
-/// \brief Print size in human-readable format (KiB, MiB, etc)
-/// \param size_ Size to print
-std::string printSize (std::uint64_t size_);
-
 /// \brief File I/O object
 class File
 {
 public:
+	/// \brief Access mode
+	enum class Mode
+	{
+		Read,     ///< Open an existing file for reading
+		Truncate, ///< Create, or truncate an existing file, for writing
+		Append,   ///< Create or open a file for writing at the end
+		Modify,   ///< Open an existing file for writing without truncating it
+	};
+
 	~File ();
 
 	File ();
@@ -53,86 +54,39 @@ public:
 
 	/// \brief Move constructor
 	/// \param that_ Object to move from
-	File (File &&that_);
+	File (File &&that_) noexcept;
 
 	File &operator= (File const &that_) = delete;
 
 	/// \brief Move assignment
 	/// \param that_ Object to move from
-	File &operator= (File &&that_);
+	File &operator= (File &&that_) noexcept;
 
-	/// \brief bool cast operator
-	explicit operator bool () const;
-
-	/// \brief std::FILE* cast operator
-	operator std::FILE * () const;
-
-	/// \brief Set buffer size
-	/// \param size_ Buffer size
-	void setBufferSize (std::size_t size_);
-
-	/// \brief Open file
+	/// \brief Open file, closing whatever was open before
 	/// \param path_ Path to open
-	/// \param mode_ Access mode (\sa std::fopen)
-	bool open (gsl::not_null<gsl::czstring> path_, gsl::not_null<gsl::czstring> mode_ = "rb");
+	/// \param mode_ Access mode
+	bool open (char const *path_, Mode mode_);
 
 	/// \brief Close file
 	void close ();
 
-	/// \brief Seek to file position
+	/// \brief Seek to an absolute file position
 	/// \param pos_ File position
-	/// \param origin_ Reference position (\sa std::fseek)
-	std::make_signed_t<std::size_t> seek (std::make_signed_t<std::size_t> pos_, int origin_);
+	bool seek (std::uint64_t pos_);
 
-	/// \brief Read data
+	/// \brief Read into the buffer's free area
 	/// \param buffer_ Output buffer
-	/// \param size_ Size to read
-	/// \note Can return partial reads
-	std::make_signed_t<std::size_t> read (gsl::not_null<void *> buffer_, std::size_t size_);
-
-	/// \brief Read data
-	/// \param buffer_ Output buffer
-	/// \note Can return partial reads
+	/// \note Can return partial reads; 0 is end of file, negative is an error
 	std::make_signed_t<std::size_t> read (IOBuffer &buffer_);
 
-	/// \brief Read line
-	std::string_view readLine ();
-
-	/// \brief Read data
-	/// \param buffer_ Output buffer
-	/// \param size_ Size to read
-	/// \note Fails on partial reads and errors
-	bool readAll (gsl::not_null<void *> buffer_, std::size_t size_);
-
-	/// \brief Write data
-	/// \param buffer_ Input data
-	/// \param size_ Size to write
-	/// \note Can return partial writes
-	std::make_signed_t<std::size_t> write (gsl::not_null<void const *> buffer_, std::size_t size_);
-
-	/// \brief Write data
-	/// \param buffer_ Input data
-	/// \note Can return partial writes
+	/// \brief Write out the buffer's used area
+	/// \param buffer_ Input buffer
+	/// \note Can return partial writes; negative is an error
 	std::make_signed_t<std::size_t> write (IOBuffer &buffer_);
 
-	/// \brief Write data
-	/// \param buffer_ Input data
-	/// \param size_ Size to write
-	/// \note Fails on partials writes and errors
-	bool writeAll (gsl::not_null<void const *> buffer_, std::size_t size_);
-
 private:
-	/// \brief Underlying std::FILE*
-	std::unique_ptr<std::FILE, int (*) (std::FILE *)> m_fp{nullptr, nullptr};
-
-	/// \brief Buffer
-	std::vector<char> m_buffer;
-
-	/// \brief Line buffer
-	gsl::owner<char *> m_lineBuffer = nullptr;
-
-	/// \brief Line buffer size
-	std::size_t m_lineBufferSize = 0;
+	/// \brief Underlying file descriptor
+	int m_fd = -1;
 };
 
 /// Directory object
@@ -163,7 +117,7 @@ public:
 
 	/// \brief Open directory
 	/// \param path_ Path to open
-	bool open (gsl::not_null<gsl::czstring> path_);
+	bool open (char const *path_);
 
 	/// \brief Close directory
 	void close ();

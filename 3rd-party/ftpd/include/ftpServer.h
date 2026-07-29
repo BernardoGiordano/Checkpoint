@@ -65,12 +65,6 @@ public:
 	/// \brief Listening address as "<ip>:<port>", or empty when not listening
 	std::string address ();
 
-	/// \brief Get free space
-	static std::string getFreeSpace ();
-
-	/// \brief Update free space
-	static void updateFreeSpace ();
-
 	/// \brief Server start time
 	static std::time_t startTime ();
 

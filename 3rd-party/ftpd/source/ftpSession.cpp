@@ -90,7 +90,7 @@ int compare (std::string_view const lhs_, std::string_view const rhs_)
 			return l - r;
 	}
 
-	return gsl::narrow_cast<int> (lhs_.size ()) - gsl::narrow_cast<int> (rhs_.size ());
+	return static_cast<int> (lhs_.size ()) - static_cast<int> (rhs_.size ());
 }
 
 /// \brief Parse command
@@ -374,7 +374,7 @@ FtpSession::FtpSession (FtpConfig &config_, UniqueSocket commandSocket_)
       m_commandSocket (std::move (commandSocket_)),
       m_commandBuffer (COMMAND_BUFFERSIZE),
       m_responseBuffer (RESPONSE_BUFFERSIZE),
-      m_xferBuffer (XFER_BUFFERSIZE),
+      m_xferBuffer (FILE_BUFFERSIZE),
       m_zStreamBuffer (XFER_BUFFERSIZE),
       m_zStream (nullptr, nullptr),
       m_authorizedUser (false),
@@ -650,7 +650,6 @@ void FtpSession::setState (State const state_, bool const closePasv_, bool const
 #endif
 
 			m_restartPosition = 0;
-			m_fileSize        = 0;
 			m_filePosition    = 0;
 
 			m_workItem.clear ();
@@ -1190,32 +1189,16 @@ void FtpSession::xferFile (char const *const args_, XferFileMode const mode_)
 	}
 	else if (mode_ == XferFileMode::RETR)
 	{
-		// stat the file
-		stat_t st;
-		if (tzStat (path.c_str (), &st) != 0)
+		if (!m_file.open (path.c_str (), fs::File::Mode::Read))
 		{
 			sendResponse ("450 %s\r\n", std::strerror (errno));
 			return;
 		}
 
-		// open the file in read mode
-		if (!m_file.open (path.c_str (), "rb"))
+		if (m_restartPosition != 0 && !m_file.seek (m_restartPosition))
 		{
 			sendResponse ("450 %s\r\n", std::strerror (errno));
 			return;
-		}
-
-		LOCKED (m_fileSize = st.st_size);
-
-		m_file.setBufferSize (FILE_BUFFERSIZE);
-
-		if (m_restartPosition != 0)
-		{
-			if (m_file.seek (m_restartPosition, SEEK_SET) != 0)
-			{
-				sendResponse ("450 %s\r\n", std::strerror (errno));
-				return;
-			}
 		}
 
 		LOCKED (m_filePosition = m_restartPosition);
@@ -1224,11 +1207,11 @@ void FtpSession::xferFile (char const *const args_, XferFileMode const mode_)
 	{
 		auto const append = mode_ == XferFileMode::APPE;
 
-		char const *mode = "wb";
+		auto mode = fs::File::Mode::Truncate;
 		if (append)
-			mode = "ab";
+			mode = fs::File::Mode::Append;
 		else if (m_restartPosition != 0)
-			mode = "r+b";
+			mode = fs::File::Mode::Modify;
 
 		// open file in write mode
 		if (!m_file.open (path.c_str (), mode))
@@ -1237,15 +1220,11 @@ void FtpSession::xferFile (char const *const args_, XferFileMode const mode_)
 			return;
 		}
 
-		FtpServer::updateFreeSpace ();
-
-		m_file.setBufferSize (FILE_BUFFERSIZE);
-
 		// check if this had REST but not APPE
 		if (m_restartPosition != 0 && !append)
 		{
 			// seek to the REST offset
-			if (m_file.seek (m_restartPosition, SEEK_SET) != 0)
+			if (!m_file.seek (m_restartPosition))
 			{
 				sendResponse ("450 %s\r\n", std::strerror (errno));
 				return;
@@ -2156,29 +2135,47 @@ bool FtpSession::retrieveTransfer ()
 	return true;
 }
 
+bool FtpSession::flushStoreBuffer ()
+{
+	if (m_devZero)
+	{
+		LOCKED (m_filePosition += m_xferBuffer.usedSize ());
+		m_xferBuffer.clear ();
+		return true;
+	}
+
+	auto const rc = m_file.write (m_xferBuffer);
+	if (rc <= 0)
+	{
+		// error writing data
+		sendResponse ("426 %s\r\n", rc < 0 ? std::strerror (errno) : "Failed to write data");
+		setState (State::COMMAND, true, true);
+		return false;
+	}
+
+	// a short write leaves the remainder in the buffer for the next pass
+	LOCKED (m_filePosition += rc);
+	return true;
+}
+
 bool FtpSession::storeTransfer ()
 {
-	if (m_xferBuffer.empty ())
+	// Z mode keeps ftpd's chunk-at-a-time rhythm: the socket fills
+	// m_zStreamBuffer, inflateBuffer() produces into m_xferBuffer, and that has
+	// to be drained again before the next chunk is pulled. Coalescing there
+	// would mean second-guessing how much inflate is about to emit, so the two
+	// modes are separate flows. Removing MODE Z collapses them back into one.
+	if (m_deflate)
+		return storeTransferDeflate ();
+
+	// Fill the buffer before touching the card. A recv() only yields about
+	// SO_RCVBUF bytes at a time, so writing each one straight through would turn
+	// a single FILE_BUFFERSIZE write into a handful of small ones. stdio's
+	// setvbuf buffer used to do this coalescing; now that reads and writes go
+	// directly against the IOBuffer, the buffer does it explicitly.
+	if (!m_eof && m_xferBuffer.freeSize () != 0)
 	{
-		m_xferBuffer.clear ();
-
-		auto &ioBuffer = m_deflate ? m_zStreamBuffer : m_xferBuffer;
-
-		if (!m_zStreamBuffer.empty ())
-			return inflateBuffer ();
-
-		if (m_deflate && !m_zFlushed && m_eof)
-			return inflateBuffer ();
-
-		if (m_eof && (m_deflate == m_zFlushed))
-		{
-			sendResponse ("226 OK\r\n");
-			setState (State::COMMAND, true, true);
-			return false;
-		}
-
-		// we have written all the received data, so try to get some more
-		auto const rc = m_dataSocket->read (ioBuffer);
+		auto const rc = m_dataSocket->read (m_xferBuffer);
 		if (rc < 0)
 		{
 			// failed to read data
@@ -2191,40 +2188,76 @@ bool FtpSession::storeTransfer ()
 		}
 
 		if (rc == 0)
-		{
-			// reached end of file
+			// peer is done sending; fall through so the tail reaches the card
 			m_eof = true;
-			return true;
-		}
-
-		m_timestamp = std::time (nullptr);
-
-		if (m_deflate)
-			return true;
+		else
+			m_timestamp = std::time (nullptr);
 	}
 
-	if (!m_devZero)
+	// Write once the buffer is full, or once nothing more is coming. These two
+	// conditions are also what keeps the buffer from needing coalesce(): a short
+	// write can only leave a partly-consumed buffer when it was full (so
+	// freeSize() is still 0 and the next pass writes rather than receives) or
+	// when m_eof is set (so the receive gate above is closed for good). Relaxing
+	// either gate reintroduces the case where usedArea() has drifted forward with
+	// free space stranded behind it.
+	if (!m_xferBuffer.empty () && (m_eof || m_xferBuffer.freeSize () == 0))
+		return flushStoreBuffer ();
+
+	if (m_eof)
 	{
-		// write any pending data
-		auto const rc = m_file.write (m_xferBuffer);
-		if (rc <= 0)
+		// buffer is drained and the peer is gone: the file is complete
+		sendResponse ("226 OK\r\n");
+		setState (State::COMMAND, true, true);
+		return false;
+	}
+
+	return true;
+}
+
+bool FtpSession::storeTransferDeflate ()
+{
+	if (m_xferBuffer.empty ())
+	{
+		m_xferBuffer.clear ();
+
+		if (!m_zStreamBuffer.empty ())
+			return inflateBuffer ();
+
+		if (!m_zFlushed && m_eof)
+			return inflateBuffer ();
+
+		if (m_eof && m_zFlushed)
 		{
-			// error writing data
-			sendResponse ("426 %s\r\n", rc < 0 ? std::strerror (errno) : "Failed to write data");
+			sendResponse ("226 OK\r\n");
 			setState (State::COMMAND, true, true);
 			return false;
 		}
 
-		// we can try to recv/write more data
-		LOCKED (m_filePosition += rc);
-	}
-	else
-	{
-		LOCKED (m_filePosition += m_xferBuffer.usedSize ());
-		m_xferBuffer.clear ();
+		// we have written all the received data, so try to get some more
+		auto const rc = m_dataSocket->read (m_zStreamBuffer);
+		if (rc < 0)
+		{
+			// failed to read data
+			if (errno == EWOULDBLOCK)
+				return false;
+
+			sendResponse ("451 %s\r\n", std::strerror (errno));
+			setState (State::COMMAND, true, true);
+			return false;
+		}
+
+		if (rc == 0)
+			// reached end of file
+			m_eof = true;
+		else
+			m_timestamp = std::time (nullptr);
+
+		return true;
 	}
 
-	return true;
+	// write the inflated data
+	return flushStoreBuffer ();
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -2330,7 +2363,6 @@ void FtpSession::DELE (char const *args_)
 		return;
 	}
 
-	FtpServer::updateFreeSpace ();
 	sendResponse ("250 OK\r\n");
 }
 void FtpSession::FEAT (char const *args_)
@@ -2421,7 +2453,6 @@ void FtpSession::MKD (char const *args_)
 		return;
 	}
 
-	FtpServer::updateFreeSpace ();
 	sendResponse ("250 OK\r\n");
 }
 
@@ -2937,7 +2968,6 @@ void FtpSession::RMD (char const *args_)
 		return;
 	}
 
-	FtpServer::updateFreeSpace ();
 	sendResponse ("250 OK\r\n");
 }
 
@@ -3009,7 +3039,6 @@ void FtpSession::RNTO (char const *args_)
 	// clear the rename state
 	m_rename.clear ();
 
-	FtpServer::updateFreeSpace ();
 	sendResponse ("250 OK\r\n");
 }
 
