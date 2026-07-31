@@ -2,8 +2,6 @@
 // - RFC  959 (https://tools.ietf.org/html/rfc959)
 // - RFC 3659 (https://tools.ietf.org/html/rfc3659)
 // - suggested implementation details from https://cr.yp.to/ftp/filesystem.html
-// - Deflate transmission mode for FTP
-//   (https://tools.ietf.org/html/draft-preston-ftpext-deflate-04)
 //
 // Copyright (C) 2024 Michael Theall
 //
@@ -28,26 +26,7 @@
 #include <chrono>
 #include <memory>
 
-#ifdef __NDS__
-struct pollfd
-{
-	int fd;
-	int events;
-	int revents;
-};
-
-using nfds_t = unsigned int;
-
-extern "C" int poll (pollfd *fds_, nfds_t nfds_, int timeout_);
-
-#define POLLIN (1 << 0)
-#define POLLPRI (1 << 1)
-#define POLLOUT (1 << 2)
-#define POLLERR (1 << 3)
-#define POLLHUP (1 << 4)
-#else
 #include <poll.h>
-#endif
 
 class Socket;
 using UniqueSocket = std::unique_ptr<Socket>;
@@ -57,12 +36,6 @@ using SharedSocket = std::shared_ptr<Socket>;
 class Socket
 {
 public:
-	enum Type
-	{
-		eStream   = SOCK_STREAM, ///< Stream socket
-		eDatagram = SOCK_DGRAM,  ///< Datagram socket
-	};
-
 	/// \brief Poll info
 	struct PollInfo
 	{
@@ -121,18 +94,6 @@ public:
 	/// \param size_ Buffer size
 	bool setSendBufferSize (std::size_t size_);
 
-#ifndef __NDS__
-	/// \brief Join multicast group
-	/// \param addr_ Multicast group address
-	/// \param iface_ Interface address
-	bool joinMulticastGroup (SockAddr const &addr_, SockAddr const &iface_);
-
-	/// \brief Drop multicast group
-	/// \param addr_ Multicast group address
-	/// \param iface_ Interface address
-	bool dropMulticastGroup (SockAddr const &addr_, SockAddr const &iface_);
-#endif
-
 	/// \brief Read data
 	/// \param buffer_ Output buffer
 	/// \param size_ Size to read
@@ -144,12 +105,6 @@ public:
 	/// \param oob_ Whether to read from out-of-band
 	std::make_signed_t<std::size_t> read (IOBuffer &buffer_, bool oob_ = false);
 
-	/// \brief Read data
-	/// \param buffer_ Output buffer
-	/// \param size_ Size to read
-	/// \param[out] addr_ Source address
-	std::make_signed_t<std::size_t> readFrom (void *buffer_, std::size_t size_, SockAddr &addr_);
-
 	/// \brief Write data
 	/// \param buffer_ Input buffer
 	/// \param size_ Size to write
@@ -160,21 +115,13 @@ public:
 	/// \param size_ Size to write
 	std::make_signed_t<std::size_t> write (IOBuffer &buffer_);
 
-	/// \brief Write data
-	/// \param buffer_ Input buffer
-	/// \param size_ Size to write
-	/// \param[out] addr_ Destination address
-	std::make_signed_t<std::size_t>
-	    writeTo (void const *buffer_, std::size_t size_, SockAddr const &addr_);
-
 	/// \brief Local name
 	SockAddr const &sockName () const;
 	/// \brief Peer name
 	SockAddr const &peerName () const;
 
-	/// \brief Create socket
-	/// \param type_ Socket type
-	static UniqueSocket create (Type type_);
+	/// \brief Create an IPv4 stream socket
+	static UniqueSocket create ();
 
 	/// \brief Poll sockets
 	/// \param info_ Poll info

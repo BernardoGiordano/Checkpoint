@@ -2,8 +2,6 @@
 // - RFC  959 (https://tools.ietf.org/html/rfc959)
 // - RFC 3659 (https://tools.ietf.org/html/rfc3659)
 // - suggested implementation details from https://cr.yp.to/ftp/filesystem.html
-// - Deflate transmission mode for FTP
-//   (https://tools.ietf.org/html/draft-preston-ftpext-deflate-04)
 //
 // Copyright (C) 2024 Michael Theall
 //
@@ -75,9 +73,9 @@ public:
 
 private:
 	/// \brief Paramterized constructor
-	/// \param config_ FTP config
+	/// \param config_ FTP settings
 	/// \param enabled_ Enable predicate
-	FtpServer (UniqueFtpConfig config_, std::function<bool ()> enabled_);
+	FtpServer (FtpConfig config_, std::function<bool ()> enabled_);
 
 	/// \brief Handle when network is found
 	void handleNetworkFound ();
@@ -98,11 +96,12 @@ private:
 	/// \brief Thread
 	platform::Thread m_thread;
 
-	/// \brief Mutex
+	/// \brief Mutex guarding m_socket and m_name
 	platform::Mutex m_lock;
 
-	/// \brief Config
-	UniqueFtpConfig m_config;
+	/// \brief Settings
+	/// \note Immutable and owned here; sessions hold a const reference to it
+	FtpConfig const m_config;
 
 	/// \brief Whether the server should be serving
 	std::function<bool ()> m_enabled;

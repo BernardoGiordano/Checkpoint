@@ -2,8 +2,6 @@
 // - RFC  959 (https://tools.ietf.org/html/rfc959)
 // - RFC 3659 (https://tools.ietf.org/html/rfc3659)
 // - suggested implementation details from https://cr.yp.to/ftp/filesystem.html
-// - Deflate transmission mode for FTP
-//   (https://tools.ietf.org/html/draft-preston-ftpext-deflate-04)
 //
 // Copyright (C) 2024 Michael Theall
 //
@@ -75,12 +73,6 @@ bool platform::networkAddress (SockAddr &addr_)
 
 	addr_ = addr;
 	return true;
-}
-
-std::string const &platform::hostname ()
-{
-	static std::string const hostname = "checkpoint";
-	return hostname;
 }
 
 #ifdef __3DS__

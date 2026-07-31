@@ -40,7 +40,7 @@ OUTDIR			:=	out
 BUILD			:=	build
 FORMATSOURCES	:=	source source/script ../common ../common/script
 SOURCES			:=	$(FORMATSOURCES) ../3rd-party/sha256 \
-					../3rd-party/ftpd/source ../3rd-party/ftpd/source/posix \
+					../3rd-party/ftpd/source \
 					../common/script/cstdlib \
 					../3rd-party/picoc/source/interpreter
 DATA			:=	data
@@ -96,10 +96,17 @@ CFLAGS	:=	-g -gdwarf-4 -Wall -Wextra -Wno-psabi -O3 -mword-relocations -flto=aut
 			-DVERSION_MICRO=${VERSION_MICRO} \
 			-DGIT_REV=\"${GIT_REV}\" \
 			-DJSON_HAS_FILESYSTEM=0 \
-			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
-			-DNO_IPV6
+			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0
 
 CFLAGS	+=	$(INCLUDE) -DARM11 -D__3DS__ -D_GNU_SOURCE=1
+
+# ftpd transfer-size knobs, so an A/B is a command-line argument rather than a
+# header edit: make 3ds FTPD_XFER_BUFFERSIZE=32768. Every name here must also
+# have an #ifndef default in 3rd-party/ftpd/include/ftpSession.h — a knob that
+# exists in only one of the two places silently compiles the default.
+FTPD_TUNABLES	:=	$(foreach v,FTPD_XFER_BUFFERSIZE FTPD_FILE_BUFFERSIZE FTPD_SOCK_BUFFERSIZE,\
+					$(if $($(v)),-D$(v)=$($(v))))
+CFLAGS	+=	$(FTPD_TUNABLES)
 
 # picoc: UNIX_HOST is the only host flavour that fits newlib (the alternative is
 # MSVC). Its platform.h comes from common/script, not the submodule.

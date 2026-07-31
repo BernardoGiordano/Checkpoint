@@ -2,8 +2,6 @@
 // - RFC  959 (https://tools.ietf.org/html/rfc959)
 // - RFC 3659 (https://tools.ietf.org/html/rfc3659)
 // - suggested implementation details from https://cr.yp.to/ftp/filesystem.html
-// - Deflate transmission mode for FTP
-//   (https://tools.ietf.org/html/draft-preston-ftpext-deflate-04)
 //
 // Copyright (C) 2024 Michael Theall
 //
@@ -28,22 +26,9 @@
 #include "ftpPlatform.h"
 #include "socket.h"
 
-#if __has_include(<glob.h>)
-#include <glob.h>
-#define FTPD_HAS_GLOB 1
-#else
-#define FTPD_HAS_GLOB 0
-#endif
-
-#include <zlib.h>
-
-#include <sys/stat.h>
-using stat_t = struct stat;
-
 #include <chrono>
 #include <ctime>
 #include <memory>
-#include <optional>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -51,7 +36,6 @@ using stat_t = struct stat;
 class FtpSession;
 using UniqueFtpSession = std::unique_ptr<FtpSession>;
 
-/// \brief FTP session
 class FtpSession
 {
 public:
@@ -63,7 +47,7 @@ public:
 	/// \brief Create session
 	/// \param config_ FTP config
 	/// \param commandSocket_ Command socket
-	static UniqueFtpSession create (FtpConfig &config_, UniqueSocket commandSocket_);
+	static UniqueFtpSession create (FtpConfig const &config_, UniqueSocket commandSocket_);
 
 	/// \brief Poll for activity
 	/// \param sessions_ Sessions to poll
@@ -84,10 +68,10 @@ private:
 // What changed with the fs::File reshape is which buffer each number sizes, not
 // the numbers themselves. FILE_BUFFERSIZE used to size stdio's setvbuf buffer
 // and XFER_BUFFERSIZE sized m_xferBuffer, with a copy between them. Now
-// m_xferBuffer is the only buffer on the file's side of the transfer, so it
-// takes FILE_BUFFERSIZE and the SD read/write granularity is unchanged.
-// XFER_BUFFERSIZE keeps its socket-side roles: the Z-stream buffer and the
-// default socket buffer size off 3DS.
+// m_xferBuffer is the only buffer a transfer uses, so it takes FILE_BUFFERSIZE
+// and the SD read/write granularity is unchanged. XFER_BUFFERSIZE has no buffer
+// of its own left since MODE Z went away; it only supplies the default socket
+// buffer size off 3DS.
 #ifndef FTPD_XFER_BUFFERSIZE
 #define FTPD_XFER_BUFFERSIZE 65536
 #endif
@@ -107,9 +91,6 @@ private:
 #define FTPD_SOCK_BUFFERSIZE FTPD_XFER_BUFFERSIZE
 #endif
 #endif
-
-	/// \brief Socket-side transfer buffersize (Z-stream buffer, socket buffers)
-	constexpr static auto XFER_BUFFERSIZE = FTPD_XFER_BUFFERSIZE;
 
 	/// \brief Size of m_xferBuffer, and so the granularity of every SD read and
 	///        write a transfer performs
@@ -147,7 +128,7 @@ private:
 	/// \brief Parameterized constructor
 	/// \param config_ FTP config
 	/// \param commandSocket_ Command socket
-	FtpSession (FtpConfig &config_, UniqueSocket commandSocket_);
+	FtpSession (FtpConfig const &config_, UniqueSocket commandSocket_);
 
 	/// \brief Whether session is authorized
 	bool authorized () const;
@@ -176,6 +157,14 @@ private:
 
 	/// \brief Connect data socket
 	bool dataConnect ();
+
+	/// \brief How much of each entry the current listing needs resolved
+	/// \note Decided once per listing, at the point the directory is opened
+	fs::Dir::Detail listDetail () const;
+
+	/// \brief Timezone offset applied to an mtime, in seconds
+	/// \note Always 0 off the 3DS, which is the only target that adjusts mtimes
+	static std::time_t tzOffset ();
 
 	/// \brief Perform stat and apply tz offset to mtime
 	/// \param path_ Path to stat
@@ -224,23 +213,11 @@ private:
 	/// \param response_ Response message
 	void sendResponse (std::string_view response_);
 
-	/// \brief Deflate buffer
-	/// \param flush_ Whether to flush
-	bool deflateBuffer (bool flush_);
-
-	/// \brief Inflate buffer
-	bool inflateBuffer ();
-
 	/// \brief Transfer function
 	bool (FtpSession::*m_transfer) () = nullptr;
 
 	/// \brief Transfer directory list
 	bool listTransfer ();
-
-#if FTPD_HAS_GLOB
-	/// \brief Transfer glob list
-	bool globTransfer ();
-#endif
 
 	/// \brief Transfer download
 	bool retrieveTransfer ();
@@ -250,20 +227,12 @@ private:
 	///       full or the peer is done, so one SD write covers many recv()s
 	bool storeTransfer ();
 
-	/// \brief Transfer upload in Z (deflate) mode
-	bool storeTransferDeflate ();
-
 	/// \brief Write m_xferBuffer out to the file being stored
 	/// \note Short writes leave the remainder buffered for the next pass
 	bool flushStoreBuffer ();
 
-#ifndef __NDS__
-	/// \brief Mutex
-	platform::Mutex m_lock;
-#endif
-
-	/// \brief FTP config
-	FtpConfig &m_config;
+	/// \brief FTP settings, owned by the server
+	FtpConfig const &m_config;
 
 	/// \brief Command socket
 	SharedSocket m_commandSocket;
@@ -285,8 +254,6 @@ private:
 
 	/// \brief Transfer buffer
 	IOBuffer m_xferBuffer;
-	/// \brief z-stream buffer
-	IOBuffer m_zStreamBuffer;
 
 	/// \brief Address from last PORT command
 	SockAddr m_portAddr;
@@ -300,16 +267,11 @@ private:
 	/// \brief Path from RNFR command
 	std::string m_rename;
 
-	/// \brief Current work item
-	std::string m_workItem;
-
 	/// \brief Position from REST command
 	std::uint64_t m_restartPosition = 0;
 
 	/// \brief Current file position
 	std::uint64_t m_filePosition = 0;
-	/// \brief Current z-stream position
-	std::uint64_t m_zStreamPosition = 0;
 
 	/// \brief Session state
 	State m_state = State::COMMAND;
@@ -320,42 +282,8 @@ private:
 	/// \brief Directory being transferred
 	fs::Dir m_dir;
 
-#if FTPD_HAS_GLOB
-	/// \brief Glob wrappre
-	class Glob
-	{
-	public:
-		~Glob () noexcept;
-		Glob () noexcept;
-
-		/// \brief Perform glob
-		/// \param pattern_ Glob pattern
-		bool glob (char const *pattern_) noexcept;
-
-		/// \brief Get next glob result
-		/// \note returns nullptr when no more entries exist
-		char const *next () noexcept;
-
-	private:
-		/// \brief Clear glob
-		void clear () noexcept;
-
-		/// \brief Glob result
-		std::optional<glob_t> m_glob = std::nullopt;
-
-		/// \brief Result counter
-		unsigned m_offset = 0;
-	};
-
-	/// \brief Glob
-	Glob m_glob;
-#endif
-
 	/// \brief Directory transfer mode
 	XferDirMode m_xferDirMode;
-
-	/// \brief z-stream
-	std::unique_ptr<z_stream, int (*) (z_streamp)> m_zStream;
 
 	/// \brief Last activity timestamp
 	time_t m_timestamp;
@@ -374,10 +302,6 @@ private:
 	bool m_send : 1;
 	/// \brief Whether urgent (out-of-band) data is on the way
 	bool m_urgent : 1;
-	/// \brief Whether using Z (deflate) mode
-	bool m_deflate : 1;
-	/// \brief Whether we finished processing z-stream
-	bool m_zFlushed : 1;
 	/// \brief Whether we finished reading data
 	bool m_eof : 1;
 
@@ -391,9 +315,6 @@ private:
 	bool m_mlstPerm : 1;
 	/// \brief Whether MLST unix.mode fact is enabled
 	bool m_mlstUnixMode : 1;
-
-	/// \brief Whether emulating /dev/zero
-	bool m_devZero : 1;
 
 	/// \brief Abort a transfer
 	/// \param args_ Command arguments
@@ -503,10 +424,6 @@ private:
 	/// \brief Rename to
 	/// \param args_ Command arguments
 	void RNTO (char const *args_);
-
-	/// \brief Site command
-	/// \param args_ Command arguments
-	void SITE (char const *args_);
 
 	/// \brief Get file size
 	/// \param args_ Command arguments

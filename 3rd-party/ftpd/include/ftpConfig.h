@@ -2,8 +2,6 @@
 // - RFC  959 (https://tools.ietf.org/html/rfc959)
 // - RFC 3659 (https://tools.ietf.org/html/rfc3659)
 // - suggested implementation details from https://cr.yp.to/ftp/filesystem.html
-// - Deflate transmission mode for FTP
-//   (https://tools.ietf.org/html/draft-preston-ftpext-deflate-04)
 //
 // Copyright (C) 2024 Michael Theall
 //
@@ -20,119 +18,67 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 //
-// Adapted for Checkpoint: the config lives in memory only. ftpd persists these
-// settings to its own .cfg file; Checkpoint owns config.json and creates the
-// server with the values it wants, so load() is gone and save() is a no-op that
-// keeps the SITE command working for the lifetime of the process.
+// Adapted for Checkpoint: the settings are immutable and live in memory only.
+// ftpd made every field runtime-mutable so its SITE commands and its settings
+// menu could edit them, and persisted the result to a .cfg on the SD card. That
+// mutability is what forced the mutex this class used to carry, and the mutex is
+// what put a lock in the session constructor and inside the per-directory-entry
+// listing loop. Checkpoint owns config.json, creates the server with the values
+// it wants and never changes them, so this is a plain value passed by const
+// reference: no lock, no setters, no load/save, and no SITE command driving them.
 //
 // The Switch access-point settings are gone with the AP feature itself.
 
 #pragma once
 
-#include "ftpPlatform.h"
-
 #include <cstdint>
-#include <memory>
-#include <mutex>
 #include <string>
-#include <string_view>
 
-class FtpConfig;
-using UniqueFtpConfig = std::unique_ptr<FtpConfig>;
-
-/// \brief FTP config
+/// \brief FTP settings
 class FtpConfig
 {
 public:
-	~FtpConfig ();
+	/// \brief Parameterized constructor
+	/// \param port_ Listen port
+	/// \note A port_ this console cannot bind falls back to the default; see
+	///       validPort()
+	explicit FtpConfig (std::uint16_t port_);
 
-	/// \brief Create config with default values
-	static UniqueFtpConfig create ();
-
-	std::scoped_lock<platform::Mutex> lockGuard ();
-
-	/// \brief Save config
-	/// \note No-op on Checkpoint; settings are not persisted
-	bool save ();
+	/// \brief Whether a port can be bound on this console
+	/// \note The Switch refuses ports below 1024 (except 0, meaning "any"); the
+	///       3DS allows those but refuses 0
+	static bool validPort (std::uint16_t port_);
 
 	/// \brief Get user
+	/// \note Empty means no authentication, which is what Checkpoint ships
 	std::string const &user () const;
 
 	/// \brief Get password
+	/// \note Empty means no authentication, which is what Checkpoint ships
 	std::string const &pass () const;
-
-	/// \brief Get hostname
-	std::string const &hostname () const;
 
 	/// \brief Get port
 	std::uint16_t port () const;
 
-	/// \brief Get deflate level
-	int deflateLevel () const;
-
 #ifdef __3DS__
-	/// \brief Whether to get mtime
-	/// \note only effective on 3DS
+	/// \brief Whether listings resolve mtimes
+	/// \note Only meaningful on 3DS, where an mtime costs an extra FSUSER round
+	///       trip per directory entry and is the dominant cost of a listing
 	bool getMTime () const;
 #endif
 
-	/// \brief Set user
-	/// \param user_ User
-	void setUser (std::string user_);
-
-	/// \brief Set password
-	/// \param pass_ Password
-	void setPass (std::string pass_);
-
-	/// \brief Set hostname
-	/// \param hostname_ Hostname
-	void setHostname (std::string hostname_);
-
-	/// \brief Set listen port
-	/// \param port_ Listen port
-	bool setPort (std::string_view port_);
-
-	/// \brief Set listen port
-	/// \param port_ Listen port
-	bool setPort (std::uint16_t port_);
-
-	/// \brief Set deflate level
-	/// \param level_ Deflate level
-	bool setDeflateLevel (std::string_view level_);
-
-	/// \brief Set deflate level
-	/// \param level_ Deflate level
-	bool setDeflateLevel (int level_);
-
-#ifdef __3DS__
-	/// \brief Set whether to get mtime
-	/// \param getMTime_ Whether to get mtime
-	void setGetMTime (bool getMTime_);
-#endif
-
 private:
-	FtpConfig ();
-
-	/// \brief Mutex
-	mutable platform::Mutex m_lock;
-
 	/// \brief Username
 	std::string m_user;
 
 	/// \brief Password
 	std::string m_pass;
 
-	/// \brief Hostname
-	std::string m_hostname;
-
 	/// \brief Listen port
 	std::uint16_t m_port;
 
-	/// \brief Deflate level
-	int m_deflateLevel;
-
 #ifdef __3DS__
-	/// \brief Whether to get mtime
+	/// \brief Whether to resolve mtimes
 	bool m_getMTime = true;
 #endif
 };

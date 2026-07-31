@@ -2,8 +2,6 @@
 // - RFC  959 (https://tools.ietf.org/html/rfc959)
 // - RFC 3659 (https://tools.ietf.org/html/rfc3659)
 // - suggested implementation details from https://cr.yp.to/ftp/filesystem.html
-// - Deflate transmission mode for FTP
-//   (https://tools.ietf.org/html/draft-preston-ftpext-deflate-04)
 //
 // Copyright (C) 2024 Michael Theall
 //
@@ -43,13 +41,8 @@ Socket::~Socket ()
 	if (m_connected)
 		info ("Closing connection to [%s]:%u\n", m_peerName.name (), m_peerName.port ());
 
-#ifdef __NDS__
-	if (::closesocket (m_fd) != 0)
-		error ("closesocket: %s\n", std::strerror (errno));
-#else
 	if (::close (m_fd) != 0)
 		error ("close: %s\n", std::strerror (errno));
-#endif
 }
 
 Socket::Socket (int const fd_) : m_fd (fd_), m_listening (false), m_connected (false)
@@ -83,17 +76,12 @@ UniqueSocket Socket::accept ()
 
 int Socket::atMark ()
 {
-#ifdef __NDS__
-	errno = ENOSYS;
-	return -1;
-#else
 	auto const rc = ::sockatmark (m_fd);
 
 	if (rc < 0)
 		error ("sockatmark: %s\n", std::strerror (errno));
 
 	return rc;
-#endif
 }
 
 bool Socket::bind (SockAddr const &addr_)
@@ -163,12 +151,6 @@ bool Socket::shutdown (int const how_)
 
 bool Socket::setLinger (bool const enable_, std::chrono::seconds const time_)
 {
-#ifdef __NDS__
-	(void)enable_;
-	(void)time_;
-	errno = ENOSYS;
-	return -1;
-#else
 	linger linger;
 	linger.l_onoff  = enable_;
 	linger.l_linger = time_.count ();
@@ -184,21 +166,10 @@ bool Socket::setLinger (bool const enable_, std::chrono::seconds const time_)
 	}
 
 	return true;
-#endif
 }
 
 bool Socket::setNonBlocking (bool const nonBlocking_)
 {
-#ifdef __NDS__
-	unsigned long enable = nonBlocking_;
-
-	auto const rc = ::ioctl (m_fd, FIONBIO, &enable);
-	if (rc != 0)
-	{
-		error ("fcntl(FIONBIO, %d): %s\n", nonBlocking_, std::strerror (errno));
-		return false;
-	}
-#else
 	auto flags = ::fcntl (m_fd, F_GETFL, 0);
 	if (flags == -1)
 	{
@@ -216,7 +187,6 @@ bool Socket::setNonBlocking (bool const nonBlocking_)
 		error ("fcntl(F_SETFL, %d): %s\n", flags, std::strerror (errno));
 		return false;
 	}
-#endif
 
 	return true;
 }
@@ -257,38 +227,6 @@ bool Socket::setSendBufferSize (std::size_t const size_)
 	return true;
 }
 
-#ifndef __NDS__
-bool Socket::joinMulticastGroup (SockAddr const &addr_, SockAddr const &iface_)
-{
-	ip_mreq group;
-	group.imr_multiaddr = static_cast<sockaddr_in const &> (addr_).sin_addr;
-	group.imr_interface = static_cast<sockaddr_in const &> (iface_).sin_addr;
-
-	if (::setsockopt (m_fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &group, sizeof (group)) != 0)
-	{
-		error ("setsockopt(IP_ADD_MEMBERSHIP, %s): %s\n", addr_.name (), std::strerror (errno));
-		return false;
-	}
-
-	return true;
-}
-
-bool Socket::dropMulticastGroup (SockAddr const &addr_, SockAddr const &iface_)
-{
-	ip_mreq group;
-	group.imr_multiaddr = static_cast<sockaddr_in const &> (addr_).sin_addr;
-	group.imr_interface = static_cast<sockaddr_in const &> (iface_).sin_addr;
-
-	if (::setsockopt (m_fd, IPPROTO_IP, IP_DROP_MEMBERSHIP, &group, sizeof (group)) != 0)
-	{
-		error ("setsockopt(IP_DROP_MEMBERSHIP, %s): %s\n", addr_.name (), std::strerror (errno));
-		return false;
-	}
-
-	return true;
-}
-#endif
-
 std::make_signed_t<std::size_t>
     Socket::read (void *const buffer_, std::size_t const size_, bool const oob_)
 {
@@ -309,21 +247,6 @@ std::make_signed_t<std::size_t> Socket::read (IOBuffer &buffer_, bool const oob_
 	auto const rc = read (buffer_.freeArea (), buffer_.freeSize (), oob_);
 	if (rc > 0)
 		buffer_.markUsed (rc);
-
-	return rc;
-}
-
-std::make_signed_t<std::size_t>
-    Socket::readFrom (void *const buffer_, std::size_t const size_, SockAddr &addr_)
-{
-	assert (buffer_);
-	assert (size_);
-
-	socklen_t addrLen = sizeof (sockaddr_storage);
-
-	auto const rc = ::recvfrom (m_fd, buffer_, size_, 0, addr_, &addrLen);
-	if (rc < 0 && errno != EWOULDBLOCK)
-		error ("recvfrom: %s\n", std::strerror (errno));
 
 	return rc;
 }
@@ -351,19 +274,6 @@ std::make_signed_t<std::size_t> Socket::write (IOBuffer &buffer_)
 	return rc;
 }
 
-std::make_signed_t<std::size_t>
-    Socket::writeTo (void const *buffer_, std::size_t size_, SockAddr const &addr_)
-{
-	assert (buffer_);
-	assert (size_ > 0);
-
-	auto const rc = ::sendto (m_fd, buffer_, size_, 0, addr_, addr_.size ());
-	if (rc < 0 && errno != EWOULDBLOCK)
-		error ("sendto: %s\n", std::strerror (errno));
-
-	return rc;
-}
-
 SockAddr const &Socket::sockName () const
 {
 	return m_sockName;
@@ -374,9 +284,9 @@ SockAddr const &Socket::peerName () const
 	return m_peerName;
 }
 
-UniqueSocket Socket::create (Type const type_)
+UniqueSocket Socket::create ()
 {
-	auto const fd = ::socket (AF_INET, static_cast<int> (type_), 0);
+	auto const fd = ::socket (AF_INET, SOCK_STREAM, 0);
 	if (fd < 0)
 	{
 		error ("socket: %s\n", std::strerror (errno));
@@ -413,61 +323,3 @@ int Socket::poll (PollInfo *const info_,
 
 	return rc;
 }
-
-#ifdef __NDS__
-extern "C" int poll (pollfd *const fds_, nfds_t const nfds_, int const timeout_)
-{
-	fd_set readFds;
-	fd_set writeFds;
-	fd_set exceptFds;
-
-	FD_ZERO (&readFds);
-	FD_ZERO (&writeFds);
-	FD_ZERO (&exceptFds);
-
-	for (nfds_t i = 0; i < nfds_; ++i)
-	{
-		if (fds_[i].events & POLLIN)
-			FD_SET (fds_[i].fd, &readFds);
-		if (fds_[i].events & POLLOUT)
-			FD_SET (fds_[i].fd, &writeFds);
-	}
-
-	timeval tv;
-	tv.tv_sec     = timeout_ / 1000;
-	tv.tv_usec    = (timeout_ % 1000) * 1000;
-	auto const rc = ::select (nfds_, &readFds, &writeFds, &exceptFds, &tv);
-	if (rc < 0)
-		return rc;
-
-	int count = 0;
-	for (nfds_t i = 0; i < nfds_; ++i)
-	{
-		bool counted    = false;
-		fds_[i].revents = 0;
-
-		if (FD_ISSET (fds_[i].fd, &readFds))
-		{
-			counted = true;
-			fds_[i].revents |= POLLIN;
-		}
-
-		if (FD_ISSET (fds_[i].fd, &writeFds))
-		{
-			counted = true;
-			fds_[i].revents |= POLLOUT;
-		}
-
-		if (FD_ISSET (fds_[i].fd, &exceptFds))
-		{
-			counted = true;
-			fds_[i].revents |= POLLERR;
-		}
-
-		if (counted)
-			++count;
-	}
-
-	return count;
-}
-#endif

@@ -2,8 +2,6 @@
 // - RFC  959 (https://tools.ietf.org/html/rfc959)
 // - RFC 3659 (https://tools.ietf.org/html/rfc3659)
 // - suggested implementation details from https://cr.yp.to/ftp/filesystem.html
-// - Deflate transmission mode for FTP
-//   (https://tools.ietf.org/html/draft-preston-ftpext-deflate-04)
 //
 // Copyright (C) 2024 Michael Theall
 //
@@ -25,11 +23,16 @@
 #include "ioBuffer.h"
 
 #include <dirent.h>
+#include <sys/stat.h>
 
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
 #include <memory>
+#include <string>
 #include <type_traits>
+
+using stat_t = struct stat;
 
 namespace fs
 {
@@ -89,10 +92,31 @@ private:
 	int m_fd = -1;
 };
 
-/// Directory object
+/// \brief Directory listing reader
 class Dir
 {
 public:
+	/// \brief How much of each entry the caller needs
+	enum class Detail
+	{
+		Name,        ///< Name only (NLST)
+		Status,      ///< Name, mode and size
+		StatusMTime, ///< Name, mode, size and mtime
+	};
+
+	/// \brief A directory entry
+	struct Entry
+	{
+		/// \brief Entry name, with no path attached
+		/// \note Only valid until the next read()
+		char const *name = nullptr;
+
+		/// \brief Entry status
+		/// \note Zeroed at Detail::Name. st_mtime is only meaningful at
+		///       Detail::StatusMTime.
+		stat_t status{};
+	};
+
 	~Dir ();
 
 	Dir ();
@@ -112,22 +136,41 @@ public:
 	/// \brief bool cast operator
 	explicit operator bool () const;
 
-	/// \brief DIR* cast operator
-	operator DIR * () const;
-
 	/// \brief Open directory
 	/// \param path_ Path to open
-	bool open (char const *path_);
+	/// \param detail_ How much of each entry to resolve
+	/// \param tzOffset_ Seconds to subtract from a resolved mtime (3DS only;
+	///        elsewhere the mtime comes from lstat already in local terms)
+	bool open (char const *path_, Detail detail_ = Detail::StatusMTime, std::time_t tzOffset_ = 0);
 
 	/// \brief Close directory
 	void close ();
 
-	/// \brief Read a directory entry
-	/// \note Returns nullptr on end-of-directory or error; check errno
-	dirent *read ();
+	/// \brief Read the next entry, resolving it to the requested detail
+	/// \note Returns nullptr at end of directory. "." and ".." are skipped, and
+	///       so is any entry whose status cannot be resolved (logged, not
+	///       reported, matching what the listing loop used to do inline).
+	Entry const *read ();
 
 private:
+	/// \brief Fill m_entry's status for the entry readdir() is sitting on
+	/// \param name_ Entry name
+	/// \returns false if the entry should be skipped
+	bool resolve (char const *name_);
+
 	/// \brief Underlying DIR*
 	std::unique_ptr<DIR, int (*) (DIR *)> m_dp{nullptr, nullptr};
+
+	/// \brief Path this directory was opened with, for building entry paths
+	std::string m_path;
+
+	/// \brief Entry handed back by read()
+	Entry m_entry;
+
+	/// \brief How much of each entry to resolve
+	Detail m_detail = Detail::StatusMTime;
+
+	/// \brief Seconds to subtract from a resolved mtime
+	std::time_t m_tzOffset = 0;
 };
 }

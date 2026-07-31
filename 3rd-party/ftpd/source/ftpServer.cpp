@@ -2,8 +2,6 @@
 // - RFC  959 (https://tools.ietf.org/html/rfc959)
 // - RFC 3659 (https://tools.ietf.org/html/rfc3659)
 // - suggested implementation details from https://cr.yp.to/ftp/filesystem.html
-// - Deflate transmission mode for FTP
-//   (https://tools.ietf.org/html/draft-preston-ftpext-deflate-04)
 //
 // Copyright (C) 2024 Michael Theall
 //
@@ -48,13 +46,6 @@
 #include <vector>
 using namespace std::chrono_literals;
 
-#define LOCKED(x)                                                                                  \
-	do                                                                                             \
-	{                                                                                              \
-		auto const lock = std::scoped_lock (m_lock);                                               \
-		x;                                                                                         \
-	} while (0)
-
 namespace
 {
 /// \brief Application start time
@@ -74,7 +65,7 @@ FtpServer::~FtpServer ()
 	m_thread.join ();
 }
 
-FtpServer::FtpServer (UniqueFtpConfig config_, std::function<bool ()> enabled_)
+FtpServer::FtpServer (FtpConfig config_, std::function<bool ()> enabled_)
     : m_config (std::move (config_)), m_enabled (std::move (enabled_))
 {
 #ifdef __3DS__
@@ -88,11 +79,19 @@ FtpServer::FtpServer (UniqueFtpConfig config_, std::function<bool ()> enabled_)
 
 UniqueFtpServer FtpServer::create (std::uint16_t const port_, std::function<bool ()> enabled_)
 {
-	auto config = FtpConfig::create ();
-	if (!config->setPort (port_))
+	if (!FtpConfig::validPort (port_))
 		error ("Invalid listen port %u\n", port_);
 
-	return UniqueFtpServer (new FtpServer (std::move (config), std::move (enabled_)));
+	// The one place that reports which transfer sizes this binary was built
+	// with. Never conclude that from reading a Makefile: an override only takes
+	// effect if the name is in FTPD_TUNABLES there *and* has an #ifndef default
+	// in ftpSession.h, and a mismatch silently compiles the default.
+	info ("FTP buffers: xfer=%d file=%d sock=%d\n",
+	    FTPD_XFER_BUFFERSIZE,
+	    FTPD_FILE_BUFFERSIZE,
+	    FTPD_SOCK_BUFFERSIZE);
+
+	return UniqueFtpServer (new FtpServer (FtpConfig (port_), std::move (enabled_)));
 }
 
 std::string FtpServer::address ()
@@ -122,16 +121,11 @@ void FtpServer::handleNetworkFound ()
 	if (!platform::networkAddress (addr))
 		return;
 
-	std::uint16_t port;
-
-	{
-		auto const lock = m_config->lockGuard ();
-		port            = m_config->port ();
-	}
+	auto const port = m_config.port ();
 
 	addr.setPort (port);
 
-	auto socket = Socket::create (Socket::eStream);
+	auto socket = Socket::create ();
 	if (!socket)
 		return;
 
@@ -162,17 +156,16 @@ void FtpServer::handleNetworkFound ()
 
 void FtpServer::handleNetworkLost ()
 {
-	{
-		// destroy sessions
-		std::vector<UniqueFtpSession> sessions;
-		LOCKED (sessions = std::move (m_sessions));
-	}
+	// destroy sessions
+	m_sessions.clear ();
 
 	{
+		// destroy the listen socket, but close it outside the lock
 		UniqueSocket sock;
-
-		// destroy listen socket
-		LOCKED (sock = std::move (m_socket));
+		{
+			auto const lock = std::scoped_lock (m_lock);
+			sock            = std::move (m_socket);
+		}
 	}
 
 	info ("Stopped server at %s\n", m_name.c_str ());
@@ -237,8 +230,7 @@ void FtpServer::loop ()
 			auto socket = m_socket->accept ();
 			if (socket)
 			{
-				auto session = FtpSession::create (*m_config, std::move (socket));
-				LOCKED (m_sessions.emplace_back (std::move (session)));
+				m_sessions.emplace_back (FtpSession::create (m_config, std::move (socket)));
 			}
 			else
 			{
@@ -248,26 +240,8 @@ void FtpServer::loop ()
 		}
 	}
 
-	{
-		std::vector<UniqueFtpSession> deadSessions;
-		{
-			// remove dead sessions
-			auto const lock = std::scoped_lock (m_lock);
-
-			auto it = std::begin (m_sessions);
-			while (it != std::end (m_sessions))
-			{
-				auto &session = *it;
-				if (session->dead ())
-				{
-					deadSessions.emplace_back (std::move (session));
-					it = m_sessions.erase (it);
-				}
-				else
-					++it;
-			}
-		}
-	}
+	// remove dead sessions
+	std::erase_if (m_sessions, [] (auto const &session_) { return session_->dead (); });
 
 	// poll sessions
 	if (!m_sessions.empty ())
