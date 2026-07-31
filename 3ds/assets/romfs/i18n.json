@@ -249,7 +249,7 @@
     "nl": "Back-ups verzenden/ontvangen via het netwerk",
     "ja": "ネットワーク経由でバックアップを送受信",
     "zh": "通过网络发送 / 接收存档备份",
-	"ru": "Отправлять / получать бэкапы через сеть"
+	"ru": "Отправить / получить бэкапы через сеть"
   },
   "settings.general.confirm_restore": {
     "en": "Confirm before restore",
@@ -729,7 +729,7 @@
     "nl": "Kon de bestaande back-upmap niet recursief verwijderen.",
     "ja": "既存のバックアップフォルダを再帰的に削除できませんでした。",
     "zh": "无法删除现有备份目录与其所包含的全部文件",
-	"ru": "Не удалось рекурсивно удалить существующий бекап\nпапку."
+	"ru": "Не удалось рекурсивно удалить существующий бэкап\nпапку."
   },
   "outcome.create_dst": {
     "en": "Failed to create destination directory.",
@@ -870,7 +870,7 @@
     "nl": "Kon back-uppakket niet maken.",
     "ja": "バックアップパッケージの作成に失敗しました。",
     "zh": "无法创建备份包",
-	"ru": "Не удалось создать пакет бекапа."
+	"ru": "Не удалось создать пакет бэкапа."
   },
   "outcome.send_too_large": {
     "en": "Backup too large to send (over 4 GiB).",
@@ -1770,7 +1770,7 @@
     "nl": "Een script uitvoeren",
     "ja": "スクリプトを実行",
     "zh": "运行一个脚本",
-	"ru": "Выполнить скрипт"
+	"ru": "Запустить скрипт"
   },
   "scripts.empty": {
     "en": "No scripts found in /3ds/Checkpoint/scripts",
@@ -1950,7 +1950,7 @@
     "nl": "Wacht op je antwoord…",
     "ja": "入力を待っています…",
     "zh": "等待你的回答…",
-	"ru": "Ожидание ответа…"
+	"ru": "Ожидание вашего ответа…"
   },
   "scripts.working": {
     "en": "Working…",
