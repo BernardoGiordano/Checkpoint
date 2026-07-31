@@ -1806,7 +1806,7 @@
     "nl": "vervangen",
     "ja": "上書き",
     "zh": "覆盖",
-	"ru": "перезаписать"
+	"ru": "перезаписывающий"
   },
   "scripts.confirm_run": {
     "en": "Run \"{0}\"?\nScripts can modify saves and SD card contents.",
