@@ -50,6 +50,19 @@ namespace i18n {
     // pre-stringified by the caller (this does no printf). Indexed placeholders
     // let a translation reorder arguments relative to English.
     std::string t(const std::string& key, std::initializer_list<std::string> args);
+
+    // True when the table has an entry for `key`. t() deliberately echoes the key
+    // on a miss, which is right for display but useless to a caller that wants to
+    // fall back to something of its own.
+    bool has(const std::string& key);
+
+    // Localizes a transfer mode tag for display. The tags ("Backup", "Restore",
+    // "Clearing", ...) are set by the io/transfer layers and doubled as
+    // identifiers the UI compares against, so they stay raw everywhere except
+    // here: `tag` maps to "main.mode.<tag lowercased, spaces to underscores>".
+    // A tag with no entry — or a mode string that is already localized, like the
+    // download label — comes back unchanged.
+    std::string transferMode(const std::string& tag);
 }
 
 #endif

@@ -74,8 +74,10 @@ namespace io {
     Result createDirectory(const std::string& path);
     // Deletes everything under `path`; with `removeRoot` also removes `path`
     // itself. Pass false when `path` is a mount root (e.g. "save:/"), which can
-    // never be rmdir'd.
-    Result deleteFolderRecursively(const std::string& path, bool removeRoot = true);
+    // never be rmdir'd. Every removed file is reported through `sink` when one is
+    // given; a wipe has no byte progress, only a file count, so each is reported
+    // with size 0.
+    Result deleteFolderRecursively(const std::string& path, bool removeRoot = true, ProgressSink* sink = nullptr);
     bool directoryExists(const std::string& path);
     bool fileExists(const std::string& path);
 }

@@ -594,7 +594,8 @@ void MainScreen::draw() const
             const int mx = (1280 - mw) / 2, my = (720 - mh) / 2;
             Shapes::cardRound(mx, my, mw, mh, 0, COLOR_SURFACE, COLOR_STROKE2, 1);
 
-            std::string titleStr = i18n::t("main.in_progress", {transfer.mode.empty() ? i18n::t("main.transferring") : transfer.mode});
+            std::string titleStr =
+                i18n::t("main.in_progress", {transfer.mode.empty() ? i18n::t("main.transferring") : i18n::transferMode(transfer.mode)});
             u32 tw, th;
             Gfx::GetTextDimensions(20, titleStr.c_str(), &tw, &th);
             Gfx::DrawText(20, mx + (mw - (int)tw) / 2, my + 24, COLOR_TEXT, titleStr.c_str());
@@ -631,7 +632,7 @@ void MainScreen::draw() const
         const int my = multiSelect ? 230 : 260;
         Shapes::cardRound(mx, my, mw, mh, 0, COLOR_SURFACE, COLOR_STROKE2, 1);
 
-        std::string titleStr = i18n::t("main.in_progress", {transfer.mode.empty() ? i18n::t("main.copying") : transfer.mode});
+        std::string titleStr = i18n::t("main.in_progress", {transfer.mode.empty() ? i18n::t("main.copying") : i18n::transferMode(transfer.mode)});
         u32 title_w, title_h;
         Gfx::GetTextDimensions(20, titleStr.c_str(), &title_w, &title_h);
         Gfx::DrawText(20, mx + (mw - (int)title_w) / 2, my + 16, COLOR_TEXT, titleStr.c_str());
