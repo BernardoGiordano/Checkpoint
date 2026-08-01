@@ -1846,7 +1846,7 @@ void FtpSession::statsReport ()
 	    wallMs,
 	    wallMs ? m_stats.bytes * 1000 / wallMs / 1024 : 0);
 	info (" disk=%" PRIu64 "ms/%u net=%" PRIu64 "ms/%u block=%" PRIu64
-	      "ms/%u wait=%" PRIu64 "ms wakes=%u xfer=%d file=%d sock=%d stats=%lldms\n",
+	      "ms/%u wait=%" PRIu64 "ms wakes=%u file=%d sock=%d stats=%lldms\n",
 	    m_stats.diskUs / 1000,
 	    m_stats.diskOps,
 	    m_stats.netUs / 1000,
@@ -1855,9 +1855,8 @@ void FtpSession::statsReport ()
 	    m_stats.blockOps,
 	    (wallUs > busyUs ? wallUs - busyUs : 0) / 1000,
 	    m_stats.wakes,
-	    FTPD_XFER_BUFFERSIZE,
-	    FTPD_FILE_BUFFERSIZE,
-	    FTPD_SOCK_BUFFERSIZE,
+	    FILE_BUFFERSIZE,
+	    SOCK_BUFFERSIZE,
 	    static_cast<long long> (STATS_INTERVAL.count ()));
 
 	m_stats = {};
@@ -1943,11 +1942,8 @@ bool FtpSession::flushStoreBuffer ()
 
 bool FtpSession::storeTransfer ()
 {
-	// Fill the buffer before touching the card. A recv() only yields about
-	// SO_RCVBUF bytes at a time, so writing each one straight through would turn
-	// a single FILE_BUFFERSIZE write into a handful of small ones. stdio's
-	// setvbuf buffer used to do this coalescing; now that reads and writes go
-	// directly against the IOBuffer, the buffer does it explicitly.
+	// Fill the buffer before touching the card so the smaller socket reads are
+	// coalesced into FILE_BUFFERSIZE writes.
 	if (!m_eof && m_xferBuffer.freeSize () != 0)
 	{
 		auto const rc = recvXferBuffer ();

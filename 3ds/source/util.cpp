@@ -67,10 +67,8 @@ Result servicesInit(void)
 {
     Result res = 0;
 
-    // Run New 3DS application cores at 804 MHz. This is deliberately
-    // unconditional: libctru makes it a no-op on Old 3DS/2DS, while omitting it
-    // leaves New 3DS performance on the table. It is independent of the Old-2DS
-    // core-1 FTP experiment in ftpPlatform.cpp.
+    // Run New 3DS application cores at 804 MHz. libctru makes this a no-op on
+    // Old 3DS/2DS.
     osSetSpeedupEnable(true);
     ATEXIT(disableNew3DSSpeedup);
 

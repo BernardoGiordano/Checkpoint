@@ -60,54 +60,22 @@ private:
 	/// \brief Response buffer size
 	constexpr static auto RESPONSE_BUFFERSIZE = 32768;
 
-// The three transfer sizes are ftpd's, and ftpd's numbers are the ones that
-// measure fast on real hardware — do not "tune" them without a before/after on
-// the console. They can be overridden from the command line for an A/B, e.g.
-//   make 3ds FTPD_XFER_BUFFERSIZE=32768
-//
-// What changed with the fs::File reshape is which buffer each number sizes, not
-// the numbers themselves. FILE_BUFFERSIZE used to size stdio's setvbuf buffer
-// and XFER_BUFFERSIZE sized m_xferBuffer, with a copy between them. Now
-// m_xferBuffer is the only buffer a transfer uses, so it takes FILE_BUFFERSIZE
-// and the SD read/write granularity is unchanged. XFER_BUFFERSIZE has no buffer
-// of its own left since MODE Z went away; it only supplies the default socket
-// buffer size off 3DS.
-#ifndef FTPD_XFER_BUFFERSIZE
-#define FTPD_XFER_BUFFERSIZE 65536
-#endif
-
-#ifndef FTPD_FILE_BUFFERSIZE
-#define FTPD_FILE_BUFFERSIZE (4 * FTPD_XFER_BUFFERSIZE)
-#endif
-
-// On 3DS every socket's SO_RCVBUF + SO_SNDBUF is carved out of the single 1 MiB
-// soc:u pool Checkpoint allocates in util.cpp, so this cannot be raised without
-// raising SOC_BUFFERSIZE too — at 65536 a handful of sockets exhaust the pool
-// and accept() starts returning ENOMEM.
-#ifndef FTPD_SOCK_BUFFERSIZE
-#ifdef __3DS__
-#define FTPD_SOCK_BUFFERSIZE 32768
-#else
-#define FTPD_SOCK_BUFFERSIZE FTPD_XFER_BUFFERSIZE
-#endif
-#endif
-
 	/// \brief Size of m_xferBuffer, and so the granularity of every SD read and
 	///        write a transfer performs
-	constexpr static auto FILE_BUFFERSIZE = FTPD_FILE_BUFFERSIZE;
+	constexpr static auto FILE_BUFFERSIZE = 256 * 1024;
 
-	/// \brief Socket buffer size
-	constexpr static auto SOCK_BUFFERSIZE = FTPD_SOCK_BUFFERSIZE;
-
-// Periodic transfer telemetry localized the Old-2DS bottleneck to synchronous
-// SOCU calls. It is now an opt-in hardware diagnostic; release candidates keep
-// final transfer totals without five-second log writes.
-#ifndef FTPD_STATS_INTERVAL_MS
-#define FTPD_STATS_INTERVAL_MS 0
+	// On 3DS every socket's SO_RCVBUF + SO_SNDBUF is carved out of the single 1 MiB
+	// soc:u pool Checkpoint allocates in util.cpp, so this cannot be raised without
+	// raising SOC_BUFFERSIZE too. At 64 KiB a handful of sockets exhaust the pool
+	// and accept() starts returning ENOMEM.
+#ifdef __3DS__
+	constexpr static auto SOCK_BUFFERSIZE = 32 * 1024;
+#else
+	constexpr static auto SOCK_BUFFERSIZE = 64 * 1024;
 #endif
 
-	constexpr static auto STATS_INTERVAL =
-	    std::chrono::milliseconds (FTPD_STATS_INTERVAL_MS);
+	/// \brief Periodic transfer telemetry interval; zero keeps only final totals
+	constexpr static auto STATS_INTERVAL = std::chrono::milliseconds (0);
 
 	/// \brief Session state
 	enum class State
