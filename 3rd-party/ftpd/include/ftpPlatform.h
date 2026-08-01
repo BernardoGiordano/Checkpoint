@@ -48,6 +48,14 @@ bool networkVisible ();
 /// \param[out] addr_ Network address
 bool networkAddress (SockAddr &addr_);
 
+/// \brief Notify the platform that a bulk file transfer became active
+/// \note Enables the 3DS transfer booster; a no-op elsewhere.
+void transferBegin ();
+
+/// \brief Notify the platform that a bulk file transfer stopped
+/// \note Balanced with transferBegin(), including aborted sessions.
+void transferEnd ();
+
 #ifdef __3DS__
 /// \brief Steady clock
 struct steady_clock

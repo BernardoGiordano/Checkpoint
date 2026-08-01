@@ -287,6 +287,14 @@ std::string buildResolvedPath (std::string_view const cwd_, std::string_view con
 ///////////////////////////////////////////////////////////////////////////
 FtpSession::~FtpSession ()
 {
+	// Network loss can destroy a session without routing it through COMMAND.
+	// Keep the platform's active-transfer count balanced in that path too.
+	if (m_stats.active)
+	{
+		platform::transferEnd ();
+		m_stats.active = false;
+	}
+
 	closeCommand ();
 	closePasv ();
 	closeData ();
@@ -515,6 +523,8 @@ bool FtpSession::poll (std::vector<UniqueFtpSession> const &sessions_)
 					}
 					else if (i.revents & (POLLIN | POLLOUT))
 					{
+						session->statsWake ();
+
 						for (unsigned i = 0; i < 10; ++i)
 						{
 							if (!((*session).*(session->m_transfer)) ())
@@ -557,8 +567,17 @@ void FtpSession::setState (State const state_, bool const closePasv_, bool const
 		m_restartPosition = 0;
 		m_filePosition    = 0;
 
-		m_file.close ();
+		if (m_stats.active)
+		{
+			auto const t0 = monotonicUs ();
+			m_file.close ();
+			m_stats.diskUs += monotonicUs () - t0;
+		}
+		else
+			m_file.close ();
+
 		m_dir.close ();
+		statsReport ();
 	}
 }
 
@@ -1142,12 +1161,14 @@ void FtpSession::xferFile (char const *const args_, XferFileMode const mode_)
 		m_recv     = false;
 		m_send     = true;
 		m_transfer = &FtpSession::retrieveTransfer;
+		statsBegin (true);
 	}
 	else
 	{
 		m_recv     = true;
 		m_send     = false;
 		m_transfer = &FtpSession::storeTransfer;
+		statsBegin (false);
 	}
 }
 
@@ -1653,7 +1674,7 @@ bool FtpSession::listTransfer ()
 	}
 
 	// send any pending data
-	auto const rc = m_dataSocket->write (m_xferBuffer);
+	auto const rc = sendXferBuffer ();
 	if (rc <= 0)
 	{
 		// error sending data
@@ -1685,7 +1706,7 @@ bool FtpSession::retrieveTransfer ()
 		}
 
 		// we have sent all the data, so read some more
-		auto const rc = m_file.read (m_xferBuffer);
+		auto const rc = readFile (m_xferBuffer);
 		if (rc < 0)
 		{
 			// failed to read data
@@ -1705,7 +1726,7 @@ bool FtpSession::retrieveTransfer ()
 	}
 
 	// send any pending data
-	auto const rc = m_dataSocket->write (m_xferBuffer);
+	auto const rc = sendXferBuffer ();
 	if (rc <= 0)
 	{
 		// error sending data
@@ -1723,9 +1744,190 @@ bool FtpSession::retrieveTransfer ()
 	return true;
 }
 
+std::uint64_t FtpSession::monotonicUs ()
+{
+	auto const now = platform::steady_clock::now ().time_since_epoch ();
+	return std::chrono::duration_cast<std::chrono::microseconds> (now).count ();
+}
+
+void FtpSession::statsBegin (bool const sending_)
+{
+	if (m_stats.active)
+		platform::transferEnd ();
+
+	m_stats         = {};
+	m_stats.active  = true;
+	m_stats.sending = sending_;
+	platform::transferBegin ();
+}
+
+void FtpSession::statsWake ()
+{
+	if (!m_stats.active)
+		return;
+
+	if (m_stats.startUs == 0)
+	{
+		m_stats.startUs = monotonicUs ();
+		m_stats.markUs  = m_stats.startUs;
+	}
+
+	++m_stats.wakes;
+	statsInterval ();
+}
+
+void FtpSession::statsInterval ()
+{
+	if (!m_stats.active || STATS_INTERVAL <= 0ms || m_stats.markUs == 0)
+		return;
+
+	auto const now    = monotonicUs ();
+	auto const wallUs = now - m_stats.markUs;
+	if (wallUs < static_cast<std::uint64_t> (STATS_INTERVAL.count ()) * 1000)
+		return;
+
+	auto const bytes   = m_stats.bytes - m_stats.markBytes;
+	auto const diskUs  = m_stats.diskUs - m_stats.markDiskUs;
+	auto const netUs   = m_stats.netUs - m_stats.markNetUs;
+	auto const blockUs = m_stats.blockUs - m_stats.markBlockUs;
+	auto const busyUs  = diskUs + netUs + blockUs;
+	auto const wallMs  = wallUs / 1000;
+
+	info ("  slice %s bytes=%" PRIu64 " rate=%" PRIu64 "KB/s disk=%" PRIu64
+	      "ms/%u net=%" PRIu64
+	      "ms/%u block=%" PRIu64 "ms/%u wait=%" PRIu64 "ms wakes=%u over %" PRIu64
+	      "ms\n",
+	    m_stats.sending ? "RETR" : "STOR",
+	    bytes,
+	    wallMs ? bytes * 1000 / wallMs / 1024 : 0,
+	    diskUs / 1000,
+	    m_stats.diskOps - m_stats.markDiskOps,
+	    netUs / 1000,
+	    m_stats.netOps - m_stats.markNetOps,
+	    blockUs / 1000,
+	    m_stats.blockOps - m_stats.markBlockOps,
+	    (wallUs > busyUs ? wallUs - busyUs : 0) / 1000,
+	    m_stats.wakes - m_stats.markWakes,
+	    wallMs);
+
+	m_stats.markUs       = now;
+	m_stats.markBytes    = m_stats.bytes;
+	m_stats.markDiskUs   = m_stats.diskUs;
+	m_stats.markNetUs    = m_stats.netUs;
+	m_stats.markBlockUs  = m_stats.blockUs;
+	m_stats.markDiskOps  = m_stats.diskOps;
+	m_stats.markNetOps   = m_stats.netOps;
+	m_stats.markBlockOps = m_stats.blockOps;
+	m_stats.markWakes    = m_stats.wakes;
+}
+
+void FtpSession::statsReport ()
+{
+	if (!m_stats.active)
+		return;
+
+	platform::transferEnd ();
+
+	// A client can disappear between RETR/STOR and the first data dispatch.
+	// There is no meaningful wall clock in that case.
+	if (m_stats.startUs == 0)
+	{
+		m_stats = {};
+		return;
+	}
+
+	auto const wallUs = monotonicUs () - m_stats.startUs;
+	auto const wallMs = wallUs / 1000;
+	auto const busyUs = m_stats.diskUs + m_stats.netUs + m_stats.blockUs;
+
+	info ("%s %" PRIu64 " bytes in %" PRIu64 " ms = %" PRIu64 " KB/s\n",
+	    m_stats.sending ? "RETR" : "STOR",
+	    m_stats.bytes,
+	    wallMs,
+	    wallMs ? m_stats.bytes * 1000 / wallMs / 1024 : 0);
+	info (" disk=%" PRIu64 "ms/%u net=%" PRIu64 "ms/%u block=%" PRIu64
+	      "ms/%u wait=%" PRIu64 "ms wakes=%u xfer=%d file=%d sock=%d stats=%lldms\n",
+	    m_stats.diskUs / 1000,
+	    m_stats.diskOps,
+	    m_stats.netUs / 1000,
+	    m_stats.netOps,
+	    m_stats.blockUs / 1000,
+	    m_stats.blockOps,
+	    (wallUs > busyUs ? wallUs - busyUs : 0) / 1000,
+	    m_stats.wakes,
+	    FTPD_XFER_BUFFERSIZE,
+	    FTPD_FILE_BUFFERSIZE,
+	    FTPD_SOCK_BUFFERSIZE,
+	    static_cast<long long> (STATS_INTERVAL.count ()));
+
+	m_stats = {};
+}
+
+std::make_signed_t<std::size_t> FtpSession::readFile (IOBuffer &buffer_)
+{
+	auto const t0 = monotonicUs ();
+	auto const rc = m_file.read (buffer_);
+	m_stats.diskUs += monotonicUs () - t0;
+	++m_stats.diskOps;
+	return rc;
+}
+
+std::make_signed_t<std::size_t> FtpSession::writeFile (IOBuffer &buffer_)
+{
+	auto const t0 = monotonicUs ();
+	auto const rc = m_file.write (buffer_);
+	m_stats.diskUs += monotonicUs () - t0;
+	++m_stats.diskOps;
+	return rc;
+}
+
+std::make_signed_t<std::size_t> FtpSession::sendXferBuffer ()
+{
+	if (!m_stats.active)
+		return m_dataSocket->write (m_xferBuffer);
+
+	auto const t0 = monotonicUs ();
+	auto const rc = m_dataSocket->write (m_xferBuffer);
+	auto const dt = monotonicUs () - t0;
+
+	if (rc > 0)
+	{
+		m_stats.bytes += rc;
+		m_stats.netUs += dt;
+		++m_stats.netOps;
+	}
+	else
+	{
+		m_stats.blockUs += dt;
+		++m_stats.blockOps;
+	}
+	return rc;
+}
+
+std::make_signed_t<std::size_t> FtpSession::recvXferBuffer ()
+{
+	auto const t0 = monotonicUs ();
+	auto const rc = m_dataSocket->read (m_xferBuffer);
+	auto const dt = monotonicUs () - t0;
+
+	// EOF is a successful receive operation; it simply moved no payload bytes.
+	if (rc >= 0)
+	{
+		m_stats.bytes += rc;
+		m_stats.netUs += dt;
+		++m_stats.netOps;
+	}
+	else
+	{
+		m_stats.blockUs += dt;
+		++m_stats.blockOps;
+	}
+	return rc;
+}
+
 bool FtpSession::flushStoreBuffer ()
 {
-	auto const rc = m_file.write (m_xferBuffer);
+	auto const rc = writeFile (m_xferBuffer);
 	if (rc <= 0)
 	{
 		// error writing data
@@ -1748,7 +1950,7 @@ bool FtpSession::storeTransfer ()
 	// directly against the IOBuffer, the buffer does it explicitly.
 	if (!m_eof && m_xferBuffer.freeSize () != 0)
 	{
-		auto const rc = m_dataSocket->read (m_xferBuffer);
+		auto const rc = recvXferBuffer ();
 		if (rc < 0)
 		{
 			// failed to read data

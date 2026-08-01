@@ -40,6 +40,13 @@
 #define SOC_ALIGN 0x1000
 #define SOC_BUFFERSIZE 0x100000
 
+namespace {
+    void disableNew3DSSpeedup(void)
+    {
+        osSetSpeedupEnable(false);
+    }
+}
+
 Result consoleDisplayError(const std::string& message, Result res)
 {
     consoleInit(GFX_TOP, nullptr);
@@ -59,6 +66,14 @@ Result consoleDisplayError(const std::string& message, Result res)
 Result servicesInit(void)
 {
     Result res = 0;
+
+    // Run New 3DS application cores at 804 MHz. This is deliberately
+    // unconditional: libctru makes it a no-op on Old 3DS/2DS, while omitting it
+    // leaves New 3DS performance on the table. It is independent of the Old-2DS
+    // core-1 FTP experiment in ftpPlatform.cpp.
+    osSetSpeedupEnable(true);
+    ATEXIT(disableNew3DSSpeedup);
+
     hidInit();
     ATEXIT(hidExit);
 

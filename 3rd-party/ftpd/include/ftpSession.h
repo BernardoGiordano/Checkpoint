@@ -99,12 +99,51 @@ private:
 	/// \brief Socket buffer size
 	constexpr static auto SOCK_BUFFERSIZE = FTPD_SOCK_BUFFERSIZE;
 
+// Periodic transfer telemetry localized the Old-2DS bottleneck to synchronous
+// SOCU calls. It is now an opt-in hardware diagnostic; release candidates keep
+// final transfer totals without five-second log writes.
+#ifndef FTPD_STATS_INTERVAL_MS
+#define FTPD_STATS_INTERVAL_MS 0
+#endif
+
+	constexpr static auto STATS_INTERVAL =
+	    std::chrono::milliseconds (FTPD_STATS_INTERVAL_MS);
+
 	/// \brief Session state
 	enum class State
 	{
 		COMMAND,
 		DATA_CONNECT,
 		DATA_TRANSFER,
+	};
+
+	/// \brief Timing counters for one file transfer
+	/// \note All fields belong to the FTP thread; no synchronization is needed.
+	struct XferStats
+	{
+		bool active  = false;
+		bool sending = false;
+
+		std::uint64_t startUs = 0;
+		std::uint64_t bytes   = 0;
+		std::uint64_t diskUs  = 0;
+		std::uint64_t netUs   = 0;
+		std::uint64_t blockUs = 0;
+
+		unsigned diskOps  = 0;
+		unsigned netOps   = 0;
+		unsigned blockOps = 0;
+		unsigned wakes    = 0;
+
+		std::uint64_t markUs      = 0;
+		std::uint64_t markBytes   = 0;
+		std::uint64_t markDiskUs  = 0;
+		std::uint64_t markNetUs   = 0;
+		std::uint64_t markBlockUs = 0;
+		unsigned markDiskOps      = 0;
+		unsigned markNetOps       = 0;
+		unsigned markBlockOps     = 0;
+		unsigned markWakes        = 0;
 	};
 
 	/// \brief Transfer file mode
@@ -231,6 +270,26 @@ private:
 	/// \note Short writes leave the remainder buffered for the next pass
 	bool flushStoreBuffer ();
 
+	/// \brief Monotonic microseconds for transfer telemetry
+	static std::uint64_t monotonicUs ();
+	/// \brief Start a file transfer measurement
+	void statsBegin (bool sending_);
+	/// \brief Record one socket-readiness wake and emit a due slice
+	void statsWake ();
+	/// \brief Emit one periodic delta of the running transfer
+	void statsInterval ();
+	/// \brief Emit the final transfer totals and clear the counters
+	void statsReport ();
+
+	/// \brief Timed transfer-file read
+	std::make_signed_t<std::size_t> readFile (IOBuffer &buffer_);
+	/// \brief Timed transfer-file write
+	std::make_signed_t<std::size_t> writeFile (IOBuffer &buffer_);
+	/// \brief Timed data-socket send
+	std::make_signed_t<std::size_t> sendXferBuffer ();
+	/// \brief Timed data-socket receive
+	std::make_signed_t<std::size_t> recvXferBuffer ();
+
 	/// \brief FTP settings, owned by the server
 	FtpConfig const &m_config;
 
@@ -254,6 +313,9 @@ private:
 
 	/// \brief Transfer buffer
 	IOBuffer m_xferBuffer;
+
+	/// \brief Current file-transfer performance counters
+	XferStats m_stats;
 
 	/// \brief Address from last PORT command
 	SockAddr m_portAddr;

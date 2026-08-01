@@ -102,9 +102,12 @@ CFLAGS	+=	$(INCLUDE) -DARM11 -D__3DS__ -D_GNU_SOURCE=1
 
 # ftpd transfer-size knobs, so an A/B is a command-line argument rather than a
 # header edit: make 3ds FTPD_XFER_BUFFERSIZE=32768. Every name here must also
-# have an #ifndef default in 3rd-party/ftpd/include/ftpSession.h — a knob that
-# exists in only one of the two places silently compiles the default.
-FTPD_TUNABLES	:=	$(foreach v,FTPD_XFER_BUFFERSIZE FTPD_FILE_BUFFERSIZE FTPD_SOCK_BUFFERSIZE,\
+# have an #ifndef default in the ftpd source (ftpSession.h or ftpPlatform.cpp) —
+# a knob that exists in only one of the two places silently compiles the default.
+FTPD_TUNABLES	:=	$(foreach v,FTPD_XFER_BUFFERSIZE FTPD_FILE_BUFFERSIZE FTPD_SOCK_BUFFERSIZE \
+						FTPD_THREAD_CORE FTPD_THREAD_PRIORITY_OFFSET FTPD_SYSCORE_TIME_LIMIT FTPD_APP_CORE_HELPER_MODE \
+						FTPD_APP_CORE_HELPER_PRIORITY FTPD_APP_CORE_HELPER_ITERATIONS \
+						FTPD_STATS_INTERVAL_MS,\
 					$(if $($(v)),-D$(v)=$($(v))))
 CFLAGS	+=	$(FTPD_TUNABLES)
 

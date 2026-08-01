@@ -86,10 +86,11 @@ UniqueFtpServer FtpServer::create (std::uint16_t const port_, std::function<bool
 	// with. Never conclude that from reading a Makefile: an override only takes
 	// effect if the name is in FTPD_TUNABLES there *and* has an #ifndef default
 	// in ftpSession.h, and a mismatch silently compiles the default.
-	info ("FTP buffers: xfer=%d file=%d sock=%d\n",
+	info ("FTP buffers: xfer=%d file=%d sock=%d stats=%dms\n",
 	    FTPD_XFER_BUFFERSIZE,
 	    FTPD_FILE_BUFFERSIZE,
-	    FTPD_SOCK_BUFFERSIZE);
+	    FTPD_SOCK_BUFFERSIZE,
+	    FTPD_STATS_INTERVAL_MS);
 
 	return UniqueFtpServer (new FtpServer (FtpConfig (port_), std::move (enabled_)));
 }
