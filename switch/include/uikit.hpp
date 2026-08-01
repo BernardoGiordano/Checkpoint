@@ -73,6 +73,45 @@ namespace UiKit {
     // settings section label (1b). Does not upper-case `text` itself — pass it
     // already uppercased so callers control acronyms (e.g. "BCAT").
     void drawSectionLabel(int x, int y, const std::string& text);
+
+    // Default easing time constant, in seconds: an eased value covers 1 - 1/e of
+    // the distance left every TAU, until the closing-speed floor in uikit.cpp
+    // takes over and finishes the move. A tile-to-tile jump lands in ~150 ms,
+    // well under the ~156 ms D-Pad auto-repeat both lists use, so a held
+    // direction settles between steps instead of smearing into a drift.
+    constexpr float EASE_TAU = 0.04f;
+
+    // A screen coordinate (in pixels) that chases a target instead of jumping to
+    // it — the shared motion behind every scrolling list and sliding selection.
+    //
+    // The animation is display-only: callers keep driving their own integer
+    // cursor/scroll state from input and pass the position that state implies, so
+    // an eased value can never desync the selection from what a button press did.
+    // step() is called once per frame while drawing and returns the position to
+    // draw at; it takes the frame delta from Gfx::animationTime(), so a dropped
+    // frame shortens the animation rather than stretching it.
+    class Eased {
+    public:
+        explicit Eased(float tau = EASE_TAU) : mTau(tau) {}
+
+        // Eases toward `target` and returns the current position. Distances above
+        // `snapDistance` (0 disables) are covered instantly: a list that wrapped
+        // around, or a grid cursor that jumped a screenful, has nothing
+        // meaningful to slide through.
+        float step(float target, float snapDistance = 0.0f);
+
+        // Drops onto a position with no animation. For when what is underneath
+        // changed (a new title's backups, a different save-type filter): sliding
+        // between two unrelated lists means nothing.
+        void snap(float value) { mValue = value; }
+
+    private:
+        float mValue = 0.0f;
+        // Previous step()'s Gfx::animationTime(), or negative before the first
+        // one (which then eases by nothing and just seeds the clock).
+        float mClock = -1.0f;
+        float mTau;
+    };
 }
 
 #endif

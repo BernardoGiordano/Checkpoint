@@ -40,6 +40,7 @@
 #include "savekind.hpp"
 #include "title.hpp"
 #include "transferstatus.hpp"
+#include "uikit.hpp"
 #include <array>
 #include <tuple>
 
@@ -63,6 +64,10 @@ protected:
     // Clamp mScrollRow so the cursor row is inside the 3 fully visible rows
     // (and never past the end of the list).
     void scrollToCursor(size_t count);
+    // Drops the grid's scroll and focus-ring animations onto the current cursor:
+    // for when the tiles underneath change wholesale (save-type filter, account),
+    // where sliding between two unrelated lists means nothing.
+    void snapGridAnimation(void);
     void updateSelector(const InputState& input);
     void handleEvents(const InputState& input);
     std::string nameFromCell(size_t index) const;
@@ -102,6 +107,13 @@ private:
     size_t mCursor    = 0;
     int mScrollRow    = 0;
     u64 mLastMoveTick = 0; // held-D-pad repeat timing
+    // Animated mirrors of the grid geometry, stepped while drawing (hence
+    // mutable): the vertical scroll in content-space pixels (row r sits at
+    // r * TILE_PITCH), and the focus ring's own position, which slides tile to
+    // tile even when the grid does not scroll.
+    mutable UiKit::Eased mGridScrollAnim;
+    mutable UiKit::Eased mRingXAnim;
+    mutable UiKit::Eased mRingYAnim;
     std::unique_ptr<BackupList> backupList;
     std::unique_ptr<Clickable> buttonBackup, buttonRestore;
     // Wireless Send touch button (drawn/handled only when the transfer setting is

@@ -64,6 +64,14 @@ namespace Gfx {
     // center a wrapped block instead of measuring the unwrapped single line.
     void MeasureTextBox(int size, const char* text, int max, u32* w, u32* h, FontFamily family = FontFamily::Sans);
     void Render(void);
+
+    // Clip every following draw to this logical-720p rect, until ResetScissor()
+    // (or the next frame — the scissor is reset when a frame begins). Used by
+    // scrolling lists to hide the rows sliding in/out past their window edges.
+    // Coordinates are scaled to the real framebuffer, so docked 1080p clips the
+    // same logical rect.
+    void SetScissor(int x, int y, int w, int h);
+    void ResetScissor(void);
     // 1x1 solid-color texture (DrawImageScale stretches it to any size).
     void CreateColorTexture(Texture** texture, Color color);
 

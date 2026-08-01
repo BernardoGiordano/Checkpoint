@@ -36,6 +36,7 @@
 #include "titlecatalog.hpp"
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <optional>
 
 namespace {
@@ -193,6 +194,9 @@ void BackupList::rebuild(bool sizesOnly)
     mTotalSize = (total && *total > 0) ? humanSize(*total) : std::string();
 
     clampCursor(); // the list may have shrunk/grown; keep the selection valid
+    if (!sizesOnly) {
+        snapAnimation(); // different rows underneath: sliding between them means nothing
+    }
 }
 
 namespace {
@@ -220,14 +224,39 @@ namespace {
 void BackupList::draw(bool focused)
 {
     const size_t total = displayCount();
-    const size_t last  = std::min(mOffset + mVisibleRows, total);
+    const int windowH  = (int)mVisibleRows * ROW_PITCH - ROW_GAP;
+    // A wrap (last row -> first, or first -> last) travels further than the window
+    // is tall; whipping the whole list past the eye reads as a glitch, so those
+    // jumps snap instead.
+    const float snapDistance = (float)(mVisibleRows * (size_t)ROW_PITCH);
+    const int scroll         = (int)lroundf(mScrollAnim.step((float)(mOffset * (size_t)ROW_PITCH), snapDistance));
+    // Mid-slide a row hangs off each edge of the window: draw one extra on both
+    // sides and let the scissor cut them, so nothing bleeds onto the backups
+    // header above or the action buttons below.
+    const size_t first = (size_t)(scroll / ROW_PITCH);
+    const size_t last  = std::min(total, (size_t)((scroll + windowH) / ROW_PITCH) + 1);
+    // Selection highlight rides its own animated position, so it slides between
+    // rows even when the window itself does not move.
+    const int cursorY = mListY + (int)lroundf(mCursorAnim.step((float)(mIndex * (size_t)ROW_PITCH), snapDistance)) - scroll;
 
-    for (size_t i = mOffset; i < last; i++) {
-        const int ry   = mListY + (int)(i - mOffset) * ROW_PITCH;
-        const bool cur = focused && i == mIndex;
+    // Only the vertical edges need clipping; the 2px of horizontal slack keeps the
+    // rows' antialiased left/right edges out of the scissor.
+    Gfx::SetScissor(mListX - 2, mListY, mListW + 4, windowH);
 
+    // Row backgrounds first, then the highlight on top of them: the highlight is
+    // a single sliding quad, not the selected row's own fill, so it can sit
+    // between two rows mid-animation.
+    for (size_t i = first; i < last; i++) {
         // Rectangular rows (radius 0) to match the 3DS list and the squared buttons.
-        Shapes::fillRound(mListX, ry, mListW, ROW_H, 0, cur ? COLOR_ACCENT_TINT : COLOR_FILL1);
+        Shapes::fillRound(mListX, mListY + (int)i * ROW_PITCH - scroll, mListW, ROW_H, 0, COLOR_FILL1);
+    }
+    if (focused && total > 0) {
+        Shapes::fillRound(mListX, cursorY, mListW, ROW_H, 0, COLOR_ACCENT_TINT);
+    }
+
+    for (size_t i = first; i < last; i++) {
+        const int ry   = mListY + (int)i * ROW_PITCH - scroll;
+        const bool cur = focused && i == mIndex;
 
         if (i == 0 || isReceiveRow(i)) {
             // Action rows: the synthetic "New..." create-backup row and, when
@@ -237,10 +266,6 @@ void BackupList::draw(bool focused)
             std::string label = i18n::t(i == 0 ? "main.new_backup" : "transfer.receive");
             Gfx::GetTextDimensions(14, label.c_str(), NULL, &th);
             Gfx::DrawText(14, mListX + 16, ry + (ROW_H - (int)th) / 2, COLOR_ACCENT_LIGHT, (" " + label).c_str());
-            // The breathing ring must reach the "New backup" row too.
-            if (cur) {
-                Shapes::focusRing(mListX, ry, mListW, ROW_H, 0, COLOR_ACCENT);
-            }
             continue;
         }
 
@@ -263,17 +288,22 @@ void BackupList::draw(bool focused)
             Gfx::DrawText(
                 12, mListX + mListW - 12 - (int)sw, ry + (ROW_H - (int)sh) / 2, cur ? COLOR_TEXT2 : COLOR_TEXT3, sizeStr.c_str(), FontFamily::Mono);
         }
+    }
 
-        // The same breathing accent ring the title grid uses on its selection,
-        // so the backup list reads as "the thing you're driving" once focused.
-        if (cur) {
-            Shapes::focusRing(mListX, ry, mListW, ROW_H, 0, COLOR_ACCENT);
-        }
+    Gfx::ResetScissor();
+
+    // The same breathing accent ring the title grid uses on its selection, so the
+    // backup list reads as "the thing you're driving" once focused. Drawn outside
+    // the scissor because its glow spills past the row, and clamped to the window
+    // so a transient animation overshoot cannot park it over the buttons.
+    if (focused && total > 0) {
+        const int ringY = std::clamp(cursorY, mListY, mListY + windowH - ROW_H);
+        Shapes::focusRing(mListX, ringY, mListW, ROW_H, 0, COLOR_ACCENT);
     }
 
     // Vertical scrollbar in the gutter right of the rows, shown only when the
     // list overflows a page. Track spans the visible rows; the thumb is sized and
-    // positioned from the first on-screen row so it tracks the paged flow.
+    // positioned from the animated scroll offset, so it glides with the rows.
     if (total > mVisibleRows) {
         const int trackX = mListX + mListW + 6;
         const int trackW = 4;
@@ -284,7 +314,7 @@ void BackupList::draw(bool focused)
         int thumbH = (int)((long)trackH * mVisibleRows / total);
         if (thumbH < 24)
             thumbH = 24;
-        int thumbY = trackY + (int)((long)(trackH - thumbH) * mOffset / (total - mVisibleRows));
+        int thumbY = trackY + (int)lroundf((float)(trackH - thumbH) * (float)scroll / (float)((total - mVisibleRows) * (size_t)ROW_PITCH));
         thumbY     = std::min(std::max(thumbY, trackY), trackY + trackH - thumbH);
         Shapes::fillRound(trackX, thumbY, trackW, thumbH, trackW / 2, COLOR_STROKE3);
     }

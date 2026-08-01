@@ -272,6 +272,13 @@ void MainScreen::scrollToCursor(size_t count)
     mScrollRow = std::clamp(mScrollRow, 0, maxScroll);
 }
 
+void MainScreen::snapGridAnimation(void)
+{
+    mGridScrollAnim.snap((float)(mScrollRow * TILE_PITCH));
+    mRingXAnim.snap((float)selectorX(mCursor));
+    mRingYAnim.snap((float)((mCursor / GRID_COLS) * TILE_PITCH));
+}
+
 void MainScreen::updateGridCursor(const InputState& input, size_t count)
 {
     if (count == 0) {
@@ -421,12 +428,26 @@ void MainScreen::draw() const
     }
 
     // ---- Title grid ----
-    // Rows mScrollRow..mScrollRow+3: three fully visible plus the faded
-    // partial row peeking past the viewport bottom.
-    const size_t drawBegin = (size_t)mScrollRow * GRID_COLS;
-    const size_t drawEnd   = std::min(filteredCnt, drawBegin + (size_t)(GRID_COLS * GRID_DRAW_ROWS));
+    // The grid scrolls by whole rows, but it does so as an animation: gridScroll
+    // is the eased position between the row the window came from and mScrollRow.
+    // A jump longer than the viewport (a filter with a shorter list clamping the
+    // scroll, a cursor sent across the list) snaps rather than sweeps.
+    const int gridScroll = (int)lroundf(mGridScrollAnim.step((float)(mScrollRow * TILE_PITCH), (float)(GRID_FULL_ROWS * TILE_PITCH)));
+    // Tile positions come off the animated scroll, so selectorY() (which the
+    // touch/hit-test path shares) is not what the grid draws with.
+    auto tileY = [&](size_t i) { return GRID_Y0 + (int)(i / GRID_COLS) * TILE_PITCH - gridScroll; };
+
+    // Rows firstRow..firstRow+4: the three fully visible ones, the faded partial
+    // row peeking past the viewport bottom, and one more that only exists while a
+    // scroll animates. The scissor is what keeps the extra rows from painting over
+    // the top bar and the hint bar.
+    const int viewportH    = GRID_BOTTOM - GRID_Y0;
+    const size_t firstRow  = (size_t)(gridScroll / TILE_PITCH);
+    const size_t drawBegin = firstRow * GRID_COLS;
+    const size_t drawEnd   = std::min(filteredCnt, ((size_t)((gridScroll + viewportH) / TILE_PITCH) + 1) * GRID_COLS);
+    Gfx::SetScissor(GRID_AREA_X, GRID_Y0, GRID_AREA_W, viewportH);
     for (size_t k = drawBegin; k < drawEnd; k++) {
-        const int tx = selectorX(k), ty = selectorY(k);
+        const int tx = selectorX(k), ty = tileY(k);
         Shapes::cardRound(tx, ty, TILE, TILE, 14, COLOR_TILE, COLOR_STROKE2, 1);
         Texture* smallIcon = TitleCatalog::get().filteredSmallIcon(g_currentUId, mSaveTypeFilter, k);
         if (smallIcon != NULL) {
@@ -446,14 +467,23 @@ void MainScreen::draw() const
         }
     }
 
+    Gfx::ResetScissor();
+
     // Focus ring on the selected tile (hidden while the rail owns the cursor).
+    // Drawn unclipped — its glow spills past the tile — from its own eased
+    // position, so it glides tile to tile. The horizontal snap distance is a
+    // single column: row-major wrap (right off the last column) crosses the whole
+    // grid, and sweeping back across five tiles reads as a glitch.
     if (filteredCnt > 0 && !sidebarFocused) {
-        Shapes::focusRing(selectorX(mCursor), selectorY(mCursor), TILE, TILE, 14, COLOR_ACCENT);
+        const int ringX = (int)lroundf(mRingXAnim.step((float)selectorX(mCursor), (float)TILE_PITCH * 1.5f));
+        const int ringY =
+            GRID_Y0 + (int)lroundf(mRingYAnim.step((float)((mCursor / GRID_COLS) * TILE_PITCH), (float)(GRID_FULL_ROWS * TILE_PITCH))) - gridScroll;
+        Shapes::focusRing(ringX, ringY, TILE, TILE, 14, COLOR_ACCENT);
     }
 
     // Fade the partial fourth row into the background (only when it holds
     // tiles); the opaque hint bar hides the few pixels that spill past 674.
-    if (drawEnd > drawBegin + (size_t)(GRID_COLS * GRID_FULL_ROWS)) {
+    if (filteredCnt > (firstRow + (size_t)GRID_FULL_ROWS) * GRID_COLS) {
         const Color fadeTop = makeColor(COLOR_BG.r, COLOR_BG.g, COLOR_BG.b, 0);
         Gfx::DrawRectGradientV(GRID_AREA_X + 1, GRID_FADE_Y, GRID_AREA_W - 1, GRID_FADE_H, fadeTop, COLOR_BG);
     }
@@ -650,12 +680,16 @@ void MainScreen::draw() const
         drawProgressBar(barY, progress, countStr.c_str(), pctStr);
         barY += 52;
 
-        float fileProgress = (transfer.currentFileSize > 0) ? (float)transfer.currentFileOffset / (float)transfer.currentFileSize : 0.0f;
-        char kbStr[40];
-        snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", transfer.currentFileOffset / 1024.0f, transfer.currentFileSize / 1024.0f);
-        char filePctStr[8];
-        snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
-        drawProgressBar(barY, fileProgress, kbStr, filePctStr);
+        // A destination wipe moves the file counter but has no bytes to report, so
+        // the per-file bar is left out rather than drawn permanently flat at 0%.
+        if (transfer.mode != "Clearing") {
+            float fileProgress = (transfer.currentFileSize > 0) ? (float)transfer.currentFileOffset / (float)transfer.currentFileSize : 0.0f;
+            char kbStr[40];
+            snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", transfer.currentFileOffset / 1024.0f, transfer.currentFileSize / 1024.0f);
+            char filePctStr[8];
+            snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
+            drawProgressBar(barY, fileProgress, kbStr, filePctStr);
+        }
     }
 }
 
@@ -1232,6 +1266,7 @@ void MainScreen::resetIndex(entryType_t type)
     if (type == TITLES) {
         mCursor    = 0;
         mScrollRow = 0;
+        snapGridAnimation();
     }
     else {
         backupList->resetIndex();
@@ -1248,6 +1283,10 @@ void MainScreen::index(entryType_t type, size_t i)
     if (type == TITLES) {
         mCursor = i;
         scrollToCursor(TitleCatalog::get().getFilteredTitleCount(g_currentUId, mSaveTypeFilter));
+        // Every caller sets the cursor because the grid's contents changed under
+        // it (a new save-type filter, a different account), never to nudge the
+        // selection: there is nothing to slide through.
+        snapGridAnimation();
     }
     else {
         backupList->setIndex(i);

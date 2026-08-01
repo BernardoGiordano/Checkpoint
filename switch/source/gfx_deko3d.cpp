@@ -41,6 +41,7 @@
 #include "gfx/CMemPool.h"
 #include "gfx/CShader.h"
 #include "logging.hpp"
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <deko3d.hpp>
@@ -891,6 +892,29 @@ void Gfx::ClearScreen(Color color)
     frameBegin();
     flushBatch(); // preserve painter's order if anything was already batched
     s_cmdbuf.clearColor(0, DkColorMask_RGBA, color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
+}
+
+void Gfx::SetScissor(int x, int y, int w, int h)
+{
+    frameBegin();
+    flushBatch(); // the scissor applies from the next draw call on, so close the pending batch first
+    // Callers pass logical-720p coordinates; the framebuffer is 1.5x that when docked.
+    const float sx = (float)s_fbWidth / (float)FB_WIDTH_HANDHELD;
+    const float sy = (float)s_fbHeight / (float)FB_HEIGHT_HANDHELD;
+    int x0 = (int)(x * sx), y0 = (int)(y * sy);
+    int x1 = (int)((x + w) * sx), y1 = (int)((y + h) * sy);
+    x0 = std::clamp(x0, 0, (int)s_fbWidth);
+    y0 = std::clamp(y0, 0, (int)s_fbHeight);
+    x1 = std::clamp(x1, x0, (int)s_fbWidth);
+    y1 = std::clamp(y1, y0, (int)s_fbHeight);
+    s_cmdbuf.setScissors(0, {{(u32)x0, (u32)y0, (u32)(x1 - x0), (u32)(y1 - y0)}});
+}
+
+void Gfx::ResetScissor(void)
+{
+    frameBegin();
+    flushBatch();
+    s_cmdbuf.setScissors(0, {{0, 0, s_fbWidth, s_fbHeight}});
 }
 
 static float s_currentTime = 0;
