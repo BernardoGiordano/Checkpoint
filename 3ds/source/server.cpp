@@ -301,32 +301,55 @@ namespace {
         }
     }
 
+    static bool acceptWouldBlock(int err)
+    {
+        return err == EAGAIN || err == EWOULDBLOCK || err == EINPROGRESS;
+    }
+
     static void networkLoop()
     {
-        struct sockaddr_in clientAddr;
-        u32 clientLen = sizeof(clientAddr);
-
         // Set server socket to non-blocking
         fcntl(serverSocket, F_SETFL, fcntl(serverSocket, F_GETFL, 0) | O_NONBLOCK);
 
+        int lastErrno        = 0;
+        u32 suppressed       = 0;
+        auto flushSuppressed = [&]() {
+            if (suppressed > 0) {
+                Logging::error("The previous accept() error repeated {} more times.", suppressed);
+                suppressed = 0;
+            }
+            lastErrno = 0;
+        };
+
         serverIsRunning.store(true);
         while (serverRunning.test_and_set()) {
+            struct sockaddr_in clientAddr;
+            u32 clientLen    = sizeof(clientAddr);
             s32 clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientLen);
 
             if (clientSocket >= 0) {
+                flushSuppressed();
                 // Set client socket to blocking for simpler sending
                 fcntl(clientSocket, F_SETFL, fcntl(clientSocket, F_GETFL, 0) & ~O_NONBLOCK);
                 handleHttpRequest(clientSocket);
                 close(clientSocket);
             }
-            else if (errno != EAGAIN && errno != EWOULDBLOCK) {
-                Logging::error("accept() failed on the transfer socket with errno {}.", errno);
+            else if (!acceptWouldBlock(errno)) {
+                if (errno == lastErrno) {
+                    suppressed++;
+                }
+                else {
+                    flushSuppressed();
+                    Logging::error("accept() failed on the HTTP server socket with errno {}.", errno);
+                    lastErrno = errno;
+                }
             }
 
             // Prevent 100% CPU usage
             svcSleepThread(100000000); // 100ms
         }
 
+        flushSuppressed();
         serverIsRunning.store(false);
     }
 }
