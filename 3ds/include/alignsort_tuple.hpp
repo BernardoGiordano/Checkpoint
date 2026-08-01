@@ -73,8 +73,8 @@ namespace internal {
 
     private:
         template <std::size_t... ArrAccess>
-        static constexpr auto get_tuple(
-            std::index_sequence<ArrAccess...>) -> std::tuple<std::tuple_element_t<indices[ArrAccess], std::tuple<Args...>>...>;
+        static constexpr auto get_tuple(std::index_sequence<ArrAccess...>)
+            -> std::tuple<std::tuple_element_t<indices[ArrAccess], std::tuple<Args...>>...>;
 
     public:
         using type = decltype(get_tuple(std::make_index_sequence<indices.size()>{}));

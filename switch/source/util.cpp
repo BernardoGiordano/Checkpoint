@@ -26,30 +26,22 @@
 
 #include "util.hpp"
 #include "configuration.hpp"
+#include "ftpserver.hpp"
 #include "i18n.hpp"
 #include "logging.hpp"
 #include "main.hpp"
 #include "server.hpp"
 #include "titlecatalog.hpp"
 
-extern "C" {
-// Strong override of the weak diagnostic hook in ftp.c: routes the core's FTP_LOG
-// lines into Checkpoint's logger so they show up in the in-memory / file logs and
-// the /logs endpoints. C linkage to match the C core's declaration.
-void ftp_log(const char* msg)
-{
-    Logging::info("[ftp] {}", msg);
-}
-}
-
 void servicesExit(void)
 {
-    // Stop and join the log server before socketExit tears the socket layer
-    // down under it, and flush the log file.
+    // Stop and join the servers before socketExit tears the socket layer down
+    // under them, and before Logging::exit() closes the log they write to.
+    // FTPServer::exit() is normally already done at the end of main(); this
+    // covers the early-exit paths that call servicesExit() without reaching it.
+    FTPServer::exit();
     Server::exit();
     Logging::exit();
-    if (g_ftpAvailable)
-        ftp_exit();
     if (g_notificationLedAvailable)
         hidsysExit();
     pdmqryExit();
@@ -98,8 +90,6 @@ Result servicesInit(void)
         Logging::info("Unable to initialize socket. Result code 0x{:08X}.", socinit);
     }
 
-    g_shouldExitNetworkLoop = R_FAILED(socinit);
-
     // The log server needs the socket layer up; skip it if socket init failed.
     if (R_SUCCEEDED(socinit)) {
         Server::init();
@@ -146,13 +136,7 @@ Result servicesInit(void)
     i18n::setLanguage(Configuration::getInstance().language());
 
     if (R_SUCCEEDED(socinit)) {
-        if (R_SUCCEEDED(res = ftp_init())) {
-            g_ftpAvailable = true;
-            Logging::info("FTP Server successfully loaded.");
-        }
-        else {
-            Logging::info("FTP Server failed to load. Result code 0x{:08X}.", res);
-        }
+        FTPServer::init();
     }
 
     if (R_SUCCEEDED(res = pdmqryInitialize())) {}
@@ -192,9 +176,9 @@ std::string StringUtils::UTF16toUTF8(const std::u16string& src)
 // https://stackoverflow.com/questions/14094621/change-all-accented-letters-to-normal-letters-in-c
 std::string StringUtils::removeAccents(std::string str)
 {
-    std::u16string src = UTF8toUTF16(str.c_str());
+    std::u16string src           = UTF8toUTF16(str.c_str());
     const std::u16string illegal = UTF8toUTF16("ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüūýþÿ");
-    const std::u16string fixed = UTF8toUTF16("AAAAAAECEEEEIIIIDNOOOOOx0UUUUYPsaaaaaaeceeeeiiiiOnooooo/0uuuuuypy");
+    const std::u16string fixed   = UTF8toUTF16("AAAAAAECEEEEIIIIDNOOOOOx0UUUUYPsaaaaaaeceeeeiiiiOnooooo/0uuuuuypy");
 
     for (size_t i = 0, sz = src.length(); i < sz; i++) {
         size_t index = illegal.find(src[i]);

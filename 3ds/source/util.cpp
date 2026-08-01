@@ -40,6 +40,13 @@
 #define SOC_ALIGN 0x1000
 #define SOC_BUFFERSIZE 0x100000
 
+namespace {
+    void disableNew3DSSpeedup(void)
+    {
+        osSetSpeedupEnable(false);
+    }
+}
+
 Result consoleDisplayError(const std::string& message, Result res)
 {
     consoleInit(GFX_TOP, nullptr);
@@ -59,6 +66,12 @@ Result consoleDisplayError(const std::string& message, Result res)
 Result servicesInit(void)
 {
     Result res = 0;
+
+    // Run New 3DS application cores at 804 MHz. libctru makes this a no-op on
+    // Old 3DS/2DS.
+    osSetSpeedupEnable(true);
+    ATEXIT(disableNew3DSSpeedup);
+
     hidInit();
     ATEXIT(hidExit);
 

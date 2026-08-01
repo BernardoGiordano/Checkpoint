@@ -194,8 +194,9 @@ int main()
     // Threads::exit() tries to join it — see ScriptRunner::shutdown().
     ScriptRunner::get().shutdown();
     Threads::exit();
-    // ftp_exit() closes the listen socket / live sessions; must run only after
-    // the loop thread above has been joined, never while it may be in ftp_loop.
+    // Stops the ftpd core's own thread and joins it, closing the listen socket
+    // and every live session. Runs here, before the singletons its loop reads
+    // (Configuration, Logging) are torn down.
     FTPServer::exit();
 
     exit(0);

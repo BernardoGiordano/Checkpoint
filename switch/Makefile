@@ -38,12 +38,13 @@ TARGET			:=	$(subst $e ,_,$(notdir $(APP_TITLE)))
 OUTDIR			:=	out
 BUILD			:=	build
 FORMATSOURCES	:=	source source/script ../common ../common/script
-SOURCES			:=	$(FORMATSOURCES) source/gfx ../3rd-party/ftp \
+SOURCES			:=	$(FORMATSOURCES) source/gfx \
+					../3rd-party/ftpd/source \
 					../common/script/cstdlib \
 					../3rd-party/picoc/source/interpreter
 DATA			:=	data
 FORMATINCLUDES	:=	include ../common ../common/script
-INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/ftp \
+INCLUDES		:=	$(FORMATINCLUDES) ../3rd-party/json ../3rd-party/ftpd/include \
 					../3rd-party/picoc/include
 EXEFS_SRC		:=	exefs_src
 ROMFS			:=	romfs
@@ -70,7 +71,7 @@ CFLAGS	:=	-g -Wall -Wextra -O3 -ffunction-sections \
 			-DGIT_REV=\"${GIT_REV}\" \
 			`aarch64-none-elf-pkg-config freetype2 libturbojpeg --cflags` \
 			-DJSON_HAS_FILESYSTEM=0 \
-			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0 \
+			-DJSON_HAS_EXPERIMENTAL_FILESYSTEM=0
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__ -D_GNU_SOURCE=1
 
