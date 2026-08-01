@@ -33,7 +33,7 @@
 namespace {
     // ftpd's core owns its own background thread (see 3rd-party/ftpd), so there
     // is no loop to drive from here: creating the server starts it, destroying
-    // it stops and joins it.
+    // it stops and joins it. This replaced networkLoop() in main.cpp.
     UniqueFtpServer server;
 }
 
@@ -41,7 +41,7 @@ void FTPServer::init(void)
 {
     // The predicate is polled by the server loop. Off means "close the listen
     // socket and drop every session" rather than "keep the port open but stop
-    // pumping it" — on 3DS that also hands the soc:u buffer pool back.
+    // pumping it".
     server = FtpServer::create(FTP_PORT, []() { return Configuration::getInstance().isFTPEnabled(); });
     Logging::info("FTP server created on port {}", FTP_PORT);
 }
