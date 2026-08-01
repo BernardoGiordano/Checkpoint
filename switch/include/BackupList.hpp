@@ -29,6 +29,7 @@
 
 #include "account.hpp"
 #include "title.hpp"
+#include "uikit.hpp"
 #include <optional>
 #include <string>
 #include <switch.h>
@@ -82,6 +83,7 @@ public:
     {
         mIndex  = 0;
         mOffset = 0;
+        snapAnimation(); // a different title: no slide from the old list's position
     }
     // Advances the selection from D-Pad / touch, one row at a time (a held
     // direction auto-repeats), keeping the scroll window around it. Same
@@ -114,6 +116,13 @@ private:
     // Keeps mIndex in range and slides mOffset so the selection stays visible
     // without leaving a trailing gap (mirrors the 3DS ListCursor clamp).
     void clampCursor(void);
+    // Drops both animations onto their targets (title change, list rebuild): the
+    // rows underneath are different, so sliding between them means nothing.
+    void snapAnimation(void)
+    {
+        mScrollAnim.snap((float)(mOffset * (size_t)ROW_PITCH));
+        mCursorAnim.snap((float)(mIndex * (size_t)ROW_PITCH));
+    }
     // On-screen row count: the saves list plus the optional "Receive" row.
     size_t displayCount(void) const { return mNames.size() + (mHasReceiveRow ? 1 : 0); }
 
@@ -130,9 +139,14 @@ private:
     std::string mTotalSize;
     // Selection + scroll window: mIndex is the selected row, mOffset the first
     // visible row. mLastTick gates D-Pad auto-repeat.
-    size_t mIndex            = 0;
-    size_t mOffset           = 0;
-    u64 mLastTick            = 0;
+    size_t mIndex  = 0;
+    size_t mOffset = 0;
+    u64 mLastTick  = 0;
+    // Animated mirrors of mOffset/mIndex, in content-space pixels (row i sits at
+    // i * ROW_PITCH): the scroll window, and the selection highlight, which slides
+    // between rows even when the window itself does not move.
+    UiKit::Eased mScrollAnim;
+    UiKit::Eased mCursorAnim;
     bool mValid              = false;
     AccountUid mUid          = {};
     saveTypeFilter_t mFilter = FILTER_SAVES;

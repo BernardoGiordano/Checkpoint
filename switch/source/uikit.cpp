@@ -28,11 +28,27 @@
 #include "colors.hpp"
 #include "shapes.hpp"
 #include <algorithm>
+#include <cmath>
 
 namespace {
     // The button glyphs are drawn from the shared font at this
     // pixel size in the hint bar (a ~20px circle, matching the 20px slot).
     constexpr int HINT_GLYPH_SIZE = 20;
+
+    // Below this the animation is over: half a pixel cannot be seen, and letting
+    // it run on would hold the drawn element off the pixel grid (blurry text).
+    constexpr float EASE_EPSILON = 0.5f;
+    // Floor on the closing speed, in pixels per second. Pure exponential easing
+    // has a long, mushy tail — it covers the same *fraction* of a shrinking gap
+    // every frame, so the last few pixels crawl. The floor makes the value cover
+    // at least this much ground per second no matter how close it is, which is
+    // what turns the motion from "drifting toward" into "snapping onto" the
+    // target: fast off the mark from the ease, decisive arrival from the floor.
+    constexpr float EASE_MIN_SPEED = 360.0f;
+    // A frame delta above this came from a stall (an SD walk, the system keyboard
+    // applet), not from a slow frame; easing the whole gap in one step would look
+    // like a jump, so it is capped at ~6 frames' worth.
+    constexpr float EASE_MAX_DT = 0.1f;
 
     int hintItemWidth(const UiKit::HintItem& item)
     {
@@ -41,6 +57,32 @@ namespace {
         Gfx::GetTextDimensions(13, item.label.c_str(), &tw, NULL);
         return (int)gw + 7 + (int)tw;
     }
+}
+
+float UiKit::Eased::step(float target, float snapDistance)
+{
+    const float now = Gfx::animationTime();
+    // The first step of all has no previous position to animate from — the value
+    // was never on screen — so it starts already on target. Without this the
+    // first frame drawn slides in from whatever the member was default-built to.
+    if (mClock < 0.0f) {
+        mClock = now;
+        mValue = target;
+        return mValue;
+    }
+    const float dt = std::clamp(now - mClock, 0.0f, EASE_MAX_DT);
+    mClock         = now;
+
+    const float distance = std::fabs(target - mValue);
+    if (distance < EASE_EPSILON || (snapDistance > 0.0f && distance > snapDistance)) {
+        mValue = target;
+        return mValue;
+    }
+
+    const float eased = distance * (1.0f - std::exp(-dt / mTau));
+    const float move  = std::max(eased, EASE_MIN_SPEED * dt);
+    mValue            = move >= distance ? target : mValue + std::copysign(move, target - mValue);
+    return mValue;
 }
 
 std::string UiKit::buttonGlyph(const std::string& key)
