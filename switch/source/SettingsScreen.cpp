@@ -99,7 +99,7 @@ namespace {
             return "简体中文";
         if (code == "ru")
             return "Русский";
-		return "English";
+        return "English";
     }
 
     size_t languageIndex(const std::string& code)

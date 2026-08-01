@@ -405,7 +405,7 @@
     "nl": "Blader door back-ups vanaf een computer",
     "ja": "パソコンからバックアップを閲覧",
     "zh": "从电脑浏览TF卡根目录",
-    "ru": "Просмотреть бэкапы через компьютер."
+    "ru": "Просмотреть бэкапы через компьютер"
   },
   "settings.conn.running": {
     "en": "· running",
@@ -441,7 +441,7 @@
     "nl": "Logserver",
     "ja": "ログサーバー",
     "zh": "日志服务",
-    "ru": "Лог сервера"
+    "ru": "Сервер логов"
   },
   "settings.conn.full_log": {
     "en": "Full log file",
@@ -657,7 +657,7 @@
     "nl": "Bron",
     "ja": "ソース",
     "zh": "源码",
-    "ru": "Источник"
+    "ru": "Исходный код"
   },
   "settings.logs.empty": {
     "en": "No logs yet.",
@@ -957,7 +957,7 @@
     "nl": "Kon de bestaande back-upmap niet recursief verwijderen.",
     "ja": "既存のバックアップフォルダを再帰的に削除できませんでした。",
     "zh": "无法删除现有备份目录与其所包含的全部文件",
-    "ru": "Не удалось рекурсивно удалить существующий бэкап\nпапку."
+    "ru": "Не удалось рекурсивно удалить папку\nсуществующего бэкапа."
   },
   "outcome.create_dst": {
     "en": "Failed to create destination directory.",
@@ -1005,7 +1005,7 @@
     "nl": "Kon niet vastleggen op save-apparaat.",
     "ja": "セーブデバイスへのコミットに失敗しました。",
     "zh": "无法将存档写入到存储设备",
-    "ru": "Не удалось записать данные сохранения на устройство"
+    "ru": "Не удалось записать данные сохранения на устройство."
   },
   "outcome.restore_failed": {
     "en": "Failed to restore save.",
@@ -1077,7 +1077,7 @@
     "nl": "Back-up {0} titel",
     "ja": "{0}件のタイトルをバックアップ",
     "zh": "备份 {0} 个游戏",
-    "ru": "Болванка"
+    "ru": "Бэкап {0} тайтла"
   },
   "main.backup_n_titles": {
     "en": "Backup {0} titles",
@@ -1089,7 +1089,7 @@
     "nl": "Back-up {0} titels",
     "ja": "{0}件のタイトルをバックアップ",
     "zh": "备份 {0} 个游戏",
-    "ru": "Бэкап тайтлов {0}"
+    "ru": "Бэкап тайтлов: {0}"
   },
   "main.copying": {
     "en": "Copying files",
@@ -1185,7 +1185,7 @@
     "nl": "Voortgang correct op schijf opgeslagen.\nHet systeemtoetsenbord was niet\nbeschikbaar. De voorgestelde doelmap\nis in plaats daarvan gebruikt.",
     "ja": "進行状況はディスクに正しく保存されました。\nシステムキーボードアプレットを利用できなかったため、推奨される保存先フォルダが使用されました。",
     "zh": "存档已成功保存到存储设备中\n无法打开系统键盘，已自动使用建议的备份目录名称",
-    "ru": "Прогресс успешно сохранен на диск.\nСистемный апплет клавиатуры был\nнедоступен. Было использовано рекомендуемое\nимя папки. "
+    "ru": "Прогресс успешно сохранен на диск.\nСистемный апплет клавиатуры был\nнедоступен. Было использовано рекомендуемое\nимя папки."
   },
   "main.restore_success": {
     "en": "{0}\nhas been restored successfully.",
@@ -1605,7 +1605,7 @@
     "nl": "Verbinding onderbroken. De ontvanger\nheeft de overdracht mogelijk geannuleerd.",
     "ja": "接続が中断されました。受信側が\n転送をキャンセルした可能性があります。",
     "zh": "连接已中断。接收端可能已取消传输",
-    "ru": "Соединение прервано. Ресивер \nмог отменить передачу."
+    "ru": "Соединение прервано. Ресивер\nмог отменить передачу."
   },
   "main.transferring": {
     "en": "Transferring backup",
@@ -1629,7 +1629,7 @@
     "nl": "Geselecteerde back-up is leeg.",
     "ja": "選択したバックアップは空です。",
     "zh": "所选备份为空",
-    "ru": "Болванка"
+    "ru": "Выбранный бэкап пуст."
   },
   "main.receiver_failed": {
     "en": "Failed to start receiver.",
@@ -1641,7 +1641,7 @@
     "nl": "Kon ontvanger niet starten.",
     "ja": "受信の開始に失敗しました。",
     "zh": "无法启动接收端",
-    "ru": "Выбранный бэкап пуст."
+    "ru": "Не удалось запустить ресивер."
   },
   "main.invalid_ip_port": {
     "en": "Invalid IP:PORT.",
@@ -1653,7 +1653,7 @@
     "nl": "Ongeldig IP:POORT.",
     "ja": "無効なIP:PORTです。",
     "zh": "IP:端口 无效",
-    "ru": "Некорректный IP:Port"
+    "ru": "Некорректный IP:PORT."
   },
   "main.pin_invalid": {
     "en": "PIN must be 4 digits.",
