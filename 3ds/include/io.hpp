@@ -77,10 +77,16 @@ namespace io {
         FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink, u8* buffer);
     Result createDirectory(FS_Archive archive, const std::u16string& path);
     void deleteBackupFolder(const std::u16string& path);
-    Result deleteFolderRecursively(FS_Archive arch, const std::u16string& path);
+    // Recursively counts the files under `path`, directories excluded. Gives the
+    // destination wipe a real total to report against before it starts deleting.
+    size_t countFilesRecursively(FS_Archive arch, const std::u16string& path);
+    // Both delete helpers report every removed file through `sink` when one is
+    // given. A wipe has no byte progress, only a file count, so each file is
+    // reported with size 0.
+    Result deleteFolderRecursively(FS_Archive arch, const std::u16string& path, ProgressSink* sink = nullptr);
     // Empties `path` without deleting the directory itself — used for a DSiWare
     // restore, where the TWL FAT `data` directory must survive.
-    Result deleteFolderContentsRecursively(FS_Archive arch, const std::u16string& path);
+    Result deleteFolderContentsRecursively(FS_Archive arch, const std::u16string& path, ProgressSink* sink = nullptr);
     bool directoryExists(FS_Archive archive, const std::u16string& path);
     bool fileExists(FS_Archive archive, const std::u16string& path);
     bool fileExists(const std::string& path);

@@ -235,7 +235,27 @@ bool io::directoryExists(FS_Archive archive, const std::u16string& path)
     return true;
 }
 
-Result io::deleteFolderContentsRecursively(FS_Archive arch, const std::u16string& path)
+size_t io::countFilesRecursively(FS_Archive arch, const std::u16string& path)
+{
+    Directory dir(arch, path);
+    if (!dir.good()) {
+        return 0;
+    }
+
+    size_t count = 0;
+    for (size_t i = 0, sz = dir.size(); i < sz; i++) {
+        if (dir.folder(i)) {
+            count += countFilesRecursively(arch, path + dir.entry(i) + StringUtils::UTF8toUTF16("/"));
+        }
+        else {
+            count++;
+        }
+    }
+
+    return count;
+}
+
+Result io::deleteFolderContentsRecursively(FS_Archive arch, const std::u16string& path, ProgressSink* sink)
 {
     Directory dir(arch, path);
     if (!dir.good()) {
@@ -245,22 +265,26 @@ Result io::deleteFolderContentsRecursively(FS_Archive arch, const std::u16string
     for (size_t i = 0, sz = dir.size(); i < sz; i++) {
         if (dir.folder(i)) {
             std::u16string newpath = path + dir.entry(i) + StringUtils::UTF8toUTF16("/");
-            deleteFolderContentsRecursively(arch, newpath);
+            deleteFolderContentsRecursively(arch, newpath, sink);
             newpath = path + dir.entry(i);
             FSUSER_DeleteDirectory(arch, fsMakePath(PATH_UTF16, newpath.data()));
         }
         else {
             std::u16string newpath = path + dir.entry(i);
             FSUSER_DeleteFile(arch, fsMakePath(PATH_UTF16, newpath.data()));
+            if (sink != nullptr) {
+                sink->startFile(dir.entry(i), 0);
+                sink->finishFile();
+            }
         }
     }
 
     return 0;
 }
 
-Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path)
+Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path, ProgressSink* sink)
 {
-    Result res = deleteFolderContentsRecursively(arch, path);
+    Result res = deleteFolderContentsRecursively(arch, path, sink);
     if (R_FAILED(res)) {
         return res;
     }
@@ -464,13 +488,18 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
 
             if (isTwl) {
                 // The TWL FAT `data` directory must survive; only its contents go.
-                deleteFolderContentsRecursively(handle.fs(), dstPath);
+                sink.begin("Clearing", countFilesRecursively(handle.fs(), dstPath));
+                deleteFolderContentsRecursively(handle.fs(), dstPath, &sink);
+                sink.end();
             }
             else if (target.kind() != BackupKind::Extdata) {
+                // One syscall, nothing to report against.
                 FSUSER_DeleteDirectoryRecursively(handle.fs(), fsMakePath(PATH_UTF16, dstPath.data()));
             }
             else {
-                deleteFolderRecursively(handle.fs(), dstPath);
+                sink.begin("Clearing", countFilesRecursively(handle.fs(), dstPath));
+                deleteFolderRecursively(handle.fs(), dstPath, &sink);
+                sink.end();
             }
 
             std::vector<io::TreeEntry> entries;

@@ -1103,6 +1103,78 @@
     "zh": "正在复制文件",
     "ru": "Копирование файлов"
   },
+  "main.mode.backup": {
+    "en": "Backup",
+    "it": "Backup",
+    "es": "Copia",
+    "fr": "Sauvegarde",
+    "de": "Backup",
+    "pt": "Backup",
+    "nl": "Back-up",
+    "ja": "バックアップ",
+    "zh": "备份",
+    "ru": "Бэкап"
+  },
+  "main.mode.restore": {
+    "en": "Restore",
+    "it": "Ripristino",
+    "es": "Restauración",
+    "fr": "Restauration",
+    "de": "Wiederherstellung",
+    "pt": "Restauração",
+    "nl": "Herstel",
+    "ja": "リストア",
+    "zh": "恢复",
+    "ru": "Восстановление"
+  },
+  "main.mode.clearing": {
+    "en": "Clearing",
+    "it": "Pulizia",
+    "es": "Limpieza",
+    "fr": "Nettoyage",
+    "de": "Bereinigung",
+    "pt": "Limpeza",
+    "nl": "Opschonen",
+    "ja": "消去",
+    "zh": "清理",
+    "ru": "Очистка"
+  },
+  "main.mode.verify": {
+    "en": "Verification",
+    "it": "Verifica",
+    "es": "Verificación",
+    "fr": "Vérification",
+    "de": "Überprüfung",
+    "pt": "Verificação",
+    "nl": "Verificatie",
+    "ja": "検証",
+    "zh": "校验",
+    "ru": "Проверка"
+  },
+  "main.mode.extracting_package": {
+    "en": "Extracting package",
+    "it": "Estrazione pacchetto",
+    "es": "Extracción del paquete",
+    "fr": "Extraction du paquet",
+    "de": "Entpacken des Pakets",
+    "pt": "Extração do pacote",
+    "nl": "Pakket uitpakken",
+    "ja": "パッケージ展開",
+    "zh": "软件包解压",
+    "ru": "Распаковка пакета"
+  },
+  "main.mode.sending_backup": {
+    "en": "Sending backup",
+    "it": "Invio backup",
+    "es": "Envío de la copia",
+    "fr": "Envoi de la sauvegarde",
+    "de": "Senden des Backups",
+    "pt": "Envio do backup",
+    "nl": "Back-up verzenden",
+    "ja": "バックアップ送信",
+    "zh": "发送备份",
+    "ru": "Отправка бэкапа"
+  },
   "main.in_progress": {
     "en": "{0} in progress...",
     "it": "{0} in corso...",

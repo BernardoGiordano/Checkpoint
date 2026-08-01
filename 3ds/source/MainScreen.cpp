@@ -279,7 +279,7 @@ void MainScreen::drawTop(void) const
         u64 total = ts.bytesTotal, done = ts.bytesDone;
         int pct            = total > 0 ? (int)((done * 100) / total) : 0;
         float frac         = total > 0 ? (float)done / (float)total : 0.0f;
-        std::string prefix = ts.mode.empty() ? i18n::t("main.transferring") : ts.mode;
+        std::string prefix = ts.mode.empty() ? i18n::t("main.transferring") : i18n::transferMode(ts.mode);
 
         const int mw = 260, mh = 120;
         const int mx = (400 - mw) / 2, my = (240 - mh) / 2;
@@ -399,7 +399,7 @@ void MainScreen::drawBottom(void) const
         C2D_DrawRectSolid(mx, my, 0.5f, mw, mh, COLOR_CARD);
         Gui::drawOutline(mx, my, mw, mh, 2, COLOR_ACCENT);
 
-        std::string titleStr = i18n::t("main.in_progress", {ts.mode.empty() ? i18n::t("main.copying") : ts.mode});
+        std::string titleStr = i18n::t("main.in_progress", {ts.mode.empty() ? i18n::t("main.copying") : i18n::transferMode(ts.mode)});
         text.drawCentered(titleStr, mx, mw, my + 10, 0.55f, COLOR_TEXT);
 
         std::string fname = StringUtils::UTF16toUTF8(ts.currentFile);
@@ -425,12 +425,16 @@ void MainScreen::drawBottom(void) const
         snprintf(pctStr, sizeof(pctStr), "%d%%", (int)((progress > 1.0f ? 1.0f : progress) * 100));
         drawProgressBar(barY, progress, countStr.c_str(), pctStr);
         barY += 30;
-        float fileProgress = (ts.currentFileSize > 0) ? (float)ts.currentFileOffset / (float)ts.currentFileSize : 0.0f;
-        char kbStr[32];
-        snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", ts.currentFileOffset / 1024.0f, ts.currentFileSize / 1024.0f);
-        char filePctStr[8];
-        snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
-        drawProgressBar(barY, fileProgress, kbStr, filePctStr);
+        // A destination wipe moves the file counter but has no bytes to report, so
+        // the per-file bar is left out rather than drawn permanently flat at 0%.
+        if (ts.mode != "Clearing") {
+            float fileProgress = (ts.currentFileSize > 0) ? (float)ts.currentFileOffset / (float)ts.currentFileSize : 0.0f;
+            char kbStr[32];
+            snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", ts.currentFileOffset / 1024.0f, ts.currentFileSize / 1024.0f);
+            char filePctStr[8];
+            snprintf(filePctStr, sizeof(filePctStr), "%d%%", (int)((fileProgress > 1.0f ? 1.0f : fileProgress) * 100));
+            drawProgressBar(barY, fileProgress, kbStr, filePctStr);
+        }
 
         // Hold-B-to-cancel is offered for a backup only (see update()).
         if (ts.mode == "Backup") {

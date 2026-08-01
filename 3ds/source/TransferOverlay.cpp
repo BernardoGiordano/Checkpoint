@@ -84,7 +84,7 @@ void ReceiveOverlay::drawBottom(void) const
         u64 total = ts.bytesTotal, done = ts.bytesDone;
         int pct            = total > 0 ? (int)((done * 100) / total) : 0;
         float frac         = total > 0 ? (float)done / (float)total : 0.0f;
-        std::string prefix = ts.mode.empty() ? i18n::t("transfer.downloading") : ts.mode;
+        std::string prefix = ts.mode.empty() ? i18n::t("transfer.downloading") : i18n::transferMode(ts.mode);
         text.draw(prefix, 40, 112, 0.5f, COLOR_TEXT);
         Gui::drawProgressBar(40, 132, 240, 10, frac, TransferStatus::bytesToMB(done, total), StringUtils::format("%d%%", pct));
         noticeY = 158;

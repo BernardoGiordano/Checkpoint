@@ -26,6 +26,7 @@
 
 #include "i18n.hpp"
 #include "json.hpp"
+#include <cctype>
 #include <cstdio>
 #include <unordered_map>
 
@@ -117,4 +118,18 @@ std::string i18n::t(const std::string& key, std::initializer_list<std::string> a
         ++index;
     }
     return result;
+}
+
+bool i18n::has(const std::string& key)
+{
+    return sTable.find(key) != sTable.end();
+}
+
+std::string i18n::transferMode(const std::string& tag)
+{
+    std::string key = "main.mode.";
+    for (char c : tag) {
+        key += (c == ' ') ? '_' : (char)std::tolower((unsigned char)c);
+    }
+    return has(key) ? t(key) : tag;
 }

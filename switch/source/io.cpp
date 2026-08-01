@@ -388,7 +388,7 @@ bool io::directoryExists(const std::string& path)
     return (stat(path.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode));
 }
 
-Result io::deleteFolderRecursively(const std::string& path, bool removeRoot)
+Result io::deleteFolderRecursively(const std::string& path, bool removeRoot, ProgressSink* sink)
 {
     Directory dir(path);
     if (!dir.good()) {
@@ -416,7 +416,7 @@ Result io::deleteFolderRecursively(const std::string& path, bool removeRoot)
     for (size_t i = 0, sz = dir.size(); i < sz; i++) {
         if (dir.folder(i)) {
             std::string newpath = path + dir.entry(i) + "/";
-            Result sub          = deleteFolderRecursively(newpath);
+            Result sub          = deleteFolderRecursively(newpath, true, sink);
             if (sub != 0 && firstError == 0) {
                 firstError = sub;
             }
@@ -426,6 +426,10 @@ Result io::deleteFolderRecursively(const std::string& path, bool removeRoot)
         else {
             std::string newpath = path + dir.entry(i);
             note(std::remove(newpath.c_str()), newpath);
+            if (sink != nullptr) {
+                sink->startFile(dir.entry(i), 0);
+                sink->finishFile();
+            }
         }
     }
 
@@ -543,7 +547,9 @@ io::IoOutcome io::restore(Title& title, const std::string& srcPath, ProgressSink
 
     std::string dstPath = "save:/";
 
-    res = io::deleteFolderRecursively(dstPath.c_str(), false);
+    sink.begin("Clearing", io::countFiles(dstPath));
+    res = io::deleteFolderRecursively(dstPath.c_str(), false, &sink);
+    sink.end();
     if (R_FAILED(res)) {
         FileSystem::unmountDevice();
         Logging::error("Failed to recursively delete directory {} with result 0x{:08X}.", dstPath, res);

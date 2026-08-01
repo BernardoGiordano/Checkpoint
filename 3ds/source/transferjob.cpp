@@ -28,6 +28,7 @@
 #include "backuptarget.hpp"
 #include "i18n.hpp"
 #include "io.hpp"
+#include "logging.hpp"
 #include "progress.hpp"
 #include "thread.hpp"
 #include "transfer.hpp"
@@ -105,7 +106,11 @@ void TransferJob::start(void)
         TransferStatus::beginLocalBatch(total);
     }
     mState.store(State::Running);
-    Threads::executeTask(TransferJob::runThread);
+
+    if (!Threads::create(Threads::WORKER_STACK, TransferJob::runThread)) {
+        Logging::warning("Could not create a dedicated transfer thread; falling back to the worker pool.");
+        Threads::executeTask(TransferJob::runThread);
+    }
 }
 
 void TransferJob::runThread(void)
