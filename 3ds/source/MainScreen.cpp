@@ -509,8 +509,11 @@ void MainScreen::update(const InputState& input)
         g_titlesDirty = false;
         refreshTitlesFull();
     }
-    updateSelector();
-    handleEvents(input);
+
+    if (!TitleCatalog::get().progress().active) {
+        updateSelector();
+        handleEvents(input);
+    }
 
     // Refresh the snapshot last so the frame drawn right after already shows the
     // selection/kind changes the handlers above made.
@@ -612,10 +615,6 @@ void MainScreen::refreshTitlesFull(void)
 
 void MainScreen::updateSelector(void)
 {
-    if (TitleCatalog::get().progress().active) {
-        return;
-    }
-
     if (!g_bottomScrollEnabled) {
         size_t count = TitleCatalog::get().getTitleCount(backupKind);
         if (count > 0) {
@@ -722,10 +721,9 @@ void MainScreen::handleEvents(const InputState& input)
     u32 kDown = hidKeysDown();
     u32 kHeld = hidKeysHeld();
 
-    // SELECT opens the tools menu (Scripts / Settings), but not while the catalog
-    // is still loading titles. The menu is the touch-free home for actions that
-    // used to fight the backup buttons for a slot.
-    if ((kDown & KEY_SELECT) && !TitleCatalog::get().progress().active) {
+    // SELECT opens the tools menu (Scripts / Settings). The menu is the touch-free
+    // home for actions that used to fight the backup buttons for a slot.
+    if (kDown & KEY_SELECT) {
         std::vector<MenuOverlay::Item> items = {
             {i18n::t("main.scripts"), [this]() { startScriptPicker(); }},
             {i18n::t("settings.title"), []() { g_pendingScreen = std::make_shared<SettingsScreen>(g_screen); }},
