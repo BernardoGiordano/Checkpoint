@@ -26,6 +26,7 @@
 
 #include "SettingsScreen.hpp"
 #include "FolderBrowserOverlay.hpp"
+#include "KeyboardManager.hpp"
 #include "TitlePickerOverlay.hpp"
 #include "colors.hpp"
 #include "configuration.hpp"
@@ -332,6 +333,29 @@ void SettingsScreen::rebuildRows(void)
                 flashSaved();
             };
             mRows.push_back(std::move(transfer));
+
+            // Fixed PIN for the receiver, so a PC-side script can arm a transfer
+            // without a human reading the PIN off the screen first. The pill
+            // shows the stored PIN, or "Random" for the per-receive default.
+            Row receivePin;
+            receivePin.title      = i18n::t("settings.conn.receive_pin");
+            receivePin.subtitle   = i18n::t("settings.conn.receive_pin.sub");
+            receivePin.control    = Control::ActionPill;
+            receivePin.section    = i18n::t("settings.section.connectivity");
+            receivePin.pillLabel  = cfg.defaultReceivePin().empty() ? i18n::t("settings.conn.receive_pin.random") : cfg.defaultReceivePin();
+            receivePin.onActivate = [this, &cfg]() {
+                // 0 is the "no fixed PIN" sentinel rather than a fourth-digit-zero
+                // PIN: the keypad has no way to express "clear", and 0000 is the
+                // one value a user gains nothing by pinning.
+                const int entered = KeyboardManager::get().numpad(i18n::t("settings.conn.receive_pin.prompt"), 0, 9999);
+                if (entered < 0) {
+                    return; // cancelled
+                }
+                cfg.setDefaultReceivePin(entered == 0 ? "" : StringUtils::format("%04d", entered));
+                flashSaved();
+                mNeedsRebuild = true; // the pill label is baked in at build time
+            };
+            mRows.push_back(std::move(receivePin));
 
             // Address of the built-in HTTP log server (parity with the 3DS build).
             // Open it from any browser on the same network to read the logs.

@@ -111,6 +111,10 @@ Configuration::Configuration(void)
             mJson["last-transfer-address"] = "";
             updateJson                     = true;
         }
+        if (!(mJson.contains("default-receive-pin") && mJson["default-receive-pin"].is_string())) {
+            mJson["default-receive-pin"] = "";
+            updateJson                   = true;
+        }
         if (!(mJson.contains("sort-mode") && mJson["sort-mode"].is_string())) {
             mJson["sort-mode"] = SortMode::of(SORT_ALPHA).configKey;
             updateJson         = true;
@@ -274,6 +278,7 @@ void Configuration::parse(void)
     mTheme               = mJson.value("theme", "dark");
     mLanguage            = mJson.value("language", "en");
     mLastTransferAddress = mJson.value("last-transfer-address", std::string());
+    mDefaultReceivePin   = mJson.value("default-receive-pin", std::string());
     mSortMode            = SortMode::fromConfigKey(mJson.value("sort-mode", std::string(SortMode::of(SORT_ALPHA).configKey)));
 }
 
@@ -479,6 +484,18 @@ void Configuration::setLastTransferAddress(const std::string& address)
 {
     mLastTransferAddress           = address;
     mJson["last-transfer-address"] = address;
+    save();
+}
+
+std::string Configuration::defaultReceivePin(void)
+{
+    return mDefaultReceivePin;
+}
+
+void Configuration::setDefaultReceivePin(const std::string& pin)
+{
+    mDefaultReceivePin           = pin;
+    mJson["default-receive-pin"] = pin;
     save();
 }
 

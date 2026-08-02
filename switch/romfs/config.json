@@ -19,5 +19,6 @@
   "language": "en",
   "sort-mode": "alpha",
   "last-transfer-address": "",
-  "version": 5
+  "default-receive-pin": "",
+  "version": 6
 }

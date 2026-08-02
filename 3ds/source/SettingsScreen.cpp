@@ -26,6 +26,7 @@
 
 #include "SettingsScreen.hpp"
 #include "FolderBrowserOverlay.hpp"
+#include "KeyboardManager.hpp"
 #include "TitlePickerOverlay.hpp"
 #include "configuration.hpp"
 #include "ftpserver.hpp"
@@ -186,7 +187,7 @@ size_t SettingsScreen::contentRowCount(size_t section) const
         case SEC_FOLDERS:
             return mFolderRows.size();
         case SEC_NETWORK:
-            return 1; // the single FTP-server toggle
+            return 2; // FTP-server toggle, default receive PIN
         default:
             return 0;
     }
@@ -439,7 +440,14 @@ void SettingsScreen::drawNetwork(void) const
     const bool ftpOn = cfg.isFTPEnabled();
     drawToggleRow(26, i18n::t("settings.network.ftp"), i18n::t("settings.network.ftp.sub"), ftpOn, contentFocus && contentCursor == 0);
 
-    int y      = 68;
+    // Row 1: the fixed receive PIN, or "Random" for the per-receive default.
+    const std::string pin = cfg.defaultReceivePin();
+    drawValueRow(60, i18n::t("settings.network.receive_pin"), i18n::t("settings.network.receive_pin.sub"),
+        pin.empty() ? i18n::t("settings.network.receive_pin.random") : pin, contentFocus && contentCursor == 1);
+
+    // The wireless-transfer master switch stays on the General tab; what is left
+    // here is read-only status, which starts below the two interactive rows.
+    int y      = 100;
     auto field = [&](const std::string& label, const std::string& value, u32 valColor) {
         TextPool::get().draw(label, 20, y, 0.4f, COLOR_FAINT);
         TextPool::get().draw(value, 20, y + 14, 0.46f, valColor);
@@ -451,10 +459,6 @@ void SettingsScreen::drawNetwork(void) const
         ftpOn ? (ftpAddress.empty() ? i18n::t("common.unavailable") : ftpAddress) : i18n::t("common.disabled"),
         ftpOn && !ftpAddress.empty() ? COLOR_TEAL : COLOR_MUTED);
 
-    const bool transferOn = cfg.transferEnabled();
-    field(i18n::t("settings.network.transfer"), transferOn ? i18n::t("common.enabled") : i18n::t("common.disabled"),
-        transferOn ? COLOR_TEAL : COLOR_MUTED);
-
     std::string address = Server::getAddress();
     field(i18n::t("settings.network.memory_logs"), address.empty() ? i18n::t("common.unavailable") : address + "/logs/memory",
         address.empty() ? COLOR_MUTED : COLOR_TEXT);
@@ -462,7 +466,10 @@ void SettingsScreen::drawNetwork(void) const
         address.empty() ? COLOR_MUTED : COLOR_TEXT);
 
     if (contentFocus) {
-        drawHints(320, 223, std::string(GLYPH_A) + " " + i18n::t("hint.toggle") + "     " + GLYPH_B + " " + i18n::t("hint.back"));
+        // Row 1 opens a keypad rather than flipping a switch, so the verb follows
+        // the cursor.
+        const std::string act = i18n::t(contentCursor == 1 ? "hint.edit" : "hint.toggle");
+        drawHints(320, 223, std::string(GLYPH_A) + " " + act + "     " + GLYPH_B + " " + i18n::t("hint.back"));
     }
     else {
         drawHints(320, 223, std::string(GLYPH_A) + " " + i18n::t("hint.edit"));
@@ -585,6 +592,19 @@ void SettingsScreen::toggleGeneral(int idx)
     if (g == 1 || g == 2 || g == 3) {
         g_titlesDirty = true;
     }
+    savedTimer = SAVED_FLASH_FRAMES;
+}
+
+void SettingsScreen::editReceivePin(void)
+{
+    // 0 is the "no fixed PIN" sentinel rather than a fourth-digit-zero PIN: the
+    // keypad has no way to express "clear", and 0000 is the one value a user
+    // gains nothing by pinning.
+    const int entered = KeyboardManager::get().numpad(i18n::t("settings.network.receive_pin.prompt"), 0, 9999);
+    if (entered < 0) {
+        return; // cancelled
+    }
+    Configuration::getInstance().setDefaultReceivePin(entered == 0 ? "" : StringUtils::format("%04d", entered));
     savedTimer = SAVED_FLASH_FRAMES;
 }
 
@@ -718,11 +738,16 @@ void SettingsScreen::update(const InputState& input)
         }
         else if (sel == SEC_NETWORK) {
             if (kDown & KEY_A) {
-                // Live toggle: the FTP loop thread reads isFTPEnabled() each
-                // iteration, so this takes effect without a restart. The SD
-                // write is deferred to commit() on leaving Settings.
-                Configuration::getInstance().setFTPEnabled(!Configuration::getInstance().isFTPEnabled());
-                savedTimer = SAVED_FLASH_FRAMES;
+                if (contentCursor == 1) {
+                    editReceivePin();
+                }
+                else {
+                    // Live toggle: the FTP loop thread reads isFTPEnabled() each
+                    // iteration, so this takes effect without a restart. The SD
+                    // write is deferred to commit() on leaving Settings.
+                    Configuration::getInstance().setFTPEnabled(!Configuration::getInstance().isFTPEnabled());
+                    savedTimer = SAVED_FLASH_FRAMES;
+                }
             }
             else if (kDown & KEY_B) {
                 contentFocus = false;

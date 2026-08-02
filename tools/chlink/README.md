@@ -37,6 +37,10 @@ Start Receive on the console, then:
 chlink send ./my-backup-folder --to 192.168.1.42 --pin 1234
 ```
 
+The console PIN is random per receive unless one is pinned in
+Settings > Network (3DS) / Connectivity (Switch) > Receive PIN, which is what
+makes a `--pin` baked into a script work run after run.
+
 `<path>` may be a folder (packaged as a console-compatible store-mode zip; a
 folder holding exactly one file and no subfolders is sent raw, like the
 console does), a single file (raw), or an existing `.zip` (sent as-is).

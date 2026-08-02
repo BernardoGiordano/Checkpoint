@@ -26,6 +26,7 @@
 
 #include "transfer.hpp"
 #include "common.hpp"
+#include "configuration.hpp"
 #include "directory.hpp"
 #include "io.hpp"
 #include "json.hpp"
@@ -564,11 +565,16 @@ bool Transfer::startReceiver(std::string& outError)
     }
 
     g_failedAuthAttempts.store(0);
-    // A 4-digit PIN from srand(time) is trivially predictable; seed from the
-    // system CSPRNG so a LAN peer can't reconstruct it from the clock.
-    int pin           = 1000 + (int)(randomGet64() % 9000);
-    std::string token = StringUtils::format("%04d", pin);
-    std::string ip    = Server::getAddress();
+    // A PIN configured in Settings wins, so a PC-side script can be pointed at
+    // the console without reading the screen first; anything not exactly 4
+    // digits (including the empty default) falls back to a fresh random one.
+    // A 4-digit PIN from srand(time) is trivially predictable, so that fallback
+    // is seeded from the system CSPRNG, not the clock.
+    std::string token = Configuration::getInstance().defaultReceivePin();
+    if (!TransferProto::validPin(token)) {
+        token = StringUtils::format("%04d", 1000 + (int)(randomGet64() % 9000));
+    }
+    std::string ip = Server::getAddress();
     setReceiverNotice("");
     setReceiverCompletedName("");
     g_receiverCompleted.store(false);

@@ -21,5 +21,6 @@
   "theme": "dark",
   "language": "en",
   "last_transfer_address": "",
-  "version": 5
+  "default_receive_pin": "",
+  "version": 6
 }

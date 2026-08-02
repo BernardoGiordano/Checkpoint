@@ -79,6 +79,9 @@ private:
     void rebuildRows();
     // Toggles the General row at idx and flags it as changed (D-Pad+A or touch).
     void toggleGeneral(int idx);
+    // Opens the numeric keypad on the Network tab's receive-PIN row. 0 clears the
+    // setting back to a random PIN per receive; cancelling leaves it untouched.
+    void editReceivePin();
 
     void drawGeneral(void) const;
     void drawLibrary(void) const;

@@ -99,6 +99,10 @@ Configuration::Configuration(void)
                     (*mJson)["last_transfer_address"] = "";
                     updateJson                        = true;
                 }
+                if (!(mJson->contains("default_receive_pin") && (*mJson)["default_receive_pin"].is_string())) {
+                    (*mJson)["default_receive_pin"] = "";
+                    updateJson                      = true;
+                }
                 if (!(mJson->contains("filter") && (*mJson)["filter"].is_array())) {
                     (*mJson)["filter"] = nlohmann::json::array();
                     updateJson         = true;
@@ -173,6 +177,7 @@ Configuration::Configuration(void)
             mTheme               = (*mJson)["theme"];
             mLanguage            = (*mJson)["language"];
             mLastTransferAddress = (*mJson)["last_transfer_address"];
+            mDefaultReceivePin   = (*mJson)["default_receive_pin"];
 
             // parse additional save folders
             auto js = (*mJson)["additional_save_folders"];
@@ -312,6 +317,11 @@ std::string Configuration::lastTransferAddress(void)
     return mLastTransferAddress;
 }
 
+std::string Configuration::defaultReceivePin(void)
+{
+    return mDefaultReceivePin;
+}
+
 void Configuration::setNandSaves(bool v)
 {
     mNandSaves             = v;
@@ -381,6 +391,14 @@ void Configuration::setLastTransferAddress(const std::string& v)
     mLastTransferAddress              = v;
     (*mJson)["last_transfer_address"] = v;
     mDirty                            = true;
+    save();
+}
+
+void Configuration::setDefaultReceivePin(const std::string& v)
+{
+    mDefaultReceivePin              = v;
+    (*mJson)["default_receive_pin"] = v;
+    mDirty                          = true;
     save();
 }
 

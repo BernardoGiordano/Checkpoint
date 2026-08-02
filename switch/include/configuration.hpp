@@ -114,6 +114,11 @@ public:
     std::string lastTransferAddress(void);
     void setLastTransferAddress(const std::string& address);
 
+    // Fixed PIN the wireless receiver arms itself with, as 4 ASCII digits. Empty
+    // (the default) means a fresh random PIN per receive
+    std::string defaultReceivePin(void);
+    void setDefaultReceivePin(const std::string& pin);
+
     // Default/current title-grid sort mode. Persisted so it survives a
     // relaunch; the grid's X-button cycle and the Settings "Default sort"
     // spinner both read/write this same setting through TitleCatalog.
@@ -147,6 +152,7 @@ private:
     std::string mTheme;
     std::string mLanguage;
     std::string mLastTransferAddress; // last "ip:port" sent to; prefills the send keyboard
+    std::string mDefaultReceivePin;   // "" = random PIN per receive
     sort_t mSortMode;
 };
 

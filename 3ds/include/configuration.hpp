@@ -62,6 +62,9 @@ public:
     // Last "ip:port" entered in the wireless-transfer send prompt. Prefilled into
     // the keyboard next time; not surfaced in Settings. Empty until the first send.
     std::string lastTransferAddress(void);
+    // Fixed PIN the wireless receiver arms itself with, as 4 ASCII digits. Empty
+    // (the default) means a fresh CSPRNG PIN per receive
+    std::string defaultReceivePin(void);
     std::vector<std::u16string> additionalSaveFolders(u64 id);
     std::vector<std::u16string> additionalExtdataFolders(u64 id);
 
@@ -88,6 +91,9 @@ public:
     // Persists immediately: the send flow doesn't run commit(), and the value
     // must survive even if the app closes right after a transfer.
     void setLastTransferAddress(const std::string& v);
+    // "" restores the random-per-receive default; anything else is stored as
+    // given and only honoured by the receiver when it is 4 digits.
+    void setDefaultReceivePin(const std::string& v);
 
     // Flushes pending changes to config.json (no-op when nothing is dirty).
     void commit(void);
@@ -126,6 +132,7 @@ private:
     std::string mTheme    = "dark";
     std::string mLanguage = "en";
     std::string mLastTransferAddress; // last "ip:port" sent to; prefills the send keyboard
+    std::string mDefaultReceivePin;   // "" = random PIN per receive
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
     size_t oldSize       = 0;
     bool mDirty          = false; // General toggles pending a deferred save()

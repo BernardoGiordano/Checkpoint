@@ -26,6 +26,7 @@
 
 #include "transfer.hpp"
 #include "common.hpp"
+#include "configuration.hpp"
 #include "directory.hpp"
 #include "fsstream.hpp"
 #include "io.hpp"
@@ -591,9 +592,14 @@ bool Transfer::startReceiver(std::string& outError)
     }
 
     g_failedAuthAttempts.store(0);
-    int pin           = generatePin();
-    std::string token = StringUtils::format("%04d", pin);
-    std::string ip    = Server::getAddress();
+    // A PIN configured in Settings wins, so a PC-side script can be pointed at
+    // the console without reading the screen first; anything not exactly 4
+    // digits (including the empty default) falls back to a fresh random one.
+    std::string token = Configuration::getInstance().defaultReceivePin();
+    if (!TransferProto::validPin(token)) {
+        token = StringUtils::format("%04d", generatePin());
+    }
+    std::string ip = Server::getAddress();
     setReceiverNotice("");
     setReceiverCompletedName("");
     g_receiverCompleted.store(false);

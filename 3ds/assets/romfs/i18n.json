@@ -347,6 +347,54 @@
     "zh": "通过 FTP 服务器访问 SD 卡的内容（端口 50000）",
     "ru": "Раздать карту памяти по FTP (порт 50000)"
   },
+  "settings.network.receive_pin": {
+    "en": "Receive PIN",
+    "it": "PIN di ricezione",
+    "es": "PIN de recepción",
+    "fr": "PIN de réception",
+    "de": "Empfangs-PIN",
+    "pt": "PIN de recebimento",
+    "nl": "Ontvangst-pincode",
+    "ja": "受信PIN",
+    "zh": "接收 PIN 码",
+    "ru": "PIN приёма"
+  },
+  "settings.network.receive_pin.sub": {
+    "en": "Fixed PIN for incoming transfers",
+    "it": "PIN fisso per i trasferimenti in arrivo",
+    "es": "PIN fijo para las transferencias entrantes",
+    "fr": "PIN fixe pour les transferts entrants",
+    "de": "Fester PIN für eingehende Übertragungen",
+    "pt": "PIN fixo para transferências recebidas",
+    "nl": "Vaste pincode voor inkomende overdrachten",
+    "ja": "受信転送に使う固定PIN",
+    "zh": "用于接收传输的固定 PIN 码",
+    "ru": "Постоянный PIN для входящих передач"
+  },
+  "settings.network.receive_pin.random": {
+    "en": "Random",
+    "it": "Casuale",
+    "es": "Aleatorio",
+    "fr": "Aléatoire",
+    "de": "Zufällig",
+    "pt": "Aleatório",
+    "nl": "Willekeurig",
+    "ja": "ランダム",
+    "zh": "随机",
+    "ru": "Случайный"
+  },
+  "settings.network.receive_pin.prompt": {
+    "en": "4-digit PIN (0 = random each time)",
+    "it": "PIN di 4 cifre (0 = casuale ogni volta)",
+    "es": "PIN de 4 dígitos (0 = aleatorio cada vez)",
+    "fr": "PIN à 4 chiffres (0 = aléatoire à chaque fois)",
+    "de": "4-stelliger PIN (0 = jedes Mal zufällig)",
+    "pt": "PIN de 4 dígitos (0 = aleatório a cada vez)",
+    "nl": "Pincode van 4 cijfers (0 = elke keer willekeurig)",
+    "ja": "4桁のPIN(0 = 毎回ランダム)",
+    "zh": "4 位 PIN 码（0 = 每次随机）",
+    "ru": "PIN из 4 цифр (0 = случайный каждый раз)"
+  },
   "settings.network.ftp_address": {
     "en": "FTP address",
     "it": "Indirizzo FTP",
