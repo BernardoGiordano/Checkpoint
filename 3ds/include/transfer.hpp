@@ -51,7 +51,13 @@ namespace Transfer {
     // Called once on boot; normal exits already clean these via scope guards.
     void sweepTempFiles(void);
 
-    bool startReceiver(std::string& outError);
+    // `selectedTitleId` is the title whose backup list the Receive row was opened
+    // from (0 when there is none). A sender that cannot name the title — chlink
+    // sending a folder outside a Checkpoint SD layout, and every 3DS backup
+    // folder, whose "0x%05X " prefix is a unique id, not a title id — leaves the
+    // receiver with nothing to match on; the selected title is then the
+    // destination the user actually pointed at, instead of an "Unknown" folder.
+    bool startReceiver(std::string& outError, u64 selectedTitleId = 0);
     void stopReceiver(void);
     bool receiverRunning(void);
     bool consumePendingRefresh(void);

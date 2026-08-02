@@ -52,6 +52,11 @@ title name/id and backup name are inferred automatically; `--title-id`,
 prompt; `--force` overrides the receiver's size cap check (consoles currently
 cap uploads at 32 MiB).
 
+When the metadata names no installed title (nothing was inferred and no
+`--title-id`/`--title-name` was given), the console stores the backup under the
+title whose backup list Receive was opened from, and says so on screen. Only if
+there is no such title does the backup land in a folder of its own.
+
 ### Receive (console → PC)
 
 ```bash

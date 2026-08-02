@@ -1197,8 +1197,18 @@ void MainScreen::startTransferReceive(void)
 {
     // Receiver lifetime == overlay lifetime: start it here, the overlay stops it
     // on close.
+    // The Receive row lives in the selected title's backup list: hand that title
+    // over so an upload whose meta names no installed title lands under it rather
+    // than in an "Unknown" folder.
+    u64 selectedTitleId      = 0;
+    const size_t selectedRaw = rawIndex();
+    if (selectedRaw < TitleCatalog::get().getTitleCount(g_currentUId)) {
+        Title selectedTitle;
+        TitleCatalog::get().getTitle(selectedTitle, g_currentUId, selectedRaw);
+        selectedTitleId = selectedTitle.id();
+    }
     std::string error;
-    if (!Transfer::startReceiver(error)) {
+    if (!Transfer::startReceiver(error, selectedTitleId)) {
         currentOverlay = std::make_shared<ErrorOverlay>(*this, -1, error.empty() ? i18n::t("main.receiver_failed") : error);
     }
     else {

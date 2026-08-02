@@ -83,6 +83,9 @@ namespace {
     std::mutex g_receiverMutex;
     std::string g_receiverNotice;
     std::string g_receiverCompletedName;
+    // Title the Receive row was opened from; the destination of last resort when
+    // the upload's meta names no installed title. 0 = none.
+    u64 g_receiverSelectedTitle = 0;
 
     void setReceiverNotice(const std::string& notice)
     {
@@ -343,10 +346,10 @@ namespace {
         }
 
         std::string destRoot;
-        bool foundTitle   = false;
-        bool mappedByName = false;
-        u64 tid           = 0;
-        u64 resolvedId    = 0;
+        bool foundTitle    = false;
+        bool mappedByGuess = false;
+        u64 tid            = 0;
+        u64 resolvedId     = 0;
         if (!titleId.empty()) {
             tid = strtoull(titleId.c_str(), nullptr, 16);
         }
@@ -361,12 +364,33 @@ namespace {
         if (!foundTitle && !titleName.empty()) {
             Title t;
             if (TitleCatalog::get().getTitleByName(t, titleName)) {
-                destRoot     = t.path();
-                resolvedId   = t.id();
-                foundTitle   = true;
-                mappedByName = true;
-                setReceiverNotice("Warning: title ID mismatch. Backup mapped by title name.");
+                destRoot      = t.path();
+                resolvedId    = t.id();
+                foundTitle    = true;
+                mappedByGuess = true;
+                // A sender with no title id at all is the normal case, not a mismatch.
+                setReceiverNotice(tid != 0 ? "Warning: title ID mismatch. Backup mapped by title name." : "Note: backup mapped by title name.");
                 Logging::warning("Title ID {} not found, mapped by title name '{}'.", titleId, titleName);
+            }
+        }
+        // Last resort: the title the user had open when they started the receiver.
+        // Its backup list is where the Receive row lives, so it is the destination
+        // they pointed at, and it beats stranding the backup in an "Unknown" folder.
+        if (!foundTitle) {
+            u64 selectedId = 0;
+            {
+                std::lock_guard<std::mutex> lock(g_receiverMutex);
+                selectedId = g_receiverSelectedTitle;
+            }
+            Title t;
+            if (selectedId != 0 && TitleCatalog::get().getTitleById(t, selectedId)) {
+                destRoot      = t.path();
+                resolvedId    = t.id();
+                foundTitle    = true;
+                mappedByGuess = true;
+                setReceiverNotice("Note: sender did not identify the title.\nStored under " + t.name() + ".");
+                Logging::warning("Sender identified no installed title (id '{}', name '{}'); stored under the selected title {:016X}.", titleId,
+                    titleName, selectedId);
             }
         }
 
@@ -468,7 +492,7 @@ namespace {
 
         cleanup();
 
-        if (!mappedByName && foundTitle) {
+        if (!mappedByGuess && foundTitle) {
             setReceiverNotice("");
         }
         setReceiverCompletedName(backupName);
@@ -551,11 +575,12 @@ void Transfer::sweepTempFiles(void)
     }
 }
 
-bool Transfer::startReceiver(std::string& outError)
+bool Transfer::startReceiver(std::string& outError, u64 selectedTitleId)
 {
     {
         std::lock_guard<std::mutex> lock(g_receiverMutex);
         if (g_receiverRunning) {
+            g_receiverSelectedTitle = selectedTitleId;
             return true;
         }
     }
@@ -592,9 +617,10 @@ bool Transfer::startReceiver(std::string& outError)
     // arrives the instant it registers validates against the real token.
     {
         std::lock_guard<std::mutex> lock(g_receiverMutex);
-        g_token        = token;
-        g_receiverIp   = ip;
-        g_receiverPort = TRANSFER_PORT;
+        g_token                 = token;
+        g_receiverIp            = ip;
+        g_receiverPort          = TRANSFER_PORT;
+        g_receiverSelectedTitle = selectedTitleId;
     }
 
     Server::registerHandler("/transfer/info", handleInfo);
@@ -620,7 +646,8 @@ void Transfer::stopReceiver(void)
     Server::unregisterHandler("/transfer/upload");
     {
         std::lock_guard<std::mutex> lock(g_receiverMutex);
-        g_receiverRunning = false;
+        g_receiverRunning       = false;
+        g_receiverSelectedTitle = 0;
     }
 }
 
