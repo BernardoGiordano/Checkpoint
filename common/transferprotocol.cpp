@@ -177,22 +177,48 @@ namespace TransferProto {
         return out;
     }
 
+    // Field names are case-insensitive (RFC 9110 5.1). Go's net/http canonicalises
+    // them before writing, so chlink's "X-CP-Token" reaches us as "X-Cp-Token": a
+    // case-sensitive lookup finds no PIN and every chlink upload dies with 403.
+    // Matching is also anchored to the start of a header line, so a value that
+    // happens to contain "<key>:" cannot impersonate the header.
     std::string headerValue(const std::string& headers, const std::string& key)
     {
-        std::string needle = key + ":";
-        size_t pos         = headers.find(needle);
-        if (pos == std::string::npos) {
-            return "";
+        size_t lineStart = 0;
+        while (lineStart < headers.size()) {
+            size_t lineEnd = headers.find("\r\n", lineStart);
+            if (lineEnd == std::string::npos) {
+                lineEnd = headers.size();
+            }
+
+            size_t colon = headers.find(':', lineStart);
+            if (colon != std::string::npos && colon < lineEnd && colon - lineStart == key.size()) {
+                bool match = true;
+                for (size_t i = 0; i < key.size(); ++i) {
+                    if (tolower((unsigned char)headers[lineStart + i]) != tolower((unsigned char)key[i])) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) {
+                    size_t valueStart = colon + 1;
+                    while (valueStart < lineEnd && (headers[valueStart] == ' ' || headers[valueStart] == '\t')) {
+                        valueStart++;
+                    }
+                    size_t valueEnd = lineEnd;
+                    while (valueEnd > valueStart && (headers[valueEnd - 1] == ' ' || headers[valueEnd - 1] == '\t')) {
+                        valueEnd--;
+                    }
+                    return headers.substr(valueStart, valueEnd - valueStart);
+                }
+            }
+
+            if (lineEnd == headers.size()) {
+                break;
+            }
+            lineStart = lineEnd + 2;
         }
-        pos += needle.size();
-        while (pos < headers.size() && (headers[pos] == ' ' || headers[pos] == '\t')) {
-            pos++;
-        }
-        size_t end = headers.find("\r\n", pos);
-        if (end == std::string::npos) {
-            end = headers.size();
-        }
-        return headers.substr(pos, end - pos);
+        return "";
     }
 
     bool constantTimeEquals(const std::string& a, const std::string& b)

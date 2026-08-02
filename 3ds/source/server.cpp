@@ -32,6 +32,7 @@
 #include "logging.hpp"
 #include "main.hpp"
 #include "thread.hpp"
+#include "transferprotocol.hpp"
 #include "transferstatus.hpp"
 #include "util.hpp"
 #include <3ds.h>
@@ -89,22 +90,13 @@ namespace {
 
     static size_t parseContentLength(const std::string& headers)
     {
-        size_t pos = headers.find("Content-Length:");
-        if (pos == std::string::npos) {
-            pos = headers.find("Content-length:");
-        }
-        if (pos == std::string::npos) {
+        // headerValue is case-insensitive, so every spelling a client may send is
+        // covered without listing them here.
+        std::string value = TransferProto::headerValue(headers, "Content-Length");
+        if (value.empty()) {
             return 0;
         }
-        pos += strlen("Content-Length:");
-        while (pos < headers.size() && (headers[pos] == ' ' || headers[pos] == '\t')) {
-            pos++;
-        }
-        size_t end = headers.find("\r\n", pos);
-        if (end == std::string::npos) {
-            end = headers.size();
-        }
-        return (size_t)strtoul(headers.substr(pos, end - pos).c_str(), nullptr, 10);
+        return (size_t)strtoul(value.c_str(), nullptr, 10);
     }
 
     // Per-recv idle timeout. The server is single-threaded, so without a bound a
