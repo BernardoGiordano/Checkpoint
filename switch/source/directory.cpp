@@ -25,7 +25,6 @@
  */
 
 #include "directory.hpp"
-#include "logging.hpp"
 
 Directory::Directory(const std::string& root)
 {
@@ -36,15 +35,14 @@ Directory::Directory(const std::string& root)
     DIR* dir = opendir(root.c_str());
     if (dir == NULL) {
         mError = (Result)errno;
-        Logging::error("opendir failed for {} with errno {} (fs result 0x{:08X}).", root, errno, (u32)fsdevGetLastResult());
         return;
     }
 
     // readdir returns NULL both at end of directory and on error, so errno has to
     // be cleared before each call: otherwise a listing that dies halfway through
     // is indistinguishable from a complete one, and the caller silently copies (or
-    // verifies) a truncated tree while reporting success (#541). libnx's fsdev
-    // signals plain end-of-directory as ENOENT, which is not a failure.
+    // verifies) a truncated tree while reporting success. libnx's fsdev signals
+    // plain end-of-directory as ENOENT, which is not a failure.
     struct dirent* ent;
     errno = 0;
     while ((ent = readdir(dir)) != NULL) {
@@ -57,8 +55,6 @@ Directory::Directory(const std::string& root)
 
     if (readErrno != 0 && readErrno != ENOENT) {
         mError = (Result)readErrno;
-        Logging::error("readdir failed for {} after {} entries with errno {} (fs result 0x{:08X}). Listing is truncated.", root, mList.size(),
-            readErrno, (u32)fsdevGetLastResult());
         mList.clear();
         return;
     }

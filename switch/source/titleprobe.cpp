@@ -26,7 +26,6 @@
 
 #include "titleprobe.hpp"
 #include "savedatasource.hpp"
-#include <cstring>
 
 bool TitleProbe::probe(Title& dst, const FsSaveDataInfo& info, IconStore& icons, NsApplicationControlData* nsacd)
 {
@@ -41,7 +40,6 @@ bool TitleProbe::probe(Title& dst, const FsSaveDataInfo& info, IconStore& icons,
 
     std::string name;
     std::string author;
-    std::string version;
     AccountUid uid = {0};
 
     if (type == FsSaveDataType_System) {
@@ -68,9 +66,8 @@ bool TitleProbe::probe(Title& dst, const FsSaveDataInfo& info, IconStore& icons,
         if (R_FAILED(res) || nle == NULL) {
             return false;
         }
-        name    = std::string(nle->name);
-        author  = std::string(nle->author);
-        version = std::string(nsacd->nacp.display_version, strnlen(nsacd->nacp.display_version, sizeof(nsacd->nacp.display_version)));
+        name   = std::string(nle->name);
+        author = std::string(nle->author);
         icons.loadIcon(tid, nsacd, outsize - sizeof(nsacd->nacp));
     }
 
@@ -87,7 +84,6 @@ bool TitleProbe::probe(Title& dst, const FsSaveDataInfo& info, IconStore& icons,
     const u8 spaceId = (type == FsSaveDataType_System) ? info.save_data_space_id : (u8)FsSaveDataSpaceId_User;
     dst.init(type, tid, uid, spaceId, name, author, userName, path);
     dst.saveId(sid);
-    dst.displayVersion(version);
 
     if (type == FsSaveDataType_Account) {
         PdmPlayStatistics stats;

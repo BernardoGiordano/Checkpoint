@@ -61,16 +61,11 @@ namespace io {
     // What one recursive walk of a tree found. The same struct is filled by the
     // pre-flight scan of a backup and by the copy that follows, so the two can be
     // compared: a copy that reports success but visited fewer files than the scan
-    // counted is a silently incomplete restore, which is what #541 looked like
-    // from the outside.
+    // counted is a silently incomplete restore.
     struct TreeStats {
         size_t files = 0;
         size_t dirs  = 0;
         u64 bytes    = 0;
-        // `bytes` with every file rounded up to a save-filesystem cluster: what
-        // the tree will actually occupy once restored. A backup of tens of
-        // thousands of tiny files needs several times its byte size (#541).
-        u64 allocated = 0;
         // Directories that failed to list and files that failed to stat. Non-zero
         // means the walk itself is incomplete, so `files`/`bytes` are lower bounds
         // and nothing derived from them can be trusted.
@@ -80,9 +75,7 @@ namespace io {
     // One file the copy actually wrote, with the CRC32 of the bytes that flowed
     // through it. Recorded while copying so the post-restore verification never
     // has to read the backup a second time: it re-reads only the committed save
-    // and compares against these figures, halving the IO of the verify pass (the
-    // CRC itself is a handful of hardware instructions over data already in the
-    // copy buffer).
+    // and compares against these figures.
     struct CopiedFile {
         std::string path; // destination path, exactly as it was written
         u64 size = 0;
@@ -110,7 +103,7 @@ namespace io {
     // file written, which is what the restore verification checks the save
     // against.
     Result copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink, u64 commitWriteLimit = 0,
-        TreeStats* copied = nullptr, size_t expectedFiles = 0, std::vector<CopiedFile>* digests = nullptr);
+        TreeStats* copied = nullptr, std::vector<CopiedFile>* digests = nullptr);
     // `crcOut`, when given, receives the CRC32 of every byte read from the source.
     Result copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink, u64 commitWriteLimit = 0, u64* bytesCopied = nullptr,
         u32* crcOut = nullptr);
