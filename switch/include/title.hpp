@@ -74,6 +74,12 @@ public:
     void refreshDirectories(void);
     u64 saveId();
     void saveId(u64 id);
+    // NACP display_version of the installed title ("1.26.32"), empty when the
+    // control data could not be read. Logged on restore: a save written by a
+    // newer build of a game can restore perfectly and still refuse to load, and
+    // without this the log gives no way to tell that apart from a bad restore.
+    const std::string& displayVersion(void) const;
+    void displayVersion(const std::string& version);
     const std::vector<std::string>& saves(void);
     u8 saveDataType(void);
     u8 saveDataSpaceId(void);
@@ -93,6 +99,7 @@ private:
     u8 mSaveDataType;
     u8 mSaveDataSpaceId;
     std::string mDisplayName;
+    std::string mDisplayVersion;
     u64 mPlayTimeNanoseconds;
     u32 mLastPlayedTimestamp;
 };

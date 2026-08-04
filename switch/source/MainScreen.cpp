@@ -132,6 +132,8 @@ namespace {
                 return i18n::t("outcome.delete_save");
             case io::BackupStage::Commit:
                 return i18n::t("outcome.commit");
+            case io::BackupStage::Verify:
+                return i18n::t("outcome.verify_failed");
             default:
                 return i18n::t("outcome.restore_failed");
         }

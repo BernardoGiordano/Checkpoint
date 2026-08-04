@@ -109,7 +109,7 @@ private:
     void ensureWorker(void);
     void workerLoop(void);
     void compute(u64 id, const std::string& rootPath);
-    // Recursive subtree size like io::directorySize, but calls gate() between
+    // Recursive subtree size like io::scanTree, but calls gate() between
     // entries so pause() takes effect mid-walk and mStop aborts promptly.
     u64 walkSize(const std::string& path);
     // Blocks while paused; returns immediately when running or stopping.

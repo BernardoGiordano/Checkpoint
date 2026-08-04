@@ -68,6 +68,16 @@ void Title::saveId(u64 saveId)
     mSaveId = saveId;
 }
 
+const std::string& Title::displayVersion(void) const
+{
+    return mDisplayVersion;
+}
+
+void Title::displayVersion(const std::string& version)
+{
+    mDisplayVersion = version;
+}
+
 AccountUid Title::userId(void)
 {
     return mUserId;

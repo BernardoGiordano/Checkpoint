@@ -40,6 +40,7 @@
 #include <tuple>
 #include <unistd.h>
 #include <utility>
+#include <vector>
 
 #define BUFFER_SIZE 0x80000
 
@@ -57,6 +58,37 @@ namespace io {
         bool cancelled = false; // set only for a backup aborted via ProgressSink::cancelled(); ok is false, res is 0
     };
 
+    // What one recursive walk of a tree found. The same struct is filled by the
+    // pre-flight scan of a backup and by the copy that follows, so the two can be
+    // compared: a copy that reports success but visited fewer files than the scan
+    // counted is a silently incomplete restore, which is what #541 looked like
+    // from the outside.
+    struct TreeStats {
+        size_t files = 0;
+        size_t dirs  = 0;
+        u64 bytes    = 0;
+        // `bytes` with every file rounded up to a save-filesystem cluster: what
+        // the tree will actually occupy once restored. A backup of tens of
+        // thousands of tiny files needs several times its byte size (#541).
+        u64 allocated = 0;
+        // Directories that failed to list and files that failed to stat. Non-zero
+        // means the walk itself is incomplete, so `files`/`bytes` are lower bounds
+        // and nothing derived from them can be trusted.
+        size_t unreadable = 0;
+    };
+
+    // One file the copy actually wrote, with the CRC32 of the bytes that flowed
+    // through it. Recorded while copying so the post-restore verification never
+    // has to read the backup a second time: it re-reads only the committed save
+    // and compares against these figures, halving the IO of the verify pass (the
+    // CRC itself is a handful of hardware instructions over data already in the
+    // copy buffer).
+    struct CopiedFile {
+        std::string path; // destination path, exactly as it was written
+        u64 size = 0;
+        u32 crc  = 0;
+    };
+
     // Backs up `title` into the already-resolved `dstPath` (the caller picks the
     // folder name and decides new-vs-overwrite). Reports progress through `sink`.
     IoOutcome backup(Title& title, const std::string& dstPath, ProgressSink& sink);
@@ -64,13 +96,24 @@ namespace io {
     IoOutcome restore(Title& title, const std::string& srcPath, ProgressSink& sink);
 
     size_t countFiles(const std::string& path);
-    // Total byte size of everything under `path`, recursively (0 if unreadable).
-    u64 directorySize(const std::string& path);
+    // One walk of `path` collecting the file count, the directory count and the
+    // total byte size, plus how much of the tree could not be read. Replaces
+    // walking the same tree once per figure. Pass a `sink` when the walk is long
+    // enough that the modal would otherwise look frozen; the caller owns
+    // begin()/end() since only it knows the expected total.
+    TreeStats scanTree(const std::string& path, ProgressSink* sink = nullptr);
     // `commitWriteLimit` > 0 caps the bytes written to the save device between
     // commits, so large writes never overflow the save's journal; 0 disables
-    // mid-file commits (writes to sdmc: are unaffected either way).
-    Result copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink, u64 commitWriteLimit = 0);
-    Result copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink, u64 commitWriteLimit = 0);
+    // mid-file commits (writes to sdmc: are unaffected either way). When `copied`
+    // is given it accumulates what the copy actually moved, for the caller to
+    // check against its scan. `digests`, when given, collects one CopiedFile per
+    // file written, which is what the restore verification checks the save
+    // against.
+    Result copyDirectory(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink, u64 commitWriteLimit = 0,
+        TreeStats* copied = nullptr, size_t expectedFiles = 0, std::vector<CopiedFile>* digests = nullptr);
+    // `crcOut`, when given, receives the CRC32 of every byte read from the source.
+    Result copyFile(const std::string& srcPath, const std::string& dstPath, ProgressSink& sink, u64 commitWriteLimit = 0, u64* bytesCopied = nullptr,
+        u32* crcOut = nullptr);
     Result createDirectory(const std::string& path);
     // Deletes everything under `path`; with `removeRoot` also removes `path`
     // itself. Pass false when `path` is a mount root (e.g. "save:/"), which can

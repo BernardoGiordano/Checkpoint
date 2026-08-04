@@ -25,6 +25,7 @@
  */
 
 #include "transferstatus.hpp"
+#include "sleepguard.hpp"
 #include <atomic>
 #include <cstdio>
 #include <mutex>
@@ -36,9 +37,14 @@ namespace {
 }
 
 namespace TransferStatus {
+    // `active` is the one place that knows a long operation is in flight, so it is
+    // also where the console is kept from sleeping through it. Held outside the
+    // status mutex: hold/release are IPC calls, and the UI thread takes that mutex
+    // once a frame to draw the modal.
     void beginLocalBatch(size_t totalSaves)
     {
         sCancel.store(false);
+        SleepGuard::hold();
         std::lock_guard<std::mutex> lock(sMutex);
         sState.kind        = TransferKind::Local;
         sState.active      = true;
@@ -94,6 +100,7 @@ namespace TransferStatus {
     void beginNetwork(const std::string& mode, u64 totalBytes)
     {
         sCancel.store(false);
+        SleepGuard::hold();
         std::lock_guard<std::mutex> lock(sMutex);
         sState.kind       = TransferKind::Network;
         sState.active     = true;
@@ -130,8 +137,11 @@ namespace TransferStatus {
     void end()
     {
         sCancel.store(false);
-        std::lock_guard<std::mutex> lock(sMutex);
-        sState.active = false;
+        {
+            std::lock_guard<std::mutex> lock(sMutex);
+            sState.active = false;
+        }
+        SleepGuard::release();
     }
 
     void requestCancel()

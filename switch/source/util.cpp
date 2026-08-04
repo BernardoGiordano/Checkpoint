@@ -31,10 +31,15 @@
 #include "logging.hpp"
 #include "main.hpp"
 #include "server.hpp"
+#include "sleepguard.hpp"
 #include "titlecatalog.hpp"
 
 void servicesExit(void)
 {
+    // Nothing is left running that needs the console awake; also covers a
+    // transfer that ended by an early exit path rather than TransferStatus::end.
+    SleepGuard::release();
+
     // Stop and join the servers before socketExit tears the socket layer down
     // under them, and before Logging::exit() closes the log they write to.
     // FTPServer::exit() is normally already done at the end of main(); this

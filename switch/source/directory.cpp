@@ -25,6 +25,7 @@
  */
 
 #include "directory.hpp"
+#include "logging.hpp"
 
 Directory::Directory(const std::string& root)
 {
@@ -33,21 +34,36 @@ Directory::Directory(const std::string& root)
     mList.clear();
 
     DIR* dir = opendir(root.c_str());
-    struct dirent* ent;
-
     if (dir == NULL) {
         mError = (Result)errno;
+        Logging::error("opendir failed for {} with errno {} (fs result 0x{:08X}).", root, errno, (u32)fsdevGetLastResult());
+        return;
     }
-    else {
-        while ((ent = readdir(dir))) {
-            std::string name         = std::string(ent->d_name);
-            bool directory           = ent->d_type == DT_DIR;
-            struct DirectoryEntry de = {name, directory};
-            mList.push_back(de);
-        }
-        closedir(dir);
-        mGood = true;
+
+    // readdir returns NULL both at end of directory and on error, so errno has to
+    // be cleared before each call: otherwise a listing that dies halfway through
+    // is indistinguishable from a complete one, and the caller silently copies (or
+    // verifies) a truncated tree while reporting success (#541). libnx's fsdev
+    // signals plain end-of-directory as ENOENT, which is not a failure.
+    struct dirent* ent;
+    errno = 0;
+    while ((ent = readdir(dir)) != NULL) {
+        struct DirectoryEntry de = {std::string(ent->d_name), ent->d_type == DT_DIR};
+        mList.push_back(de);
+        errno = 0;
     }
+    const int readErrno = errno;
+    closedir(dir);
+
+    if (readErrno != 0 && readErrno != ENOENT) {
+        mError = (Result)readErrno;
+        Logging::error("readdir failed for {} after {} entries with errno {} (fs result 0x{:08X}). Listing is truncated.", root, mList.size(),
+            readErrno, (u32)fsdevGetLastResult());
+        mList.clear();
+        return;
+    }
+
+    mGood = true;
 }
 
 Result Directory::error(void)

@@ -1067,6 +1067,18 @@
     "zh": "存档恢复失败",
     "ru": "Не удалось восстановить сохранение."
   },
+  "outcome.verify_failed": {
+    "en": "Restored save does not match the backup. See the log.",
+    "it": "Il salvataggio ripristinato non corrisponde al backup. Consulta il log.",
+    "es": "El guardado restaurado no coincide con la copia de seguridad. Consulta el registro.",
+    "fr": "La sauvegarde restaurée ne correspond pas au backup. Consultez le journal.",
+    "de": "Der wiederhergestellte Speicherstand stimmt nicht mit dem Backup überein. Siehe Log.",
+    "pt": "O save restaurado não corresponde ao backup. Consulte o log.",
+    "nl": "De herstelde save komt niet overeen met de back-up. Zie het logbestand.",
+    "ja": "リストアしたセーブがバックアップと一致しません。ログを確認してください。",
+    "zh": "恢复的存档与备份不一致，请查看日志",
+    "ru": "Восстановленное сохранение не совпадает с резервной копией. Смотрите журнал."
+  },
   "main.backup": {
     "en": "Backup",
     "it": "Backup",
