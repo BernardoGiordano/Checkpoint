@@ -43,7 +43,7 @@ class BackupTarget;
 namespace io {
     // The stage at which a backup/restore failed. The UI maps it (together with
     // the target's data-type name) to a human message; io itself carries no UI text.
-    enum class BackupStage { OpenArchive, DeleteDst, CreateDst, Copy, ReadSpi, ReadFile, WriteFile, Commit, SecureValue };
+    enum class BackupStage { OpenArchive, DeleteDst, CreateDst, Copy, ReadSpi, ReadFile, WriteFile, Commit, SecureValue, PathTooLong };
 
     struct IoOutcome {
         bool ok;
@@ -68,6 +68,15 @@ namespace io {
     // precedes its contents), so callers get both the progress total and the copy
     // plan without walking the tree twice.
     Result collectTree(FS_Archive arch, const std::u16string& path, std::vector<TreeEntry>& out);
+    // FS rejects any path longer than this many UTF-16 units (the null terminator
+    // is not counted) — see checkPathLengths.
+    inline constexpr size_t MAX_PATH_UNITS = 0x100;
+    // Answers "can every path in this copy plan be handed to FS at all?" before a
+    // single byte moves, so a restore never wipes the console-side save only to die
+    // on a backup folder FS was never going to accept. Checks both sides: the copy
+    // roots themselves and every entry under them. Names the offending path in the
+    // log and returns the same Result FS would have.
+    Result checkPathLengths(const std::vector<TreeEntry>& entries, const std::u16string& srcRoot, const std::u16string& dstRoot);
     // Copy a tree previously enumerated by collectTree, reusing one heap buffer for
     // every file. Stops on the first failure.
     Result copyTree(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcRoot, const std::u16string& dstRoot,

@@ -42,6 +42,8 @@ static const Result RES_SHORT_WRITE = MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_F
 // FSFILE_GetSize reports. See copyFile's shrink-and-stop handling.
 static const u32 RES_FS_PAST_DATA = 0xD900458B;
 
+static const Result RES_PATH_TOO_LONG = 0xE0E046C8;
+
 static std::u16string rawBackupFile(const std::u16string& folder)
 {
     std::u16string canonical = folder + StringUtils::UTF8toUTF16("00000001.sav");
@@ -84,6 +86,15 @@ bool io::fileExists(FS_Archive archive, const std::u16string& path)
 
 static Result collectTreeImpl(FS_Archive arch, const std::u16string& root, const std::u16string& sub, std::vector<io::TreeEntry>& out)
 {
+    // A directory deep enough to overflow FS's path limit would fail the open with
+    // an opaque Result; name it here instead, and stop the walk on the same code
+    // checkPathLengths would report for the entries under it.
+    if (root.length() + sub.length() > io::MAX_PATH_UNITS) {
+        Logging::error("Path too long to enumerate ({} units, limit {}): {}", root.length() + sub.length(), io::MAX_PATH_UNITS,
+            StringUtils::UTF16toUTF8(root + sub));
+        return RES_PATH_TOO_LONG;
+    }
+
     Directory items(arch, root + sub);
     if (!items.good()) {
         return items.error();
@@ -107,6 +118,29 @@ static Result collectTreeImpl(FS_Archive arch, const std::u16string& root, const
 Result io::collectTree(FS_Archive arch, const std::u16string& path, std::vector<TreeEntry>& out)
 {
     return collectTreeImpl(arch, path, StringUtils::UTF8toUTF16(""), out);
+}
+
+Result io::checkPathLengths(const std::vector<TreeEntry>& entries, const std::u16string& srcRoot, const std::u16string& dstRoot)
+{
+    auto tooLong = [](const std::u16string& path) {
+        if (path.length() <= MAX_PATH_UNITS) {
+            return false;
+        }
+        Logging::error("Path too long for FS ({} units, limit {}): {}", path.length(), MAX_PATH_UNITS, StringUtils::UTF16toUTF8(path));
+        return true;
+    };
+
+    if (tooLong(srcRoot) || tooLong(dstRoot)) {
+        return RES_PATH_TOO_LONG;
+    }
+
+    for (const auto& entry : entries) {
+        if (tooLong(srcRoot + entry.rel) || tooLong(dstRoot + entry.rel)) {
+            return RES_PATH_TOO_LONG;
+        }
+    }
+
+    return 0;
 }
 
 Result io::copyFile(
@@ -351,7 +385,17 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
             if (R_FAILED(res)) {
                 FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
                 Logging::error("Failed to enumerate {} for backup. Result {}.", target.dataTypeName(), res);
-                return {false, res, BackupStage::Copy};
+                return {false, res, (u32)res == RES_PATH_TOO_LONG ? BackupStage::PathTooLong : BackupStage::Copy};
+            }
+
+            // The console-side tree is short; it is the SD destination — root plus
+            // title folder plus the backup name the user just typed — that can push
+            // a deep save over the limit. Say so now, not half a copy in.
+            res = io::checkPathLengths(entries, archiveRoot, copyPath);
+            if (R_FAILED(res)) {
+                FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
+                Logging::error("Refusing to back up {}: the destination folder name makes a path FS cannot create.", target.dataTypeName());
+                return {false, res, BackupStage::PathTooLong};
             }
 
             size_t fileCount = 0;
@@ -486,6 +530,29 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
             const bool isTwl       = title.isDSiWare();
             std::u16string dstPath = isTwl ? Archive::twlSaveDataPath(title.lowId(), title.highId()) : StringUtils::UTF8toUTF16("/");
 
+            // Walk and vet the backup *before* touching what is on the console: a
+            // source that can't be enumerated, or that holds a path FS will refuse,
+            // must not cost the user the save that is still there.
+            std::vector<io::TreeEntry> entries;
+            res = io::collectTree(Archive::sdmc(), fullSrc, entries);
+            if (R_FAILED(res)) {
+                Logging::error("Failed to enumerate backup of {} for restore. Result {}.", target.dataTypeName(), res);
+                return {false, res, (u32)res == RES_PATH_TOO_LONG ? BackupStage::PathTooLong : BackupStage::Copy};
+            }
+
+            res = io::checkPathLengths(entries, fullSrc, dstPath);
+            if (R_FAILED(res)) {
+                Logging::error("Refusing to restore {}: the backup holds a path FS cannot open.", target.dataTypeName());
+                return {false, res, BackupStage::PathTooLong};
+            }
+
+            size_t fileCount = 0;
+            for (const auto& e : entries) {
+                if (!e.folder) {
+                    fileCount++;
+                }
+            }
+
             if (isTwl) {
                 // The TWL FAT `data` directory must survive; only its contents go.
                 sink.begin("Clearing", countFilesRecursively(handle.fs(), dstPath));
@@ -500,20 +567,6 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
                 sink.begin("Clearing", countFilesRecursively(handle.fs(), dstPath));
                 deleteFolderRecursively(handle.fs(), dstPath, &sink);
                 sink.end();
-            }
-
-            std::vector<io::TreeEntry> entries;
-            res = io::collectTree(Archive::sdmc(), fullSrc, entries);
-            if (R_FAILED(res)) {
-                Logging::error("Failed to enumerate backup of {} for restore. Result {}.", target.dataTypeName(), res);
-                return {false, res, BackupStage::Copy};
-            }
-
-            size_t fileCount = 0;
-            for (const auto& e : entries) {
-                if (!e.folder) {
-                    fileCount++;
-                }
             }
 
             sink.begin("Restore", fileCount);

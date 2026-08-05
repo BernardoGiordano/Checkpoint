@@ -803,6 +803,18 @@
     "zh": "{0}存档备份失败",
     "ru": "Не удалось сделать бэкап {0}."
   },
+  "outcome.path_too_long": {
+    "en": "Path too long for the console.\nUse a shorter backup folder name.",
+    "it": "Percorso troppo lungo per la console.\nUsa un nome di cartella più corto.",
+    "es": "Ruta demasiado larga para la consola.\nUsa un nombre de carpeta más corto.",
+    "fr": "Chemin trop long pour la console.\nUtilisez un nom de dossier plus court.",
+    "de": "Pfad für die Konsole zu lang.\nKürzeren Ordnernamen verwenden.",
+    "pt": "Caminho longo demais para o console.\nUse um nome de pasta mais curto.",
+    "nl": "Pad te lang voor de console.\nGebruik een kortere mapnaam.",
+    "ja": "パスがコンソールには長すぎます。\n短いフォルダ名を使ってください。",
+    "zh": "路径超出主机限制\n请使用更短的文件夹名",
+    "ru": "Путь слишком длинный для консоли.\nИспользуйте более короткое имя папки."
+  },
   "outcome.read_file": {
     "en": "Failed to read save file backup.",
     "it": "Impossibile leggere il backup del salvataggio.",
