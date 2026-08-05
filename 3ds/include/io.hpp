@@ -43,7 +43,7 @@ class BackupTarget;
 namespace io {
     // The stage at which a backup/restore failed. The UI maps it (together with
     // the target's data-type name) to a human message; io itself carries no UI text.
-    enum class BackupStage { OpenArchive, DeleteDst, CreateDst, Copy, ReadSpi, ReadFile, WriteFile, Commit, SecureValue, PathTooLong };
+    enum class BackupStage { OpenArchive, DeleteDst, CreateDst, Copy, ReadSpi, ReadFile, WriteFile, Commit, SecureValue, PathTooLong, CardNandSave };
 
     struct IoOutcome {
         bool ok;

@@ -815,6 +815,18 @@
     "zh": "路径超出主机限制\n请使用更短的文件夹名",
     "ru": "Путь слишком длинный для консоли.\nИспользуйте более короткое имя папки."
   },
+  "outcome.card_nand_save": {
+    "en": "This cart saves to on-cart NAND.\nThe 3DS cannot access it.\nUse GodMode9i in DS mode.",
+    "it": "Questa cartuccia salva nella NAND interna.\nIl 3DS non può accedervi.\nUsa GodMode9i in modalità DS.",
+    "es": "Este cartucho guarda en su NAND interna.\nLa 3DS no puede acceder a ella.\nUsa GodMode9i en modo DS.",
+    "fr": "Cette cartouche sauvegarde sur sa NAND interne.\nLa 3DS ne peut pas y accéder.\nUtilisez GodMode9i en mode DS.",
+    "de": "Dieses Modul speichert auf modulinternem NAND.\nDer 3DS kann nicht darauf zugreifen.\nGodMode9i im DS-Modus verwenden.",
+    "pt": "Este cartucho salva na NAND interna.\nO 3DS não consegue acessá-la.\nUse o GodMode9i no modo DS.",
+    "nl": "Deze cartridge slaat op in interne NAND.\nDe 3DS kan die niet benaderen.\nGebruik GodMode9i in DS-modus.",
+    "ja": "このカードはカード内のNANDにセーブします。\n3DSからはアクセスできません。\nDSモードのGodMode9iを使ってください。",
+    "zh": "此卡带将存档保存在卡带内置NAND中\n3DS无法访问\n请在DS模式下使用GodMode9i",
+    "ru": "Этот картридж хранит сохранение во внутренней NAND.\n3DS не может получить к ней доступ.\nИспользуйте GodMode9i в режиме DS."
+  },
   "outcome.read_file": {
     "en": "Failed to read save file backup.",
     "it": "Impossibile leggere il backup del salvataggio.",

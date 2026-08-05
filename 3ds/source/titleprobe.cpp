@@ -25,6 +25,7 @@
  */
 
 #include "titleprobe.hpp"
+#include "dscard.hpp"
 #include "paths.hpp"
 #include "titlequirks.hpp"
 #include <3ds.h>
@@ -123,7 +124,7 @@ namespace {
         std::u16string& shortDescription, std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, CardType& spiCard,
         IconStore& icons)
     {
-        u8* headerData = new u8[0x3B4];
+        u8* headerData = new u8[DSCard::headerSize];
         Result res     = FSUSER_GetLegacyRomHeader(media, 0LL, headerData);
         if (R_FAILED(res)) {
             delete[] headerData;
@@ -138,6 +139,11 @@ namespace {
         std::copy(headerData + 12, headerData + 16, gameCode);
         cardTitle[13] = '\0';
         gameCode[5]   = '\0';
+
+        // Log the save hardware the header describes for every cart: an
+        // unsupported-cart report then arrives with the numbers already in it,
+        // next to the JEDEC id and card type SPIGetCardType logs below.
+        DSCard::logNandSave(DSCard::parseNandSave(headerData));
 
         // Replace the placeholder id (0) with a stable per-cart key derived from
         // the game code, so config keyed on the title id works for DS carts too.

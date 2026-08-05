@@ -60,6 +60,8 @@ std::string OutcomeMessages::backupError(io::BackupStage stage, const std::strin
             return i18n::t("outcome.create_dst");
         case io::BackupStage::PathTooLong:
             return i18n::t("outcome.path_too_long");
+        case io::BackupStage::CardNandSave:
+            return i18n::t("outcome.card_nand_save");
         default:
             return i18n::t("outcome.backup_failed", {dataType});
     }
@@ -81,6 +83,8 @@ std::string OutcomeMessages::restoreError(io::BackupStage stage, const std::stri
             return i18n::t("outcome.secure_value");
         case io::BackupStage::PathTooLong:
             return i18n::t("outcome.path_too_long");
+        case io::BackupStage::CardNandSave:
+            return i18n::t("outcome.card_nand_save");
         default:
             return i18n::t("outcome.restore_failed", {dataType});
     }

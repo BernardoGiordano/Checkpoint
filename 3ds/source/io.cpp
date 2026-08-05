@@ -27,6 +27,7 @@
 #include "io.hpp"
 #include "backuptarget.hpp"
 #include "csvc.hpp"
+#include "dscard.hpp"
 #include "gbasave.hpp"
 #include "loader.hpp"
 
@@ -427,6 +428,15 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
         u32 saveSize      = SPIGetCapacity(cardType);
         // NO_CHIP / an unreadable cart reports 0 capacity; guard the division below.
         if (saveSize == 0) {
+            // A cart whose save is in on-cart NAND has no SPI chip to report a
+            // capacity, so it lands here. Name that case: the generic message
+            // blames the save archive for hardware 3DS mode simply can't address.
+            const DSCard::NandSave nand = DSCard::probeNandSave(title.mediaType());
+            if (nand.present) {
+                DSCard::logNandSave(nand);
+                Logging::error("Refusing to back up {}: its save is in on-cart NAND, unreachable from 3DS mode.", title.shortDescription().c_str());
+                return {false, 0, BackupStage::CardNandSave};
+            }
             Logging::error("SPI backup: card reports zero capacity ({}).", (int)cardType);
             return {false, res, BackupStage::OpenArchive};
         }
@@ -601,6 +611,14 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
         u32 pageSize      = SPIGetPageSize(cardType);
         // NO_CHIP / an unreadable cart reports 0 capacity or page size; guard the divisions below.
         if (saveSize == 0 || pageSize == 0) {
+            // See the matching guard in io::backup: on-cart NAND saves have no SPI
+            // chip, and writing one back needs card commands 3DS mode never issues.
+            const DSCard::NandSave nand = DSCard::probeNandSave(title.mediaType());
+            if (nand.present) {
+                DSCard::logNandSave(nand);
+                Logging::error("Refusing to restore {}: its save is in on-cart NAND, unreachable from 3DS mode.", title.shortDescription().c_str());
+                return {false, 0, BackupStage::CardNandSave};
+            }
             Logging::error("SPI restore: card reports zero capacity/page size ({}).", (int)cardType);
             return {false, res, BackupStage::OpenArchive};
         }

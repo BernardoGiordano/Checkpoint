@@ -565,8 +565,17 @@ Result SPIGetCardType(CardType* type, int infrared)
         return 0;
     }
     else if (t == FLASH_INFRARED_DUMMY) {
-        if (infrared == 0)
-            *type = NO_CHIP; // did anything go wrong?
+        // Reaching here means none of the status-register checks above matched, i.e.
+        // the probe never identified a chip. For a cart that isn't infrared (game
+        // code starting with 'I') that means there is no SPI save chip at all — an
+        // on-cart NAND save, or a cart that didn't answer. Falling through to the
+        // infrared types would hand the caller a 256/512KB capacity for a chip that
+        // isn't there, and a backup of whatever the bus returns.
+        if (infrared == 0) {
+            Logging::info("No SPI chip identified on a non-infrared cart (JEDEC 0x{:06X}, status register 0x{:02X}).", jedec, sr);
+            *type = NO_CHIP;
+            return 0;
+        }
         if (jedec == jedecOrderedList[0] || jedec == jedecOrderedList[1])
             *type = FLASH_256KB_INFRARED;
         else
