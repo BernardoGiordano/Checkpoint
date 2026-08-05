@@ -26,7 +26,8 @@
 
 // The 3DS side of the script bindings' seam (common/script/scripthost.hpp).
 //
-// The catalog index space is the Save list; a save handle is an open FS archive
+// The catalog index space is the Save list followed by the titles the Extdata
+// list holds alone (refreshExtras below); a save handle is an open FS archive
 // addressed with UTF-16 paths. Everything runs on the script worker thread:
 // TitleCatalog reads are safe there (recursive mutex since arch-review S4), and
 // nothing here may trigger a catalog refresh.
@@ -67,17 +68,34 @@ namespace {
         return StringUtils::UTF8toUTF16(p.c_str());
     }
 
+    // Is this archive path a directory? Opening a directory handle is the only
+    // way the archive answers, and it is done raw here rather than through
+    // Directory so a probe that says "no" does not log an FS error: sav_rename
+    // asks this about every path it is given, and most of them are files.
+    bool isArchiveDir(FS_Archive archive, const std::u16string& path)
+    {
+        Handle dir;
+        if (R_FAILED(FSUSER_OpenDirectory(&dir, archive, fsMakePath(PATH_UTF16, path.data())))) {
+            return false;
+        }
+        FSDIR_Close(dir);
+        return true;
+    }
+
     class CtrScriptHost : public ScriptHost {
     public:
-        int titleCount(void) override { return TitleCatalog::get().getTitleCount(BackupKind::Save); }
+        int titleCount(void) override
+        {
+            refreshExtras();
+            return mSaveCount + (int)mExtras.size();
+        }
 
         bool titleAt(int idx, HostTitle& out) override
         {
-            if (idx < 0 || idx >= titleCount()) {
+            Title title;
+            if (!catalogTitle(idx, title)) {
                 return false;
             }
-            Title title;
-            TitleCatalog::get().getTitle(title, idx, BackupKind::Save);
             out.id          = title.id();
             out.name        = title.longDescription();
             out.productCode = title.productCode;
@@ -87,31 +105,42 @@ namespace {
             return true;
         }
 
-        int titleIndexOf(uint64_t id) override { return TitleCatalog::get().indexById((u64)id, BackupKind::Save); }
+        int titleIndexOf(uint64_t id) override
+        {
+            const int save = TitleCatalog::get().indexById((u64)id, BackupKind::Save);
+            if (save >= 0) {
+                return save;
+            }
+
+            refreshExtras();
+            for (size_t i = 0; i < mExtras.size(); i++) {
+                if (mExtras[i].id == (u64)id) {
+                    return mSaveCount + (int)i;
+                }
+            }
+            return -1;
+        }
 
         std::string titleBackupPath(int idx, int kind) override
         {
-            if (idx < 0 || idx >= titleCount()) {
+            Title title;
+            if (!catalogTitle(idx, title)) {
                 return "";
             }
-            Title title;
-            TitleCatalog::get().getTitle(title, idx, BackupKind::Save);
             BackupTarget target = title.backup(kind == 0 ? BackupKind::Save : BackupKind::Extdata);
             return StringUtils::UTF16toUTF8(target.rootPath());
         }
 
         int savOpen(int titleIdx, int kind) override
         {
-            if (titleIdx < 0 || titleIdx >= titleCount()) {
+            Title title;
+            if (!catalogTitle(titleIdx, title)) {
                 return -1;
             }
             const int slot = freeSlot();
             if (slot < 0) {
                 return -2;
             }
-
-            Title title;
-            TitleCatalog::get().getTitle(title, titleIdx, BackupKind::Save);
 
             // Only regular CTR saves and extdata are file-level archives; GBA VC
             // (FSPXI raw), DSiWare (TWL FAT) and SPI cart saves are not reachable here.
@@ -223,6 +252,35 @@ namespace {
         {
             const std::u16string p = archivePath(path);
             return (int)FSUSER_DeleteFile(mSlots[handle].arch.fs(), fsMakePath(PATH_UTF16, p.data()));
+        }
+
+        int savMkdir(int handle, const char* path) override
+        {
+            const std::u16string p = archivePath(path);
+            return (int)FSUSER_CreateDirectory(mSlots[handle].arch.fs(), fsMakePath(PATH_UTF16, p.data()), 0);
+        }
+
+        int savRmdir(int handle, const char* path) override
+        {
+            // The non-recursive call by contract: a tree the script did not walk
+            // itself must not disappear behind one confirmation.
+            const std::u16string p = archivePath(path);
+            return (int)FSUSER_DeleteDirectory(mSlots[handle].arch.fs(), fsMakePath(PATH_UTF16, p.data()));
+        }
+
+        int savRename(int handle, const char* from, const char* to) override
+        {
+            // Files and directories take different FS calls, and the archive
+            // will not tell which this is as part of the rename, so ask first —
+            // trying one and falling back to the other would report the wrong
+            // call's error whenever the real failure is on the destination.
+            const std::u16string f = archivePath(from);
+            const std::u16string t = archivePath(to);
+            const FS_Archive arch  = mSlots[handle].arch.fs();
+            if (isArchiveDir(arch, f)) {
+                return (int)FSUSER_RenameDirectory(arch, fsMakePath(PATH_UTF16, f.data()), arch, fsMakePath(PATH_UTF16, t.data()));
+            }
+            return (int)FSUSER_RenameFile(arch, fsMakePath(PATH_UTF16, f.data()), arch, fsMakePath(PATH_UTF16, t.data()));
         }
 
         bool savList(int handle, const std::string& dir, std::vector<HostDirEntry>& out) override
@@ -358,7 +416,67 @@ namespace {
             return -1;
         }
 
+        // The extras: Checkpoint keeps two title lists, and a title whose save is
+        // not reachable but whose extdata is lives in the Extdata one alone —
+        // PKSM's archive, which loader.cpp probes for by id, is the case every
+        // user meets. The Save list on its own would hide those titles from every
+        // script while the app's own UI offers them, so the script index space is
+        // the Save list with them appended: existing indices keep their values,
+        // and an extra answers title_has_save() with 0 and title_has_extdata()
+        // with 1.
+        //
+        // Rebuilt when the catalog's generation moves, because a script may be
+        // running while the loader thread finishes a refresh.
+        void refreshExtras(void)
+        {
+            TitleCatalog& catalog = TitleCatalog::get();
+            const u32 generation  = catalog.generation();
+            if (mExtrasGeneration == generation) {
+                return;
+            }
+            mExtrasGeneration = generation;
+            mSaveCount        = catalog.getTitleCount(BackupKind::Save);
+            mExtras.clear();
+
+            const int extdatas = catalog.getTitleCount(BackupKind::Extdata);
+            for (int i = 0; i < extdatas; i++) {
+                Title title;
+                catalog.getTitle(title, i, BackupKind::Extdata);
+                if (catalog.indexById(title.id(), BackupKind::Save) < 0) {
+                    mExtras.push_back(Extra{i, title.id()});
+                }
+            }
+        }
+
+        // The title behind a script-space index, false when there is none.
+        bool catalogTitle(int idx, Title& out)
+        {
+            refreshExtras();
+            if (idx < 0) {
+                return false;
+            }
+            if (idx < mSaveCount) {
+                TitleCatalog::get().getTitle(out, idx, BackupKind::Save);
+                return true;
+            }
+
+            const int extra = idx - mSaveCount;
+            if (extra >= (int)mExtras.size()) {
+                return false;
+            }
+            TitleCatalog::get().getTitle(out, mExtras[extra].index, BackupKind::Extdata);
+            return true;
+        }
+
+        struct Extra {
+            int index; // into the Extdata list
+            u64 id;    // kept so title_find costs no catalog copies
+        };
+
         SavSlot mSlots[MAX_SAV_HANDLES];
+        std::vector<Extra> mExtras;
+        u32 mExtrasGeneration = 0; // TitleCatalog's counter starts at 1
+        int mSaveCount        = 0;
     };
 }
 

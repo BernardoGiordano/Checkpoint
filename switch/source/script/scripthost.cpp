@@ -54,6 +54,8 @@
 #include <mbedtls/sha256.h>
 #include <string>
 #include <switch.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 namespace {
@@ -219,6 +221,19 @@ namespace {
         }
 
         int savDelete(int handle, const char* path) override { return remove(devPath(handle, path).c_str()) == 0 ? 0 : -1; }
+
+        // A save is an fsdev mount here, so the folder calls are the ordinary
+        // POSIX ones on the slot's device. rmdir is non-recursive by contract,
+        // which is also all fsdev offers.
+        int savMkdir(int handle, const char* path) override { return mkdir(devPath(handle, path).c_str(), 0777) == 0 ? 0 : -1; }
+
+        int savRmdir(int handle, const char* path) override { return rmdir(devPath(handle, path).c_str()) == 0 ? 0 : -1; }
+
+        int savRename(int handle, const char* from, const char* to) override
+        {
+            const std::string src = devPath(handle, from);
+            return rename(src.c_str(), devPath(handle, to).c_str()) == 0 ? 0 : -1;
+        }
 
         bool savList(int handle, const std::string& dir, std::vector<HostDirEntry>& out) override
         {

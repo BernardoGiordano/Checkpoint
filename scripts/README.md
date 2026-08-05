@@ -364,7 +364,9 @@ has — not what your host compiler has.
 **`<string.h>`** — `memcpy` `memmove` `memchr` `memcmp` `memset` `strcat` `strncat`
 `strchr` `strrchr` `strcmp` `strncmp` `strcasecmp` `strncasecmp` `strcoll` `strcpy`
 `strncpy` `strdup` `strerror` `strlen` `strspn` `strcspn` `strpbrk` `strstr`
-`strtok` `strtok_r` `strxfrm` `index` `rindex`
+`strtok` `strtok_r` `strxfrm` `index` `rindex` — `strdup` allocates on the same
+run-scoped heap as `malloc`, so `free()` releases it and an aborted run reclaims
+it
 
 **`<unistd.h>`** — useful on a console: `sleep` `usleep` `mkdir` `rmdir` `unlink`
 `access` `getcwd` `chdir` `truncate` `ftruncate` `read` `write` `close` `lseek`
@@ -404,7 +406,10 @@ implementations are in `common/script/`.
 - **Title ids** cross the boundary as 16-character uppercase hex strings, because
   picoc has no 64-bit integers.
 - **Titles** are otherwise addressed by *catalog index*, `0 … titles_count()-1`,
-  the same order as Checkpoint's Save list. Valid only during the run.
+  the same order as Checkpoint's Save list, followed on 3DS by the titles its
+  Extdata list holds alone. Those answer `title_has_save()` with `0` and
+  `title_has_extdata()` with `1` — check the one you are about to open rather
+  than assuming every index has a save. Valid only during the run.
 - **`kind`** is `0` for save data and `1` for extdata (3DS only).
 - Functions returning `char*` return a heap block you may `free()`.
 - `int` returns are `0`/positive on success and **negative on failure**; each
@@ -422,7 +427,7 @@ implementations are in `common/script/`.
 | `char* title_name(int idx)` | display name |
 | `char* title_product_code(int idx)` | product code, `""` on Switch |
 | `int title_is_cart(int idx)` | `1` for a game card, else `0` (always `0` on Switch) |
-| `int title_has_save(int idx)` | `1`/`0` |
+| `int title_has_save(int idx)` | `1`/`0` (`0` for an extdata-only title) |
 | `int title_has_extdata(int idx)` | `1`/`0` (always `0` on Switch) |
 | `char* title_backup_path(int idx, int kind)` | backup folder for that title, with a trailing `/`; `""` if the platform has no backups of that kind |
 
@@ -442,6 +447,9 @@ A handle is an open save (or extdata) archive. Paths are archive-absolute:
 | `int sav_read(int h, char* path, char** out, int* outSize)` | `0` ok; `-3` out of memory, `-4` short read, else a negative platform result |
 | `int sav_write(int h, char* path, char* data, int size)` | `0` ok, else negative |
 | `int sav_delete(int h, char* path)` | `0` ok, else negative |
+| `int sav_mkdir(int h, char* path)` | `0` ok, else negative |
+| `int sav_rmdir(int h, char* path)` | `0` ok, else negative — the folder must be **empty** |
+| `int sav_rename(int h, char* from, char* to)` | `0` ok, else negative |
 | `struct directory* sav_list(int h, char* path)` | listing, or `NULL` on error |
 | `int sav_commit(int h)` | `0` ok, else negative |
 | `void sav_close(int h)` | — |
@@ -456,6 +464,15 @@ A handle is an open save (or extdata) archive. Paths are archive-absolute:
   Commit right after writing.
 - `sav_list` returns full archive-absolute paths; folders carry a trailing `/`.
   Free it with `delete_directory` (not `free`).
+- `sav_mkdir` creates **one** level (it is not `mkdir -p` like `sd_mkdirs`), and
+  `sav_rmdir` removes an empty folder only: a recursive delete is your own loop,
+  so an abort in the middle leaves a half-emptied tree you can see rather than a
+  folder that vanished whole. `sav_rename` moves a file or a folder inside one
+  archive; between two archives it is a copy plus a delete you do yourself. All
+  three need a `sav_commit` afterwards, exactly like `sav_write`.
+- There is no `stat`: the only way to a file's size inside an archive is to
+  `sav_read` it, which is why `browser.c` totals bytes on the SD card and counts
+  entries in an archive.
 - `sav_close` is lenient — closing a closed or bogus handle is a no-op, so cleanup
   paths can close unconditionally. Every handle is force-closed after the run.
 - Unsupported by design (`sav_open` → `-1`): GBA Virtual Console, DSiWare and SPI
@@ -996,6 +1013,7 @@ gate before the console.
 
 | Script | Consoles | What it does |
 | --- | --- | --- |
+| [`common/universal/browser.c`](common/universal/browser.c) | both | File browser for the SD card and for a title's live save archive: copy, move, rename, delete, new folder, properties, zip/unzip, and batch operations on several items at once — either side of a transfer can be the card or an archive. |
 | [`common/universal/googledrive.c`](common/universal/googledrive.c) | both | Backs up save backups to the user's own Google Drive. OAuth 2.0 device flow, `drive.file` scope, store-only zip per backup folder, resumable upload. Setup guide: [`googledrive.md`](googledrive.md). |
 | [`common/universal/webdav.c`](common/universal/webdav.c) | both | Same job against any WebDAV server (Nextcloud, Synology, `rclone serve webdav`, …): HTTP Basic, `MKCOL`/`PROPFIND`/`PUT`, uploads skip what is already there, and it can download a backup back onto the console. Setup guide: [`webdav.md`](webdav.md). |
 | [`3ds/universal/sharkive.c`](3ds/universal/sharkive.c) | 3DS | Cheat manager: downloads [Sharkive](https://github.com/FlagBrew/Sharkive)'s `3ds.json`, ticks cheats per title, writes `/cheats/<TITLEID>.txt` for the Luma3DS patcher. |

@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "interpreter.h"
+#include "scriptheap_c.h"
 
 static int String_ZeroValue = 0;
 
@@ -177,7 +178,24 @@ void StringStrxfrm(
 void StringStrdup(
     struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 {
-    ReturnValue->Val->Pointer = (void*)strdup(Param[0]->Val->Pointer);
+    /* Through the script heap, not the C library's strdup: a script's free()
+       is ScriptHeap::release, which ignores a pointer the heap does not own, so
+       a libc strdup would leak for the whole run and log a warning per free.
+       Anything a script can free has to be allocated the way its malloc is. */
+    const char* src = Param[0]->Val->Pointer;
+    if (src == NULL)
+    {
+        ReturnValue->Val->Pointer = NULL;
+        return;
+    }
+
+    size_t size = strlen(src) + 1;
+    void* copy  = ckpt_script_malloc(size);
+    if (copy != NULL)
+    {
+        memcpy(copy, src, size);
+    }
+    ReturnValue->Val->Pointer = copy;
 }
 
 void StringStrtok_r(

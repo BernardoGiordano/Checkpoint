@@ -72,6 +72,18 @@ struct LibraryFunction CheckpointFunctions[] =
     { ckpt_sav_read,           "int sav_read(int h, char* path, char** out, int* outSize);" },
     { ckpt_sav_write,          "int sav_write(int h, char* path, char* data, int size);" },
     { ckpt_sav_delete,         "int sav_delete(int h, char* path);" },
+    // The folder half of the calls above, for a script that manages the
+    // archive's tree (scripts/common/universal/browser.c) rather than one known
+    // file of it. sav_rmdir removes an *empty* directory only, so a recursive
+    // delete stays the script's own loop: an abort in the middle leaves a
+    // half-emptied tree the user can see, not a folder that vanished whole.
+    // sav_rename moves a file or a directory inside one archive; across two
+    // archives it is a copy plus a delete the script does itself. All three
+    // return 0 or a negative platform result, and all three need sav_commit
+    // like sav_write does.
+    { ckpt_sav_mkdir,          "int sav_mkdir(int h, char* path);" },
+    { ckpt_sav_rmdir,          "int sav_rmdir(int h, char* path);" },
+    { ckpt_sav_rename,         "int sav_rename(int h, char* from, char* to);" },
     { ckpt_sav_list,           "struct directory* sav_list(int h, char* path);" },
     { ckpt_sav_commit,         "int sav_commit(int h);" },
     { ckpt_sav_close,          "void sav_close(int h);" },

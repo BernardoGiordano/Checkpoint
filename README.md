@@ -47,7 +47,7 @@ Checkpoint runs **scripts** written in C, interpreted on the console. A script i
 Scripts get a native API — `#include <checkpoint.h>` — that reaches the same machinery the app itself uses:
 
 * **Titles**: the whole catalog, ids, names, product codes, cart/save/extdata flags, backup folders
-* **Save data**: open a title's save (or 3DS extdata, or console-wide shared extdata), read, write, delete, list and commit files inside it
+* **Save data**: open a title's save (or 3DS extdata, or console-wide shared extdata), then read, write, delete, list and commit files inside it, and create, rename or remove its folders
 * **SD card**: directory listings, `mkdir -p`, existence checks, plus ordinary C file I/O
 * **Zip**: pack or unpack a folder with the same store-only framing the wireless transfer and chlink use
 * **Network**: HTTP GET, full requests with methods, headers and bodies, and streamed file uploads
@@ -59,6 +59,7 @@ A running script owns the screen: its output streams into a scrollable log pane 
 
 A few scripts ship with the app already:
 
+* **browser** — file browser for the SD card and for a title's live save archive: copy, move, rename, delete, make folders, read properties, zip and unzip, one item or a batch at a time, with either side of a transfer on the card or inside a save
 * **sharkive** — cheat manager: downloads the [Sharkive](https://github.com/FlagBrew/Sharkive) database, lets you tick cheats per title, and writes the cheat files Luma3DS (3DS) or Atmosphere (Switch) expect
 * **googledrive** — backs up your save backups to your own Google Drive, with a device-code sign-in and per-backup zips ([setup guide](scripts/googledrive.md))
 * **webdav** — the same for any WebDAV server you already have (Nextcloud, Synology, `rclone serve webdav`, …): uploads only what isn't there yet, and can download a backup back onto the console ([setup guide](scripts/webdav.md))

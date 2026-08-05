@@ -41,7 +41,8 @@ extern "C" {
 
 #define CKPT_BINDING(name) void name(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
 
-/* titles (catalog index space = the Save list) */
+/* titles (catalog index space = the Save list, plus the extdata-only titles
+ * appended after it — see ScriptHost::titleCount) */
 CKPT_BINDING(ckpt_titles_count);
 CKPT_BINDING(ckpt_title_find);
 CKPT_BINDING(ckpt_title_id);
@@ -64,6 +65,9 @@ CKPT_BINDING(ckpt_sav_open_shared);
 CKPT_BINDING(ckpt_sav_read);
 CKPT_BINDING(ckpt_sav_write);
 CKPT_BINDING(ckpt_sav_delete);
+CKPT_BINDING(ckpt_sav_mkdir);
+CKPT_BINDING(ckpt_sav_rmdir);
+CKPT_BINDING(ckpt_sav_rename);
 CKPT_BINDING(ckpt_sav_list);
 CKPT_BINDING(ckpt_sav_commit);
 CKPT_BINDING(ckpt_sav_close);

@@ -86,6 +86,11 @@ public:
 
     /* ---- titles: the catalog index space every titles_* binding shares --- */
 
+    // The catalog a script sees: every title with an archive it could open,
+    // whichever of Checkpoint's own lists holds it. On 3DS that is the Save
+    // list followed by the titles only the Extdata list has (PKSM's archive is
+    // the one everybody meets) — an index past the Save list answers hasSave
+    // with false and hasExtdata with true.
     virtual int titleCount(void) = 0;
 
     // False when idx is out of range, leaving `out` untouched; the binding
@@ -127,6 +132,18 @@ public:
     virtual int savWrite(int handle, const char* path, const void* data, size_t size) = 0;
 
     virtual int savDelete(int handle, const char* path) = 0;
+
+    // The folder half of the same file operations, for a script that manages an
+    // archive's tree rather than one file of it. savRmdir removes an *empty*
+    // directory only: a recursive delete stays the script's own loop, so an
+    // abort in the middle leaves a half-emptied tree instead of a surprise, and
+    // the script keeps deciding what to confirm. savRename moves a file or a
+    // directory within the same archive; renaming across archives is a
+    // copy + delete the script does itself. 0 on success, else a platform
+    // result (negative), like every other sav_* call.
+    virtual int savMkdir(int handle, const char* path)                  = 0;
+    virtual int savRmdir(int handle, const char* path)                  = 0;
+    virtual int savRename(int handle, const char* from, const char* to) = 0;
 
     // Entries of one archive-absolute directory. False if it cannot be
     // listed — the binding answers the script with a null directory.

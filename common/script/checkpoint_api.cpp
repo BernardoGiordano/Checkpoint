@@ -70,8 +70,9 @@ namespace {
     // bad value (longjmp; called before any local C++ object exists in the
     // binding), naming the argument the way every other check does.
 
-    // A catalog index, the same index space as the Save list — a script gets
-    // one from titles_count()/title_find().
+    // A catalog index (ScriptHost::titleCount: the Save list plus the
+    // extdata-only titles) — a script gets one from
+    // titles_count()/title_find().
     int titleIndexArg(const ScriptArgs& args, int i)
     {
         const int idx   = args.num(i);
@@ -336,6 +337,28 @@ void ckpt_sav_delete(struct ParseState* Parser, struct Value* ReturnValue, struc
     const ScriptArgs args(Parser, Param, NumArgs, "sav_delete");
     const int handle          = savArg(args, 0);
     ReturnValue->Val->Integer = host().savDelete(handle, args.str(1));
+}
+
+void ckpt_sav_mkdir(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    const ScriptArgs args(Parser, Param, NumArgs, "sav_mkdir");
+    const int handle          = savArg(args, 0);
+    ReturnValue->Val->Integer = host().savMkdir(handle, args.str(1));
+}
+
+void ckpt_sav_rmdir(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    const ScriptArgs args(Parser, Param, NumArgs, "sav_rmdir");
+    const int handle          = savArg(args, 0);
+    ReturnValue->Val->Integer = host().savRmdir(handle, args.str(1));
+}
+
+void ckpt_sav_rename(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
+{
+    const ScriptArgs args(Parser, Param, NumArgs, "sav_rename");
+    const int handle          = savArg(args, 0);
+    const char* from          = args.str(1);
+    ReturnValue->Val->Integer = host().savRename(handle, from, args.str(2));
 }
 
 void ckpt_sav_list(struct ParseState* Parser, struct Value* ReturnValue, struct Value** Param, int NumArgs)
