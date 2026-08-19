@@ -57,6 +57,16 @@ public:
         mColorText = text;
     }
 
+    // Moves/resizes the box. Both drawing and touch hit-testing read these, so a
+    // caller that relayouts a row of buttons only has to set them here.
+    void setBounds(int x, int y, u16 w, u16 h)
+    {
+        mx = x;
+        my = y;
+        mw = w;
+        mh = h;
+    }
+
     std::string text(void) { return mText; }
 
     void text(const std::string& v) { mText = v; }

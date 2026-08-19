@@ -64,6 +64,9 @@ protected:
     void drawSelector(void) const;
     void drawTile(size_t k) const;
     void handleEvents(const InputState& input);
+    // Sizes the Backup/Restore pair for the current action row: thirds when Send
+    // shares the row (wireless transfer on), halves of the row when it doesn't.
+    void layoutActionButtons(void);
     void updateSelector(void);
     void updateButtons(void);
     void refreshTitlesFull(void);
@@ -97,7 +100,7 @@ protected:
 
 private:
     Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
-    std::unique_ptr<Clickable> buttonBackupAL, buttonRestoreAL; // narrower Backup/Restore of the three-button action rows
+    std::unique_ptr<Clickable> buttonBackupAL, buttonRestoreAL; // per-title Backup/Restore pair, sized by layoutActionButtons()
     std::unique_ptr<Clickable> buttonSend;      // middle of the Backup/Send/Restore trio (greyed unless a highlighted backup is sendable)
     std::unique_ptr<Clickable> buttonBackupAll; // full-width batch Backup shown in multi-select, replacing the two action buttons
     std::unique_ptr<BackupList> directoryList;

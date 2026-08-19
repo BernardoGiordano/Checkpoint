@@ -58,6 +58,18 @@ static constexpr int TILE = 48, GAP = 1;
 static constexpr int GRID_LEFT = (400 - (8 * TILE + 7 * GAP)) / 2; // = 4
 static constexpr int GRID_TOP  = HEADER_H + 1;                     // = 25
 
+// Detail action row: spans x 8..312 at y 182, buttons separated by an 8px gap.
+// With wireless transfer on it holds the Backup / Send / Restore trio of equal
+// thirds; with transfer off Send isn't drawn, so Backup and Restore take half
+// the row each instead of leaving a hole in the middle of it.
+static constexpr int ACTION_X   = 8;
+static constexpr int ACTION_Y   = 182;
+static constexpr int ACTION_W   = 304;
+static constexpr int ACTION_H   = 30;
+static constexpr int ACTION_GAP = 8;
+static constexpr int ACTION_W3  = (ACTION_W - 2 * ACTION_GAP) / 3; // = 96
+static constexpr int ACTION_W2  = (ACTION_W - ACTION_GAP) / 2;     // = 148
+
 namespace {
     std::optional<std::u16string> chooseBackupDst(const BackupTarget& target, size_t cellIndex)
     {
@@ -109,15 +121,20 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     refreshTimer    = 0;
     transferEnabled = Configuration::getInstance().transferEnabled();
 
-    // Detail action row: three 96px slots. Backup is the primary (accent),
-    // Restore secondary, the middle slot contextual - Scripts by default, Send
-    // on a highlighted backup.
-    buttonBackupAL  = std::make_unique<Clickable>(8, 182, 96, 30, COLOR_ACCENT, COLOR_WHITE, i18n::t("main.backup_short"), true);
-    buttonRestoreAL = std::make_unique<Clickable>(216, 182, 96, 30, COLOR_RAISED, COLOR_TEXT, i18n::t("main.restore_short"), true);
+    // Detail action row. Backup is the primary (accent), Restore secondary, and
+    // Send sits between them while wireless transfer is enabled;
+    // layoutActionButtons() sizes the pair for whichever arrangement is current.
+    buttonBackupAL =
+        std::make_unique<Clickable>(ACTION_X, ACTION_Y, ACTION_W3, ACTION_H, COLOR_ACCENT, COLOR_WHITE, i18n::t("main.backup_short"), true);
+    buttonRestoreAL =
+        std::make_unique<Clickable>(ACTION_X, ACTION_Y, ACTION_W3, ACTION_H, COLOR_RAISED, COLOR_TEXT, i18n::t("main.restore_short"), true);
     // Full-width batch-backup button shown only while multi-selecting.
-    buttonBackupAll = std::make_unique<Clickable>(8, 182, 304, 30, COLOR_ACCENT, COLOR_WHITE, i18n::t("main.backup_selected"), true);
-    buttonSend      = std::make_unique<Clickable>(112, 182, 96, 30, COLOR_RAISED, COLOR_TEXT, i18n::t("transfer.send"), true);
-    directoryList   = std::make_unique<BackupList>(12, 70, 296, 106, 5);
+    buttonBackupAll =
+        std::make_unique<Clickable>(ACTION_X, ACTION_Y, ACTION_W, ACTION_H, COLOR_ACCENT, COLOR_WHITE, i18n::t("main.backup_selected"), true);
+    buttonSend = std::make_unique<Clickable>(
+        ACTION_X + ACTION_W3 + ACTION_GAP, ACTION_Y, ACTION_W3, ACTION_H, COLOR_RAISED, COLOR_TEXT, i18n::t("transfer.send"), true);
+    layoutActionButtons();
+    directoryList = std::make_unique<BackupList>(12, 70, 296, 106, 5);
     buttonBackupAll->canChangeColorWhenSelected(true);
     buttonBackupAL->canChangeColorWhenSelected(true);
     buttonRestoreAL->canChangeColorWhenSelected(true);
@@ -128,6 +145,18 @@ MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
     C2D_PlainImageTint(&flagTint, COLOR_TEAL, 1.0f);
     C2D_PlainImageTint(&checkboxTint, COLOR_BLUE, 1.0f); // blue check on the white selection chip
     C2D_PlainImageTint(&starTint, COLOR_BLACK, 1.0f);    // black star on the gold favorite chip
+}
+
+// Sizes Backup/Restore for the current action-row arrangement: thirds while Send
+// shares the row, halves of it otherwise. Called whenever transferEnabled
+// changes, so both drawing and the touch hit-test (Clickable reads the same box)
+// follow what is on screen. The labels are picked to match in drawBottom(),
+// which has to resolve them per frame anyway to track a live language change.
+void MainScreen::layoutActionButtons(void)
+{
+    const int w = transferEnabled ? ACTION_W3 : ACTION_W2;
+    buttonBackupAL->setBounds(ACTION_X, ACTION_Y, w, ACTION_H);
+    buttonRestoreAL->setBounds(ACTION_X + ACTION_W - w, ACTION_Y, w, ACTION_H);
 }
 
 int MainScreen::cellX(size_t i) const
@@ -356,13 +385,17 @@ void MainScreen::drawBottom(void) const
             buttonBackupAll->text(i18n::t("main.backup_n_selected", {std::to_string(MS::selectedEntries().size())}) + " ");
             buttonBackupAll->draw(0.6f, COLOR_RING);
         }
-        // Backup / Send / Restore. Send keeps its slot at all times (greyed until
-        // a highlighted existing backup can actually be sent) so it never swaps
-        // identity with another action; Scripts now lives in the SELECT menu.
+        // Backup / Send / Restore. While the transfer feature is on, Send keeps its
+        // slot at all times (greyed until a highlighted existing backup can
+        // actually be sent) so it never swaps identity with another action;
+        // Scripts now lives in the SELECT menu. With the feature off there is no
+        // middle slot at all and Backup/Restore take the whole row.
         else {
             const bool sendCtx = g_bottomScrollEnabled && directoryList->index() > 0 && !isReceiveRow(directoryList->index());
-            buttonBackupAL->text(i18n::t("main.backup_short"));
-            buttonRestoreAL->text(i18n::t("main.restore_short"));
+            // Half-width buttons (transfer off) have room for the full labels; the
+            // abbreviations exist only for the narrow thirds of the Send layout.
+            buttonBackupAL->text(i18n::t(transferEnabled ? "main.backup_short" : "main.backup"));
+            buttonRestoreAL->text(i18n::t(transferEnabled ? "main.restore_short" : "main.restore"));
             buttonBackupAL->draw(0.6f, COLOR_RING);
             buttonRestoreAL->draw(0.6f, COLOR_RING);
             if (transferEnabled) {
@@ -472,7 +505,10 @@ void MainScreen::update(const InputState& input)
     }
 
     // Re-read in case the Settings page toggled it while this screen was parked.
-    transferEnabled = Configuration::getInstance().transferEnabled();
+    if (transferEnabled != Configuration::getInstance().transferEnabled()) {
+        transferEnabled = !transferEnabled;
+        layoutActionButtons();
+    }
 
     if (auto result = TransferJob::get().takeResult()) {
         // A backup/restore changed one or more folders; drop every cached total so
