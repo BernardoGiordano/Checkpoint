@@ -215,15 +215,58 @@ ifneq ($(ROMFS),)
 	export _3DSXFLAGS += --romfs=$(CURDIR)/$(ROMFS)
 endif
 
-.PHONY: all clean format scripts
+.PHONY: all binaries buildelf directories clean format
 
 #---------------------------------------------------------------------------------
-all: sprites $(MONO_BCFNT) scripts
+# Everything below is expressed as file targets so that a no-op build stays a
+# no-op: bannertool, makerom and the romfs staging only run when one of their
+# inputs actually moved. The recursive make into $(BUILD) is the exception, it
+# runs every time to do its own dependency check, but it leaves the elf
+# untouched when there is nothing to relink, so the cia isn't repacked either.
+#---------------------------------------------------------------------------------
+ROMFS_SPRITES	:=	$(GFXBUILD)/sprites.t3x
+# Everything that ends up inside the romfs image: the trees generated below,
+# plus the files checked into $(ROMFS) as they are (config.json, i18n.json, ...).
+ROMFS_STATIC	:=	$(shell find $(ROMFS) -type f -not -path "$(GFXBUILD)/*" -not -path "$(ROMFS_SCRIPTS)/*" -not -path "$(dir $(MONO_BCFNT))*")
+export ROMFS_DEPS	:=	$(ROMFS_SPRITES) $(MONO_BCFNT) $(ROMFS_SCRIPTS) $(ROMFS_STATIC)
+
+# bannertool and makerom read the app metadata (title, version, ids) straight
+# out of these makefiles, so editing one has to invalidate their outputs.
+MAKEFILE_DEPS	:=	$(CURDIR)/Makefile $(CURDIR)/../Makefile
+
+#---------------------------------------------------------------------------------
+all: binaries
+
+binaries: $(OUTPUT).3dsx $(OUTPUT).cia
+
+# Those checked-in files are inputs, never targets. The empty recipe stops make
+# from matching them against an implicit rule: %.smdh would happily regenerate
+# assets/romfs/PKSM.smdh from Checkpoint's own icon and title.
+$(ROMFS_STATIC): ;
+#---------------------------------------------------------------------------------
+directories:
 	@mkdir -p $(BUILD) $(GFXBUILD) $(OUTDIR)
+#---------------------------------------------------------------------------------
+$(OUTPUT).3dsx: $(OUTPUT).elf $(_3DSXDEPS) $(ROMFS_DEPS) | directories
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile $(OUTPUT).3dsx
-	@bannertool makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o $(BUILD)/banner.bnr
-	@bannertool makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i "$(APP_ICON)" -f "$(ICON_FLAGS)" -o $(BUILD)/icon.icn
+#---------------------------------------------------------------------------------
+$(OUTPUT).cia: $(OUTPUT).elf $(BUILD)/banner.bnr $(BUILD)/icon.icn $(LOGO) $(RSF_PATH) $(ROMFS_DEPS) $(MAKEFILE_DEPS) | directories
 	@makerom -f cia -o $(OUTPUT).cia -target t -exefslogo -elf "$(OUTPUT).elf" -rsf "$(RSF_PATH)" -ver "$$(($(VERSION_MAJOR)*1024+$(VERSION_MINOR)*16+$(VERSION_MICRO)))" -banner "$(BUILD)/banner.bnr" -icon "$(BUILD)/icon.icn" -DAPP_TITLE="$(APP_TITLE)" -DAPP_PRODUCT_CODE="$(PRODUCT_CODE)" -DAPP_UNIQUE_ID="$(UNIQUE_ID)" -logo "$(LOGO)"
+	@echo built ... $(notdir $@)
+#---------------------------------------------------------------------------------
+# The elf is linked by the recursive make below; this pair lets the outer make
+# see its timestamp, so the 3dsx and the cia only rerun when it really changed.
+$(OUTPUT).elf: buildelf | directories
+	@true
+
+buildelf: $(ROMFS_SPRITES) | directories
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile buildelf
+#---------------------------------------------------------------------------------
+$(BUILD)/banner.bnr: $(BANNER_IMAGE) $(BANNER_AUDIO) | directories
+	@bannertool makebanner -i "$(BANNER_IMAGE)" -a "$(BANNER_AUDIO)" -o $@
+#---------------------------------------------------------------------------------
+$(BUILD)/icon.icn: $(APP_ICON) $(MAKEFILE_DEPS) | directories
+	@bannertool makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i "$(APP_ICON)" -f "$(ICON_FLAGS)" -o $@
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
@@ -233,16 +276,17 @@ $(MONO_BCFNT): $(MONO_TTF) $(CURDIR)/Makefile
 	@mkdir -p $(dir $@)
 	@mkbcfnt -s $(MONO_SIZE) -o $@ $<
 #---------------------------------------------------------------------------------
-scripts:
-	@rm -fr $(ROMFS_SCRIPTS)
-	@mkdir -p $(ROMFS_SCRIPTS)
-	@cp -R $(SCRIPTSRC)/common/. $(ROMFS_SCRIPTS)
-	@cp -R $(SCRIPTSRC)/3ds/. $(ROMFS_SCRIPTS)
+# The directory's own timestamp is the stamp: deleting it re-stages the tree.
+$(ROMFS_SCRIPTS): $(shell find $(SCRIPTSRC)/common $(SCRIPTSRC)/3ds -type f)
+	@rm -fr $@
+	@mkdir -p $@
+	@cp -R $(SCRIPTSRC)/common/. $@
+	@cp -R $(SCRIPTSRC)/3ds/. $@
+	@touch $@
 #---------------------------------------------------------------------------------
-sprites:
-	@mkdir -p $(BUILD) $(GFXBUILD)
+$(ROMFS_SPRITES): $(wildcard $(GRAPHICS)/*.t3s) $(wildcard $(GRAPHICS)/*.png) | directories
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile sprites.t3x
-	@cp $(BUILD)/sprites.t3x $(GFXBUILD)/sprites.t3x
+	@cp $(BUILD)/sprites.t3x $@
 #---------------------------------------------------------------------------------
 format:
 	clang-format -i -style=file $(foreach dir,$(FORMATSOURCES),$(wildcard $(dir)/*.c) $(wildcard $(dir)/*.cpp) $(wildcard $(dir)/*.tcc)) $(foreach dir,$(FORMATINCLUDES),$(wildcard $(dir)/*.h) $(wildcard $(dir)/*.hpp))
@@ -252,11 +296,24 @@ else
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
-$(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS)
+# 3dsxtool packs $(ROMFS) into the 3dsx, so the romfs trees are inputs here too:
+# without them the outer make would keep re-entering this one for a repack that
+# never happens.
+$(OUTPUT).3dsx	:	$(OUTPUT).elf $(_3DSXDEPS) $(ROMFS_DEPS:%=../%)
+
+# Same guard as above, plus it keeps this make from trying to regenerate the
+# romfs trees the outer one owns.
+$(ROMFS_DEPS:%=../%): ;
 
 $(OFILES_SOURCES) : $(HFILES)
 
 $(OUTPUT).elf	:	$(OFILES)
+
+# Asked for by name so that make stays quiet when the elf is already up to date:
+# a phony goal has nothing to report, an up to date file target does.
+.PHONY: buildelf
+buildelf: $(OUTPUT).elf
+	@:
 
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data
