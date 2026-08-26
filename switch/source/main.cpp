@@ -27,6 +27,7 @@
 #include "main.hpp"
 #include "MainScreen.hpp"
 #include "ScriptScreen.hpp"
+#include "autoupdater.hpp"
 #include "backupsize.hpp"
 #include "colors.hpp"
 #include "ftpserver.hpp"
@@ -39,12 +40,21 @@
 #include "transfer.hpp"
 #include "transferjob.hpp"
 
-int main(void)
+int main(int argc, char* argv[])
 {
     Result res = servicesInit();
     if (R_FAILED(res)) {
         servicesExit();
         exit(res);
+    }
+
+    const std::string executablePath = argc > 0 && argv[0] ? argv[0] : "";
+    if (Configuration::getInstance().isAutoUpdateEnabled() && AutoUpdater::checkAndInstall(executablePath) == AutoUpdater::Outcome::Installed) {
+        if (!AutoUpdater::requestRelaunch(executablePath)) {
+            Logging::warning("Update installed, but automatic relaunch is unavailable.");
+        }
+        servicesExit();
+        return 0;
     }
 
     // Match the color tokens to the persisted theme before any screen draws.

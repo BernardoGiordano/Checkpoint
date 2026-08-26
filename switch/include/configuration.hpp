@@ -42,7 +42,7 @@
 // this forward declaration is legal — see the comment on its definition.
 enum sort_t : u8;
 
-#define CONFIG_VERSION 5
+#define CONFIG_VERSION 7
 
 class Configuration {
 public:
@@ -73,6 +73,7 @@ public:
     // every file against the backup. Default true; can be disabled because it
     // roughly doubles restore time on backups with tens of thousands of files.
     bool isVerifyRestoreEnabled(void);
+    bool isAutoUpdateEnabled(void);
     std::vector<std::string> additionalSaveFolders(u64 id);
     std::vector<std::string> additionalDeviceSaveFolders(u64 id);
     void save(void);
@@ -100,6 +101,7 @@ public:
     void setConfirmRestoreEnabled(bool enabled);
     void setQuickBackupEnabled(bool enabled);
     void setVerifyRestoreEnabled(bool enabled);
+    void setAutoUpdateEnabled(bool enabled);
     void addAdditionalSaveFolder(u64 id, const std::string& path);
     void removeAdditionalSaveFolder(u64 id, const std::string& path);
     void addAdditionalDeviceSaveFolder(u64 id, const std::string& path);
@@ -153,6 +155,7 @@ private:
     bool mConfirmRestore;
     bool mQuickBackup;
     bool mVerifyRestore;
+    bool mAutoUpdate;
     std::unordered_set<u64> mFilterIds, mFavoriteIds;
     std::unordered_map<u64, std::vector<std::string>> mAdditionalSaveFolders, mAdditionalDeviceSaveFolders;
     std::string mTheme;

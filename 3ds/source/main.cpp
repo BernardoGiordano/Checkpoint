@@ -27,6 +27,7 @@
 #include "main.hpp"
 #include "MainScreen.hpp"
 #include "ScriptScreen.hpp"
+#include "autoupdater.hpp"
 #include "backupsize.hpp"
 #include "colors.hpp"
 #include "configuration.hpp"
@@ -42,7 +43,7 @@
 #include "util.hpp"
 #include <chrono>
 
-int main()
+int main(int argc, char* argv[])
 {
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -62,6 +63,14 @@ int main()
     if (R_FAILED(res)) {
         // at this point we already had an error message displayed
         exit(res);
+    }
+
+    const std::string executablePath = argc > 0 && argv[0] ? argv[0] : "";
+    if (Configuration::getInstance().autoUpdate() && AutoUpdater::checkAndInstall(executablePath) == AutoUpdater::Outcome::Installed) {
+        if (!AutoUpdater::requestRelaunch(executablePath)) {
+            Logging::warning("Update installed, but automatic relaunch is unavailable.");
+        }
+        exit(0);
     }
 
     try {

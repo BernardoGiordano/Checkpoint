@@ -299,6 +299,30 @@
     "zh": "使用时间戳命名存档备份，无需输入名称",
     "ru": "Использовать дату и время, не отображать клавиатуру"
   },
+  "settings.general.auto_update": {
+    "en": "Automatic updates",
+    "it": "Aggiornamenti automatici",
+    "es": "Actualizaciones automáticas",
+    "fr": "Mises à jour automatiques",
+    "de": "Automatische Updates",
+    "pt": "Atualizações automáticas",
+    "nl": "Automatische updates",
+    "ja": "自動アップデート",
+    "zh": "自动更新",
+    "ru": "Автообновление"
+  },
+  "settings.general.auto_update.sub": {
+    "en": "Check and install updates at launch",
+    "it": "Controlla e installa gli aggiornamenti all'avvio",
+    "es": "Buscar e instalar actualizaciones al iniciar",
+    "fr": "Rechercher et installer les mises à jour au lancement",
+    "de": "Beim Start nach Updates suchen und sie installieren",
+    "pt": "Verificar e instalar atualizações ao iniciar",
+    "nl": "Controleer en installeer updates bij het opstarten",
+    "ja": "起動時にアップデートを確認してインストール",
+    "zh": "启动时检查并安装更新",
+    "ru": "Проверять и устанавливать обновления при запуске"
+  },
   "settings.general.language": {
     "en": "Language",
     "it": "Lingua",

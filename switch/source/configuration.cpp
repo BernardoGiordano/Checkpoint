@@ -87,6 +87,10 @@ Configuration::Configuration(void)
             mJson["verify-restore"] = false;
             updateJson              = true;
         }
+        if (!(mJson.contains("auto-update") && mJson["auto-update"].is_boolean())) {
+            mJson["auto-update"] = true;
+            updateJson           = true;
+        }
         if (!(mJson.contains("filter") && mJson["filter"].is_array())) {
             mJson["filter"] = nlohmann::json::array();
             updateJson      = true;
@@ -280,6 +284,7 @@ void Configuration::parse(void)
     mQuickBackup = mJson.value("quick-backup", false);
     // parse verify-restore flag
     mVerifyRestore = mJson.value("verify-restore", false);
+    mAutoUpdate    = mJson.value("auto-update", true);
 
     mTheme               = mJson.value("theme", "dark");
     mLanguage            = mJson.value("language", "en");
@@ -413,10 +418,22 @@ bool Configuration::isVerifyRestoreEnabled(void)
     return mVerifyRestore;
 }
 
+bool Configuration::isAutoUpdateEnabled(void)
+{
+    return mAutoUpdate;
+}
+
 void Configuration::setVerifyRestoreEnabled(bool enabled)
 {
     mVerifyRestore          = enabled;
     mJson["verify-restore"] = enabled;
+    save();
+}
+
+void Configuration::setAutoUpdateEnabled(bool enabled)
+{
+    mAutoUpdate          = enabled;
+    mJson["auto-update"] = enabled;
     save();
 }
 

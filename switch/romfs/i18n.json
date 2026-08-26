@@ -119,6 +119,18 @@
     "zh": "安全",
     "ru": "БЕЗОПАСНОСТЬ"
   },
+  "settings.section.updates": {
+    "en": "UPDATES",
+    "it": "AGGIORNAMENTI",
+    "es": "ACTUALIZACIONES",
+    "fr": "MISES À JOUR",
+    "de": "UPDATES",
+    "pt": "ATUALIZAÇÕES",
+    "nl": "UPDATES",
+    "ja": "アップデート",
+    "zh": "更新",
+    "ru": "ОБНОВЛЕНИЯ"
+  },
   "settings.section.connectivity": {
     "en": "CONNECTIVITY",
     "it": "CONNETTIVITÀ",
@@ -382,6 +394,30 @@
     "ja": "リストアしたデータがバックアップと一致するか確認（巨大なセーブでは時間がかかります）",
     "zh": "校验恢复后的数据是否与存档备份一致（大型存档的校验耗时会更长）",
     "ru": "Проверить соответствие восстановленных данных бэкапу; медленнее на больших сохранениях"
+  },
+  "settings.general.auto_update": {
+    "en": "Automatic updates",
+    "it": "Aggiornamenti automatici",
+    "es": "Actualizaciones automáticas",
+    "fr": "Mises à jour automatiques",
+    "de": "Automatische Updates",
+    "pt": "Atualizações automáticas",
+    "nl": "Automatische updates",
+    "ja": "自動アップデート",
+    "zh": "自动更新",
+    "ru": "Автообновление"
+  },
+  "settings.general.auto_update.sub": {
+    "en": "Check and install updates at launch",
+    "it": "Controlla e installa gli aggiornamenti all'avvio",
+    "es": "Buscar e instalar actualizaciones al iniciar",
+    "fr": "Rechercher et installer les mises à jour au lancement",
+    "de": "Beim Start nach Updates suchen und sie installieren",
+    "pt": "Verificar e instalar atualizações ao iniciar",
+    "nl": "Controleer en installeer updates bij het opstarten",
+    "ja": "起動時にアップデートを確認してインストール",
+    "zh": "启动时检查并安装更新",
+    "ru": "Проверять и устанавливать обновления при запуске"
   },
   "settings.conn.ftp": {
     "en": "FTP server",
