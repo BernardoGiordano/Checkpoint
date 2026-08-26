@@ -27,12 +27,6 @@
 namespace {
     constexpr const char* RELEASE_API = "https://api.github.com/repos/BernardoGiordano/Checkpoint/releases/latest";
 
-    struct ReleaseAsset {
-        std::string tag;
-        std::string url;
-        size_t size = 0;
-    };
-
     size_t appendString(char* data, size_t size, size_t count, void* user)
     {
         static_cast<std::string*>(user)->append(data, size * count);
@@ -86,7 +80,7 @@ namespace {
                (major == VERSION_MAJOR && minor == VERSION_MINOR && micro > VERSION_MICRO);
     }
 
-    bool findAsset(const std::string& body, const char* assetName, ReleaseAsset& asset)
+    bool findAsset(const std::string& body, const char* assetName, std::string& version, std::string& url, size_t& size)
     {
         const auto json = nlohmann::json::parse(body, nullptr, false);
         if (!json.is_object() || !json.contains("tag_name") || !json["tag_name"].is_string() || !json.contains("assets") ||
@@ -94,27 +88,27 @@ namespace {
             return false;
         }
 
-        asset.tag = json["tag_name"].get<std::string>();
+        version = json["tag_name"].get<std::string>();
         for (const auto& candidate : json["assets"]) {
             if (candidate.is_object() && candidate.contains("name") && candidate["name"].is_string() &&
                 candidate["name"].get<std::string>() == assetName && candidate.contains("browser_download_url") &&
                 candidate["browser_download_url"].is_string()) {
-                asset.url  = candidate["browser_download_url"].get<std::string>();
-                asset.size = candidate.contains("size") && candidate["size"].is_number_unsigned() ? candidate["size"].get<size_t>() : 0;
+                url  = candidate["browser_download_url"].get<std::string>();
+                size = candidate.contains("size") && candidate["size"].is_number_unsigned() ? candidate["size"].get<size_t>() : 0;
                 return true;
             }
         }
         return false;
     }
 
-    bool download(const ReleaseAsset& asset, const std::string& path)
+    bool download(const AutoUpdater::Update& update, const std::string& path)
     {
         FILE* file = fopen(path.c_str(), "wb");
         if (!file)
             return false;
 
         CURL* curl = curl_easy_init();
-        if (!configure(curl, asset.url)) {
+        if (!configure(curl, update.url)) {
             fclose(file);
             if (curl)
                 curl_easy_cleanup(curl);
@@ -130,7 +124,7 @@ namespace {
         const long bytes = ftell(file);
         fclose(file);
 
-        const bool valid = result == CURLE_OK && status >= 200 && status < 300 && bytes > 0 && (asset.size == 0 || size_t(bytes) == asset.size);
+        const bool valid = result == CURLE_OK && status >= 200 && status < 300 && bytes > 0 && (update.size == 0 || size_t(bytes) == update.size);
         if (!valid)
             remove(path.c_str());
         return valid;
@@ -215,13 +209,13 @@ namespace {
 #endif
 }
 
-AutoUpdater::Outcome AutoUpdater::checkAndInstall(const std::string& executablePath)
+std::optional<AutoUpdater::Update> AutoUpdater::check(const std::string& executablePath)
 {
     try {
 #ifdef __SWITCH__
         if (executablePath.size() < 4 || executablePath.substr(executablePath.size() - 4) != ".nro") {
             Logging::warning("Auto-update skipped: current NRO path is unavailable.");
-            return Outcome::Failed;
+            return std::nullopt;
         }
         const char* assetName = "Checkpoint.nro";
 #else
@@ -233,38 +227,56 @@ AutoUpdater::Outcome AutoUpdater::checkAndInstall(const std::string& executableP
         std::string body;
         if (!getLatestRelease(body)) {
             Logging::warning("Auto-update check failed.");
-            return Outcome::Failed;
+            return std::nullopt;
         }
 
-        ReleaseAsset asset;
-        if (!findAsset(body, assetName, asset)) {
+        Update update;
+        if (!findAsset(body, assetName, update.version, update.url, update.size)) {
             Logging::warning("Auto-update response did not contain {}.", assetName);
-            return Outcome::Failed;
+            return std::nullopt;
         }
-        if (!isNewer(asset.tag)) {
-            Logging::info("Checkpoint is up to date (latest release {}).", asset.tag);
-            return Outcome::NoUpdate;
+        if (!isNewer(update.version)) {
+            Logging::info("Checkpoint is up to date (latest release {}).", update.version);
+            return std::nullopt;
         }
 
 #ifdef __3DS__
-        const std::string target = is3dsx ? executablePath : "/3ds/Checkpoint/Checkpoint.cia";
+        update.target = is3dsx ? executablePath : "/3ds/Checkpoint/Checkpoint.cia";
+        update.kind   = is3dsx ? ArtifactKind::Executable : ArtifactKind::Cia;
 #else
-        const std::string target = executablePath;
+        update.target = executablePath;
+        update.kind   = ArtifactKind::Executable;
 #endif
-        const std::string temporary = target + ".new";
-        Logging::info("Downloading Checkpoint {}...", asset.tag);
-        if (!download(asset, temporary)) {
-            Logging::warning("Failed to download Checkpoint {}.", asset.tag);
+        Logging::info("Checkpoint update {} is available.", update.version);
+        return update;
+    }
+    catch (const std::exception& error) {
+        Logging::warning("Auto-update check failed: {}", error.what());
+        return std::nullopt;
+    }
+    catch (...) {
+        Logging::warning("Auto-update check failed with an unknown error.");
+        return std::nullopt;
+    }
+}
+
+AutoUpdater::Outcome AutoUpdater::install(const Update& update)
+{
+    try {
+        const std::string temporary = update.target + ".new";
+        Logging::info("Downloading Checkpoint {}...", update.version);
+        if (!download(update, temporary)) {
+            Logging::warning("Failed to download Checkpoint {}.", update.version);
             return Outcome::Failed;
         }
 
 #ifdef __3DS__
         bool installed = false;
-        if (is3dsx) {
+        if (update.kind == ArtifactKind::Executable) {
             // The mounted RomFS keeps the 3DSX open. Release it for the rename, then
             // remount so normal atexit teardown still owns one live mount.
             romfsExit();
-            installed = replaceExecutable(target, temporary);
+            installed = replaceExecutable(update.target, temporary);
             romfsInit();
         }
         else {
@@ -273,24 +285,24 @@ AutoUpdater::Outcome AutoUpdater::checkAndInstall(const std::string& executableP
         }
 #else
         romfsExit();
-        const bool installed = replaceExecutable(target, temporary);
+        const bool installed = replaceExecutable(update.target, temporary);
         romfsInit();
 #endif
 
         if (!installed) {
             remove(temporary.c_str());
-            Logging::warning("Checkpoint {} downloaded but installation failed.", asset.tag);
+            Logging::warning("Checkpoint {} downloaded but installation failed.", update.version);
             return Outcome::Failed;
         }
-        Logging::info("Checkpoint {} installed.", asset.tag);
+        Logging::info("Checkpoint {} installed.", update.version);
         return Outcome::Installed;
     }
     catch (const std::exception& error) {
-        Logging::warning("Auto-update failed: {}", error.what());
+        Logging::warning("Auto-update installation failed: {}", error.what());
         return Outcome::Failed;
     }
     catch (...) {
-        Logging::warning("Auto-update failed with an unknown error.");
+        Logging::warning("Auto-update installation failed with an unknown error.");
         return Outcome::Failed;
     }
 }

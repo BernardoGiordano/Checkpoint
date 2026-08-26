@@ -25,12 +25,15 @@
  */
 
 #include "main.hpp"
+#include "InfoOverlay.hpp"
 #include "MainScreen.hpp"
 #include "ScriptScreen.hpp"
+#include "YesNoOverlay.hpp"
 #include "autoupdater.hpp"
 #include "backupsize.hpp"
 #include "colors.hpp"
 #include "ftpserver.hpp"
+#include "i18n.hpp"
 #include "logging.hpp"
 #include "mtpserver.hpp"
 #include "scriptlogview.hpp"
@@ -39,6 +42,9 @@
 #include "titlecatalog.hpp"
 #include "transfer.hpp"
 #include "transferjob.hpp"
+#include <atomic>
+#include <optional>
+#include <thread>
 
 int main(int argc, char* argv[])
 {
@@ -49,13 +55,10 @@ int main(int argc, char* argv[])
     }
 
     const std::string executablePath = argc > 0 && argv[0] ? argv[0] : "";
-    if (Configuration::getInstance().isAutoUpdateEnabled() && AutoUpdater::checkAndInstall(executablePath) == AutoUpdater::Outcome::Installed) {
-        if (!AutoUpdater::requestRelaunch(executablePath)) {
-            Logging::warning("Update installed, but automatic relaunch is unavailable.");
-        }
-        servicesExit();
-        return 0;
-    }
+    std::optional<AutoUpdater::Update> availableUpdate;
+    std::atomic<bool> updateCheckFinished{!Configuration::getInstance().isAutoUpdateEnabled()};
+    bool updatePrompted = false;
+    bool shouldExit     = false;
 
     // Match the color tokens to the persisted theme before any screen draws.
     Colors::apply(Configuration::getInstance().theme());
@@ -70,6 +73,14 @@ int main(int argc, char* argv[])
 
     g_screen = std::make_unique<MainScreen>(input);
 
+    std::thread updateCheckThread;
+    if (Configuration::getInstance().isAutoUpdateEnabled()) {
+        updateCheckThread = std::thread([&availableUpdate, &updateCheckFinished, executablePath]() {
+            availableUpdate = AutoUpdater::check(executablePath);
+            updateCheckFinished.store(true, std::memory_order_release);
+        });
+    }
+
     // Remove any transfer temp files a previous crash/power-loss left behind.
     Transfer::sweepTempFiles();
 
@@ -80,7 +91,7 @@ int main(int argc, char* argv[])
     if (g_currentUId == 0 && !userIds.empty())
         g_currentUId = userIds.at(0);
 
-    while (appletMainLoop()) {
+    while (appletMainLoop() && !shouldExit) {
         padUpdate(&pad);
 
         input.kDown = padGetButtonsDown(&pad);
@@ -165,8 +176,37 @@ int main(int argc, char* argv[])
             g_screen        = std::move(g_pendingScreen);
             g_pendingScreen = nullptr;
         }
+
+        // Poll worker result on UI thread. If another modal owns input, keep
+        // update notice pending until that modal closes.
+        if (!updatePrompted && updateCheckFinished.load(std::memory_order_acquire) && availableUpdate && !g_screen->hasOverlay()) {
+            updatePrompted                  = true;
+            const auto update               = *availableUpdate;
+            auto screen                     = g_screen;
+            std::shared_ptr<Overlay> prompt = std::make_shared<YesNoOverlay>(
+                *screen, i18n::t("updater.update_available", {update.version}),
+                [screen, update, executablePath, &shouldExit]() {
+                    if (AutoUpdater::install(update) == AutoUpdater::Outcome::Installed) {
+                        if (!AutoUpdater::requestRelaunch(executablePath)) {
+                            Logging::warning("Update installed, but automatic relaunch is unavailable.");
+                        }
+                        shouldExit = true;
+                    }
+                    else {
+                        std::shared_ptr<Overlay> error = std::make_shared<InfoOverlay>(*screen, i18n::t("updater.install_failed"));
+                        screen->setOverlay(error);
+                    }
+                },
+                []() {});
+            g_screen->setOverlay(prompt);
+        }
         Gfx::Render();
     }
+
+    // Worker can still be inside curl when user exits quickly. Join before
+    // socket and logging services disappear beneath it.
+    if (updateCheckThread.joinable())
+        updateCheckThread.join();
 
     // Teardown is breadcrumbed step-by-step: a crash or hang while closing the
     // app leaves the log pointing at the exact step that didn't return, so we

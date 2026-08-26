@@ -11,18 +11,37 @@
 #ifndef AUTOUPDATER_HPP
 #define AUTOUPDATER_HPP
 
+#include <cstddef>
+#include <optional>
 #include <string>
 
 namespace AutoUpdater {
+    enum class ArtifactKind {
+        Executable,
+        Cia,
+    };
+
+    // Everything needed to install one release. `check()` builds this on the
+    // network worker; the UI keeps it until the user accepts the prompt.
+    struct Update {
+        std::string version;
+        std::string url;
+        std::string target;
+        size_t size = 0;
+        ArtifactKind kind;
+    };
+
     enum class Outcome {
-        NoUpdate,
         Installed,
         Failed,
     };
 
-    // Checks GitHub's latest release and installs the artifact matching the
-    // current launch type (.3dsx/.cia on 3DS, .nro on Switch).
-    Outcome checkAndInstall(const std::string& executablePath);
+    // Queries GitHub for a newer artifact matching the current launch type.
+    // This performs network I/O and must be called from a worker thread.
+    std::optional<Update> check(const std::string& executablePath);
+
+    // Downloads and installs an update previously returned by check().
+    Outcome install(const Update& update);
 
     // Requests that the loader starts the freshly installed build after this
     // process exits. A failed request is non-fatal: the update is still installed.

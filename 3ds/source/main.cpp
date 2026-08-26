@@ -25,13 +25,16 @@
  */
 
 #include "main.hpp"
+#include "ChoiceOverlay.hpp"
 #include "MainScreen.hpp"
+#include "MessageOverlay.hpp"
 #include "ScriptScreen.hpp"
 #include "autoupdater.hpp"
 #include "backupsize.hpp"
 #include "colors.hpp"
 #include "configuration.hpp"
 #include "ftpserver.hpp"
+#include "i18n.hpp"
 #include "loader.hpp"
 #include "scriptlogview.hpp"
 #include "scriptrunner.hpp"
@@ -41,7 +44,9 @@
 #include "transfer.hpp"
 #include "transferjob.hpp"
 #include "util.hpp"
+#include <atomic>
 #include <chrono>
+#include <optional>
 
 int main(int argc, char* argv[])
 {
@@ -66,12 +71,10 @@ int main(int argc, char* argv[])
     }
 
     const std::string executablePath = argc > 0 && argv[0] ? argv[0] : "";
-    if (Configuration::getInstance().autoUpdate() && AutoUpdater::checkAndInstall(executablePath) == AutoUpdater::Outcome::Installed) {
-        if (!AutoUpdater::requestRelaunch(executablePath)) {
-            Logging::warning("Update installed, but automatic relaunch is unavailable.");
-        }
-        exit(0);
-    }
+    std::optional<AutoUpdater::Update> availableUpdate;
+    std::atomic<bool> updateCheckFinished{!Configuration::getInstance().autoUpdate()};
+    bool updatePrompted = false;
+    bool shouldExit     = false;
 
     try {
         // Remove temp transfer archives a previous crash/power-loss left behind.
@@ -87,7 +90,16 @@ int main(int argc, char* argv[])
         auto uiIsReady = std::chrono::high_resolution_clock::now();
         Logging::info("Loading took {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(uiIsReady - start).count());
 
-        while (aptMainLoop()) {
+        if (Configuration::getInstance().autoUpdate() &&
+            !Threads::create(Threads::WORKER_STACK, [&availableUpdate, &updateCheckFinished, executablePath]() {
+                availableUpdate = AutoUpdater::check(executablePath);
+                updateCheckFinished.store(true, std::memory_order_release);
+            })) {
+            Logging::warning("Could not start auto-update check thread.");
+            updateCheckFinished.store(true, std::memory_order_release);
+        }
+
+        while (aptMainLoop() && !shouldExit) {
             touchPosition touch;
             hidScanInput();
             hidTouchRead(&touch);
@@ -174,6 +186,31 @@ int main(int argc, char* argv[])
             if (g_pendingScreen) {
                 g_screen        = std::move(g_pendingScreen);
                 g_pendingScreen = nullptr;
+            }
+
+            // Network work starts only after the UI exists. Raise the prompt on
+            // the UI thread, and wait for any dialog already in use to close.
+            if (!updatePrompted && updateCheckFinished.load(std::memory_order_acquire) && availableUpdate && !g_screen->hasOverlay()) {
+                updatePrompted                  = true;
+                const auto update               = *availableUpdate;
+                auto screen                     = g_screen;
+                std::shared_ptr<Overlay> prompt = std::make_shared<YesNoOverlay>(
+                    *screen, i18n::t("updater.update_available", {update.version}),
+                    [screen, update, executablePath, &shouldExit]() {
+                        screen->removeOverlay();
+                        if (AutoUpdater::install(update) == AutoUpdater::Outcome::Installed) {
+                            if (!AutoUpdater::requestRelaunch(executablePath)) {
+                                Logging::warning("Update installed, but automatic relaunch is unavailable.");
+                            }
+                            shouldExit = true;
+                        }
+                        else {
+                            std::shared_ptr<Overlay> error = std::make_shared<InfoOverlay>(*screen, i18n::t("updater.install_failed"));
+                            screen->setOverlay(error);
+                        }
+                    },
+                    [screen]() { screen->removeOverlay(); });
+                g_screen->setOverlay(prompt);
             }
         }
     }
