@@ -33,7 +33,6 @@
 #include "backupsize.hpp"
 #include "backuptarget.hpp"
 #include "configuration.hpp"
-#include "glyphs.hpp"
 #include "i18n.hpp"
 #include "io.hpp"
 #include "loader.hpp"
@@ -70,11 +69,6 @@ static constexpr int ACTION_H   = 30;
 static constexpr int ACTION_GAP = 8;
 static constexpr int ACTION_W3  = (ACTION_W - 2 * ACTION_GAP) / 3; // = 96
 static constexpr int ACTION_W2  = (ACTION_W - ACTION_GAP) / 2;     // = 148
-
-// Frames B must be held on the title grid to trigger a full catalog rescan
-// (1.5 s at 60 fps). Long enough that resting on B after backing out of the
-// save list does not rescan by accident.
-static constexpr int REFRESH_HOLD_FRAMES = 90;
 
 namespace {
     std::optional<std::u16string> chooseBackupDst(const BackupTarget& target, size_t cellIndex)
@@ -129,7 +123,6 @@ namespace {
 MainScreen::MainScreen(void) : hid(rowlen * collen, collen)
 {
     selectionTimer  = 0;
-    refreshTimer    = 0;
     transferEnabled = Configuration::getInstance().transferEnabled();
 
     // Detail action row. Backup is the primary (accent), Restore secondary, and
@@ -265,10 +258,11 @@ void MainScreen::drawTop(void) const
 
     // An empty grid drew nothing at all, so the one screen where the user has no
     // tile to act on was also the one that said least: no message, and no clue
-    // that the list can be rescanned without closing Checkpoint (#580).
+    // that the list can be rescanned without closing Checkpoint (#580). The
+    // rescan lives in the SELECT menu, so the hint points there.
     if (count == 0) {
         text.drawCentered(i18n::t("main.no_titles"), 0, 400, 100, 0.55f, COLOR_MUTED);
-        text.drawCentered(i18n::t("main.refresh_hint", {GLYPH_B}), 0, 400, 122, 0.44f, COLOR_FAINT);
+        text.drawCentered(i18n::t("main.refresh_hint", {"SELECT"}), 0, 400, 122, 0.44f, COLOR_FAINT);
     }
 
     // Tiles.
@@ -308,26 +302,6 @@ void MainScreen::drawTop(void) const
         drawSelector();
     }
 
-    // Rescan hold feedback. The gesture is a timed hold, so it has to show its own
-    // progress: without this, B does nothing visible for 1.5 s and reads as an
-    // unresponsive button.
-    if (refreshTimer > 0) {
-        static constexpr int PILL_W = 180, PILL_H = 34;
-        static constexpr int PILL_X = (400 - PILL_W) / 2, PILL_Y = 176;
-        C2D_DrawRectSolid(PILL_X, PILL_Y, 0.5f, PILL_W, PILL_H, COLOR_CARD);
-        Gui::drawOutline(PILL_X, PILL_Y, PILL_W, PILL_H, 1, COLOR_LINE);
-        text.drawCentered(i18n::t("main.refresh_holding"), PILL_X, PILL_W, PILL_Y + 5, 0.44f, COLOR_TEXT);
-
-        static constexpr int BAR_X = PILL_X + 12, BAR_W = PILL_W - 24, BAR_H = 4;
-        static constexpr int BAR_Y = PILL_Y + PILL_H - BAR_H - 6;
-        float frac                 = (float)refreshTimer / (float)REFRESH_HOLD_FRAMES;
-        if (frac > 1.0f) {
-            frac = 1.0f;
-        }
-        C2D_DrawRectSolid(BAR_X, BAR_Y, 0.5f, BAR_W, BAR_H, COLOR_LINE);
-        C2D_DrawRectSolid(BAR_X, BAR_Y, 0.5f, (int)(BAR_W * frac), BAR_H, COLOR_ACCENT);
-    }
-
     // Footer hint bar. Slightly thinner than FOOTER_H; top nudged down so it clears
     // the tile grid, which ends at y=220.
     static constexpr int TOP_FOOTER_TOP = 222;
@@ -337,7 +311,7 @@ void MainScreen::drawTop(void) const
         drawHints(400, 224, " Tag     hold all     Backup all     Clear");
     }
     else {
-        drawHints(400, 224, " Open     Tag     Extdata     hold refresh    SELECT Menu");
+        drawHints(400, 224, " Open     Tag     Extdata    SELECT Menu");
     }
 
     // Live transfer status (network sends draw their own modal on the bottom).
@@ -689,7 +663,6 @@ void MainScreen::refreshTitlesFull(void)
     MS::clearSelectedEntries();
     directoryList->resetIndex();
     Threads::executeTask(TitleCatalog::loadTitlesThread);
-    refreshTimer = 0;
 }
 
 void MainScreen::updateSelector(void)
@@ -915,20 +888,6 @@ void MainScreen::handleEvents(const InputState& input)
             MS::addSelectedEntry(i);
         }
         selectionTimer = 0;
-    }
-
-    // Hold B to rescan the catalog. A timed hold rather than a tap because B is
-    // also Back; drawTop() draws refreshTimer as a filling pill so the dwell is
-    // visibly doing something instead of reading as an unresponsive button (#580).
-    if (kHeld & KEY_B) {
-        refreshTimer++;
-    }
-    else {
-        refreshTimer = 0;
-    }
-
-    if (refreshTimer >= REFRESH_HOLD_FRAMES) {
-        refreshTitlesFull();
     }
 
     // From the snapshot the current frame was drawn from, so input maps to the

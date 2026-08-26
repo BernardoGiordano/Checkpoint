@@ -289,6 +289,18 @@ void SettingsScreen::rebuildRows(void)
                 flashSaved();
             };
             mRows.push_back(std::move(verifyRestore));
+
+            Row autoUpdate;
+            autoUpdate.title      = i18n::t("settings.general.auto_update");
+            autoUpdate.subtitle   = i18n::t("settings.general.auto_update.sub");
+            autoUpdate.control    = Control::Toggle;
+            autoUpdate.section    = i18n::t("settings.section.updates");
+            autoUpdate.getOn      = [&cfg]() { return cfg.isAutoUpdateEnabled(); };
+            autoUpdate.onActivate = [this, &cfg]() {
+                cfg.setAutoUpdateEnabled(!cfg.isAutoUpdateEnabled());
+                flashSaved();
+            };
+            mRows.push_back(std::move(autoUpdate));
             break;
         }
         case Category::Connectivity: {

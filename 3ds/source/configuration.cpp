@@ -87,6 +87,10 @@ Configuration::Configuration(void)
                     (*mJson)["quick_backup"] = false;
                     updateJson               = true;
                 }
+                if (!(mJson->contains("auto_update") && (*mJson)["auto_update"].is_boolean())) {
+                    (*mJson)["auto_update"] = true;
+                    updateJson              = true;
+                }
                 if (!(mJson->contains("theme") && (*mJson)["theme"].is_string())) {
                     (*mJson)["theme"] = "dark";
                     updateJson        = true;
@@ -174,6 +178,7 @@ Configuration::Configuration(void)
             mConfirmRestore      = (*mJson)["confirm_restore"];
             mFTPEnabled          = (*mJson)["ftp-enabled"];
             mQuickBackup         = (*mJson)["quick_backup"];
+            mAutoUpdate          = (*mJson)["auto_update"];
             mTheme               = (*mJson)["theme"];
             mLanguage            = (*mJson)["language"];
             mLastTransferAddress = (*mJson)["last_transfer_address"];
@@ -302,6 +307,11 @@ bool Configuration::quickBackup(void)
     return mQuickBackup;
 }
 
+bool Configuration::autoUpdate(void)
+{
+    return mAutoUpdate;
+}
+
 std::string Configuration::theme(void)
 {
     return mTheme;
@@ -369,6 +379,13 @@ void Configuration::setQuickBackup(bool v)
     mQuickBackup             = v;
     (*mJson)["quick_backup"] = v;
     mDirty                   = true;
+}
+
+void Configuration::setAutoUpdate(bool v)
+{
+    mAutoUpdate             = v;
+    (*mJson)["auto_update"] = v;
+    mDirty                  = true;
 }
 
 void Configuration::setTheme(const std::string& v)

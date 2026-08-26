@@ -119,6 +119,18 @@
     "zh": "安全",
     "ru": "БЕЗОПАСНОСТЬ"
   },
+  "settings.section.updates": {
+    "en": "UPDATES",
+    "it": "AGGIORNAMENTI",
+    "es": "ACTUALIZACIONES",
+    "fr": "MISES À JOUR",
+    "de": "UPDATES",
+    "pt": "ATUALIZAÇÕES",
+    "nl": "UPDATES",
+    "ja": "アップデート",
+    "zh": "更新",
+    "ru": "ОБНОВЛЕНИЯ"
+  },
   "settings.section.connectivity": {
     "en": "CONNECTIVITY",
     "it": "CONNETTIVITÀ",
@@ -382,6 +394,90 @@
     "ja": "リストアしたデータがバックアップと一致するか確認（巨大なセーブでは時間がかかります）",
     "zh": "校验恢复后的数据是否与存档备份一致（大型存档的校验耗时会更长）",
     "ru": "Проверить соответствие восстановленных данных бэкапу; медленнее на больших сохранениях"
+  },
+  "settings.general.auto_update": {
+    "en": "Automatic updates",
+    "it": "Aggiornamenti automatici",
+    "es": "Actualizaciones automáticas",
+    "fr": "Mises à jour automatiques",
+    "de": "Automatische Updates",
+    "pt": "Atualizações automáticas",
+    "nl": "Automatische updates",
+    "ja": "自動アップデート",
+    "zh": "自动更新",
+    "ru": "Автообновление"
+  },
+  "settings.general.auto_update.sub": {
+    "en": "Check for updates at launch",
+    "it": "Controlla gli aggiornamenti all'avvio",
+    "es": "Buscar actualizaciones al iniciar",
+    "fr": "Rechercher les mises à jour au lancement",
+    "de": "Beim Start nach Updates suchen",
+    "pt": "Verificar atualizações ao iniciar",
+    "nl": "Controleer op updates bij het opstarten",
+    "ja": "起動時にアップデートを確認",
+    "zh": "启动时检查更新",
+    "ru": "Проверять обновления при запуске"
+  },
+  "updater.update_available": {
+    "en": "Checkpoint {0} is available. Download and install it?",
+    "it": "Checkpoint {0} è disponibile. Scaricarlo e installarlo?",
+    "es": "Checkpoint {0} está disponible. ¿Descargarlo e instalarlo?",
+    "fr": "Checkpoint {0} est disponible. Le télécharger et l'installer ?",
+    "de": "Checkpoint {0} ist verfügbar. Herunterladen und installieren?",
+    "pt": "Checkpoint {0} está disponível. Baixar e instalar?",
+    "nl": "Checkpoint {0} is beschikbaar. Downloaden en installeren?",
+    "ja": "Checkpoint {0} が利用可能です。ダウンロードしてインストールしますか？",
+    "zh": "Checkpoint {0} 可用。要下载并安装吗？",
+    "ru": "Доступен Checkpoint {0}. Скачать и установить?"
+  },
+  "updater.install_failed": {
+    "en": "The update could not be downloaded or installed.",
+    "it": "Impossibile scaricare o installare l'aggiornamento.",
+    "es": "No se pudo descargar o instalar la actualización.",
+    "fr": "Impossible de télécharger ou d'installer la mise à jour.",
+    "de": "Das Update konnte nicht heruntergeladen oder installiert werden.",
+    "pt": "Não foi possível baixar ou instalar a atualização.",
+    "nl": "De update kon niet worden gedownload of geïnstalleerd.",
+    "ja": "アップデートをダウンロードまたはインストールできませんでした。",
+    "zh": "无法下载或安装更新。",
+    "ru": "Не удалось скачать или установить обновление."
+  },
+  "updater.downloading": {
+    "en": "Downloading Checkpoint {0}",
+    "it": "Download di Checkpoint {0} in corso",
+    "es": "Descargando Checkpoint {0}",
+    "fr": "Téléchargement de Checkpoint {0}",
+    "de": "Checkpoint {0} wird heruntergeladen",
+    "pt": "Baixando Checkpoint {0}",
+    "nl": "Checkpoint {0} downloaden",
+    "ja": "Checkpoint {0} をダウンロード中",
+    "zh": "正在下载 Checkpoint {0}",
+    "ru": "Загрузка Checkpoint {0}"
+  },
+  "updater.installing": {
+    "en": "Installing the update",
+    "it": "Installazione dell'aggiornamento",
+    "es": "Instalando la actualización",
+    "fr": "Installation de la mise à jour",
+    "de": "Update wird installiert",
+    "pt": "Instalando a atualização",
+    "nl": "Update installeren",
+    "ja": "アップデートをインストール中",
+    "zh": "正在安装更新",
+    "ru": "Установка обновления"
+  },
+  "updater.keep_awake": {
+    "en": "Do not turn off the console",
+    "it": "Non spegnere la console",
+    "es": "No apagues la consola",
+    "fr": "N'éteignez pas la console",
+    "de": "Konsole nicht ausschalten",
+    "pt": "Não desligue o console",
+    "nl": "Zet de console niet uit",
+    "ja": "本体の電源を切らないでください",
+    "zh": "请勿关闭主机",
+    "ru": "Не выключайте консоль"
   },
   "settings.conn.ftp": {
     "en": "FTP server",

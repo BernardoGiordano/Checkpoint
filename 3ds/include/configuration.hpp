@@ -38,7 +38,7 @@
 
 class Configuration {
 public:
-    static constexpr int CURRENT_VERSION = 4;
+    static constexpr int CURRENT_VERSION = 7;
 
     static Configuration& getInstance(void)
     {
@@ -55,6 +55,7 @@ public:
     bool confirmRestore(void);
     bool isFTPEnabled(void);
     bool quickBackup(void);
+    bool autoUpdate(void);
     // "dark" (default) or "light". Selects the color palette; see Colors::apply.
     std::string theme(void);
     // "en" (default) or "it". Selects the UI language; see i18n::setLanguage.
@@ -84,6 +85,7 @@ public:
     void setConfirmRestore(bool v);
     void setFTPEnabled(bool v);
     void setQuickBackup(bool v);
+    void setAutoUpdate(bool v);
     void setTheme(const std::string& v);
     // Persists immediately (calls save()): language changes are rare and must
     // survive even if no commit() follows before shutdown.
@@ -129,6 +131,7 @@ private:
     bool mNandSaves = false, mDSiWareSaves = false, mScanCard = false, mTransferEnabled = false, mConfirmRestore = true;
     bool mFTPEnabled      = false;
     bool mQuickBackup     = false;
+    bool mAutoUpdate      = true;
     std::string mTheme    = "dark";
     std::string mLanguage = "en";
     std::string mLastTransferAddress; // last "ip:port" sent to; prefills the send keyboard

@@ -16,10 +16,11 @@
   "confirm-restore": true,
   "quick-backup": false,
   "verify-restore": false,
+  "auto-update": true,
   "theme": "dark",
   "language": "en",
   "sort-mode": "alpha",
   "last-transfer-address": "",
   "default-receive-pin": "",
-  "version": 6
+  "version": 7
 }

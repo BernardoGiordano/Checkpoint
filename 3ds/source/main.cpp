@@ -25,12 +25,16 @@
  */
 
 #include "main.hpp"
+#include "ChoiceOverlay.hpp"
 #include "MainScreen.hpp"
 #include "ScriptScreen.hpp"
+#include "UpdateOverlay.hpp"
+#include "autoupdater.hpp"
 #include "backupsize.hpp"
 #include "colors.hpp"
 #include "configuration.hpp"
 #include "ftpserver.hpp"
+#include "i18n.hpp"
 #include "loader.hpp"
 #include "scriptlogview.hpp"
 #include "scriptrunner.hpp"
@@ -40,9 +44,11 @@
 #include "transfer.hpp"
 #include "transferjob.hpp"
 #include "util.hpp"
+#include <atomic>
 #include <chrono>
+#include <optional>
 
-int main()
+int main(int argc, char* argv[])
 {
     auto start = std::chrono::high_resolution_clock::now();
 
@@ -64,6 +70,12 @@ int main()
         exit(res);
     }
 
+    const std::string executablePath = argc > 0 && argv[0] ? argv[0] : "";
+    std::optional<AutoUpdater::Update> availableUpdate;
+    std::atomic<bool> updateCheckFinished{!Configuration::getInstance().autoUpdate()};
+    bool updatePrompted = false;
+    bool shouldExit     = false;
+
     try {
         // Remove temp transfer archives a previous crash/power-loss left behind.
         Transfer::sweepTempFiles();
@@ -78,14 +90,26 @@ int main()
         auto uiIsReady = std::chrono::high_resolution_clock::now();
         Logging::info("Loading took {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(uiIsReady - start).count());
 
-        while (aptMainLoop()) {
+        if (Configuration::getInstance().autoUpdate()) {
+            // Main thread, before the worker exists: see AutoUpdater::init().
+            AutoUpdater::init();
+            if (!Threads::create(Threads::WORKER_STACK, [&availableUpdate, &updateCheckFinished, executablePath]() {
+                    availableUpdate = AutoUpdater::check(executablePath);
+                    updateCheckFinished.store(true, std::memory_order_release);
+                })) {
+                Logging::warning("Could not start auto-update check thread.");
+                updateCheckFinished.store(true, std::memory_order_release);
+            }
+        }
+
+        while (aptMainLoop() && !shouldExit) {
             touchPosition touch;
             hidScanInput();
             hidTouchRead(&touch);
 
             if (hidKeysDown() & KEY_START) {
                 if (g_screen->allowsExit() && !TitleCatalog::get().progress().active && !TransferJob::get().active() &&
-                    !ScriptRunner::get().active()) {
+                    !ScriptRunner::get().active() && !AutoUpdater::busy()) {
                     break;
                 }
             }
@@ -165,6 +189,33 @@ int main()
             if (g_pendingScreen) {
                 g_screen        = std::move(g_pendingScreen);
                 g_pendingScreen = nullptr;
+            }
+
+            // Network work starts only after the UI exists. Raise the prompt on
+            // the UI thread, and wait for any dialog already in use to close.
+            // The catalog scan reads romfs assets, and installing unmounts romfs
+            // to replace the running build, so the prompt also waits it out.
+            if (!updatePrompted && updateCheckFinished.load(std::memory_order_acquire) && availableUpdate && !g_screen->hasOverlay() &&
+                !TitleCatalog::get().progress().active) {
+                updatePrompted                  = true;
+                const auto update               = *availableUpdate;
+                auto screen                     = g_screen;
+                std::shared_ptr<Overlay> prompt = std::make_shared<YesNoOverlay>(
+                    *screen, i18n::t("updater.update_available", {update.version}),
+                    [screen, update, executablePath, &shouldExit]() {
+                        // Hand the transfer to UpdateOverlay: it runs download
+                        // and install on a worker and draws the progress bar,
+                        // so the console never looks frozen mid-update.
+                        std::shared_ptr<Overlay> progress = std::make_shared<UpdateOverlay>(*screen, update, [executablePath, &shouldExit]() {
+                            if (!AutoUpdater::requestRelaunch(executablePath)) {
+                                Logging::warning("Update installed, but automatic relaunch is unavailable.");
+                            }
+                            shouldExit = true;
+                        });
+                        screen->setOverlay(progress);
+                    },
+                    [screen]() { screen->removeOverlay(); });
+                g_screen->setOverlay(prompt);
             }
         }
     }

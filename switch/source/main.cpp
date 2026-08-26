@@ -27,9 +27,13 @@
 #include "main.hpp"
 #include "MainScreen.hpp"
 #include "ScriptScreen.hpp"
+#include "UpdateOverlay.hpp"
+#include "YesNoOverlay.hpp"
+#include "autoupdater.hpp"
 #include "backupsize.hpp"
 #include "colors.hpp"
 #include "ftpserver.hpp"
+#include "i18n.hpp"
 #include "logging.hpp"
 #include "mtpserver.hpp"
 #include "scriptlogview.hpp"
@@ -38,14 +42,23 @@
 #include "titlecatalog.hpp"
 #include "transfer.hpp"
 #include "transferjob.hpp"
+#include <atomic>
+#include <optional>
+#include <thread>
 
-int main(void)
+int main(int argc, char* argv[])
 {
     Result res = servicesInit();
     if (R_FAILED(res)) {
         servicesExit();
         exit(res);
     }
+
+    const std::string executablePath = argc > 0 && argv[0] ? argv[0] : "";
+    std::optional<AutoUpdater::Update> availableUpdate;
+    std::atomic<bool> updateCheckFinished{!Configuration::getInstance().isAutoUpdateEnabled()};
+    bool updatePrompted = false;
+    bool shouldExit     = false;
 
     // Match the color tokens to the persisted theme before any screen draws.
     Colors::apply(Configuration::getInstance().theme());
@@ -60,6 +73,16 @@ int main(void)
 
     g_screen = std::make_unique<MainScreen>(input);
 
+    std::thread updateCheckThread;
+    if (Configuration::getInstance().isAutoUpdateEnabled()) {
+        // Main thread, before the worker exists: see AutoUpdater::init().
+        AutoUpdater::init();
+        updateCheckThread = std::thread([&availableUpdate, &updateCheckFinished, executablePath]() {
+            availableUpdate = AutoUpdater::check(executablePath);
+            updateCheckFinished.store(true, std::memory_order_release);
+        });
+    }
+
     // Remove any transfer temp files a previous crash/power-loss left behind.
     Transfer::sweepTempFiles();
 
@@ -70,7 +93,7 @@ int main(void)
     if (g_currentUId == 0 && !userIds.empty())
         g_currentUId = userIds.at(0);
 
-    while (appletMainLoop()) {
+    while (appletMainLoop() && !shouldExit) {
         padUpdate(&pad);
 
         input.kDown = padGetButtonsDown(&pad);
@@ -79,7 +102,8 @@ int main(void)
         // cannot be preempted).
         // allowsExit() is what keeps Plus from quitting out of a finished script
         // session, where the runner is already idle but the log pane is still up.
-        if ((input.kDown & HidNpadButton_Plus) && g_screen->allowsExit() && !TransferJob::get().active() && !ScriptRunner::get().active())
+        if ((input.kDown & HidNpadButton_Plus) && g_screen->allowsExit() && !TransferJob::get().active() && !ScriptRunner::get().active() &&
+            !AutoUpdater::busy())
             break;
 
         input.kHeld = padGetButtons(&pad);
@@ -155,8 +179,37 @@ int main(void)
             g_screen        = std::move(g_pendingScreen);
             g_pendingScreen = nullptr;
         }
+
+        // Poll worker result on UI thread. If another modal owns input, keep
+        // update notice pending until that modal closes.
+        if (!updatePrompted && updateCheckFinished.load(std::memory_order_acquire) && availableUpdate && !g_screen->hasOverlay()) {
+            updatePrompted                  = true;
+            const auto update               = *availableUpdate;
+            auto screen                     = g_screen;
+            std::shared_ptr<Overlay> prompt = std::make_shared<YesNoOverlay>(
+                *screen, i18n::t("updater.update_available", {update.version}),
+                [screen, update, executablePath, &shouldExit]() {
+                    // Hand the transfer to UpdateOverlay: it runs download and
+                    // install on a worker and draws the progress bar, so the
+                    // console never looks frozen mid-update.
+                    std::shared_ptr<Overlay> progress = std::make_shared<UpdateOverlay>(*screen, update, [executablePath, &shouldExit]() {
+                        if (!AutoUpdater::requestRelaunch(executablePath)) {
+                            Logging::warning("Update installed, but automatic relaunch is unavailable.");
+                        }
+                        shouldExit = true;
+                    });
+                    screen->setOverlay(progress);
+                },
+                []() {});
+            g_screen->setOverlay(prompt);
+        }
         Gfx::Render();
     }
+
+    // Worker can still be inside curl when user exits quickly. Join before
+    // socket and logging services disappear beneath it.
+    if (updateCheckThread.joinable())
+        updateCheckThread.join();
 
     // Teardown is breadcrumbed step-by-step: a crash or hang while closing the
     // app leaves the log pointing at the exact step that didn't return, so we
