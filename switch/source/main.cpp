@@ -25,9 +25,9 @@
  */
 
 #include "main.hpp"
-#include "InfoOverlay.hpp"
 #include "MainScreen.hpp"
 #include "ScriptScreen.hpp"
+#include "UpdateOverlay.hpp"
 #include "YesNoOverlay.hpp"
 #include "autoupdater.hpp"
 #include "backupsize.hpp"
@@ -75,6 +75,8 @@ int main(int argc, char* argv[])
 
     std::thread updateCheckThread;
     if (Configuration::getInstance().isAutoUpdateEnabled()) {
+        // Main thread, before the worker exists: see AutoUpdater::init().
+        AutoUpdater::init();
         updateCheckThread = std::thread([&availableUpdate, &updateCheckFinished, executablePath]() {
             availableUpdate = AutoUpdater::check(executablePath);
             updateCheckFinished.store(true, std::memory_order_release);
@@ -100,7 +102,8 @@ int main(int argc, char* argv[])
         // cannot be preempted).
         // allowsExit() is what keeps Plus from quitting out of a finished script
         // session, where the runner is already idle but the log pane is still up.
-        if ((input.kDown & HidNpadButton_Plus) && g_screen->allowsExit() && !TransferJob::get().active() && !ScriptRunner::get().active())
+        if ((input.kDown & HidNpadButton_Plus) && g_screen->allowsExit() && !TransferJob::get().active() && !ScriptRunner::get().active() &&
+            !AutoUpdater::busy())
             break;
 
         input.kHeld = padGetButtons(&pad);
@@ -186,16 +189,16 @@ int main(int argc, char* argv[])
             std::shared_ptr<Overlay> prompt = std::make_shared<YesNoOverlay>(
                 *screen, i18n::t("updater.update_available", {update.version}),
                 [screen, update, executablePath, &shouldExit]() {
-                    if (AutoUpdater::install(update) == AutoUpdater::Outcome::Installed) {
+                    // Hand the transfer to UpdateOverlay: it runs download and
+                    // install on a worker and draws the progress bar, so the
+                    // console never looks frozen mid-update.
+                    std::shared_ptr<Overlay> progress = std::make_shared<UpdateOverlay>(*screen, update, [executablePath, &shouldExit]() {
                         if (!AutoUpdater::requestRelaunch(executablePath)) {
                             Logging::warning("Update installed, but automatic relaunch is unavailable.");
                         }
                         shouldExit = true;
-                    }
-                    else {
-                        std::shared_ptr<Overlay> error = std::make_shared<InfoOverlay>(*screen, i18n::t("updater.install_failed"));
-                        screen->setOverlay(error);
-                    }
+                    });
+                    screen->setOverlay(progress);
                 },
                 []() {});
             g_screen->setOverlay(prompt);

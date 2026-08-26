@@ -36,11 +36,36 @@ namespace AutoUpdater {
         Failed,
     };
 
+    // Byte counters of the transfer running inside install(). Written by the
+    // worker, polled by the UI thread once per frame to draw the bar; `total`
+    // is 0 until the server announces a length.
+    struct Progress {
+        size_t downloaded = 0;
+        size_t total      = 0;
+    };
+    Progress progress();
+
+    // True from the moment install() starts until it has finished. The main
+    // loops ask before honouring a quit request, so the console cannot be torn
+    // down while the artifact is half-written.
+    bool busy();
+
+    // Brings curl's global state up. Must run on the main thread before any
+    // worker touches curl: the Switch portlib is libcurl 7.69.1, which predates
+    // the thread-safe global init (curl >= 7.84), so the implicit init inside
+    // curl_easy_init() would otherwise happen on the check worker while the
+    // main loop is running. Idempotent; curl refcounts it.
+    void init();
+
     // Queries GitHub for a newer artifact matching the current launch type.
     // This performs network I/O and must be called from a worker thread.
     std::optional<Update> check(const std::string& executablePath);
 
-    // Downloads and installs an update previously returned by check().
+    // Downloads and installs an update previously returned by check(). Both
+    // halves are slow (network transfer, then a CIA write of several MB on
+    // 3DS), so this must run on a worker thread with the UI drawing progress()
+    // meanwhile. Nothing may read a romfs asset while it runs: the executable
+    // path unmounts romfs across the rename that replaces the running build.
     Outcome install(const Update& update);
 
     // Requests that the loader starts the freshly installed build after this

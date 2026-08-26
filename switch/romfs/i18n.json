@@ -443,6 +443,42 @@
     "zh": "无法下载或安装更新。",
     "ru": "Не удалось скачать или установить обновление."
   },
+  "updater.downloading": {
+    "en": "Downloading Checkpoint {0}",
+    "it": "Download di Checkpoint {0} in corso",
+    "es": "Descargando Checkpoint {0}",
+    "fr": "Téléchargement de Checkpoint {0}",
+    "de": "Checkpoint {0} wird heruntergeladen",
+    "pt": "Baixando Checkpoint {0}",
+    "nl": "Checkpoint {0} downloaden",
+    "ja": "Checkpoint {0} をダウンロード中",
+    "zh": "正在下载 Checkpoint {0}",
+    "ru": "Загрузка Checkpoint {0}"
+  },
+  "updater.installing": {
+    "en": "Installing the update",
+    "it": "Installazione dell'aggiornamento",
+    "es": "Instalando la actualización",
+    "fr": "Installation de la mise à jour",
+    "de": "Update wird installiert",
+    "pt": "Instalando a atualização",
+    "nl": "Update installeren",
+    "ja": "アップデートをインストール中",
+    "zh": "正在安装更新",
+    "ru": "Установка обновления"
+  },
+  "updater.keep_awake": {
+    "en": "Do not turn off the console",
+    "it": "Non spegnere la console",
+    "es": "No apagues la consola",
+    "fr": "N'éteignez pas la console",
+    "de": "Konsole nicht ausschalten",
+    "pt": "Não desligue o console",
+    "nl": "Zet de console niet uit",
+    "ja": "本体の電源を切らないでください",
+    "zh": "请勿关闭主机",
+    "ru": "Не выключайте консоль"
+  },
   "settings.conn.ftp": {
     "en": "FTP server",
     "it": "Server FTP",

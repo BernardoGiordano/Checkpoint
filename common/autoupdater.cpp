@@ -11,6 +11,7 @@
 #include "autoupdater.hpp"
 #include "json.hpp"
 #include "logging.hpp"
+#include <atomic>
 #include <cstdio>
 #include <cstring>
 #include <curl/curl.h>
@@ -25,12 +26,34 @@
 #endif
 
 namespace {
+    // Published by the download loop, read by the UI thread every frame. Plain
+    // relaxed atomics: the UI only needs the latest pair to size a bar, and a
+    // frame drawn from a slightly stale count is invisible.
+    std::atomic<size_t> g_downloaded{0};
+    std::atomic<size_t> g_total{0};
+    std::atomic<bool> g_busy{false};
+
     constexpr const char* RELEASE_API = "https://api.github.com/repos/BernardoGiordano/Checkpoint/releases/latest";
 
     size_t appendString(char* data, size_t size, size_t count, void* user)
     {
         static_cast<std::string*>(user)->append(data, size * count);
         return size * count;
+    }
+
+    // Bytes already on disk when the current attempt started. A resumed request
+    // reports only its own slice, so the bar has to add the head back in.
+    std::atomic<size_t> g_resumeBase{0};
+
+    int reportProgress(void*, curl_off_t downloadTotal, curl_off_t downloadNow, curl_off_t, curl_off_t)
+    {
+        const size_t base = g_resumeBase.load(std::memory_order_relaxed);
+        g_downloaded.store(base + (downloadNow > 0 ? size_t(downloadNow) : 0), std::memory_order_relaxed);
+        // Content-Length only shows up once headers are in; until then the size
+        // seeded from the release metadata is the better total.
+        if (downloadTotal > 0)
+            g_total.store(base + size_t(downloadTotal), std::memory_order_relaxed);
+        return 0;
     }
 
     bool configure(CURL* curl, const std::string& url)
@@ -101,33 +124,99 @@ namespace {
         return false;
     }
 
-    bool download(const AutoUpdater::Update& update, const std::string& path)
+    enum class Attempt { Complete, Partial, Restart, Aborted };
+
+    // One transfer, appending to whatever `path` already holds. `bytes` comes
+    // back as the size on disk afterwards so the caller can resume from it.
+    Attempt fetchOnce(const AutoUpdater::Update& update, const std::string& path, size_t offset, size_t& bytes)
     {
-        FILE* file = fopen(path.c_str(), "wb");
-        if (!file)
-            return false;
+        bytes      = offset;
+        FILE* file = fopen(path.c_str(), offset > 0 ? "ab" : "wb");
+        if (!file) {
+            Logging::warning("Auto-update could not open {} for writing.", path);
+            return Attempt::Aborted;
+        }
 
         CURL* curl = curl_easy_init();
         if (!configure(curl, update.url)) {
             fclose(file);
             if (curl)
                 curl_easy_cleanup(curl);
-            remove(path.c_str());
-            return false;
+            return Attempt::Aborted;
         }
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, fwrite);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, file);
+        curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+        curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, reportProgress);
+        // A whole release over console Wi-Fi legitimately outlasts the 120 s
+        // cap the metadata request uses. Bound the stall instead of the run:
+        // give up only if the transfer sits under 1 KB/s for 30 s.
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L);
+        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_LIMIT, 1024L);
+        curl_easy_setopt(curl, CURLOPT_LOW_SPEED_TIME, 30L);
+        if (offset > 0)
+            curl_easy_setopt(curl, CURLOPT_RESUME_FROM_LARGE, curl_off_t(offset));
+
         const CURLcode result = curl_easy_perform(curl);
         long status           = 0;
         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
         curl_easy_cleanup(curl);
-        const long bytes = ftell(file);
-        fclose(file);
 
-        const bool valid = result == CURLE_OK && status >= 200 && status < 300 && bytes > 0 && (update.size == 0 || size_t(bytes) == update.size);
-        if (!valid)
-            remove(path.c_str());
-        return valid;
+        // Flush before measuring: ftell counts bytes still sitting in the stdio
+        // buffer, so an SD write that fails at close would otherwise look complete.
+        const bool flushed = fflush(file) == 0 && ferror(file) == 0;
+        const long written = ftell(file);
+        fclose(file);
+        bytes = written > 0 ? size_t(written) : offset;
+
+        if (offset > 0 && status != 206) {
+            // Range ignored: the body restarted at zero and got appended to the
+            // head we already had. Throw the file away and start over.
+            Logging::warning("Auto-update resume from {} was refused (HTTP {}); restarting the download.", offset, status);
+            return Attempt::Restart;
+        }
+        if (result != CURLE_OK || status < 200 || status >= 300 || !flushed) {
+            Logging::warning("Auto-update transfer stopped: curl {} ({}), HTTP {}, {} of {} bytes{}.", int(result), curl_easy_strerror(result),
+                status, bytes, update.size, flushed ? "" : ", write error");
+            return bytes > offset ? Attempt::Partial : Attempt::Restart;
+        }
+        if (update.size != 0 && bytes != update.size) {
+            Logging::warning("Auto-update transfer ended short: {} of {} bytes.", bytes, update.size);
+            return bytes > offset ? Attempt::Partial : Attempt::Restart;
+        }
+        return bytes > 0 ? Attempt::Complete : Attempt::Restart;
+    }
+
+    bool fetch(const AutoUpdater::Update& update, const std::string& path)
+    {
+        // Console Wi-Fi drops often enough that one stall should not cost the
+        // whole artifact. Pick up from what is already on disk instead.
+        constexpr int ATTEMPTS = 4;
+        size_t offset          = 0;
+        for (int attempt = 0; attempt < ATTEMPTS; attempt++) {
+            g_resumeBase.store(offset, std::memory_order_relaxed);
+            size_t bytes = 0;
+            switch (fetchOnce(update, path, offset, bytes)) {
+                case Attempt::Complete:
+                    return true;
+                case Attempt::Partial:
+                    Logging::info("Resuming Checkpoint {} from {} bytes.", update.version, bytes);
+                    offset = bytes;
+                    continue;
+                case Attempt::Restart:
+                    offset = 0;
+                    remove(path.c_str());
+                    continue;
+                case Attempt::Aborted:
+                    // Local failure (no file handle, no curl handle): retrying
+                    // under identical conditions only burns attempts.
+                    attempt = ATTEMPTS;
+                    continue;
+            }
+        }
+        g_resumeBase.store(0, std::memory_order_relaxed);
+        remove(path.c_str());
+        return false;
     }
 
     bool replaceExecutable(const std::string& path, const std::string& downloaded)
@@ -209,6 +298,16 @@ namespace {
 #endif
 }
 
+void AutoUpdater::init()
+{
+    static bool done = false;
+    if (!done) {
+        done = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
+        if (!done)
+            Logging::warning("Auto-update could not initialise curl.");
+    }
+}
+
 std::optional<AutoUpdater::Update> AutoUpdater::check(const std::string& executablePath)
 {
     try {
@@ -260,12 +359,34 @@ std::optional<AutoUpdater::Update> AutoUpdater::check(const std::string& executa
     }
 }
 
+AutoUpdater::Progress AutoUpdater::progress()
+{
+    return {g_downloaded.load(std::memory_order_relaxed), g_total.load(std::memory_order_relaxed)};
+}
+
+bool AutoUpdater::busy()
+{
+    return g_busy.load(std::memory_order_acquire);
+}
+
 AutoUpdater::Outcome AutoUpdater::install(const Update& update)
 {
+    // Cleared on every exit path, including the throwing ones, so a failed
+    // install can never leave the main loop refusing to quit.
+    struct BusyFlag {
+        BusyFlag() { g_busy.store(true, std::memory_order_release); }
+        ~BusyFlag() { g_busy.store(false, std::memory_order_release); }
+    } busyFlag;
+
     try {
         const std::string temporary = update.target + ".new";
+        // Seed the bar from the release metadata so the first frames already
+        // show a real total instead of an empty trough.
+        g_downloaded.store(0, std::memory_order_relaxed);
+        g_total.store(update.size, std::memory_order_relaxed);
+        g_resumeBase.store(0, std::memory_order_relaxed);
         Logging::info("Downloading Checkpoint {}...", update.version);
-        if (!download(update, temporary)) {
+        if (!fetch(update, temporary)) {
             Logging::warning("Failed to download Checkpoint {}.", update.version);
             return Outcome::Failed;
         }

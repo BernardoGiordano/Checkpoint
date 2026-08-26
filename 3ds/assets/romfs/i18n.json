@@ -347,6 +347,42 @@
     "zh": "无法下载或安装更新。",
     "ru": "Не удалось скачать или установить обновление."
   },
+  "updater.downloading": {
+    "en": "Downloading Checkpoint {0}",
+    "it": "Download di Checkpoint {0} in corso",
+    "es": "Descargando Checkpoint {0}",
+    "fr": "Téléchargement de Checkpoint {0}",
+    "de": "Checkpoint {0} wird heruntergeladen",
+    "pt": "Baixando Checkpoint {0}",
+    "nl": "Checkpoint {0} downloaden",
+    "ja": "Checkpoint {0} をダウンロード中",
+    "zh": "正在下载 Checkpoint {0}",
+    "ru": "Загрузка Checkpoint {0}"
+  },
+  "updater.installing": {
+    "en": "Installing the update",
+    "it": "Installazione dell'aggiornamento",
+    "es": "Instalando la actualización",
+    "fr": "Installation de la mise à jour",
+    "de": "Update wird installiert",
+    "pt": "Instalando a atualização",
+    "nl": "Update installeren",
+    "ja": "アップデートをインストール中",
+    "zh": "正在安装更新",
+    "ru": "Установка обновления"
+  },
+  "updater.keep_awake": {
+    "en": "Do not turn off the console",
+    "it": "Non spegnere la console",
+    "es": "No apagues la consola",
+    "fr": "N'éteignez pas la console",
+    "de": "Konsole nicht ausschalten",
+    "pt": "Não desligue o console",
+    "nl": "Zet de console niet uit",
+    "ja": "本体の電源を切らないでください",
+    "zh": "请勿关闭主机",
+    "ru": "Не выключайте консоль"
+  },
   "settings.general.language": {
     "en": "Language",
     "it": "Lingua",
@@ -1581,28 +1617,16 @@
     "ru": "Обновить список тайтлов"
   },
   "main.refresh_hint": {
-    "en": "Hold {0} to refresh the list",
-    "it": "Tieni premuto {0} per aggiornare la lista",
-    "es": "Mantén pulsado {0} para actualizar la lista",
-    "fr": "Maintenez {0} pour actualiser la liste",
-    "de": "{0} halten, um die Liste zu aktualisieren",
-    "pt": "Segure {0} para atualizar a lista",
-    "nl": "Houd {0} ingedrukt om de lijst te vernieuwen",
-    "ja": "{0} を長押しで一覧を更新",
-    "zh": "长按 {0} 刷新列表",
-    "ru": "Удерживайте {0}, чтобы обновить список"
-  },
-  "main.refresh_holding": {
-    "en": "Keep holding to refresh",
-    "it": "Continua a tenere premuto per aggiornare",
-    "es": "Sigue pulsando para actualizar",
-    "fr": "Maintenez pour actualiser",
-    "de": "Weiter halten zum Aktualisieren",
-    "pt": "Continue segurando para atualizar",
-    "nl": "Blijf ingedrukt houden om te vernieuwen",
-    "ja": "長押しを続けると更新します",
-    "zh": "继续长按以刷新",
-    "ru": "Удерживайте для обновления"
+    "en": "Open the menu with {0} to refresh the list",
+    "it": "Apri il menu con {0} per aggiornare la lista",
+    "es": "Abre el menú con {0} para actualizar la lista",
+    "fr": "Ouvrez le menu avec {0} pour actualiser la liste",
+    "de": "Menü mit {0} öffnen, um die Liste zu aktualisieren",
+    "pt": "Abra o menu com {0} para atualizar a lista",
+    "nl": "Open het menu met {0} om de lijst te vernieuwen",
+    "ja": "{0} でメニューを開くと一覧を更新できます",
+    "zh": "按 {0} 打开菜单以刷新列表",
+    "ru": "Откройте меню кнопкой {0}, чтобы обновить список"
   },
   "main.select_backup_send": {
     "en": "Select a backup to send.",

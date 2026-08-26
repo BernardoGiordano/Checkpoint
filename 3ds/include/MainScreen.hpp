@@ -110,7 +110,6 @@ private:
     C2D_ImageTint checkboxTint; // dark check on the multi-select badge
     C2D_ImageTint starTint;     // dark star on the gold favorite pip
     int selectionTimer;
-    int refreshTimer;
     bool transferEnabled;
     BackupKind backupKind = BackupKind::Save;
 

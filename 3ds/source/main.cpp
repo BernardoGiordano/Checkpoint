@@ -27,8 +27,8 @@
 #include "main.hpp"
 #include "ChoiceOverlay.hpp"
 #include "MainScreen.hpp"
-#include "MessageOverlay.hpp"
 #include "ScriptScreen.hpp"
+#include "UpdateOverlay.hpp"
 #include "autoupdater.hpp"
 #include "backupsize.hpp"
 #include "colors.hpp"
@@ -90,13 +90,16 @@ int main(int argc, char* argv[])
         auto uiIsReady = std::chrono::high_resolution_clock::now();
         Logging::info("Loading took {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(uiIsReady - start).count());
 
-        if (Configuration::getInstance().autoUpdate() &&
-            !Threads::create(Threads::WORKER_STACK, [&availableUpdate, &updateCheckFinished, executablePath]() {
-                availableUpdate = AutoUpdater::check(executablePath);
+        if (Configuration::getInstance().autoUpdate()) {
+            // Main thread, before the worker exists: see AutoUpdater::init().
+            AutoUpdater::init();
+            if (!Threads::create(Threads::WORKER_STACK, [&availableUpdate, &updateCheckFinished, executablePath]() {
+                    availableUpdate = AutoUpdater::check(executablePath);
+                    updateCheckFinished.store(true, std::memory_order_release);
+                })) {
+                Logging::warning("Could not start auto-update check thread.");
                 updateCheckFinished.store(true, std::memory_order_release);
-            })) {
-            Logging::warning("Could not start auto-update check thread.");
-            updateCheckFinished.store(true, std::memory_order_release);
+            }
         }
 
         while (aptMainLoop() && !shouldExit) {
@@ -106,7 +109,7 @@ int main(int argc, char* argv[])
 
             if (hidKeysDown() & KEY_START) {
                 if (g_screen->allowsExit() && !TitleCatalog::get().progress().active && !TransferJob::get().active() &&
-                    !ScriptRunner::get().active()) {
+                    !ScriptRunner::get().active() && !AutoUpdater::busy()) {
                     break;
                 }
             }
@@ -190,24 +193,26 @@ int main(int argc, char* argv[])
 
             // Network work starts only after the UI exists. Raise the prompt on
             // the UI thread, and wait for any dialog already in use to close.
-            if (!updatePrompted && updateCheckFinished.load(std::memory_order_acquire) && availableUpdate && !g_screen->hasOverlay()) {
+            // The catalog scan reads romfs assets, and installing unmounts romfs
+            // to replace the running build, so the prompt also waits it out.
+            if (!updatePrompted && updateCheckFinished.load(std::memory_order_acquire) && availableUpdate && !g_screen->hasOverlay() &&
+                !TitleCatalog::get().progress().active) {
                 updatePrompted                  = true;
                 const auto update               = *availableUpdate;
                 auto screen                     = g_screen;
                 std::shared_ptr<Overlay> prompt = std::make_shared<YesNoOverlay>(
                     *screen, i18n::t("updater.update_available", {update.version}),
                     [screen, update, executablePath, &shouldExit]() {
-                        screen->removeOverlay();
-                        if (AutoUpdater::install(update) == AutoUpdater::Outcome::Installed) {
+                        // Hand the transfer to UpdateOverlay: it runs download
+                        // and install on a worker and draws the progress bar,
+                        // so the console never looks frozen mid-update.
+                        std::shared_ptr<Overlay> progress = std::make_shared<UpdateOverlay>(*screen, update, [executablePath, &shouldExit]() {
                             if (!AutoUpdater::requestRelaunch(executablePath)) {
                                 Logging::warning("Update installed, but automatic relaunch is unavailable.");
                             }
                             shouldExit = true;
-                        }
-                        else {
-                            std::shared_ptr<Overlay> error = std::make_shared<InfoOverlay>(*screen, i18n::t("updater.install_failed"));
-                            screen->setOverlay(error);
-                        }
+                        });
+                        screen->setOverlay(progress);
                     },
                     [screen]() { screen->removeOverlay(); });
                 g_screen->setOverlay(prompt);
