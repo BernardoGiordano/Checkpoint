@@ -12,6 +12,7 @@ all: $(SUBDIRS)
 
 clean:
 	@for dir in $(SUBDIRS); do $(MAKE) clean -C $$dir; done
+	@$(MAKE) clean -C tests
 
 3ds:
 	@$(MAKE) -C 3ds VERSION_MAJOR=${VERSION_MAJOR} VERSION_MINOR=${VERSION_MINOR} VERSION_MICRO=${VERSION_MICRO} GIT_REV=${GIT_REV}
@@ -28,4 +29,9 @@ format:
 cppcheck:
 	@cppcheck . --enable=all --force 2> cppcheck.log
 
-.PHONY: $(SUBDIRS) cli clean format cppcheck
+# Host-side tests. They run on the build machine, not on hardware. See
+# tests/Makefile for what each one covers.
+test:
+	@$(MAKE) -C tests
+
+.PHONY: $(SUBDIRS) cli clean format cppcheck test

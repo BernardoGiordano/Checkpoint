@@ -18,3 +18,5 @@ tools/chlink/chlink
 tools/chlink/chlink.exe
 tools/chlink/dist/
 __pycache__
+
+tests/build/
