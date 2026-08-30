@@ -92,6 +92,7 @@ AccessControlInfo:
 
   # Virtual Address Mappings
   IORegisterMapping:
+   - 1ec64000-1ec64fff   # NTRCARD ROM-bus controller
    - 1ff00000-1ff7ffff   # DSP memory
   MemoryMapping: 
    - 1f000000-1f5fffff:r # VRAM

@@ -33,12 +33,7 @@
 // A few DS carts have no SPI save chip at all: ROM and save share one on-cart
 // NAND, and the save lives in the "RW area" the ROM header points at. Reaching
 // it means driving the card's ROM bus in NAND mode (commands 0x8B ROM mode,
-// 0xB2 RW mode, 0x81/0x82/0x84/0x85 write buffer, 0xD6 status) — the card
-// hardware talk DS mode does. In 3DS mode the system only ever exposes the SPI
-// save chip (pxi:dev) and the legacy header/banner reads, so such a save can
-// neither be backed up nor restored from here; GodMode9i, running in DS mode,
-// is the tool for it. What Checkpoint can do is recognize the cart and say so,
-// instead of reporting the empty SPI probe as a failed archive open.
+// 0xB2 RW mode, 0x81/0x82/0x84/0x85 write buffer, 0xD6 status)
 namespace DSCard {
     // The slice of the NDS ROM header FSUSER_GetLegacyRomHeader vends.
     inline constexpr size_t headerSize = 0x3B4;
@@ -46,15 +41,17 @@ namespace DSCard {
     // Save hardware as described by the ROM header. Filled for every DS cart, so
     // the log carries the same fields for carts that turn out to be ordinary.
     struct NandSave {
-        bool present     = false; // save lives in on-cart NAND, not on an SPI chip
-        bool headerRead  = false; // false when the ROM header could not be read
-        char gameCode[5] = {0};   // "UORE" & co, NUL-terminated
-        u8 unitCode      = 0;     // 0 = NTR cart, nonzero = TWL cart (unit size differs)
-        u16 rawRomEnd    = 0;     // header 0x94, in cart units
-        u16 rawRwStart   = 0;     // header 0x96, in cart units
-        u32 romEnd       = 0;     // rawRomEnd decoded to a byte offset
-        u32 rwStart      = 0;     // rawRwStart decoded to a byte offset: where the save starts
-        u32 saveSize     = 0;     // known per game code; 0 for a NAND cart we don't know the size of
+        bool present      = false; // save lives in on-cart NAND, not on an SPI chip
+        bool headerRead   = false; // false when the ROM header could not be read
+        char gameCode[5]  = {0};   // "UORE" & co, NUL-terminated
+        u8 unitCode       = 0;     // 0 = NTR cart, nonzero = TWL cart (unit size differs)
+        u16 rawRomEnd     = 0;     // header 0x94, in cart units
+        u16 rawRwStart    = 0;     // header 0x96, in cart units
+        u32 cardControl13 = 0;     // header 0x60, normal/main-mode ROMCTRL flags
+        u32 bannerOffset  = 0;     // header 0x68, safe ordinary-ROM read oracle
+        u32 romEnd        = 0;     // rawRomEnd decoded to a byte offset
+        u32 rwStart       = 0;     // rawRwStart decoded to a byte offset: where the save starts
+        u32 saveSize      = 0;     // known per game code; 0 for a NAND cart we don't know the size of
     };
 
     // Parses a header of at least `headerSize` bytes.

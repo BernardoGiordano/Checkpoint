@@ -29,8 +29,12 @@
 #include "paths.hpp"
 #include "titlequirks.hpp"
 #include <3ds.h>
+#include <array>
 #include <cstdio>
 #include <cstring>
+#include <format>
+#include <memory>
+#include <new>
 
 namespace {
     // Some titles (notably malformed VC injects) don't null-terminate SMDH title
@@ -122,6 +126,7 @@ namespace {
     // is overwritten with a synthesized stable key (see dsCardId) before use.
     bool probeCard(u64& id, FS_MediaType media, u8* productCode, bool& accessibleSave, bool& gba, bool& accessibleExtdata,
         std::u16string& shortDescription, std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, CardType& spiCard,
+        bool& cardNandSave,
         IconStore& icons)
     {
         u8* headerData = new u8[DSCard::headerSize];
@@ -143,7 +148,8 @@ namespace {
         // Log the save hardware the header describes for every cart: an
         // unsupported-cart report then arrives with the numbers already in it,
         // next to the JEDEC id and card type SPIGetCardType logs below.
-        DSCard::logNandSave(DSCard::parseNandSave(headerData));
+        const DSCard::NandSave nandSave = DSCard::parseNandSave(headerData);
+        DSCard::logNandSave(nandSave);
 
         // Replace the placeholder id (0) with a stable per-cart key derived from
         // the game code, so config keyed on the title id works for DS carts too.
@@ -151,14 +157,23 @@ namespace {
 
         delete[] headerData;
         headerData = new u8[0x23C0];
-        FSUSER_GetLegacyBannerData(media, 0LL, headerData);
+        res        = FSUSER_GetLegacyBannerData(media, 0LL, headerData);
+        if (R_FAILED(res)) {
+            Logging::error("Failed get legacy banner data with result 0x{:08X}.", (u32)res);
+        }
         icons.storeDsIcon(id, headerData);
         delete[] headerData;
 
-        res = SPIGetCardType(&spiCard, (gameCode[0] == 'I') ? 1 : 0);
-        if (R_FAILED(res)) {
-            Logging::error("Failed get SPI Card Type with result 0x{:08X}.", res);
-            return false;
+        if (nandSave.present) {
+            cardNandSave = true;
+            Logging::info("Skipping SPI save detection for {}: this cart stores its save in on-cart NAND.", nandSave.gameCode);
+        }
+        else {
+            res = SPIGetCardType(&spiCard, (gameCode[0] == 'I') ? 1 : 0);
+            if (R_FAILED(res)) {
+                Logging::error("Failed get SPI Card Type with result 0x{:08X}.", res);
+                return false;
+            }
         }
 
         // No AM product-code API exists for a legacy card; synthesize the
@@ -247,7 +262,8 @@ bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType car
     u8 productCode[16]  = {0};
     bool accessibleSave = false, gba = false, accessibleExtdata = false;
     std::u16string shortDescription, longDescription, savePath, extdataPath;
-    CardType spiCard = NO_CHIP;
+    CardType spiCard    = NO_CHIP;
+    bool cardNandSave   = false;
 
     bool loadTitle;
     if (card == CARD_CTR) {
@@ -260,14 +276,15 @@ bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType car
     }
     else {
         loadTitle = probeCard(
-            id, media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, spiCard, icons);
+            id, media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, spiCard,
+            cardNandSave, icons);
     }
 
     // On a hard failure (smdh == NULL, header/SPI error) probeCtr/probeCard
     // return false with every facet inaccessible; we still publish the Title but
     // the caller discards it on a false return, exactly as the old load() did.
     title.load(id, productCode, accessibleSave, gba, accessibleExtdata, StringUtils::UTF16toUTF8(shortDescription),
-        StringUtils::UTF16toUTF8(longDescription), savePath, extdataPath, media, card, spiCard);
+        StringUtils::UTF16toUTF8(longDescription), savePath, extdataPath, media, card, spiCard, cardNandSave);
     title.refreshDirectories();
     return loadTitle;
 }

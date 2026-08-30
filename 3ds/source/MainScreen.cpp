@@ -679,6 +679,13 @@ void MainScreen::updateSelector(void)
     }
 }
 
+std::string MainScreen::backupConfirmMessage(const char* key) const
+{
+    Title title;
+    TitleCatalog::get().getTitle(title, hid.fullIndex(), backupKind);
+    return i18n::t(title.cardNandSave() ? "main.confirm_backup_card_nand" : key);
+}
+
 void MainScreen::doBackup(size_t fullIndex, size_t cellIndex)
 {
     Title title;
@@ -809,7 +816,7 @@ void MainScreen::handleEvents(const InputState& input)
         if (g_bottomScrollEnabled) {
             if (0 == directoryList->index()) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
-                    *this, i18n::t("main.confirm_backup_title"),
+                    *this, backupConfirmMessage("main.confirm_backup_title"),
                     [this]() {
                         this->doBackup(hid.fullIndex(), 0);
                         TransferJob::get().start();
@@ -920,7 +927,7 @@ void MainScreen::handleEvents(const InputState& input)
         if (buttonBackupAL->released() || (kDown & KEY_L)) {
             if (g_bottomScrollEnabled) {
                 currentOverlay = std::make_shared<YesNoOverlay>(
-                    *this, i18n::t("main.confirm_backup_save"),
+                    *this, backupConfirmMessage("main.confirm_backup_save"),
                     [this]() {
                         // The Receive action row has no backup behind it; treat it
                         // like the "New backup" row (cell 0) for a Backup press.

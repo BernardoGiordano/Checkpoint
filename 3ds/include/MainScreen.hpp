@@ -83,6 +83,12 @@ protected:
     bool isReceiveRow(size_t row) const;
     size_t rowToCell(size_t row) const; // invalid for the Receive row; check isReceiveRow first
     size_t cellToRow(size_t cell) const;
+    // The Yes/No text for a backup of the current selection. A cart whose save
+    // lives in on-cart NAND is read by driving the cartridge directly for a
+    // minute or more, and pulling it mid-read is the one way the user can lose
+    // the save this operation exists to protect, so that case gets its own
+    // warning. `key` is the ordinary message to fall back to.
+    std::string backupConfirmMessage(const char* key) const;
     // Rebuilds the SelectedTitle snapshot (and the grid favorite pips) when the
     // selection, backup kind, catalog generation, or size-cache generation moved
     // since the last frame; no-op otherwise. Also rebuilds directoryList's rows.

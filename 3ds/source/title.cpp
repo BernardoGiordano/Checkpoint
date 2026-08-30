@@ -44,12 +44,14 @@ void Title::load(void)
     mAccessibleSave    = false;
     mAccessibleExtdata = false;
     mGBA               = false;
+    mCardNandSave      = false;
     mSaves.clear();
     mExtdata.clear();
 }
 
 void Title::load(u64 id, u8* _productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::string shortDescription,
-    std::string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card)
+    std::string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card,
+    bool cardNandSave)
 {
     mId                = id;
     mAccessibleSave    = accessibleSave;
@@ -62,6 +64,7 @@ void Title::load(u64 id, u8* _productCode, bool accessibleSave, bool saveIsGBA, 
     mMedia             = media;
     mCard              = cardType;
     mCardType          = card;
+    mCardNandSave      = cardNandSave;
 
     memcpy(productCode, _productCode, 16);
 }
@@ -253,4 +256,9 @@ FS_CardType Title::cardType(void)
 CardType Title::SPICardType(void)
 {
     return mCardType;
+}
+
+bool Title::cardNandSave(void) const
+{
+    return mCardNandSave;
 }

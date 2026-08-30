@@ -70,7 +70,8 @@ public:
     u64 id(void) const;
     void load(void);
     void load(u64 id, u8* productCode, bool accessibleSave, bool saveIsGBA, bool accessibleExtdata, std::string shortDescription,
-        std::string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card);
+        std::string longDescription, std::u16string savePath, std::u16string extdataPath, FS_MediaType media, FS_CardType cardType, CardType card,
+        bool cardNandSave = false);
     const std::string& longDescription(void) const;
     u32 lowId(void);
     FS_MediaType mediaType(void);
@@ -81,6 +82,10 @@ public:
     std::vector<std::u16string> saves(void);
     const std::string& shortDescription(void) const;
     CardType SPICardType(void);
+    // True for a DS cartridge that keeps its save in on-cart NAND rather than on
+    // an SPI chip. Backing one up drives the cartridge directly for a minute or
+    // more, so the UI warns before starting; see DSCardNand.
+    bool cardNandSave(void) const;
     u32 uniqueId(void);
 
     char productCode[16];
@@ -108,6 +113,7 @@ private:
     FS_MediaType mMedia;
     FS_CardType mCard;
     CardType mCardType;
+    bool mCardNandSave;
 };
 
 #endif

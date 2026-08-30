@@ -95,6 +95,26 @@ public:
     static void cartScanFlagTestAndSet(void);
     static void clearCartScanFlag(void);
 
+    // Holding off the cart-detect poll while something else drives the card.
+    //
+    // cartScan() polls FSUSER_CardSlotIsInserted in a tight loop, and Process9
+    // services that query on the same NTRCARD controller a direct card
+    // transfer is using: the poll takes MCNT back mid-transfer. Anything that
+    // talks to the card bus directly holds this for the duration. Card
+    // insertion and removal simply go unnoticed while it is held, which is the
+    // cheaper of the two problems.
+    //
+    // Reentrant-safe: pausing from the cart-scan thread itself (scanCard ->
+    // TitleProbe) cannot deadlock, because the wait for the poll to go quiet is
+    // bounded rather than a handshake.
+    class CartScanPause {
+    public:
+        CartScanPause(void);
+        ~CartScanPause();
+        CartScanPause(const CartScanPause&)            = delete;
+        CartScanPause& operator=(const CartScanPause&) = delete;
+    };
+
 private:
     TitleCatalog(void)                           = default;
     ~TitleCatalog(void)                          = default;
@@ -127,6 +147,9 @@ private:
 
     bool mForceRefresh           = false;
     std::atomic_flag mDoCartScan = ATOMIC_FLAG_INIT;
+    // Nested holds are counted so an inner pause cannot resume the poll early.
+    std::atomic<int> mCartScanPaused{0};
+    std::atomic<bool> mCartScanQuiet{false};
 
     std::atomic<bool> mLoading{false};
     std::atomic<int> mCounter{0};

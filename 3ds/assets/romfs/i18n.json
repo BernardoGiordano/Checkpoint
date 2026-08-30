@@ -900,16 +900,28 @@
     "ru": "Путь слишком длинный для консоли.\nИспользуйте более короткое имя папки."
   },
   "outcome.card_nand_save": {
-    "en": "This cart saves to on-cart NAND.\nThe 3DS cannot access it.\nUse GodMode9i in DS mode.",
-    "it": "Questa cartuccia salva nella NAND interna.\nIl 3DS non può accedervi.\nUsa GodMode9i in modalità DS.",
-    "es": "Este cartucho guarda en su NAND interna.\nLa 3DS no puede acceder a ella.\nUsa GodMode9i en modo DS.",
-    "fr": "Cette cartouche sauvegarde sur sa NAND interne.\nLa 3DS ne peut pas y accéder.\nUtilisez GodMode9i en mode DS.",
-    "de": "Dieses Modul speichert auf modulinternem NAND.\nDer 3DS kann nicht darauf zugreifen.\nGodMode9i im DS-Modus verwenden.",
-    "pt": "Este cartucho salva na NAND interna.\nO 3DS não consegue acessá-la.\nUse o GodMode9i no modo DS.",
-    "nl": "Deze cartridge slaat op in interne NAND.\nDe 3DS kan die niet benaderen.\nGebruik GodMode9i in DS-modus.",
-    "ja": "このカードはカード内のNANDにセーブします。\n3DSからはアクセスできません。\nDSモードのGodMode9iを使ってください。",
-    "zh": "此卡带将存档保存在卡带内置NAND中\n3DS无法访问\n请在DS模式下使用GodMode9i",
-    "ru": "Этот картридж хранит сохранение во внутренней NAND.\n3DS не может получить к ней доступ.\nИспользуйте GodMode9i в режиме DS."
+    "en": "Restoring to on-cart NAND is not supported yet.\nThe cart's save was left untouched.",
+    "it": "Il ripristino nella NAND della cartuccia non è ancora supportato.\nIl salvataggio sulla cartuccia non è stato toccato.",
+    "es": "Restaurar en la NAND del cartucho aún no es compatible.\nEl guardado del cartucho no se ha tocado.",
+    "fr": "La restauration vers la NAND de la cartouche n'est pas encore prise en charge.\nLa sauvegarde de la cartouche n'a pas été modifiée.",
+    "de": "Wiederherstellen auf modulinternem NAND wird noch nicht unterstützt.\nDer Speicherstand des Moduls blieb unverändert.",
+    "pt": "Restaurar para a NAND do cartucho ainda não é suportado.\nO save do cartucho não foi alterado.",
+    "nl": "Terugzetten naar interne NAND wordt nog niet ondersteund.\nDe save op de cartridge is niet gewijzigd.",
+    "ja": "カード内NANDへの書き戻しはまだ対応していません。\nカードのセーブは変更されていません。",
+    "zh": "暂不支持恢复到卡带内置NAND\n卡带存档未被修改",
+    "ru": "Восстановление во внутреннюю NAND картриджа пока не поддерживается.\nСохранение на картридже не изменено."
+  },
+  "outcome.card_nand_read_failed": {
+    "en": "Could not safely read this cart's NAND save.\nNothing was backed up.\nCheck the log for details.",
+    "it": "Impossibile leggere in sicurezza il salvataggio nella NAND della cartuccia.\nNessun backup è stato creato.\nControlla il log per i dettagli.",
+    "es": "No se pudo leer con seguridad el guardado en la NAND del cartucho.\nNo se creó ninguna copia.\nConsulta el registro para más detalles.",
+    "fr": "Impossible de lire en toute sécurité la sauvegarde en NAND de la cartouche.\nAucune sauvegarde n'a été créée.\nConsultez le journal pour plus de détails.",
+    "de": "Der NAND-Speicherstand des Moduls konnte nicht sicher gelesen werden.\nEs wurde kein Backup erstellt.\nDetails stehen im Log.",
+    "pt": "Não foi possível ler com segurança o save na NAND do cartucho.\nNenhum backup foi criado.\nVeja o log para detalhes.",
+    "nl": "Kon de save in de interne NAND niet veilig lezen.\nEr is geen back-up gemaakt.\nZie het logbestand voor details.",
+    "ja": "カード内NANDのセーブを安全に読み取れませんでした。\nバックアップは作成されていません。\n詳細はログを確認してください。",
+    "zh": "无法安全读取此卡带的NAND存档\n未创建备份\n详情请查看日志",
+    "ru": "Не удалось безопасно прочитать сохранение из NAND картриджа.\nБэкап не создан.\nПодробности в журнале."
   },
   "outcome.read_file": {
     "en": "Failed to read save file backup.",
@@ -1567,6 +1579,18 @@
     "ja": "選択したセーブをバックアップしますか?",
     "zh": "要备份所选的存档吗？",
     "ru": "Сделать бэкап выбранного сохранения?"
+  },
+  "main.confirm_backup_card_nand": {
+    "en": "This save is inside the cartridge.\nThe backup takes about a minute.\nDo not remove the cartridge.\n\nBackup selected save?",
+    "it": "Questo salvataggio è dentro la cartuccia.\nIl backup richiede circa un minuto.\nNon rimuovere la cartuccia.\n\nEseguire il backup del salvataggio?",
+    "es": "Este guardado está dentro del cartucho.\nLa copia tarda alrededor de un minuto.\nNo extraigas el cartucho.\n\n¿Copiar el guardado seleccionado?",
+    "fr": "Cette sauvegarde est dans la cartouche.\nLa copie prend environ une minute.\nNe retirez pas la cartouche.\n\nSauvegarder la sauvegarde sélectionnée ?",
+    "de": "Dieser Speicherstand liegt im Modul.\nDas Backup dauert etwa eine Minute.\nModul nicht entfernen.\n\nAusgewählten Speicherstand sichern?",
+    "pt": "Este save está dentro do cartucho.\nO backup leva cerca de um minuto.\nNão remova o cartucho.\n\nFazer backup do save selecionado?",
+    "nl": "Deze save zit in de cartridge.\nDe back-up duurt ongeveer een minuut.\nVerwijder de cartridge niet.\n\nGeselecteerde save back-uppen?",
+    "ja": "このセーブはカード内にあります。\nバックアップに約1分かかります。\nカードを抜かないでください。\n\n選択したセーブをバックアップしますか？",
+    "zh": "此存档位于卡带内部\n备份大约需要一分钟\n请勿拔出卡带\n\n备份所选存档？",
+    "ru": "Это сохранение находится внутри картриджа.\nБэкап займёт около минуты.\nНе извлекайте картридж.\n\nСоздать бэкап выбранного сохранения?"
   },
   "main.confirm_delete": {
     "en": "Delete selected backup?",

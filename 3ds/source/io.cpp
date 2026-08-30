@@ -28,6 +28,7 @@
 #include "backuptarget.hpp"
 #include "csvc.hpp"
 #include "dscard.hpp"
+#include "dscardnand.hpp"
 #include "gbasave.hpp"
 #include "loader.hpp"
 
@@ -366,6 +367,148 @@ Result io::deleteFolderRecursively(FS_Archive arch, const std::u16string& path, 
     return 0;
 }
 
+// Backs up a DS cartridge whose save lives in on-cart NAND rather than on an
+// SPI EEPROM. Nothing here goes through FS: the bytes come off the cartridge by
+// driving the NTRCARD controller while Process9 still owns the slot
+//
+// Roughly 64 s of card time for a 16-MiB save. That is the poll-synchronised,
+// double-read path's cost, and it is what makes the result trustworthy: three
+// faster builds produced complete, plausible, silently corrupt images.
+static io::IoOutcome backupCardNandSave(
+    const BackupTarget& target, Title& title, const DSCard::NandSave& nand, const std::u16string& dstPath, ProgressSink& sink)
+{
+    if (!DSCardNand::available()) {
+        Logging::error("Refusing to back up {}: its save is in on-cart NAND and this build has no NAND read path.",
+            title.shortDescription().c_str());
+        return {false, 0, io::BackupStage::CardNandSave};
+    }
+
+    // Checkpoint's own cart-detect poll drives Process9 card IO, which takes the
+    // NTRCARD controller away mid-transfer. Hold it off across the gates and the
+    // whole read.
+    const TitleCatalog::CartScanPause cartScanPause;
+
+    std::unique_ptr<u8[]> banner(new (std::nothrow) u8[0x23C0]);
+    if (!banner) {
+        Logging::error("Card NAND backup: could not allocate the banner comparison buffer.");
+        return {false, 0, io::BackupStage::CardNandSave};
+    }
+    Result res = FSUSER_GetLegacyBannerData(title.mediaType(), 0LL, banner.get());
+    if (R_FAILED(res)) {
+        Logging::error("Card NAND backup: failed to read the legacy banner with result 0x{:08X}.", (u32)res);
+        return {false, res, io::BackupStage::CardNandSave};
+    }
+
+    const DSCardNand::Session session = DSCardNand::prepare(title.mediaType(), nand, banner.get());
+    // The gates are the banner's only consumer, and what follows wants one
+    // contiguous 16-MiB allocation. Holding 9 KiB across that is a needless way
+    // to fragment the heap into refusing it.
+    banner.reset();
+    if (!session.ready) {
+        Logging::error("Card NAND backup of {} refused: the cartridge did not pass the read-only gate chain, so no save data was read.",
+            title.shortDescription().c_str());
+        return {false, 0, io::BackupStage::CardNandSave};
+    }
+
+    // Start from a clean destination folder, exactly as the SPI path does.
+    if (io::directoryExists(Archive::sdmc(), dstPath)) {
+        res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
+        if (R_FAILED(res)) {
+            Logging::error("Failed to delete the existing backup directory recursively with result 0x{:08X}.", (u32)res);
+            return {false, res, io::BackupStage::DeleteDst};
+        }
+    }
+    res = io::createDirectory(Archive::sdmc(), dstPath);
+    if (R_FAILED(res)) {
+        Logging::error("Failed to create destination directory with result 0x{:08X}.", (u32)res);
+        return {false, res, io::BackupStage::CreateDst};
+    }
+
+    const std::u16string fileName = StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
+    const std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/") + fileName;
+
+    const DSCardNand::DumpOutcome dump = DSCardNand::dumpToFile(title.mediaType(), nand, session, copyPath, sink);
+
+    if (dump.requiresPowerCycle) {
+        Logging::error("Card NAND backup left the cartridge in a state that needs a console power cycle before any further card operation.");
+    }
+
+    if (dump.status == DSCardNand::DumpStatus::Cancelled) {
+        FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
+        Logging::info("Backup of {} cancelled by user.", title.shortDescription().c_str());
+        return {false, 0, io::BackupStage::Copy, true};
+    }
+    if (!dump.ok()) {
+        FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
+        Logging::error("Card NAND backup of {} failed after {} of {} windows; no backup was kept.", title.shortDescription().c_str(),
+            dump.windowsDone, dump.windows);
+        return {false, 0, io::BackupStage::CardNandSave};
+    }
+
+    Logging::info("Card NAND backup of {} wrote {} bytes, sha256={}.", title.shortDescription().c_str(), dump.bytesWritten, dump.sha256);
+
+    TitleCatalog::get().refreshDirectories(title.id());
+    return {true, 0, io::BackupStage::Copy};
+}
+
+static io::IoOutcome restoreCardNandSave(
+    const BackupTarget& target, Title& title, const DSCard::NandSave& nand, const std::u16string& srcPath, ProgressSink& sink)
+{
+    if (!DSCardNand::available()) {
+        Logging::error("Refusing to restore {}: its save is in on-cart NAND and this build has no NAND card path.",
+            title.shortDescription().c_str());
+        return {false, 0, io::BackupStage::CardNandSave};
+    }
+
+    const TitleCatalog::CartScanPause cartScanPause;
+
+    std::unique_ptr<u8[]> banner(new (std::nothrow) u8[0x23C0]);
+    if (!banner) {
+        Logging::error("Card NAND restore: could not allocate the banner comparison buffer.");
+        return {false, 0, io::BackupStage::CardNandSave};
+    }
+    Result res = FSUSER_GetLegacyBannerData(title.mediaType(), 0LL, banner.get());
+    if (R_FAILED(res)) {
+        Logging::error("Card NAND restore: failed to read the legacy banner with result 0x{:08X}.", (u32)res);
+        return {false, res, io::BackupStage::CardNandSave};
+    }
+
+    const DSCardNand::Session session = DSCardNand::prepare(title.mediaType(), nand, banner.get());
+    // The gates are the banner's only consumer, and what follows wants one
+    // contiguous 16-MiB allocation. Holding 9 KiB across that is a needless way
+    // to fragment the heap into refusing it.
+    banner.reset();
+    if (!session.ready) {
+        Logging::error("Card NAND restore of {} refused: the cartridge did not pass the read-only gate chain, so nothing was written.",
+            title.shortDescription().c_str());
+        return {false, 0, io::BackupStage::CardNandSave};
+    }
+
+    const std::u16string fileName = StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
+    const std::u16string fullSrc  = srcPath + StringUtils::UTF8toUTF16("/") + fileName;
+
+    const DSCardNand::RestoreOutcome restored = DSCardNand::restoreFromFile(title.mediaType(), nand, session, fullSrc, sink);
+
+    if (restored.requiresPowerCycle) {
+        Logging::error("Card NAND restore left the cartridge in a state that needs a console power cycle before any further card operation.");
+    }
+
+    if (restored.status == DSCardNand::RestoreStatus::Cancelled) {
+        Logging::info("Restore of {} cancelled by user after {} page(s) were written.", title.shortDescription().c_str(), restored.pagesWritten);
+        return {false, 0, io::BackupStage::Copy, true};
+    }
+
+    if (!restored.ok()) {
+        Logging::error("Card NAND restore of {} failed after {} of {} windows; {} page(s) were written.", title.shortDescription().c_str(),
+            restored.windowsDone, restored.windows, restored.pagesWritten);
+        return {false, 0, io::BackupStage::CardNandSave};
+    }
+
+    Logging::info("Card NAND restore of {} completed: {} page(s) written, {} already matched, source sha256={}.",
+        title.shortDescription().c_str(), restored.pagesWritten, restored.pagesSkipped, restored.sourceSha256);
+    return {true, 0, io::BackupStage::Copy};
+}
+
 io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPath, ProgressSink& sink)
 {
     Title& title = target.title();
@@ -468,13 +611,11 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
         // NO_CHIP / an unreadable cart reports 0 capacity; guard the division below.
         if (saveSize == 0) {
             // A cart whose save is in on-cart NAND has no SPI chip to report a
-            // capacity, so it lands here. Name that case: the generic message
-            // blames the save archive for hardware 3DS mode simply can't address.
+            // capacity, so it lands here.
             const DSCard::NandSave nand = DSCard::probeNandSave(title.mediaType());
             if (nand.present) {
                 DSCard::logNandSave(nand);
-                Logging::error("Refusing to back up {}: its save is in on-cart NAND, unreachable from 3DS mode.", title.shortDescription().c_str());
-                return {false, 0, BackupStage::CardNandSave};
+                return backupCardNandSave(target, title, nand, dstPath, sink);
             }
             Logging::error("SPI backup: card reports zero capacity ({}).", (int)cardType);
             return {false, res, BackupStage::OpenArchive};
@@ -672,8 +813,7 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
             const DSCard::NandSave nand = DSCard::probeNandSave(title.mediaType());
             if (nand.present) {
                 DSCard::logNandSave(nand);
-                Logging::error("Refusing to restore {}: its save is in on-cart NAND, unreachable from 3DS mode.", title.shortDescription().c_str());
-                return {false, 0, BackupStage::CardNandSave};
+                return restoreCardNandSave(target, title, nand, srcPath, sink);
             }
             Logging::error("SPI restore: card reports zero capacity/page size ({}).", (int)cardType);
             return {false, res, BackupStage::OpenArchive};

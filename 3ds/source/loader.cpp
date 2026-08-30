@@ -657,6 +657,15 @@ void TitleCatalog::cartScan(void)
     FSUSER_CardSlotIsInserted(&oldCardIn);
 
     while (self.mDoCartScan.test_and_set()) {
+        // Someone is driving the card bus directly. Querying the slot now would
+        // make Process9 take the controller away mid-transfer.
+        if (self.mCartScanPaused.load() > 0) {
+            self.mCartScanQuiet.store(true);
+            svcSleepThread(1'000'000);
+            continue;
+        }
+        self.mCartScanQuiet.store(false);
+
         bool cardIn = false;
 
         FSUSER_CardSlotIsInserted(&cardIn);
@@ -707,4 +716,25 @@ void TitleCatalog::cartScanFlagTestAndSet(void)
 void TitleCatalog::clearCartScanFlag(void)
 {
     get().mDoCartScan.clear();
+}
+
+TitleCatalog::CartScanPause::CartScanPause(void)
+{
+    TitleCatalog& self = get();
+    self.mCartScanQuiet.store(false);
+    self.mCartScanPaused.fetch_add(1);
+
+    // Wait for the poll to acknowledge, so the pause starts after any
+    // FSUSER_CardSlotIsInserted already in flight has returned. Bounded, not a
+    // handshake: the cart-scan thread may itself be the caller (scanCard ->
+    // TitleProbe), in which case nothing will ever acknowledge and waiting for
+    // one would deadlock.
+    for (int attempt = 0; attempt < 50 && !self.mCartScanQuiet.load(); attempt++) {
+        svcSleepThread(1'000'000);
+    }
+}
+
+TitleCatalog::CartScanPause::~CartScanPause()
+{
+    get().mCartScanPaused.fetch_sub(1);
 }

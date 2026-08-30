@@ -26,12 +26,15 @@
 
 #include "dscard.hpp"
 #include "logging.hpp"
+#include "ntrcard.hpp"
 #include <cstring>
 
 namespace {
     // NDS ROM header offsets (GBATEK).
     constexpr size_t OFF_GAME_CODE    = 0x0C;
     constexpr size_t OFF_UNIT_CODE    = 0x12;
+    constexpr size_t OFF_CARD_CONTROL = 0x60;
+    constexpr size_t OFF_BANNER       = 0x68;
     constexpr size_t OFF_NAND_ROMEND  = 0x94;
     constexpr size_t OFF_NAND_RWSTART = 0x96;
 
@@ -70,6 +73,11 @@ namespace {
     {
         return (u16)(p[0] | (p[1] << 8));
     }
+
+    u32 readU32(const u8* p)
+    {
+        return (u32)p[0] | ((u32)p[1] << 8) | ((u32)p[2] << 16) | ((u32)p[3] << 24);
+    }
 }
 
 DSCard::NandSave DSCard::parseNandSave(const u8* header)
@@ -78,11 +86,13 @@ DSCard::NandSave DSCard::parseNandSave(const u8* header)
     info.headerRead = true;
 
     std::memcpy(info.gameCode, header + OFF_GAME_CODE, 4);
-    info.gameCode[4] = '\0';
-    info.unitCode    = header[OFF_UNIT_CODE];
-    info.rawRomEnd   = readU16(header + OFF_NAND_ROMEND);
-    info.rawRwStart  = readU16(header + OFF_NAND_RWSTART);
-    info.saveSize    = nandSaveSize(info.gameCode);
+    info.gameCode[4]   = '\0';
+    info.unitCode      = header[OFF_UNIT_CODE];
+    info.rawRomEnd     = readU16(header + OFF_NAND_ROMEND);
+    info.rawRwStart    = readU16(header + OFF_NAND_RWSTART);
+    info.cardControl13 = readU32(header + OFF_CARD_CONTROL);
+    info.bannerOffset  = readU32(header + OFF_BANNER);
+    info.saveSize      = nandSaveSize(info.gameCode);
 
     // An ordinary cart leaves both fields zero, so a plausible pair is the
     // detection: nonzero ROM end with the RW area starting at or after it.
@@ -126,7 +136,20 @@ void DSCard::logNandSave(const NandSave& info)
         info.rawRomEnd, info.rawRwStart);
 
     if (info.present) {
-        Logging::info("DS card {} stores its save in on-cart NAND at offset 0x{:08X} (size 0x{:08X}); 3DS mode cannot reach it.", info.gameCode,
-            info.rwStart, info.saveSize);
+        Logging::info("DS card {} stores its save in on-cart NAND at offset 0x{:08X} (size 0x{:08X}).", info.gameCode, info.rwStart, info.saveSize);
+        Logging::info("DS card main ROMCTRL flags=0x{:08X}, banner offset=0x{:08X}.", info.cardControl13, info.bannerOffset);
+
+        if (NtrCard::mappedCardAccessAvailable()) {
+            const auto registers = NtrCard::captureMapped();
+            if (registers) {
+                Logging::info(
+                    "NTRCARD MMIO snapshot: MCNT=0x{:04X}, ROMCNT=0x{:08X}, CMD=0x{:08X}{:08X}, SEEDX=0x{:04X}{:08X}, SEEDY=0x{:04X}{:08X}.",
+                    registers->mCardControl, registers->romControl, registers->commandHigh, registers->commandLow, registers->seedXHigh,
+                    registers->seedXLow, registers->seedYHigh, registers->seedYLow);
+            }
+            else {
+                Logging::info("NTRCARD MMIO probe skipped: this build is not running as a CIA.");
+            }
+        }
     }
 }
