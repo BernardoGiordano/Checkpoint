@@ -759,7 +759,7 @@ void MainScreen::requestErase(void)
 
     // Refuse the save types io::wipe cannot erase up front, so the user finds out
     // before two confirmations rather than after them.
-    if (!(title.cardType() == CARD_CTR || title.isDSiWare())) {
+    if (!(title.cardType() == CARD_CTR || title.isDSiWare()) || title.isGBAVC() || title.mediaType() == MEDIATYPE_NAND) {
         currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("outcome.erase_unsupported"));
         return;
     }

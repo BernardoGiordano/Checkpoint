@@ -79,6 +79,8 @@ namespace io {
     // cartridge's SPI/NAND chip have no empty state short of blanking the chip,
     // which is a different operation with a different risk profile; those are
     // refused outright (BackupStage::CardNandSave) rather than half-attempted.
+    // NAND (system) titles are refused for a different reason: an emptied
+    // system save is not a state anyone has a reason to want.
     IoOutcome wipe(const BackupTarget& target, ProgressSink& sink);
 
     // One entry of a copy tree: `rel` is the path relative to the copy root, `folder`

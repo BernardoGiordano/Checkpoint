@@ -882,8 +882,17 @@ io::IoOutcome io::wipe(const BackupTarget& target, ProgressSink& sink)
 
     // Only the archive-backed saves a restore can write are erasable; see the
     // header. Everything else is refused before the archive is even opened.
-    if (!(title.cardType() == CARD_CTR || title.isDSiWare())) {
+    if (!(title.cardType() == CARD_CTR || title.isDSiWare()) || title.isGBAVC()) {
         Logging::error("Refusing to erase {}: only CTR and DSiWare saves can be erased.", target.dataTypeName());
+        return {false, 0, BackupStage::CardNandSave};
+    }
+
+    // A restore wipes a NAND title's archive too, but puts files straight back.
+    // An erase leaves a system title (Home Menu, its extdata) with nothing at
+    // all, and what the console does with that on next boot is not something
+    // worth finding out. Refused rather than gated.
+    if (title.mediaType() == MEDIATYPE_NAND) {
+        Logging::error("Refusing to erase {}: NAND (system) titles are never erased.", target.dataTypeName());
         return {false, 0, BackupStage::CardNandSave};
     }
 
@@ -917,12 +926,16 @@ io::IoOutcome io::wipe(const BackupTarget& target, ProgressSink& sink)
     }
 
     // deleteFolderContentsRecursively swallows per-entry failures, so the only
-    // trustworthy check that the save is actually gone is a second walk. A
-    // partial erase must not be reported as a clean one: the game would load
-    // whatever survived.
-    const size_t leftovers = countFilesRecursively(handle.fs(), dstPath);
-    if (leftovers > 0) {
-        Logging::error("Erase left {} of {} files under the {} archive.", leftovers, fileCount, target.dataTypeName());
+    // trustworthy check that the save is actually gone is a second look. Any
+    // entry at all counts, a leftover empty directory included: a partial erase
+    // must not be reported as a clean one, or the game loads whatever survived.
+    Directory after(handle.fs(), dstPath);
+    if (!after.good()) {
+        Logging::error("Could not re-list the {} archive after the erase, result 0x{:08X}.", target.dataTypeName(), (u32)after.error());
+        return {false, after.error(), BackupStage::DeleteDst};
+    }
+    if (after.size() > 0) {
+        Logging::error("Erase left {} entries under the {} archive (had {} files).", after.size(), target.dataTypeName(), fileCount);
         return {false, RES_ERASE_INCOMPLETE, BackupStage::DeleteDst};
     }
 
