@@ -71,7 +71,7 @@ namespace {
     // General section rows, in draw order. Row index maps 1:1 to the mutators
     // used in update(): 0 light theme, 1 scan_cart, 2 nand_saves,
     // 3 dsiware_saves, 4 transfer_enabled, 5 confirm_restore, 6 quick_backup,
-    // 7 auto_update.
+    // 7 auto_update, 8 allow_erase_save.
     const ToggleRow GENERAL_ROWS[] = {
         {"settings.general.light_theme", "settings.general.light_theme.sub"},
         {"settings.general.scan_cart", "settings.general.scan_cart.sub"},
@@ -81,6 +81,7 @@ namespace {
         {"settings.general.confirm_restore", "settings.general.confirm_restore.sub"},
         {"settings.general.quick_backup", "settings.general.quick_backup.sub"},
         {"settings.general.auto_update", "settings.general.auto_update.sub"},
+        {"settings.general.allow_erase", "settings.general.allow_erase.sub"},
     };
     constexpr size_t GENERAL_COUNT = sizeof(GENERAL_ROWS) / sizeof(GENERAL_ROWS[0]);
     // Extra General row shown first, before the toggles: a language cycler
@@ -349,7 +350,7 @@ void SettingsScreen::drawGeneral(void) const
 {
     Configuration& cfg             = Configuration::getInstance();
     const bool vals[GENERAL_COUNT] = {cfg.theme() == "light", cfg.shouldScanCard(), cfg.nandSaves(), cfg.dsiwareSaves(), cfg.transferEnabled(),
-        cfg.confirmRestore(), cfg.quickBackup(), cfg.autoUpdate()};
+        cfg.confirmRestore(), cfg.quickBackup(), cfg.autoUpdate(), cfg.allowEraseSave()};
     // Windowed like the Library/Folders lists: more rows than fit scroll under a
     // right-edge scrollbar. Stride 34 matches drawScrollbar's track geometry.
     for (int i = 0; i < VISIBLE_ROWS && contentOffset + i < (int)GENERAL_ROW_TOTAL; i++) {
@@ -591,6 +592,9 @@ void SettingsScreen::toggleGeneral(int idx)
             break;
         case 7:
             cfg.setAutoUpdate(!cfg.autoUpdate());
+            break;
+        case 8:
+            cfg.setAllowEraseSave(!cfg.allowEraseSave());
             break;
     }
     // Cart scan, NAND saves and DSiWare saves change which titles the grid loads.

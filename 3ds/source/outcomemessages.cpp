@@ -92,6 +92,27 @@ std::string OutcomeMessages::restoreError(io::BackupStage stage, const std::stri
     }
 }
 
+std::string OutcomeMessages::wipeError(io::BackupStage stage, const std::string& dataType, Result res)
+{
+    if (std::string gba = gbaMessage(res); !gba.empty()) {
+        return gba;
+    }
+    switch (stage) {
+        case io::BackupStage::OpenArchive:
+            return i18n::t("outcome.open_archive");
+        case io::BackupStage::Commit:
+            return i18n::t("outcome.commit");
+        case io::BackupStage::SecureValue:
+            return i18n::t("outcome.secure_value");
+        case io::BackupStage::CardNandSave:
+            // The only refusal io::wipe raises itself: this save type has no
+            // erasable archive at all.
+            return i18n::t("outcome.erase_unsupported");
+        default:
+            return i18n::t("outcome.erase_failed", {dataType});
+    }
+}
+
 std::string OutcomeMessages::sendError(const Transfer::SendOutcome& outcome)
 {
     switch (outcome.stage) {

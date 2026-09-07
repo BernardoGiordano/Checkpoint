@@ -53,6 +53,7 @@ public:
     // caller from `stage` + `dataType`.
     struct JobResult {
         bool isRestore        = false;
+        bool isWipe           = false; // erase of the console-side save; never set together with isRestore
         bool ok               = true;
         bool cancelled        = false; // set when a backup was aborted via requestCancel()
         Result res            = 0;
@@ -80,6 +81,9 @@ public:
     // it was copied from. `dstPath`/`srcPath` are already fully resolved.
     void enqueueBackup(Title title, BackupKind kind, std::u16string dstPath, std::string dataType);
     void enqueueRestore(Title title, BackupKind kind, std::u16string srcPath, std::string dataType, std::string successMsg);
+    // Erase of the console-side save. Takes no path: io::wipe resolves the
+    // archive from the title itself, and there is no backup involved.
+    void enqueueWipe(Title title, BackupKind kind, std::string dataType, std::string successMsg);
 
     // Network send of an existing backup. Runs Transfer::sendBackup on the
     // worker; progress reaches the top-screen modal via TransferStatus.
@@ -106,7 +110,7 @@ private:
 
     void run(void);
 
-    enum class Kind { Backup, Restore, Send };
+    enum class Kind { Backup, Restore, Wipe, Send };
 
     struct WorkItem {
         Kind op = Kind::Backup;

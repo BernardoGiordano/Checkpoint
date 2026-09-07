@@ -473,7 +473,8 @@ void MainScreen::drawBottom(void) const
         barY += 30;
         // A destination wipe moves the file counter but has no bytes to report, so
         // the per-file bar is left out rather than drawn permanently flat at 0%.
-        if (ts.mode != "Clearing") {
+        // An erase is the same shape: deletions only, no bytes.
+        if (ts.mode != "Clearing" && ts.mode != "Erasing") {
             float fileProgress = (ts.currentFileSize > 0) ? (float)ts.currentFileOffset / (float)ts.currentFileSize : 0.0f;
             char kbStr[32];
             snprintf(kbStr, sizeof(kbStr), "%.1f / %.1f KB", ts.currentFileOffset / 1024.0f, ts.currentFileSize / 1024.0f);
@@ -547,8 +548,16 @@ void MainScreen::update(const InputState& input)
             }
         }
         else {
-            std::string message = result->isRestore ? OutcomeMessages::restoreError(result->stage, result->dataType, result->res)
-                                                    : OutcomeMessages::backupError(result->stage, result->dataType, result->res);
+            std::string message;
+            if (result->isWipe) {
+                message = OutcomeMessages::wipeError(result->stage, result->dataType, result->res);
+            }
+            else if (result->isRestore) {
+                message = OutcomeMessages::restoreError(result->stage, result->dataType, result->res);
+            }
+            else {
+                message = OutcomeMessages::backupError(result->stage, result->dataType, result->res);
+            }
             currentOverlay      = std::make_shared<ErrorOverlay>(*this, result->res, message);
         }
         return;
@@ -730,6 +739,68 @@ void MainScreen::requestRestore(size_t cellIndex)
     }
 }
 
+void MainScreen::requestErase(void)
+{
+    if (!selected.valid || TransferJob::get().active() || TitleCatalog::get().progress().active) {
+        return;
+    }
+
+    // The gate is checked here rather than by hiding the menu entry: a user who
+    // goes looking for the action deserves to be told why it is not available,
+    // and where to turn it on.
+    if (!Configuration::getInstance().allowEraseSave()) {
+        currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("main.erase_disabled"));
+        return;
+    }
+
+    Title title;
+    TitleCatalog::get().getTitle(title, hid.fullIndex(), backupKind);
+    BackupTarget target = title.backup(backupKind);
+
+    // Refuse the save types io::wipe cannot erase up front, so the user finds out
+    // before two confirmations rather than after them.
+    if (!(title.cardType() == CARD_CTR || title.isDSiWare()) || title.isGBAVC() || title.mediaType() == MEDIATYPE_NAND) {
+        currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("outcome.erase_unsupported"));
+        return;
+    }
+
+    const size_t fullIndex   = hid.fullIndex();
+    const BackupKind kind    = backupKind;
+    const std::string name   = selected.name;
+    const size_t backupCount = selected.backupCount;
+
+    // Second prompt names the title and says whether a backup exists, because
+    // the two mistakes this guards against are "wrong game highlighted" and
+    // "I thought I had a backup".
+    auto confirmAgain = [this, fullIndex, kind, name, backupCount]() {
+        const std::string warning = backupCount == 0 ? i18n::t("main.confirm_erase_final_nobackup", {name})
+                                                     : i18n::t("main.confirm_erase_final", {name, std::to_string(backupCount)});
+        currentOverlay            = std::make_shared<YesNoOverlay>(
+            *this, warning,
+            [this, fullIndex, kind]() {
+                this->doErase(fullIndex, kind);
+                TransferJob::get().start();
+            },
+            [this]() { this->removeOverlay(); });
+    };
+
+    currentOverlay = std::make_shared<YesNoOverlay>(
+        *this, i18n::t("main.confirm_erase", {std::string(target.dataTypeName())}), confirmAgain, [this]() { this->removeOverlay(); });
+}
+
+void MainScreen::doErase(size_t fullIndex, BackupKind kind)
+{
+    Title title;
+    TitleCatalog::get().getTitle(title, fullIndex, kind);
+    BackupTarget target = title.backup(kind);
+
+    std::string dataType   = target.dataTypeName();
+    std::string successMsg = i18n::t("outcome.erase_success", {title.shortDescription()});
+    removeOverlay();
+
+    TransferJob::get().enqueueWipe(std::move(title), kind, std::move(dataType), std::move(successMsg));
+}
+
 void MainScreen::startScriptPicker(void)
 {
     if (TitleCatalog::get().progress().active || TransferJob::get().active() || ScriptRunner::get().active()) {
@@ -788,6 +859,9 @@ void MainScreen::handleEvents(const InputState& input)
             // is the one a user finds by looking rather than by being told.
             {i18n::t("main.refresh"), [this]() { refreshTitlesFull(); }},
             {i18n::t("main.scripts"), [this]() { startScriptPicker(); }},
+            // Deliberately in the menu and not on the action row: an erase must
+            // never be one press away from Backup or Restore.
+            {i18n::t("main.erase_save"), [this]() { requestErase(); }},
             {i18n::t("settings.title"), []() { g_pendingScreen = std::make_shared<SettingsScreen>(g_screen); }},
         };
         currentOverlay = std::make_shared<MenuOverlay>(*this, i18n::t("menu.title"), std::move(items));

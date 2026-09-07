@@ -19,9 +19,10 @@
   "ftp-enabled": false,
   "quick_backup": false,
   "auto_update": true,
+  "allow_erase_save": false,
   "theme": "dark",
   "language": "en",
   "last_transfer_address": "",
   "default_receive_pin": "",
-  "version": 7
+  "version": 8
 }

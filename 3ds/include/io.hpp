@@ -70,6 +70,18 @@ namespace io {
     IoOutcome backup(const BackupTarget& target, const std::u16string& dstPath, ProgressSink& sink);
     // Restores `target` from the already-resolved backup folder `srcPath`.
     IoOutcome restore(const BackupTarget& target, const std::u16string& srcPath, ProgressSink& sink);
+    // Empties `target`'s console-side save archive, leaving the game to build a
+    // fresh save the next time it runs. This is the destination-wipe half of a
+    // restore with no copy after it, so it commits and clears the secure value
+    // exactly as a restore does.
+    //
+    // Only archive-backed saves can be erased. A GBA VC raw save and a DS
+    // cartridge's SPI/NAND chip have no empty state short of blanking the chip,
+    // which is a different operation with a different risk profile; those are
+    // refused outright (BackupStage::CardNandSave) rather than half-attempted.
+    // NAND (system) titles are refused for a different reason: an emptied
+    // system save is not a state anyone has a reason to want.
+    IoOutcome wipe(const BackupTarget& target, ProgressSink& sink);
 
     // One entry of a copy tree: `rel` is the path relative to the copy root, `folder`
     // distinguishes a directory to create from a file to copy.
