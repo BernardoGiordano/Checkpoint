@@ -46,6 +46,11 @@ static const u32 RES_FS_PAST_DATA = 0xD900458B;
 
 static const Result RES_PATH_TOO_LONG = 0xE0E046C8;
 
+// Synthetic: no FS call failed, but a second walk still found files under the
+// archive after an erase. Reported so a partial erase never looks like a clean
+// one. See io::wipe.
+static const Result RES_ERASE_INCOMPLETE = MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, RD_INVALID_RESULT_VALUE);
+
 static std::u16string rawBackupFile(const std::u16string& folder)
 {
     std::u16string canonical = folder + StringUtils::UTF8toUTF16("00000001.sav");
@@ -865,6 +870,84 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
     }
 
     Logging::info("Restore succeeded.");
+    return {true, 0, BackupStage::Copy};
+}
+
+io::IoOutcome io::wipe(const BackupTarget& target, ProgressSink& sink)
+{
+    Title& title = target.title();
+    Result res   = 0;
+
+    Logging::info("Started erase of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
+
+    // Only the archive-backed saves a restore can write are erasable; see the
+    // header. Everything else is refused before the archive is even opened.
+    if (!(title.cardType() == CARD_CTR || title.isDSiWare())) {
+        Logging::error("Refusing to erase {}: only CTR and DSiWare saves can be erased.", target.dataTypeName());
+        return {false, 0, BackupStage::CardNandSave};
+    }
+
+    ArchiveHandle handle = target.open(res);
+    if (R_FAILED(res)) {
+        Logging::error("Failed to open save archive with result 0x{:08X}.", (u32)res);
+        return {false, res, BackupStage::OpenArchive};
+    }
+
+    // A GBA VC save opens as a raw PXI archive: there is no tree to empty, only
+    // a flat image, so it falls under the same refusal as the cartridges.
+    if (handle.isRaw()) {
+        Logging::error("Refusing to erase {}: a GBA VC save is a raw image, not an archive.", target.dataTypeName());
+        return {false, 0, BackupStage::CardNandSave};
+    }
+
+    const bool isTwl       = title.isDSiWare();
+    std::u16string dstPath = isTwl ? Archive::twlSaveDataPath(title.lowId(), title.highId()) : StringUtils::UTF8toUTF16("/");
+
+    // Contents only, never the root: the archive root, and the TWL FAT `data`
+    // directory, must survive. A restore can afford to drop and recreate a root
+    // because a copy follows; here nothing follows, so an erased root would
+    // leave the game with an archive it cannot open.
+    const size_t fileCount = countFilesRecursively(handle.fs(), dstPath);
+    sink.begin("Erasing", fileCount);
+    res = deleteFolderContentsRecursively(handle.fs(), dstPath, &sink);
+    sink.end();
+    if (R_FAILED(res)) {
+        Logging::error("Failed to erase {} with result 0x{:08X}.", target.dataTypeName(), (u32)res);
+        return {false, res, BackupStage::DeleteDst};
+    }
+
+    // deleteFolderContentsRecursively swallows per-entry failures, so the only
+    // trustworthy check that the save is actually gone is a second walk. A
+    // partial erase must not be reported as a clean one: the game would load
+    // whatever survived.
+    const size_t leftovers = countFilesRecursively(handle.fs(), dstPath);
+    if (leftovers > 0) {
+        Logging::error("Erase left {} of {} files under the {} archive.", leftovers, fileCount, target.dataTypeName());
+        return {false, RES_ERASE_INCOMPLETE, BackupStage::DeleteDst};
+    }
+
+    // A TWL FAT write needs no commit and has no secure value. Extdata has no
+    // secure value either, and is not committed by a restore, so neither runs
+    // here: this mirrors io::restore exactly.
+    if (target.kind() == BackupKind::Save && !isTwl) {
+        res = FSUSER_ControlArchive(handle.fs(), ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+        if (R_FAILED(res)) {
+            Logging::error("Failed to commit erased save data with result 0x{:08X}.", (u32)res);
+            return {false, res, BackupStage::Commit};
+        }
+
+        // Same reason as a restore: the console-side secure value no longer
+        // matches the save, and a stale one makes the game refuse to load it.
+        u8 out;
+        u64 secureValue = ((u64)SECUREVALUE_SLOT_SD << 32) | (title.uniqueId() << 8);
+        res             = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &secureValue, 8, &out, 1);
+        if (R_FAILED(res)) {
+            Logging::error("Failed to fix secure value with result 0x{:08X}.", (u32)res);
+            return {false, res, BackupStage::SecureValue};
+        }
+    }
+
+    Logging::info("Erase succeeded: {} files removed.", fileCount);
     return {true, 0, BackupStage::Copy};
 }
 

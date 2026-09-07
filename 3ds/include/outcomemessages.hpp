@@ -38,6 +38,9 @@
 namespace OutcomeMessages {
     std::string backupError(io::BackupStage stage, const std::string& dataType, Result res);
     std::string restoreError(io::BackupStage stage, const std::string& dataType, Result res);
+    // An erase fails at the same stages a restore's destination wipe does, but
+    // it must never borrow a restore's wording: nothing was being put back.
+    std::string wipeError(io::BackupStage stage, const std::string& dataType, Result res);
     std::string sendError(const Transfer::SendOutcome& outcome);
 }
 

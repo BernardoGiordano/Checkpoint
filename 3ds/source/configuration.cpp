@@ -91,6 +91,10 @@ Configuration::Configuration(void)
                     (*mJson)["auto_update"] = true;
                     updateJson              = true;
                 }
+                if (!(mJson->contains("allow_erase_save") && (*mJson)["allow_erase_save"].is_boolean())) {
+                    (*mJson)["allow_erase_save"] = false;
+                    updateJson                   = true;
+                }
                 if (!(mJson->contains("theme") && (*mJson)["theme"].is_string())) {
                     (*mJson)["theme"] = "dark";
                     updateJson        = true;
@@ -179,6 +183,7 @@ Configuration::Configuration(void)
             mFTPEnabled          = (*mJson)["ftp-enabled"];
             mQuickBackup         = (*mJson)["quick_backup"];
             mAutoUpdate          = (*mJson)["auto_update"];
+            mAllowEraseSave      = (*mJson)["allow_erase_save"];
             mTheme               = (*mJson)["theme"];
             mLanguage            = (*mJson)["language"];
             mLastTransferAddress = (*mJson)["last_transfer_address"];
@@ -312,6 +317,11 @@ bool Configuration::autoUpdate(void)
     return mAutoUpdate;
 }
 
+bool Configuration::allowEraseSave(void)
+{
+    return mAllowEraseSave;
+}
+
 std::string Configuration::theme(void)
 {
     return mTheme;
@@ -386,6 +396,13 @@ void Configuration::setAutoUpdate(bool v)
     mAutoUpdate             = v;
     (*mJson)["auto_update"] = v;
     mDirty                  = true;
+}
+
+void Configuration::setAllowEraseSave(bool v)
+{
+    mAllowEraseSave              = v;
+    (*mJson)["allow_erase_save"] = v;
+    mDirty                       = true;
 }
 
 void Configuration::setTheme(const std::string& v)

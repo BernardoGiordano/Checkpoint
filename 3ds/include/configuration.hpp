@@ -38,7 +38,7 @@
 
 class Configuration {
 public:
-    static constexpr int CURRENT_VERSION = 7;
+    static constexpr int CURRENT_VERSION = 8;
 
     static Configuration& getInstance(void)
     {
@@ -56,6 +56,10 @@ public:
     bool isFTPEnabled(void);
     bool quickBackup(void);
     bool autoUpdate(void);
+    // Off by default. Gates the Erase save data action: erasing is the one thing
+    // Checkpoint does that destroys data with no copy of it anywhere, so it stays
+    // behind a setting the user has to find and turn on first.
+    bool allowEraseSave(void);
     // "dark" (default) or "light". Selects the color palette; see Colors::apply.
     std::string theme(void);
     // "en" (default) or "it". Selects the UI language; see i18n::setLanguage.
@@ -86,6 +90,7 @@ public:
     void setFTPEnabled(bool v);
     void setQuickBackup(bool v);
     void setAutoUpdate(bool v);
+    void setAllowEraseSave(bool v);
     void setTheme(const std::string& v);
     // Persists immediately (calls save()): language changes are rare and must
     // survive even if no commit() follows before shutdown.
@@ -132,6 +137,7 @@ private:
     bool mFTPEnabled      = false;
     bool mQuickBackup     = false;
     bool mAutoUpdate      = true;
+    bool mAllowEraseSave  = false;
     std::string mTheme    = "dark";
     std::string mLanguage = "en";
     std::string mLastTransferAddress; // last "ip:port" sent to; prefills the send keyboard

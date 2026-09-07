@@ -34,6 +34,10 @@ Both versions share the same core feature set:
 * A **scripting engine**, with bundled scripts for cheat management and Google Drive save sync, and a documented API for writing your own
 * An **HTTP log server**, to view Checkpoint's logs in real time from any browser on your network
 
+On 3DS, Checkpoint also provides:
+
+* **Erase save data**, which clears a title's save on the console itself so the game starts over from scratch. It is off by default: turn on "Allow erasing save data" in Settings > General, then pick **Erase save data** from the SELECT menu. Two confirmations follow, and the second one tells you how many backups of that title you have. Works on 3DS and DSiWare saves; DS cartridges and GBA Virtual Console saves cannot be erased this way.
+
 On Switch, Checkpoint also provides:
 
 * A rendering backend built on **deko3d**, which makes the application ~70% smaller than before

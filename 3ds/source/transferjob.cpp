@@ -62,6 +62,20 @@ void TransferJob::enqueueRestore(Title title, BackupKind kind, std::u16string sr
         .token                    = ""});
 }
 
+void TransferJob::enqueueWipe(Title title, BackupKind kind, std::string dataType, std::string successMsg)
+{
+    std::lock_guard<std::mutex> lock(mMutex);
+    mQueue.push_back(WorkItem{.op = Kind::Wipe,
+        .title                    = std::move(title),
+        .kind                     = kind,
+        .path                     = std::u16string(),
+        .dataType                 = std::move(dataType),
+        .successMsg               = std::move(successMsg),
+        .backupName               = "",
+        .ip                       = "",
+        .token                    = ""});
+}
+
 void TransferJob::enqueueSend(
     Title title, std::u16string backupPath, std::string backupName, std::string dataType, std::string ip, u16 port, std::string token)
 {
@@ -160,9 +174,21 @@ void TransferJob::run(void)
             // can never abort mid-copy and leave a half-written save on the cartridge.
             UiProgressSink sink(item.op == Kind::Backup);
             BackupTarget target = item.title.backup(item.kind);
-            io::IoOutcome out   = item.op == Kind::Restore ? io::restore(target, item.path, sink) : io::backup(target, item.path, sink);
+            io::IoOutcome out{};
+            switch (item.op) {
+                case Kind::Restore:
+                    out = io::restore(target, item.path, sink);
+                    break;
+                case Kind::Wipe:
+                    out = io::wipe(target, sink);
+                    break;
+                default:
+                    out = io::backup(target, item.path, sink);
+                    break;
+            }
 
             current = JobResult{.isRestore = item.op == Kind::Restore,
+                .isWipe                    = item.op == Kind::Wipe,
                 .ok                        = out.ok,
                 .cancelled                 = out.cancelled,
                 .res                       = out.res,
