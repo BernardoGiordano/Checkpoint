@@ -882,11 +882,29 @@ void dav_explain(int st, char* dst)
     }
 }
 
+/* `url` as a collection is named — with its trailing '/' — into dst, which
+ * needs URLBUFN + 1 bytes. RFC 4918 (5.2) has clients use that form and only
+ * lets servers accept the bare name; Synology's WebDAV Server answered a
+ * bare-name PROPFIND with 403 (#594). Built URLs stay slash-less so url_add
+ * can keep appending to them: the slash goes on here, at the request. */
+void collection_url(char* url, char* dst)
+{
+    strncpy(dst, url, URLBUFN - 1);
+    dst[URLBUFN - 1] = '\0';
+    int n = strlen(dst);
+    if (n == 0 || dst[n - 1] != '/') {
+        dst[n]     = '/';
+        dst[n + 1] = '\0';
+    }
+}
+
 /* Create the collection at `url` (find-or-create: 405 is "it is already
  * there"). 1 when the collection exists afterwards. */
 int dav_mkcol(char* url)
 {
-    int st = dav_call("MKCOL", url, "", "");
+    char col[URLBUFN + 1];
+    collection_url(url, col);
+    int st = dav_call("MKCOL", col, "", "");
     if (st == 201 || st == 405 || st == 200 || st == 204) {
         return 1;
     }
@@ -896,17 +914,19 @@ int dav_mkcol(char* url)
     return 0;
 }
 
-/* PROPFIND `url` at `depth` ("0" for the collection itself, "1" for its
- * children). Returns the malloc'd response body (caller free()s) and writes the
- * status to *status; NULL when there is no body. */
+/* PROPFIND collection `url` at `depth` ("0" for the collection itself, "1" for
+ * its children). Returns the malloc'd response body (caller free()s) and writes
+ * the status to *status; NULL when there is no body. */
 char* dav_propfind(char* url, char* depth, int* status)
 {
+    char col[URLBUFN + 1];
+    collection_url(url, col);
     char h[AUTHN + 128];
     sprintf(h, "%s\nDepth: %s\nContent-Type: application/xml; charset=utf-8", g_auth, depth);
     char* out = NULL;
     int n     = 0;
     char* body = PROPFIND_BODY;
-    status[0]  = web_request("PROPFIND", url, h, body, strlen(body), &out, &n, NULL);
+    status[0]  = web_request("PROPFIND", col, h, body, strlen(body), &out, &n, NULL);
     return out;
 }
 
