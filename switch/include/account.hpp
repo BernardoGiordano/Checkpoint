@@ -73,6 +73,9 @@ namespace Account {
 
     std::vector<AccountUid> ids(void);
     Texture* icon(AccountUid id);
+    // The profile Checkpoint was launched under, or an all-zero uid if the
+    // console can't tell.
+    AccountUid launchUser(void);
     AccountUid selectAccount(void);
     std::string username(AccountUid id);
     std::string shortName(AccountUid id);

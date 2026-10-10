@@ -87,9 +87,11 @@ int main(int argc, char* argv[])
     Transfer::sweepTempFiles();
 
     TitleCatalog::get().loadTitles();
-    // get the user IDs
+    // Start on the profile Checkpoint was launched under, else on the first
+    // user that has saves.
+    if (g_currentUId == 0)
+        g_currentUId = Account::launchUser();
     std::vector<AccountUid> userIds = Account::ids();
-    // set g_currentUId to a default user in case we loaded at least one user
     if (g_currentUId == 0 && !userIds.empty())
         g_currentUId = userIds.at(0);
 

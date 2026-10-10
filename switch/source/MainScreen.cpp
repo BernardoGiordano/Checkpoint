@@ -347,6 +347,15 @@ void MainScreen::setSaveTypeFilter(saveTypeFilter_t filter)
     MS::clearSelectedEntries();
 }
 
+void MainScreen::pickAccount(void)
+{
+    while ((g_currentUId = Account::selectAccount()) == 0)
+        ;
+    this->index(TITLES, 0);
+    this->index(CELLS, 0);
+    MS::clearSelectedEntries(); // filtered indices belong to the old account
+}
+
 void MainScreen::draw() const
 {
     const size_t filteredCnt = TitleCatalog::get().getFilteredTitleCount(g_currentUId, mSaveTypeFilter);
@@ -396,11 +405,17 @@ void MainScreen::draw() const
         drawRailItem(RAIL_ITEM_Y0 + RAIL_ITEM_PITCH * k, SaveKind::all()[k], mSaveTypeFilter == static_cast<saveTypeFilter_t>(k));
     }
     // Sidebar cursor spans the 4 save-kind buttons plus the scripts glyph
-    // (index 4) and settings gear (index 5), so both can be reached by pressing
-    // Down past SYSTEM.
+    // (index 4), settings gear (index 5) and account avatar (index 6), so all
+    // three can be reached by pressing Down past SYSTEM.
     if (sidebarFocused) {
-        const int selY = sidebarCursor < 4 ? RAIL_ITEM_Y0 + RAIL_ITEM_PITCH * sidebarCursor : (sidebarCursor == 4 ? SCRIPT_BTN_Y : SETTINGS_BTN_Y);
-        Shapes::focusRing(RAIL_ITEM_X, selY, RAIL_ITEM, RAIL_ITEM, 14, COLOR_ACCENT);
+        if (sidebarCursor == 6) {
+            Shapes::focusRing(AVATAR_X, AVATAR_Y, AVATAR_SIZE, AVATAR_SIZE, AVATAR_SIZE / 2, COLOR_ACCENT);
+        }
+        else {
+            const int selY =
+                sidebarCursor < 4 ? RAIL_ITEM_Y0 + RAIL_ITEM_PITCH * sidebarCursor : (sidebarCursor == 4 ? SCRIPT_BTN_Y : SETTINGS_BTN_Y);
+            Shapes::focusRing(RAIL_ITEM_X, selY, RAIL_ITEM, RAIL_ITEM, 14, COLOR_ACCENT);
+        }
     }
 
     Shapes::fillRound(RAIL_ITEM_X, SCRIPT_BTN_Y, RAIL_ITEM, RAIL_ITEM, 0, COLOR_FILL1);
@@ -980,17 +995,20 @@ void MainScreen::handleEvents(const InputState& input)
     }
 
     // handle sidebar D-pad navigation. Cursor 0..3 = save-kind buttons, 4 =
-    // scripts glyph, 5 = settings gear (so Down from SYSTEM reaches them, Up from
-    // USER wraps to the gear).
+    // scripts glyph, 5 = settings gear, 6 = account avatar (so Down from SYSTEM
+    // reaches them, Up from USER wraps to the avatar).
     if (sidebarFocused) {
         if (kdown & HidNpadButton_Up) {
-            sidebarCursor = sidebarCursor > 0 ? sidebarCursor - 1 : 5;
+            sidebarCursor = sidebarCursor > 0 ? sidebarCursor - 1 : 6;
         }
         else if (kdown & HidNpadButton_Down) {
-            sidebarCursor = sidebarCursor < 5 ? sidebarCursor + 1 : 0;
+            sidebarCursor = sidebarCursor < 6 ? sidebarCursor + 1 : 0;
         }
         if (kdown & HidNpadButton_A) {
-            if (sidebarCursor == 5) {
+            if (sidebarCursor == 6) {
+                pickAccount();
+            }
+            else if (sidebarCursor == 5) {
                 if (!TransferJob::get().active()) {
                     g_pendingScreen = std::make_shared<SettingsScreen>(g_screen);
                 }
@@ -1020,11 +1038,7 @@ void MainScreen::handleEvents(const InputState& input)
         // ZR is the contextual Send/Scripts button, so the account picker
         // lives on ZL alone.
         if (kdown & HidNpadButton_ZL) {
-            while ((g_currentUId = Account::selectAccount()) == 0)
-                ;
-            this->index(TITLES, 0);
-            this->index(CELLS, 0);
-            MS::clearSelectedEntries(); // filtered indices belong to the old account
+            pickAccount();
         }
     }
 
@@ -1032,11 +1046,7 @@ void MainScreen::handleEvents(const InputState& input)
     // rail buttons) so the applet fires once on lift instead of relaunching every
     // frame the finger is held down on it.
     if (!backupScrollEnabled && avatarButton->released()) {
-        while ((g_currentUId = Account::selectAccount()) == 0)
-            ;
-        this->index(TITLES, 0);
-        this->index(CELLS, 0);
-        MS::clearSelectedEntries(); // filtered indices belong to the old account
+        pickAccount();
     }
 
     // Handle touching the backup list / panel region

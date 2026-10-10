@@ -121,6 +121,20 @@ Texture* Account::icon(AccountUid id)
     return got->second.icon;
 }
 
+AccountUid Account::launchUser(void)
+{
+    // A title override launched through the user-select prompt hands over the
+    // chosen profile. Applet mode (and titles that skip the prompt) has none, so
+    // fall back to whoever last opened a game: the profile the console is
+    // currently being played under.
+    AccountUid uid{};
+    if (R_SUCCEEDED(accountGetPreselectedUser(&uid)) && accountUidIsValid(&uid))
+        return uid;
+    if (R_SUCCEEDED(accountGetLastOpenedUser(&uid)) && accountUidIsValid(&uid))
+        return uid;
+    return AccountUid{};
+}
+
 AccountUid Account::selectAccount(void)
 {
     // Same rationale as KeyboardManager: the size-cache walk floods the FS

@@ -76,6 +76,9 @@ protected:
     void index(entryType_t type, size_t i);
     void resetIndex(entryType_t type);
     void setSaveTypeFilter(saveTypeFilter_t filter);
+    // Raises the account picker and reloads the grid for the chosen user (ZL,
+    // the rail avatar).
+    void pickAccount(void);
     size_t rawIndex(void) const;
     void doBackup(size_t rawIdx, size_t cellIndex);
     void doRestore(size_t rawIdx, size_t cellIndex);
