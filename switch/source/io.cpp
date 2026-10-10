@@ -616,13 +616,16 @@ io::IoOutcome io::restore(Title& title, const std::string& srcPath, ProgressSink
 
     // If the backup doesn't fit the currently allocated save data, grow the
     // partition before restoring: a save can outgrow its original allocation as
-    // the game adds content (#443, #297).
+    // the game adds content (#443, #297). Only the payload decides whether to
+    // extend; the headroom is what an extend adds once it is needed. Checking
+    // payload + headroom instead grew every small save to over 64 MiB on each
+    // restore (#588).
     if (journalSize > 0 && title.saveDataType() != FsSaveDataType_System) {
         // each file wastes up to one allocation cluster on the save filesystem
-        const u64 payload    = backupSize + (u64)fileCount * SAVE_CLUSTER_SIZE;
-        const u64 headroom   = std::max(SAVE_EXTEND_MIN_HEADROOM, payload / SAVE_EXTEND_HEADROOM_DIV);
-        const u64 neededSize = payload + headroom;
-        if (neededSize > (u64)extraData.data_size) {
+        const u64 payload = backupSize + (u64)fileCount * SAVE_CLUSTER_SIZE;
+        if (payload > (u64)extraData.data_size) {
+            const u64 headroom   = std::max(SAVE_EXTEND_MIN_HEADROOM, payload / SAVE_EXTEND_HEADROOM_DIV);
+            const u64 neededSize = payload + headroom;
             res = fsExtendSaveDataFileSystem((FsSaveDataSpaceId)title.saveDataSpaceId(), title.saveId(), (s64)neededSize, (s64)journalSize);
             if (R_FAILED(res)) {
                 Logging::error("Failed to extend save data from {} to {} bytes with result 0x{:08X}. Title id: 0x{:016X}.", (u64)extraData.data_size,
@@ -649,7 +652,7 @@ io::IoOutcome io::restore(Title& title, const std::string& srcPath, ProgressSink
             }
         }
         else {
-            Logging::info("No extend needed: backup needs {} bytes, save data already has {}.", neededSize, (u64)extraData.data_size);
+            Logging::info("No extend needed: backup needs {} bytes, save data already has {}.", payload, (u64)extraData.data_size);
         }
     }
 
