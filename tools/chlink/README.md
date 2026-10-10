@@ -29,6 +29,11 @@ chlink unzip <archive.zip> [-o dir]
 Global flags: `--port` (default 8000), `--verbose`, `--json`, `--timeout`
 (default 30s).
 
+The console listens on port 8000 unless another one is set in
+Settings > Network (3DS) / Connectivity (Switch) > Server port (applied on the
+next launch). When it is, pass the same port to chlink, with `--port` or as
+`--to <ip>:<port>`.
+
 ### Send (PC → console)
 
 Start Receive on the console, then:

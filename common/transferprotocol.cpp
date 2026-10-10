@@ -252,6 +252,11 @@ namespace TransferProto {
         return pin.size() == 4 && std::all_of(pin.begin(), pin.end(), [](unsigned char c) { return std::isdigit(c) != 0; });
     }
 
+    bool validServerPort(int64_t port)
+    {
+        return port >= kMinServerPort && port <= 65535;
+    }
+
     std::optional<uint64_t> zipStreamSize(const std::vector<SendFile>& files, const std::vector<std::string>& dirs)
     {
         uint64_t total = 22; // end of central directory

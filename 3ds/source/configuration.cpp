@@ -107,6 +107,11 @@ Configuration::Configuration(void)
                     (*mJson)["default_receive_pin"] = "";
                     updateJson                      = true;
                 }
+                if (!(mJson->contains("server_port") && (*mJson)["server_port"].is_number_integer() &&
+                        TransferProto::validServerPort((*mJson)["server_port"].get<int64_t>()))) {
+                    (*mJson)["server_port"] = TransferProto::kDefaultServerPort;
+                    updateJson              = true;
+                }
                 if (!(mJson->contains("filter") && (*mJson)["filter"].is_array())) {
                     (*mJson)["filter"] = nlohmann::json::array();
                     updateJson         = true;
@@ -183,6 +188,7 @@ Configuration::Configuration(void)
             mLanguage            = (*mJson)["language"];
             mLastTransferAddress = (*mJson)["last_transfer_address"];
             mDefaultReceivePin   = (*mJson)["default_receive_pin"];
+            mServerPort          = (*mJson)["server_port"];
 
             // parse additional save folders
             auto js = (*mJson)["additional_save_folders"];
@@ -332,6 +338,11 @@ std::string Configuration::defaultReceivePin(void)
     return mDefaultReceivePin;
 }
 
+u16 Configuration::serverPort(void)
+{
+    return mServerPort;
+}
+
 void Configuration::setNandSaves(bool v)
 {
     mNandSaves             = v;
@@ -416,6 +427,14 @@ void Configuration::setDefaultReceivePin(const std::string& v)
     mDefaultReceivePin              = v;
     (*mJson)["default_receive_pin"] = v;
     mDirty                          = true;
+    save();
+}
+
+void Configuration::setServerPort(u16 v)
+{
+    mServerPort             = v;
+    (*mJson)["server_port"] = v;
+    mDirty                  = true;
     save();
 }
 

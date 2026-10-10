@@ -28,6 +28,7 @@
 #define CONFIGURATION_HPP
 
 #include "json.hpp"
+#include "transferprotocol.hpp"
 #include <3ds/types.h>
 #include <memory>
 #include <mutex>
@@ -66,6 +67,10 @@ public:
     // Fixed PIN the wireless receiver arms itself with, as 4 ASCII digits. Empty
     // (the default) means a fresh CSPRNG PIN per receive
     std::string defaultReceivePin(void);
+    // Port the HTTP server (wireless receiver + /logs) binds at launch. Always
+    // within TransferProto::validServerPort; an invalid stored value loads as
+    // the default, 8000.
+    u16 serverPort(void);
     std::vector<std::u16string> additionalSaveFolders(u64 id);
     std::vector<std::u16string> additionalExtdataFolders(u64 id);
 
@@ -96,6 +101,9 @@ public:
     // "" restores the random-per-receive default; anything else is stored as
     // given and only honoured by the receiver when it is 4 digits.
     void setDefaultReceivePin(const std::string& v);
+    // Persists immediately: the server only reads the port at launch, so the
+    // value has to be on the SD card by the next one. The caller validates.
+    void setServerPort(u16 v);
 
     // Flushes pending changes to config.json (no-op when nothing is dirty).
     void commit(void);
@@ -136,6 +144,7 @@ private:
     std::string mLanguage = "en";
     std::string mLastTransferAddress; // last "ip:port" sent to; prefills the send keyboard
     std::string mDefaultReceivePin;   // "" = random PIN per receive
+    u16 mServerPort      = TransferProto::kDefaultServerPort;
     std::string BASEPATH = "/3ds/Checkpoint/config.json";
     size_t oldSize       = 0;
     bool mDirty          = false; // General toggles pending a deferred save()

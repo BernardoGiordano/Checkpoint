@@ -117,11 +117,6 @@ Result servicesInit(void)
         Logging::info("Unable to initialize socket. Result code 0x{:08X}.", socinit);
     }
 
-    // The log server needs the socket layer up; skip it if socket init failed.
-    if (R_SUCCEEDED(socinit)) {
-        Server::init();
-    }
-
     Result res = 0;
 
     romfsInit();
@@ -162,7 +157,11 @@ Result servicesInit(void)
     i18n::init("romfs:/i18n.json");
     i18n::setLanguage(Configuration::getInstance().language());
 
+    // Both servers need the socket layer up; skip them if socket init failed.
+    // The log server binds the port from config.json, which a first launch
+    // seeds from romfs, so it can't start any earlier than this.
     if (R_SUCCEEDED(socinit)) {
+        Server::init(Configuration::getInstance().serverPort());
         FTPServer::init();
     }
 

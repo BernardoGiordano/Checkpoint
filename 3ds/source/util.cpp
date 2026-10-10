@@ -139,7 +139,7 @@ Result servicesInit(void)
     if (socketBuffer != NULL) {
         if (!socInit(socketBuffer, SOC_BUFFERSIZE)) {
             ATEXIT(socExit);
-            Server::init();
+            Server::init(Configuration::getInstance().serverPort());
             ATEXIT(Server::exit);
             FTPServer::init();
             ATEXIT(FTPServer::exit);

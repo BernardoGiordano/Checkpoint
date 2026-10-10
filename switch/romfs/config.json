@@ -22,5 +22,6 @@
   "sort-mode": "alpha",
   "last-transfer-address": "",
   "default-receive-pin": "",
+  "server-port": 8000,
   "version": 7
 }

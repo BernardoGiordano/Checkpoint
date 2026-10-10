@@ -63,7 +63,6 @@
 using namespace TransferProto;
 
 namespace {
-    static const int TRANSFER_PORT = 8000;
     // The server streams the raw upload body here; handleUpload extracts/copies
     // straight from the file-part byte range, so no separate staged zip is needed.
     static const char* TEMP_UPLOAD = "/3ds/Checkpoint/transfer_upload.tmp";
@@ -72,7 +71,7 @@ namespace {
 
     std::string g_token;
     std::string g_receiverIp;
-    int g_receiverPort     = TRANSFER_PORT;
+    int g_receiverPort     = TransferProto::kDefaultServerPort;
     bool g_receiverRunning = false;
     std::atomic<bool> g_pendingRefresh{false};
     std::atomic<bool> g_receiverCompleted{false};
@@ -643,7 +642,7 @@ bool Transfer::startReceiver(std::string& outError, u64 selectedTitleId)
         std::lock_guard<std::mutex> lock(g_receiverMutex);
         g_token                 = token;
         g_receiverIp            = ip;
-        g_receiverPort          = TRANSFER_PORT;
+        g_receiverPort          = Server::getPort();
         g_receiverSelectedTitle = selectedTitleId;
     }
 

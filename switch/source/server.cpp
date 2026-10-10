@@ -51,7 +51,6 @@
 // network-transfer progress tracking the 3DS request reader does — the Switch
 // only serves the read-only /logs endpoints today, which carry no request body.
 namespace {
-    constexpr int SERVER_PORT = 8000;
     // Hard upper bound on a single request we are willing to buffer in RAM, so a
     // malformed/malicious Content-Length cannot exhaust the heap.
     constexpr size_t MAX_REQUEST_SIZE = 32 * 1024 * 1024;
@@ -66,6 +65,7 @@ namespace {
     // uploads) breaks promptly instead of blocking teardown up to the idle timeout.
     std::atomic<bool> serverShutdown{false};
     std::string serverAddress;
+    uint16_t serverPort = 0;
 
     Thread serverThread;
     bool threadValid = false;
@@ -408,7 +408,12 @@ std::string Server::getAddress(void)
     return serverAddress;
 }
 
-void Server::init()
+uint16_t Server::getPort(void)
+{
+    return serverPort;
+}
+
+void Server::init(uint16_t port)
 {
     serverShutdown.store(false);
     serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
@@ -417,7 +422,7 @@ void Server::init()
         return;
     }
 
-    // Without SO_REUSEADDR a quick relaunch while port 8000 is still in TIME_WAIT
+    // Without SO_REUSEADDR a quick relaunch while the port is still in TIME_WAIT
     // makes bind() fail, silently killing both the /logs endpoints and the
     // wireless receiver with no user-visible reason.
     int reuse = 1;
@@ -426,11 +431,11 @@ void Server::init()
     struct sockaddr_in serverAddr;
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family      = AF_INET;
-    serverAddr.sin_port        = htons(SERVER_PORT);
+    serverAddr.sin_port        = htons(port);
     serverAddr.sin_addr.s_addr = gethostid();
 
     if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) != 0) {
-        Logging::error("Failed to bind log server to port {} with error {}", SERVER_PORT, errno);
+        Logging::error("Failed to bind log server to port {} with error {}", port, errno);
         close(serverSocket);
         serverSocket = -1;
         return;
@@ -450,7 +455,8 @@ void Server::init()
     // Same priority/core as the FTP + copy workers; the accept loop is IO-bound.
     if (R_SUCCEEDED(threadCreate(&serverThread, networkLoop, nullptr, nullptr, 0x8000, 0x2C, -2)) && R_SUCCEEDED(threadStart(&serverThread))) {
         threadValid   = true;
-        serverAddress = "http://" + std::string(ipStr) + ":" + std::to_string(SERVER_PORT);
+        serverPort    = port;
+        serverAddress = "http://" + std::string(ipStr) + ":" + std::to_string(port);
         Logging::info("Log server listening on {}", serverAddress);
     }
     else {

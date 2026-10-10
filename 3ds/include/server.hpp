@@ -53,7 +53,9 @@ namespace Server {
 
     using UploadHandler = std::function<HttpResponse(const UploadRequest&)>;
 
-    void init(void);
+    // Binds and listens on `port` (Configuration::serverPort). The port is read
+    // once here, so a change in Settings takes effect on the next launch.
+    void init(uint16_t port);
     void exit(void);
     // Signals the network loop to stop (it exits within one iteration) without
     // tearing anything down. Needed at shutdown so the thread ends before
@@ -61,6 +63,9 @@ namespace Server {
     void requestStop(void);
     bool isRunning(void);
     std::string getAddress(void);
+    // Port the server is bound to, 0 if it never came up. Not necessarily
+    // Configuration::serverPort: Settings may have changed that since launch.
+    uint16_t getPort(void);
 
     void registerHandler(const std::string& path, HttpHandler handler);
     void unregisterHandler(const std::string& path);

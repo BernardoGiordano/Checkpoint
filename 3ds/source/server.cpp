@@ -53,7 +53,6 @@
 #include <unistd.h>
 
 namespace {
-    static const int SERVER_PORT = 8000;
     // Hard upper bound on a single request we are willing to buffer in RAM.
     // The whole request is held in memory, so this caps worst-case allocation
     // and prevents a malformed/malicious Content-Length from exhausting the heap.
@@ -62,6 +61,7 @@ namespace {
     s32 serverSocket                     = -1;
     std::atomic<bool> serverIsRunning{false};
     std::string serverAddress;
+    u16 serverPort = 0;
 
     // Cap on the header block alone (the upload body is streamed to SD, so it is
     // not bounded by this). Guards against a client that never sends a header
@@ -384,7 +384,12 @@ std::string Server::getAddress(void)
     return serverAddress;
 }
 
-void Server::init()
+uint16_t Server::getPort(void)
+{
+    return serverPort;
+}
+
+void Server::init(uint16_t port)
 {
     serverSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if (serverSocket < 0) {
@@ -395,11 +400,11 @@ void Server::init()
     struct sockaddr_in serverAddr;
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family      = AF_INET;
-    serverAddr.sin_port        = htons(SERVER_PORT);
+    serverAddr.sin_port        = htons(port);
     serverAddr.sin_addr.s_addr = gethostid();
 
     if (bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) != 0) {
-        Logging::error("Failed to bind to port {} with error {}", SERVER_PORT, errno);
+        Logging::error("Failed to bind to port {} with error {}", port, errno);
         close(serverSocket);
         serverSocket = -1;
         return;
@@ -417,7 +422,8 @@ void Server::init()
 
     serverRunning.test_and_set();
     Threads::create(networkLoop);
-    serverAddress = "http://" + std::string(ipStr) + ":" + std::to_string(SERVER_PORT);
+    serverPort    = port;
+    serverAddress = "http://" + std::string(ipStr) + ":" + std::to_string(port);
 }
 
 void Server::requestStop()
