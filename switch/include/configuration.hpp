@@ -29,6 +29,7 @@
 
 #include "io.hpp"
 #include "json.hpp"
+#include "transferprotocol.hpp"
 #include "util.hpp"
 #include <switch.h>
 #include <unordered_map>
@@ -126,6 +127,13 @@ public:
     std::string defaultReceivePin(void);
     void setDefaultReceivePin(const std::string& pin);
 
+    // Port the HTTP server (wireless receiver + /logs) binds at launch, so a
+    // change applies on the next one. Always within
+    // TransferProto::validServerPort; an invalid stored value loads as the
+    // default, 8000. The setter's caller validates.
+    u16 serverPort(void);
+    void setServerPort(u16 port);
+
     // Default/current title-grid sort mode. Persisted so it survives a
     // relaunch; the grid's X-button cycle and the Settings "Default sort"
     // spinner both read/write this same setting through TitleCatalog.
@@ -162,6 +170,7 @@ private:
     std::string mLanguage;
     std::string mLastTransferAddress; // last "ip:port" sent to; prefills the send keyboard
     std::string mDefaultReceivePin;   // "" = random PIN per receive
+    u16 mServerPort;
     sort_t mSortMode;
 };
 

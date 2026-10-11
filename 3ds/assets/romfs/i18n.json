@@ -479,6 +479,42 @@
     "zh": "4 位 PIN 码（0 = 每次随机）",
     "ru": "PIN из 4 цифр (0 = случайный каждый раз)"
   },
+  "settings.network.server_port": {
+    "en": "Server port",
+    "it": "Porta del server",
+    "es": "Puerto del servidor",
+    "fr": "Port du serveur",
+    "de": "Server-Port",
+    "pt": "Porta do servidor",
+    "nl": "Serverpoort",
+    "ja": "サーバーポート",
+    "zh": "服务器端口",
+    "ru": "Порт сервера"
+  },
+  "settings.network.server_port.sub": {
+    "en": "Transfers and logs (applies on restart)",
+    "it": "Trasferimenti e log (al riavvio)",
+    "es": "Transferencias y registros (al reiniciar)",
+    "fr": "Transferts et journaux (au redémarrage)",
+    "de": "Übertragungen und Protokolle (nach Neustart)",
+    "pt": "Transferências e logs (ao reiniciar)",
+    "nl": "Overdrachten en logs (na herstart)",
+    "ja": "転送とログ用(再起動後に反映)",
+    "zh": "用于传输和日志（重启后生效）",
+    "ru": "Передачи и логи (после перезапуска)"
+  },
+  "settings.network.server_port.prompt": {
+    "en": "Port (1024-65535, default 8000)",
+    "it": "Porta (1024-65535, predefinita 8000)",
+    "es": "Puerto (1024-65535, predeterminado 8000)",
+    "fr": "Port (1024-65535, par défaut 8000)",
+    "de": "Port (1024-65535, Standard 8000)",
+    "pt": "Porta (1024-65535, padrão 8000)",
+    "nl": "Poort (1024-65535, standaard 8000)",
+    "ja": "ポート(1024-65535、既定は8000)",
+    "zh": "端口（1024-65535，默认 8000）",
+    "ru": "Порт (1024-65535, по умолчанию 8000)"
+  },
   "settings.network.ftp_address": {
     "en": "FTP address",
     "it": "Indirizzo FTP",

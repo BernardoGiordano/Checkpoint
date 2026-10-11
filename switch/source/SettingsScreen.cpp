@@ -393,6 +393,29 @@ void SettingsScreen::rebuildRows(void)
             };
             mRows.push_back(std::move(receivePin));
 
+            // Port of the HTTP server behind both the receiver and the log
+            // server, for networks (or emulator hosts) where 8000 is taken.
+            // The server binds it at launch, so the log addresses below keep
+            // showing the old port until the next restart.
+            Row serverPort;
+            serverPort.title      = i18n::t("settings.conn.server_port");
+            serverPort.subtitle   = i18n::t("settings.conn.server_port.sub");
+            serverPort.control    = Control::ActionPill;
+            serverPort.section    = i18n::t("settings.section.connectivity");
+            serverPort.pillLabel  = std::to_string(cfg.serverPort());
+            serverPort.onActivate = [this, &cfg]() {
+                // The keypad's range check keeps the value within
+                // validServerPort, so a confirmed value is stored as is.
+                const int entered = KeyboardManager::get().numpad(i18n::t("settings.conn.server_port.prompt"), TransferProto::kMinServerPort, 65535);
+                if (entered < 0) {
+                    return; // cancelled
+                }
+                cfg.setServerPort((u16)entered);
+                flashSaved();
+                mNeedsRebuild = true; // the pill label is baked in at build time
+            };
+            mRows.push_back(std::move(serverPort));
+
             // Address of the built-in HTTP log server (parity with the 3DS build).
             // Open it from any browser on the same network to read the logs.
             const std::string addr = Server::getAddress();

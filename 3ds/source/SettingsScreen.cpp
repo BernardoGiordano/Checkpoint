@@ -190,7 +190,7 @@ size_t SettingsScreen::contentRowCount(size_t section) const
         case SEC_FOLDERS:
             return mFolderRows.size();
         case SEC_NETWORK:
-            return 2; // FTP-server toggle, default receive PIN
+            return 3; // FTP-server toggle, default receive PIN, server port
         default:
             return 0;
     }
@@ -448,13 +448,18 @@ void SettingsScreen::drawNetwork(void) const
     drawValueRow(60, i18n::t("settings.network.receive_pin"), i18n::t("settings.network.receive_pin.sub"),
         pin.empty() ? i18n::t("settings.network.receive_pin.random") : pin, contentFocus && contentCursor == 1);
 
+    // Row 2: the configured server port. The addresses below show the port the
+    // server bound at launch, so the two differ until the next restart.
+    drawValueRow(94, i18n::t("settings.network.server_port"), i18n::t("settings.network.server_port.sub"), std::to_string(cfg.serverPort()),
+        contentFocus && contentCursor == 2);
+
     // The wireless-transfer master switch stays on the General tab; what is left
-    // here is read-only status, which starts below the two interactive rows.
-    int y      = 100;
+    // here is read-only status, which starts below the three interactive rows.
+    int y      = 132;
     auto field = [&](const std::string& label, const std::string& value, u32 valColor) {
         TextPool::get().draw(label, 20, y, 0.4f, COLOR_FAINT);
         TextPool::get().draw(value, 20, y + 14, 0.46f, valColor);
-        y += 38;
+        y += 30;
     };
 
     std::string ftpAddress = FTPServer::getAddress();
@@ -469,9 +474,9 @@ void SettingsScreen::drawNetwork(void) const
         address.empty() ? COLOR_MUTED : COLOR_TEXT);
 
     if (contentFocus) {
-        // Row 1 opens a keypad rather than flipping a switch, so the verb follows
-        // the cursor.
-        const std::string act = i18n::t(contentCursor == 1 ? "hint.edit" : "hint.toggle");
+        // Rows 1 and 2 open a keypad rather than flipping a switch, so the verb
+        // follows the cursor.
+        const std::string act = i18n::t(contentCursor > 0 ? "hint.edit" : "hint.toggle");
         drawHints(320, 223, std::string(GLYPH_A) + " " + act + "     " + GLYPH_B + " " + i18n::t("hint.back"));
     }
     else {
@@ -617,6 +622,18 @@ void SettingsScreen::editReceivePin(void)
     savedTimer = SAVED_FLASH_FRAMES;
 }
 
+void SettingsScreen::editServerPort(void)
+{
+    // The keypad's range filter keeps the value within validServerPort, so
+    // whatever comes back confirmed can be stored as is.
+    const int entered = KeyboardManager::get().numpad(i18n::t("settings.network.server_port.prompt"), TransferProto::kMinServerPort, 65535);
+    if (entered < 0) {
+        return; // cancelled
+    }
+    Configuration::getInstance().setServerPort((u16)entered);
+    savedTimer = SAVED_FLASH_FRAMES;
+}
+
 void SettingsScreen::update(const InputState& input)
 {
     u32 kDown        = hidKeysDown();
@@ -749,6 +766,9 @@ void SettingsScreen::update(const InputState& input)
             if (kDown & KEY_A) {
                 if (contentCursor == 1) {
                     editReceivePin();
+                }
+                else if (contentCursor == 2) {
+                    editServerPort();
                 }
                 else {
                     // Live toggle: the FTP loop thread reads isFTPEnabled() each

@@ -123,6 +123,11 @@ Configuration::Configuration(void)
             mJson["default-receive-pin"] = "";
             updateJson                   = true;
         }
+        if (!(mJson.contains("server-port") && mJson["server-port"].is_number_integer() &&
+                TransferProto::validServerPort(mJson["server-port"].get<int64_t>()))) {
+            mJson["server-port"] = TransferProto::kDefaultServerPort;
+            updateJson           = true;
+        }
         if (!(mJson.contains("sort-mode") && mJson["sort-mode"].is_string())) {
             mJson["sort-mode"] = SortMode::of(SORT_ALPHA).configKey;
             updateJson         = true;
@@ -290,6 +295,7 @@ void Configuration::parse(void)
     mLanguage            = mJson.value("language", "en");
     mLastTransferAddress = mJson.value("last-transfer-address", std::string());
     mDefaultReceivePin   = mJson.value("default-receive-pin", std::string());
+    mServerPort          = mJson.value("server-port", TransferProto::kDefaultServerPort);
     mSortMode            = SortMode::fromConfigKey(mJson.value("sort-mode", std::string(SortMode::of(SORT_ALPHA).configKey)));
 }
 
@@ -531,6 +537,18 @@ void Configuration::setDefaultReceivePin(const std::string& pin)
 {
     mDefaultReceivePin           = pin;
     mJson["default-receive-pin"] = pin;
+    save();
+}
+
+u16 Configuration::serverPort(void)
+{
+    return mServerPort;
+}
+
+void Configuration::setServerPort(u16 port)
+{
+    mServerPort          = port;
+    mJson["server-port"] = port;
     save();
 }
 

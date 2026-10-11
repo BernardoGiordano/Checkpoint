@@ -24,5 +24,6 @@
   "language": "en",
   "last_transfer_address": "",
   "default_receive_pin": "",
+  "server_port": 8000,
   "version": 8
 }

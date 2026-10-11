@@ -113,6 +113,16 @@ namespace TransferProto {
     // True iff `pin` is exactly 4 ASCII digits (the receiver token format).
     bool validPin(const std::string& pin);
 
+    // Port the console's HTTP server (wireless receiver + /logs) listens on
+    // unless Settings names another, and the lowest one Settings accepts. Below
+    // 1024 is left out: an emulator can't bind those on a desktop host without
+    // elevated privileges, and emulator hosts are where 8000 tends to be taken.
+    static constexpr uint16_t kDefaultServerPort = 8000;
+    static constexpr uint16_t kMinServerPort     = 1024;
+
+    // True iff `port` is in [kMinServerPort, 65535].
+    bool validServerPort(int64_t port);
+
     // ---- IO seam ----------------------------------------------------------
     // The framing algorithms below are pure protocol; every filesystem and
     // socket touch goes through one of these interfaces, implemented once per

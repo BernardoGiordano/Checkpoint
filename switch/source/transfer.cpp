@@ -59,7 +59,6 @@
 using namespace TransferProto;
 
 namespace {
-    constexpr int TRANSFER_PORT        = 8000;
     const char* CHECKPOINT_ROOT        = "sdmc:/switch/Checkpoint/";
     const char* SAVES_ROOT             = "sdmc:/switch/Checkpoint/saves/";
     const char* TEMP_UPLOAD            = "sdmc:/switch/Checkpoint/transfer_upload.tmp";
@@ -68,7 +67,7 @@ namespace {
 
     std::string g_token;
     std::string g_receiverIp;
-    int g_receiverPort     = TRANSFER_PORT;
+    int g_receiverPort     = TransferProto::kDefaultServerPort;
     bool g_receiverRunning = false;
     std::atomic<bool> g_pendingRefresh{false};
     std::atomic<bool> g_receiverCompleted{false};
@@ -619,7 +618,7 @@ bool Transfer::startReceiver(std::string& outError, u64 selectedTitleId)
         std::lock_guard<std::mutex> lock(g_receiverMutex);
         g_token                 = token;
         g_receiverIp            = ip;
-        g_receiverPort          = TRANSFER_PORT;
+        g_receiverPort          = Server::getPort();
         g_receiverSelectedTitle = selectedTitleId;
     }
 

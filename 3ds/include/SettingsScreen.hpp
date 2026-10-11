@@ -40,7 +40,7 @@
 //   General  toggles that map 1:1 to config.json (interactive)
 //   Library  favorites + hidden (filter) titles, with remove (interactive)
 //   Folders  per-title extra save / extdata folders, with remove (interactive)
-//   Network  FTP-server toggle (interactive) + Wi-Fi transfer / address info
+//   Network  FTP-server toggle, receive PIN, server port (interactive) + address info
 //   About    version, credits, storage usage (informational)
 //
 // Focus model mirrors the main page: the section list on top holds focus first
@@ -82,6 +82,9 @@ private:
     // Opens the numeric keypad on the Network tab's receive-PIN row. 0 clears the
     // setting back to a random PIN per receive; cancelling leaves it untouched.
     void editReceivePin();
+    // Opens the numeric keypad on the Network tab's server-port row. The server
+    // binds the port at launch, so a new value applies after a restart.
+    void editServerPort();
 
     void drawGeneral(void) const;
     void drawLibrary(void) const;
