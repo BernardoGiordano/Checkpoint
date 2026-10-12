@@ -279,8 +279,8 @@ namespace {
     // that measurement mean something: a run with no filesystem traffic in it
     // either survives, which indicts Checkpoint's own IO, or fails at the same
     // point, which rules software policy out entirely.
-    DSCardNand::DumpOutcome runDump(FS_MediaType media, const DSCard::NandSave& nandSave,
-        const NtrCard::NandSectorReadResult& gateThreeSector, const std::u16string& path, const std::string& name, ProgressSink& sink)
+    DSCardNand::DumpOutcome runDump(FS_MediaType media, const DSCard::NandSave& nandSave, const NtrCard::NandSectorReadResult& gateThreeSector,
+        const std::u16string& path, const std::string& name, ProgressSink& sink)
     {
         DSCardNand::DumpOutcome outcome;
 
@@ -307,8 +307,8 @@ namespace {
         // the dump: a streamed dump is still the previously tested behaviour.
         std::unique_ptr<u32[]> image(new (std::nothrow) u32[nandSave.saveSize / sizeof(u32)]);
         if (!image) {
-            Logging::error("NTRCARD NAND dump could not reserve 0x{:08X} bytes of RAM; streaming to SD one window at a time instead.",
-                nandSave.saveSize);
+            Logging::error(
+                "NTRCARD NAND dump could not reserve 0x{:08X} bytes of RAM; streaming to SD one window at a time instead.", nandSave.saveSize);
         }
         const bool ramMode = image != nullptr;
 
@@ -387,7 +387,7 @@ namespace {
         u32 contended            = 0;
         u32 drained              = 0;
         u32 done                 = 0;
-        u32 foreignIdle              = 0;
+        u32 foreignIdle          = 0;
         // How many times the bus refused to go quiet after a recovery.
         u32 busQuietWaits = 0;
 
@@ -464,8 +464,8 @@ namespace {
 
             u32* const target = ramMode ? image.get() + static_cast<std::size_t>(index) * NtrCard::nandWindowWords : windowBuffer.get();
             for (u32 sector = 0; sector < NtrCard::nandWindowSectors && complete; sector += sectorsPerBurst) {
-                u32 stallStreak     = 0;
-                u32 stallRomControl = 0;
+                u32 stallStreak      = 0;
+                u32 stallRomControl  = 0;
                 u32 forgivenAttempts = 0;
                 for (u32 attempt = 0;; attempt++) {
                     auto read = NtrCard::readMappedNandSaveRange(nandSave.rwStart, index, sector, sectorsPerBurst, blockSectors, romControl,
@@ -773,9 +773,8 @@ namespace {
                       "repairs={}, poll-syncs={}, sentinel-checks={}, sentinel-failures={}, sentinel-mismatches={}, "
                       "verified-bursts={}, verification-mismatches={}, busy-after-recovery={}, card-elapsed={} ms, sha256={}.",
             cancelled ? "cancelled" : (complete ? "ok" : "failed"), name, done, windows, (u32)done * (u32)NtrCard::nandWindowSize,
-            firstSectorMatches ? "yes" : "no", collisions, resets, contended, foreignIdle,
-            drained, repairCount, pollSyncs, sentinelChecks, sentinelFailures, sentinelMismatches, verifiedBursts, verificationMismatches,
-            busQuietWaits, cardElapsed, hex.data());
+            firstSectorMatches ? "yes" : "no", collisions, resets, contended, foreignIdle, drained, repairCount, pollSyncs, sentinelChecks,
+            sentinelFailures, sentinelMismatches, verifiedBursts, verificationMismatches, busQuietWaits, cardElapsed, hex.data());
 
         const bool cartridgeUnsafe = cartridgeStateLost || (cardSlotUnavailable && unrecoveredLosses > 0);
         if (cartridgeUnsafe) {
@@ -888,8 +887,8 @@ DSCardNand::Session DSCardNand::prepare(FS_MediaType media, const DSCard::NandSa
         Logging::info("NTRCARD Process9 recovery probe: result=0x{:08X}, game-code-match={}.", (u32)verifyResult, process9Works ? "yes" : "no");
     }
 
-    const bool gateThreeAllowed = transferComplete && bannerMatches && process9Works && nandSave.saveSize >= NtrCard::sectorSize &&
-                                  NtrCard::mappedCardAccessAvailable();
+    const bool gateThreeAllowed =
+        transferComplete && bannerMatches && process9Works && nandSave.saveSize >= NtrCard::sectorSize && NtrCard::mappedCardAccessAvailable();
     if (!gateThreeAllowed) {
         return session;
     }
@@ -935,14 +934,12 @@ DSCardNand::Session DSCardNand::prepare(FS_MediaType media, const DSCard::NandSa
 
     Result verifyResult          = 0;
     const bool nandProcess9Works = process9RecoveryOk(media, nandSave, verifyResult);
-    Logging::info(
-        "NTRCARD NAND Process9 recovery probe: result=0x{:08X}, game-code-match={}.", (u32)verifyResult, nandProcess9Works ? "yes" : "no");
+    Logging::info("NTRCARD NAND Process9 recovery probe: result=0x{:08X}, game-code-match={}.", (u32)verifyResult, nandProcess9Works ? "yes" : "no");
 
     // The single-sector sequence must have completed, and Process9 must have
     // recovered from it in this same launch, before anything walks the save.
     session.sentinel = *nandProbe;
-    session.ready    = readComplete && nandProbe->stage == NtrCard::NandReadStage::Complete && nandProcess9Works &&
-                    NtrCard::mappedCardAccessAvailable();
+    session.ready = readComplete && nandProbe->stage == NtrCard::NandReadStage::Complete && nandProcess9Works && NtrCard::mappedCardAccessAvailable();
     session.requiresPowerCycle = !readComplete && nandProbe->stage != NtrCard::NandReadStage::Preflight &&
                                  !(nandProbe->returnToRomAttempted && nandProbe->returnToRomStatus == NtrCard::SectorReadStatus::Ok);
     return session;
@@ -963,14 +960,14 @@ DSCardNand::DumpOutcome DSCardNand::dumpToFile(
     }
 
     // The log names the file, so give it the leaf rather than the whole path.
-    const std::size_t leaf   = path.find_last_of(u'/');
+    const std::size_t leaf    = path.find_last_of(u'/');
     const std::u16string tail = leaf == std::u16string::npos ? path : path.substr(leaf + 1);
     return runDump(media, nandSave, session.sentinel, path, StringUtils::UTF16toUTF8(tail), sink);
 }
 
 namespace {
-    DSCardNand::RestoreOutcome runRestore(FS_MediaType media, const DSCard::NandSave& nandSave,
-        const NtrCard::NandSectorReadResult& gateThreeSector, const std::u16string& path, const std::string& name, ProgressSink& sink)
+    DSCardNand::RestoreOutcome runRestore(FS_MediaType media, const DSCard::NandSave& nandSave, const NtrCard::NandSectorReadResult& gateThreeSector,
+        const std::u16string& path, const std::string& name, ProgressSink& sink)
     {
         DSCardNand::RestoreOutcome outcome;
 
@@ -1010,7 +1007,7 @@ namespace {
                 outcome.status = DSCardNand::RestoreStatus::SourceSizeMismatch;
                 return outcome;
             }
-            const u32 readBytes = input.read(image.get(), nandSave.saveSize);
+            const u32 readBytes     = input.read(image.get(), nandSave.saveSize);
             const Result readResult = input.result();
             input.close();
             if (readBytes != nandSave.saveSize || R_FAILED(readResult)) {
@@ -1037,9 +1034,9 @@ namespace {
         constexpr std::size_t pagesPerWindow = NtrCard::nandWindowSize / NtrCard::nandPageSize;
         static_assert(NtrCard::nandWindowSize % NtrCard::nandPageSize == 0);
 
-        auto current = std::make_unique<u32[]>(NtrCard::nandWindowWords);
-        auto verify  = std::make_unique<u32[]>(NtrCard::nandWindowWords);
-        auto readBack = std::make_unique<u32[]>(NtrCard::nandPageWords);
+        auto current        = std::make_unique<u32[]>(NtrCard::nandWindowWords);
+        auto verify         = std::make_unique<u32[]>(NtrCard::nandWindowWords);
+        auto readBack       = std::make_unique<u32[]>(NtrCard::nandPageWords);
         auto readBackVerify = std::make_unique<u32[]>(NtrCard::nandPageWords);
 
         u32 pollSyncs          = 0;
@@ -1058,7 +1055,7 @@ namespace {
         // and its read-back 7 ms across 8192 pages on 2026-08-29, so 300 ms of
         // budget fills a fraction of a quiet period and still batches a dozen
         // pages into it.
-        constexpr u64 ticksPerMs      = SYSCLOCK_ARM11 / 1000;
+        constexpr u64 ticksPerMs       = SYSCLOCK_ARM11 / 1000;
         constexpr u64 writeBudgetTicks = 300 * ticksPerMs;
         // Floor under the per-page reserve until the run has measured its own
         // worst case. 120 ms is twice the slowest page ever observed and still
@@ -1067,12 +1064,12 @@ namespace {
         u64 slowestBatchedPageTicks       = 0;
         u32 batches                       = 0;
         u32 largestBatch                  = 0;
-        bool cartridgeStateLost = false;
-        bool cancelled          = false;
-        bool complete           = true;
-        const char* failedStep  = nullptr;
-        u32 failedWindow        = 0;
-        u32 failedPage          = 0;
+        bool cartridgeStateLost           = false;
+        bool cancelled                    = false;
+        bool complete                     = true;
+        const char* failedStep            = nullptr;
+        u32 failedWindow                  = 0;
+        u32 failedPage                    = 0;
 
         const GuardedPage guarded{nandSave, gateThreeSector, romControl, "NAND restore"};
 
@@ -1120,8 +1117,8 @@ namespace {
 
             for (u32 sector = 0; sector < NtrCard::nandWindowSectors; sector += sectorsPerBurst) {
                 const std::size_t wordOffset = static_cast<std::size_t>(sector) * NtrCard::sectorWords;
-                const auto first = NtrCard::readMappedNandSaveRange(nandSave.rwStart, window, sector, sectorsPerBurst, 1, romControl,
-                    current.get() + wordOffset, sectorsPerBurst * NtrCard::sectorWords);
+                const auto first             = NtrCard::readMappedNandSaveRange(nandSave.rwStart, window, sector, sectorsPerBurst, 1, romControl,
+                                current.get() + wordOffset, sectorsPerBurst * NtrCard::sectorWords);
                 if (!first || first->status != NtrCard::SectorReadStatus::Ok || first->stage != NtrCard::NandReadStage::Complete) {
                     resets += first && first->status == NtrCard::SectorReadStatus::ControllerReset ? 1 : 0;
                     failedStep = "compare read";
@@ -1190,8 +1187,8 @@ namespace {
                 cartridgeStateLost = !written->recoveredToRomMode && !written->cartridgeWasReset;
                 Logging::error("NTRCARD NAND restore write failed at page 0x{:08X}: status={}, stage={}, committed={}, status-polls={}, "
                                "status=0x{:08X}. {}",
-                    pageOffset, sectorReadStatusName(written->status), (int)written->stage, written->committed ? "yes" : "no",
-                    written->statusPolls, written->statusRegister,
+                    pageOffset, sectorReadStatusName(written->status), (int)written->stage, written->committed ? "yes" : "no", written->statusPolls,
+                    written->statusRegister,
                     written->committed ? "The commit had already been issued, so this page holds neither its old contents nor its new ones."
                                        : "The commit was never issued, so this page still holds its old contents.");
                 failedStep = "write";
@@ -1232,7 +1229,7 @@ namespace {
                 return false;
             }
             if (std::memcmp(readBack.get(), source, NtrCard::nandPageSize) != 0) {
-                std::size_t byte    = 0;
+                std::size_t byte     = 0;
                 const auto* expected = reinterpret_cast<const u8*>(source);
                 const auto* actual   = reinterpret_cast<const u8*>(readBack.get());
                 while (byte < NtrCard::nandPageSize && expected[byte] == actual[byte]) {
@@ -1250,7 +1247,8 @@ namespace {
 
         // Where a page's wanted bytes live in the source image.
         const auto sourcePage = [&](u32 window, u32 page) {
-            return image.get() + static_cast<std::size_t>(window) * NtrCard::nandWindowWords + static_cast<std::size_t>(page) * NtrCard::nandPageWords;
+            return image.get() + static_cast<std::size_t>(window) * NtrCard::nandWindowWords +
+                   static_cast<std::size_t>(page) * NtrCard::nandPageWords;
         };
 
         const u64 started = osGetTime();
@@ -1382,10 +1380,10 @@ namespace {
                       "commits={}, status-polls total={} max={}, poll-syncs={}, sentinel-checks={}, sentinel-failures={}, "
                       "sentinel-mismatches={}, verified-windows={}, compare-mismatches={}, resets={}, batches={}, largest-batch={}, "
                       "card-elapsed={} ms, source sha256={}.",
-            cancelled ? "cancelled" : (complete ? "ok" : "failed"), name, outcome.windowsDone, windows, outcome.pagesWritten,
-            outcome.pagesSkipped, deferredPageWritten ? "yes" : (deferredPageNeeded ? "no" : "not-needed"), commits, statusPollsTotal,
-            statusPollsMax, pollSyncs, sentinelChecks, sentinelFailures, sentinelMismatches, verifiedWindows, readMismatches, resets, batches,
-            largestBatch, cardElapsed, outcome.sourceSha256);
+            cancelled ? "cancelled" : (complete ? "ok" : "failed"), name, outcome.windowsDone, windows, outcome.pagesWritten, outcome.pagesSkipped,
+            deferredPageWritten ? "yes" : (deferredPageNeeded ? "no" : "not-needed"), commits, statusPollsTotal, statusPollsMax, pollSyncs,
+            sentinelChecks, sentinelFailures, sentinelMismatches, verifiedWindows, readMismatches, resets, batches, largestBatch, cardElapsed,
+            outcome.sourceSha256);
 
         if (!complete && !cancelled) {
             Logging::error("NTRCARD NAND restore stopped at window {}, page {} ({}). {}", failedWindow, failedPage,
@@ -1406,8 +1404,8 @@ namespace {
         }
         else if (complete) {
             outcome.status = DSCardNand::RestoreStatus::Ok;
-            Logging::info("NTRCARD NAND restore of {} completed: {} page(s) written, {} already matched.", name, outcome.pagesWritten,
-                outcome.pagesSkipped);
+            Logging::info(
+                "NTRCARD NAND restore of {} completed: {} page(s) written, {} already matched.", name, outcome.pagesWritten, outcome.pagesSkipped);
         }
         else if (failedStep != nullptr && std::strcmp(failedStep, "write") == 0) {
             outcome.status = DSCardNand::RestoreStatus::WriteFailed;
@@ -1418,8 +1416,8 @@ namespace {
 
         Result verifyResult      = 0;
         const bool process9Works = process9RecoveryOk(media, nandSave, verifyResult);
-        Logging::info("NTRCARD NAND restore Process9 recovery probe: result=0x{:08X}, game-code-match={}.", (u32)verifyResult,
-            process9Works ? "yes" : "no");
+        Logging::info(
+            "NTRCARD NAND restore Process9 recovery probe: result=0x{:08X}, game-code-match={}.", (u32)verifyResult, process9Works ? "yes" : "no");
 
         sink.finishFile();
         sink.end();

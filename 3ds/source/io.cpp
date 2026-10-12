@@ -411,8 +411,7 @@ static io::IoOutcome backupCardNandSave(
     const BackupTarget& target, Title& title, const DSCard::NandSave& nand, const std::u16string& dstPath, ProgressSink& sink)
 {
     if (!DSCardNand::available()) {
-        Logging::error("Refusing to back up {}: its save is in on-cart NAND and this build has no NAND read path.",
-            title.shortDescription().c_str());
+        Logging::error("Refusing to back up {}: its save is in on-cart NAND and this build has no NAND read path.", title.shortDescription().c_str());
         return {false, 0, io::BackupStage::CardNandSave};
     }
 
@@ -488,8 +487,7 @@ static io::IoOutcome restoreCardNandSave(
     const BackupTarget& target, Title& title, const DSCard::NandSave& nand, const std::u16string& srcPath, ProgressSink& sink)
 {
     if (!DSCardNand::available()) {
-        Logging::error("Refusing to restore {}: its save is in on-cart NAND and this build has no NAND card path.",
-            title.shortDescription().c_str());
+        Logging::error("Refusing to restore {}: its save is in on-cart NAND and this build has no NAND card path.", title.shortDescription().c_str());
         return {false, 0, io::BackupStage::CardNandSave};
     }
 
@@ -537,8 +535,8 @@ static io::IoOutcome restoreCardNandSave(
         return {false, 0, io::BackupStage::CardNandSave};
     }
 
-    Logging::info("Card NAND restore of {} completed: {} page(s) written, {} already matched, source sha256={}.",
-        title.shortDescription().c_str(), restored.pagesWritten, restored.pagesSkipped, restored.sourceSha256);
+    Logging::info("Card NAND restore of {} completed: {} page(s) written, {} already matched, source sha256={}.", title.shortDescription().c_str(),
+        restored.pagesWritten, restored.pagesSkipped, restored.sourceSha256);
     return {true, 0, io::BackupStage::Copy};
 }
 

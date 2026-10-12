@@ -126,8 +126,7 @@ namespace {
     // is overwritten with a synthesized stable key (see dsCardId) before use.
     bool probeCard(u64& id, FS_MediaType media, u8* productCode, bool& accessibleSave, bool& gba, bool& accessibleExtdata,
         std::u16string& shortDescription, std::u16string& longDescription, std::u16string& savePath, std::u16string& extdataPath, CardType& spiCard,
-        bool& cardNandSave,
-        IconStore& icons)
+        bool& cardNandSave, IconStore& icons)
     {
         u8* headerData = new u8[DSCard::headerSize];
         Result res     = FSUSER_GetLegacyRomHeader(media, 0LL, headerData);
@@ -262,8 +261,8 @@ bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType car
     u8 productCode[16]  = {0};
     bool accessibleSave = false, gba = false, accessibleExtdata = false;
     std::u16string shortDescription, longDescription, savePath, extdataPath;
-    CardType spiCard    = NO_CHIP;
-    bool cardNandSave   = false;
+    CardType spiCard  = NO_CHIP;
+    bool cardNandSave = false;
 
     bool loadTitle;
     if (card == CARD_CTR) {
@@ -275,9 +274,8 @@ bool TitleProbe::probe(Title& title, u64 id, FS_MediaType media, FS_CardType car
             probeTwl(id, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, icons);
     }
     else {
-        loadTitle = probeCard(
-            id, media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath, extdataPath, spiCard,
-            cardNandSave, icons);
+        loadTitle = probeCard(id, media, productCode, accessibleSave, gba, accessibleExtdata, shortDescription, longDescription, savePath,
+            extdataPath, spiCard, cardNandSave, icons);
     }
 
     // On a hard failure (smdh == NULL, header/SPI error) probeCtr/probeCard
