@@ -44,6 +44,11 @@ static const Result RES_SHORT_WRITE = MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_F
 // FSFILE_GetSize reports. See copyFile's shrink-and-stop handling.
 static const u32 RES_FS_PAST_DATA = 0xD900458B;
 
+// FS returns this when another process holds the file open — HOME Menu keeps the
+// icon cache in its own extdata (/CacheD.dat) open for as long as it runs, so no
+// open of it from an application can succeed (#592). See io::dropInUse.
+static const u32 RES_FS_IN_USE = 0xC92044E6;
+
 static const Result RES_PATH_TOO_LONG = 0xE0E046C8;
 
 static std::u16string rawBackupFile(const std::u16string& folder)
@@ -182,6 +187,34 @@ size_t io::dropHostMetadata(std::vector<TreeEntry>& entries)
                       }),
         entries.end());
     return before - entries.size();
+}
+
+std::vector<std::string> io::dropInUse(FS_Archive arch, const std::u16string& root, std::vector<TreeEntry>& entries)
+{
+    // A file that does not exist on the console side (a restore bringing back
+    // something that was since deleted) fails the probe with a different result
+    // and stays in the plan; only the in-use answer drops an entry.
+    std::vector<std::string> dropped;
+    entries.erase(std::remove_if(entries.begin(), entries.end(),
+                      [&](const TreeEntry& entry) {
+                          if (entry.folder) {
+                              return false;
+                          }
+                          FSStream probe(arch, root + entry.rel, FS_OPEN_READ);
+                          if (probe.good()) {
+                              probe.close();
+                              return false;
+                          }
+                          if ((u32)probe.result() != RES_FS_IN_USE) {
+                              return false;
+                          }
+                          const std::string rel = StringUtils::UTF16toUTF8(entry.rel);
+                          Logging::warning("Leaving out {}: another process holds it open.", rel);
+                          dropped.push_back(rel);
+                          return true;
+                      }),
+        entries.end());
+    return dropped;
 }
 
 Result io::copyFile(
@@ -516,6 +549,8 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
 
     Logging::info("Started backup of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
 
+    std::vector<std::string> skippedInUse;
+
     if (title.cardType() == CARD_CTR || title.isDSiWare()) {
         ArchiveHandle handle = target.open(res);
         if (R_FAILED(res)) {
@@ -569,6 +604,14 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
                 FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
                 Logging::error("Failed to enumerate {} for backup. Result {}.", target.dataTypeName(), res);
                 return {false, res, (u32)res == RES_PATH_TOO_LONG ? BackupStage::PathTooLong : BackupStage::Copy};
+            }
+
+            // Extdata can share an archive with a running system process; a file it
+            // holds open can't be read at all, and failing the whole backup over
+            // HOME Menu's icon cache left users with no backup of the rest (#592).
+            // A save is never filtered: it is copied whole or not at all.
+            if (target.kind() == BackupKind::Extdata) {
+                skippedInUse = io::dropInUse(handle.fs(), archiveRoot, entries);
             }
 
             // The console-side tree is short; it is the SD destination — root plus
@@ -685,8 +728,13 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
         TitleCatalog::get().refreshDirectories(title.id());
     }
 
-    Logging::info("Backup succeeded.");
-    return {true, 0, BackupStage::Copy};
+    if (!skippedInUse.empty()) {
+        Logging::info("Backup succeeded, leaving out {} file(s) held open by another process.", skippedInUse.size());
+    }
+    else {
+        Logging::info("Backup succeeded.");
+    }
+    return {true, 0, BackupStage::Copy, false, std::move(skippedInUse)};
 }
 
 io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcPath, ProgressSink& sink)
@@ -695,6 +743,8 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
     Result res   = 0;
 
     Logging::info("Started restore of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
+
+    std::vector<std::string> skippedInUse;
 
     if (title.cardType() == CARD_CTR || title.isDSiWare()) {
         ArchiveHandle handle = target.open(res);
@@ -738,6 +788,14 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
             const size_t dropped = io::dropHostMetadata(entries);
             if (dropped > 0) {
                 Logging::info("Skipped {} host metadata entries in the backup; they are not part of the save.", dropped);
+            }
+
+            // The console-side twin of the backup filter. It has to run before the
+            // clear below: a file another process holds open survives the clear,
+            // and its copy would then fail with everything else already deleted —
+            // half of HOME Menu's extdata gone for a backup taken before #592.
+            if (target.kind() == BackupKind::Extdata) {
+                skippedInUse = io::dropInUse(handle.fs(), dstPath, entries);
             }
 
             res = io::checkPathLengths(entries, fullSrc, dstPath);
@@ -864,8 +922,13 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
         delete[] saveFile;
     }
 
-    Logging::info("Restore succeeded.");
-    return {true, 0, BackupStage::Copy};
+    if (!skippedInUse.empty()) {
+        Logging::info("Restore succeeded, leaving out {} file(s) held open by another process.", skippedInUse.size());
+    }
+    else {
+        Logging::info("Restore succeeded.");
+    }
+    return {true, 0, BackupStage::Copy, false, std::move(skippedInUse)};
 }
 
 void io::deleteBackupFolder(const std::u16string& path)

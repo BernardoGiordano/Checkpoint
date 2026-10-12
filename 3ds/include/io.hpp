@@ -63,6 +63,9 @@ namespace io {
         Result res;
         BackupStage stage;      // meaningful only when !ok
         bool cancelled = false; // set only for a backup aborted via ProgressSink::cancelled()
+        // Extdata files left out because another process holds them open (see
+        // dropInUse). A successful outcome with entries here copied everything else.
+        std::vector<std::string> skippedInUse;
     };
 
     // Backs up `target` into the already-resolved `dstPath` (the caller picks the
@@ -96,6 +99,13 @@ namespace io {
     // each one in the log. Only a restore filters: a backup copies the console-side
     // archive verbatim, and nothing there is host metadata to begin with.
     size_t dropHostMetadata(std::vector<TreeEntry>& entries);
+    // Removes from a copy plan every file that, under `root` in the console-side
+    // archive `arch`, another process holds open — FS refuses any open of such a
+    // file, so copying it can only fail. HOME Menu holds the icon cache in its own
+    // extdata open for as long as it runs (#592). Probes each file once, before a
+    // single byte moves. Returns the rel paths it dropped and names each one in
+    // the log. Only extdata is filtered: a save is copied whole or not at all.
+    std::vector<std::string> dropInUse(FS_Archive arch, const std::u16string& root, std::vector<TreeEntry>& entries);
     // Copy a tree previously enumerated by collectTree, reusing one heap buffer for
     // every file. Stops on the first failure.
     Result copyTree(FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcRoot, const std::u16string& dstRoot,

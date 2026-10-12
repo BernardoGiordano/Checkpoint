@@ -1064,6 +1064,18 @@
     "zh": "{0}\n已成功恢复",
     "ru": "{0}\nуспешно восстановлен."
   },
+  "outcome.skipped_in_use": {
+    "en": "Left out, in use by the system:\n{0}",
+    "it": "Esclusi, in uso dal sistema:\n{0}",
+    "es": "Omitidos, en uso por el sistema:\n{0}",
+    "fr": "Ignorés, utilisés par le système :\n{0}",
+    "de": "Ausgelassen, vom System verwendet:\n{0}",
+    "pt": "Ignorados, em uso pelo sistema:\n{0}",
+    "nl": "Overgeslagen, in gebruik door het systeem:\n{0}",
+    "ja": "システムが使用中のため除外:\n{0}",
+    "zh": "已跳过（系统正在使用）：\n{0}",
+    "ru": "Пропущено, используется системой:\n{0}"
+  },
   "outcome.send_zip": {
     "en": "Failed to create backup package.",
     "it": "Impossibile creare il pacchetto di backup.",
