@@ -26,6 +26,7 @@
 
 #include "titleprobe.hpp"
 #include "savedatasource.hpp"
+#include "directory.hpp"
 
 bool TitleProbe::probe(Title& dst, const FsSaveDataInfo& info, IconStore& icons, NsApplicationControlData* nsacd)
 {
@@ -93,6 +94,16 @@ bool TitleProbe::probe(Title& dst, const FsSaveDataInfo& info, IconStore& icons,
     std::string path = source.baseDir() + tidStr;
     if (safeName != tidStr) {
         path += " " + safeName;
+    }
+
+    Directory dir(source.baseDir());
+    if (dir.good()) {
+        for (size_t i = 0; i < dir.size(); i++) {
+            if (dir.folder(i) && dir.entry(i).find(tidStr) == 0) {
+                path = source.baseDir() + dir.entry(i);
+                break;
+            }
+        }
     }
 
     if (!io::directoryExists(path)) {
