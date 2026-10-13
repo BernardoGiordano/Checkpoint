@@ -75,7 +75,7 @@
 #define URLN    512  /* the base URL the user typed                          */
 #define USERN   128
 #define PWN     128
-#define AUTHN   512  /* "Authorization: Basic " + base64(user:password)       */
+#define AUTHN   512  /* "Authorization: Basic " + base64(user:password) + User-Agent */
 #define URLBUFN 1536 /* a built request URL: base + 3 percent-encoded segments */
 #define NAMEN   160  /* a server-side path segment (sanitised title/backup)    */
 #define PATHN   512
@@ -813,16 +813,16 @@ int ensure_configured(void)
 
 /* ---- webdav ------------------------------------------------------------- */
 
-/* "Authorization: Basic base64(user:password)". Built once per run: the header
- * goes into every request, and re-encoding it per call would put the password
- * on the interpreter stack in a dozen more places. */
+/* "Authorization: Basic base64(user:password)" and "User-Agent". Built once per
+ * run: the header goes into every request, and re-encoding it per call would put
+ * the password on the interpreter stack in a dozen more places. */
 void build_auth(void)
 {
     char pair[USERN + PWN + 2];
     sprintf(pair, "%s:%s", g_user, g_pw);
     char enc[AUTHN];
     b64_encode(pair, enc, AUTHN);
-    sprintf(g_auth, "Authorization: Basic %s", enc);
+    sprintf(g_auth, "Authorization: Basic %s\nUser-Agent: Checkpoint/WebDAV", enc);
 }
 
 /* One request carrying the auth header (plus `extra`, "" for none) whose body
