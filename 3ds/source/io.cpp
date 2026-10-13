@@ -51,6 +51,9 @@ static const u32 RES_FS_IN_USE = 0xC92044E6;
 
 static const Result RES_PATH_TOO_LONG = 0xE0E046C8;
 
+// FS returns this when the directory being created is already there.
+static const u32 RES_FS_DIR_EXISTS = 0xC82044B9;
+
 static std::u16string rawBackupFile(const std::u16string& folder)
 {
     std::u16string canonical = folder + StringUtils::UTF8toUTF16("00000001.sav");
@@ -306,8 +309,8 @@ Result io::copyTree(FS_Archive srcArch, FS_Archive dstArch, const std::u16string
         std::u16string dst = dstRoot + entry.rel;
         if (entry.folder) {
             res = io::createDirectory(dstArch, dst);
-            // 0xC82044B9 == directory already exists; treat as success.
-            if (R_FAILED(res) && (u32)res != 0xC82044B9) {
+            // An existing directory is as good as a new one.
+            if (R_FAILED(res) && (u32)res != RES_FS_DIR_EXISTS) {
                 return res;
             }
             res = 0;
@@ -540,6 +543,59 @@ static io::IoOutcome restoreCardNandSave(
     return {true, 0, io::BackupStage::Copy};
 }
 
+// Writes a DS cart save, already read into memory, as a new file in the backup
+// folder the caller has just created.
+//
+// Creating that file has been seen to fail with FS NotFound (0xC8804478) right
+// after the folder was made, and a plain retry by hand worked (#584). So the
+// open is retried a few times, first putting the folder back if FS no longer
+// has it. Each failed open is logged together with whether the folder was still
+// there, which is the part the #584 log could not tell.
+static Result writeCardSave(const std::u16string& folder, const std::u16string& path, const u8* data, u32 size)
+{
+    static constexpr int attempts = 4;
+
+    for (int attempt = 1;; attempt++) {
+        FSStream stream(Archive::sdmc(), path, FS_OPEN_WRITE, size);
+        if (stream.good()) {
+            const u32 wt          = stream.write(data, size);
+            const Result writeRes = stream.result();
+            const Result closeRes = stream.close();
+            if (R_FAILED(writeRes)) {
+                Logging::error("Write failure on {} with result 0x{:08X}.", StringUtils::UTF16toUTF8(path), (u32)writeRes);
+                return writeRes;
+            }
+            if (wt != size) {
+                Logging::error("Short write on {}: wrote {} of {} bytes.", StringUtils::UTF16toUTF8(path), wt, size);
+                return RES_SHORT_WRITE;
+            }
+            if (R_FAILED(closeRes)) {
+                Logging::error("Failed to close {} with result 0x{:08X}.", StringUtils::UTF16toUTF8(path), (u32)closeRes);
+                return closeRes;
+            }
+            if (attempt > 1) {
+                Logging::info("Created {} on attempt {} of {}.", StringUtils::UTF16toUTF8(path), attempt, attempts);
+            }
+            return 0;
+        }
+
+        const Result openRes     = stream.result();
+        const bool folderPresent = io::directoryExists(Archive::sdmc(), folder);
+        Logging::warning("Failed to create {} with result 0x{:08X} (attempt {} of {}, backup folder {}).", StringUtils::UTF16toUTF8(path),
+            (u32)openRes, attempt, attempts, folderPresent ? "present" : "missing");
+        if (attempt == attempts) {
+            return openRes;
+        }
+        if (!folderPresent) {
+            const Result dirRes = io::createDirectory(Archive::sdmc(), folder);
+            if (R_FAILED(dirRes) && (u32)dirRes != RES_FS_DIR_EXISTS) {
+                Logging::warning("Failed to recreate the backup folder with result 0x{:08X}.", (u32)dirRes);
+            }
+        }
+        svcSleepThread(250'000'000);
+    }
+}
+
 io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPath, ProgressSink& sink)
 {
     Title& title = target.title();
@@ -663,10 +719,38 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
         }
         u32 sectorSize = (saveSize < 0x10000) ? saveSize : 0x10000;
 
+        std::u16string fileName = StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
+        std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/") + fileName;
+
+        sink.begin("Backup", 1);
+        sink.startFile(fileName, saveSize);
+
+        // The whole save comes off the cart before the SD card is touched. A read
+        // failure or a cancel then leaves the backup being overwritten as it was,
+        // and the destination folder is created right before its file instead of
+        // a whole cart read earlier (#584).
+        std::unique_ptr<u8[]> saveFile(new u8[saveSize]);
+        const u32 sectors = saveSize / sectorSize;
+        for (u32 i = 0; i < sectors; ++i) {
+            if (sink.cancelled()) {
+                sink.end();
+                Logging::info("Backup of {} cancelled by user.", title.shortDescription().c_str());
+                return {false, 0, BackupStage::Copy, true};
+            }
+            res = SPIReadSaveData(cardType, sectorSize * i, saveFile.get() + sectorSize * i, sectorSize);
+            if (R_FAILED(res)) {
+                sink.end();
+                Logging::error("Failed to read save data from SPI with result 0x{:08X}.", (u32)res);
+                return {false, res, BackupStage::ReadSpi};
+            }
+            sink.advanceBytes(sectorSize * (i + 1));
+        }
+
         // Start from a clean destination folder.
         if (io::directoryExists(Archive::sdmc(), dstPath)) {
             res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
             if (R_FAILED(res)) {
+                sink.end();
                 Logging::error("Failed to delete the existing backup directory recursively with result 0x{:08X}.", (u32)res);
                 return {false, res, BackupStage::DeleteDst};
             }
@@ -674,53 +758,19 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
 
         res = io::createDirectory(Archive::sdmc(), dstPath);
         if (R_FAILED(res)) {
+            sink.end();
             Logging::error("Failed to create destination directory with result 0x{:08X}.", (u32)res);
             return {false, res, BackupStage::CreateDst};
         }
 
-        std::u16string fileName = StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
-        std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/") + fileName;
-
-        sink.begin("Backup", 1);
-        sink.startFile(fileName, saveSize);
-
-        u8* saveFile      = new u8[saveSize];
-        const u32 sectors = saveSize / sectorSize;
-        for (u32 i = 0; i < sectors; ++i) {
-            if (sink.cancelled()) {
-                delete[] saveFile;
-                sink.end();
-                FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-                Logging::info("Backup of {} cancelled by user.", title.shortDescription().c_str());
-                return {false, 0, BackupStage::Copy, true};
-            }
-            res = SPIReadSaveData(cardType, sectorSize * i, saveFile + sectorSize * i, sectorSize);
-            if (R_FAILED(res)) {
-                delete[] saveFile;
-                sink.end();
-                FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-                Logging::error("Failed to read save data from SPI with result 0x{:08X}.", (u32)res);
-                return {false, res, BackupStage::ReadSpi};
-            }
-            sink.advanceBytes(sectorSize * (i + 1));
-        }
-
-        FSStream stream(Archive::sdmc(), copyPath, FS_OPEN_WRITE, saveSize);
-        if (stream.good()) {
-            stream.write(saveFile, saveSize);
-        }
-        else {
-            Result streamRes = stream.result();
-            delete[] saveFile;
-            stream.close();
+        res = writeCardSave(dstPath, copyPath, saveFile.get(), saveSize);
+        if (R_FAILED(res)) {
             sink.end();
             FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-            Logging::error("Failed to write save to the sd card with result 0x{:08X}.", (u32)streamRes);
-            return {false, streamRes, BackupStage::WriteFile};
+            Logging::error("Failed to write save to the sd card with result 0x{:08X}.", (u32)res);
+            return {false, res, BackupStage::WriteFile};
         }
 
-        delete[] saveFile;
-        stream.close();
         sink.finishFile();
         sink.end();
         TitleCatalog::get().refreshDirectories(title.id());
