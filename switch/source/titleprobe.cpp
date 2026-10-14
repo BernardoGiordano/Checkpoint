@@ -26,6 +26,7 @@
 
 #include "titleprobe.hpp"
 #include "savedatasource.hpp"
+#include "directory.hpp"
 
 bool TitleProbe::probe(Title& dst, const FsSaveDataInfo& info, IconStore& icons, NsApplicationControlData* nsacd)
 {
@@ -73,9 +74,37 @@ bool TitleProbe::probe(Title& dst, const FsSaveDataInfo& info, IconStore& icons,
 
     SaveDataSource source(type);
     const std::string userName = source.isUserAccount() ? Account::username(uid) : source.fixedUserName();
-    const std::string safeName =
-        StringUtils::containsInvalidChar(name) ? StringUtils::format("0x%016llX", tid) : StringUtils::removeForbiddenCharacters(name);
-    const std::string path = source.baseDir() + StringUtils::format("0x%016llX", tid) + " " + safeName;
+    const std::string tidStr = StringUtils::format("0x%016llX", tid);
+
+    std::string cleanName = StringUtils::removeAccents(name);
+
+    std::string asciiName;
+    for (char c : cleanName) {
+        if (c >= 32 && c < 127) {
+            asciiName += c;
+        }
+    }
+
+    std::string safeName = StringUtils::containsInvalidChar(asciiName) ? tidStr : StringUtils::removeForbiddenCharacters(asciiName);
+
+    if (safeName.empty() || safeName.find_first_not_of(' ') == std::string::npos) {
+        safeName = tidStr;
+    }
+
+    std::string path = source.baseDir() + tidStr;
+    if (safeName != tidStr) {
+        path += " " + safeName;
+    }
+
+    Directory dir(source.baseDir());
+    if (dir.good()) {
+        for (size_t i = 0; i < dir.size(); i++) {
+            if (dir.folder(i) && dir.entry(i).find(tidStr) == 0) {
+                path = source.baseDir() + dir.entry(i);
+                break;
+            }
+        }
+    }
 
     if (!io::directoryExists(path)) {
         io::createDirectory(path);
