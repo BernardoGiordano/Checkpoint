@@ -103,6 +103,14 @@ protected:
     // "Confirm before restore" setting: shows a Yes/No prompt when enabled,
     // otherwise restores immediately.
     void requestRestore(size_t cellIndex);
+    // Erases the current title's console-side save. Gated by the "Allow erasing
+    // save data" setting and behind two confirmations, the second naming the
+    // title: this is the only action in Checkpoint that destroys data without
+    // writing a copy of it anywhere first.
+    void requestErase(void);
+    // Enqueues the erase itself. Split from requestErase so the confirmation
+    // chain captures only indices, never a Title that would outlive the frame.
+    void doErase(size_t fullIndex, BackupKind kind);
 
 private:
     Hid<HidDirection::HORIZONTAL, HidDirection::VERTICAL> hid;
