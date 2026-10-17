@@ -33,6 +33,7 @@
 #include "thread.hpp"
 #include "transfer.hpp"
 #include "transferstatus.hpp"
+#include <algorithm>
 
 void TransferJob::enqueueBackup(Title title, BackupKind kind, std::u16string dstPath, std::string dataType)
 {
@@ -144,6 +145,9 @@ void TransferJob::run(void)
     JobResult lastResult;
     size_t failed = 0;
     size_t total  = 0;
+    // Collected across the batch, not taken from one item: the success message
+    // comes from the last item, the file that was left out may be in any of them.
+    std::vector<std::string> skippedInUse;
 
     for (;;) {
         WorkItem item;
@@ -196,6 +200,12 @@ void TransferJob::run(void)
                 .successMsg                = item.successMsg,
                 .dataType                  = item.dataType,
                 .send                      = std::nullopt};
+
+            for (auto& rel : out.skippedInUse) {
+                if (std::find(skippedInUse.begin(), skippedInUse.end(), rel) == skippedInUse.end()) {
+                    skippedInUse.push_back(std::move(rel));
+                }
+            }
         }
 
         total++;
@@ -220,9 +230,10 @@ void TransferJob::run(void)
 
     {
         std::lock_guard<std::mutex> lock(mMutex);
-        mResult        = haveFailure ? firstFailure : lastResult;
-        mResult.failed = failed;
-        mResult.total  = total;
+        mResult              = haveFailure ? firstFailure : lastResult;
+        mResult.failed       = failed;
+        mResult.total        = total;
+        mResult.skippedInUse = std::move(skippedInUse);
     }
 
     TransferStatus::end();

@@ -48,7 +48,7 @@ namespace DSCardNand {
     bool available(void);
 
     struct Session {
-        bool ready = false;
+        bool ready              = false;
         bool requiresPowerCycle = false;
         NtrCard::NandSectorReadResult sentinel{};
     };
@@ -61,14 +61,14 @@ namespace DSCardNand {
     // there is deliberately no "finished with warnings" state.
     enum class DumpStatus {
         Ok,
-        NotAvailable,      // build has no NAND read path
-        NotReady,          // the Session never passed its gates
-        InvalidSaveSize,   // not a whole number of 128-KiB windows
-        CartridgeDisturbed,// the cartridge stopped answering as it did at Gate 3
-        FileError,         // could not create or write the destination
+        NotAvailable,       // build has no NAND read path
+        NotReady,           // the Session never passed its gates
+        InvalidSaveSize,    // not a whole number of 128-KiB windows
+        CartridgeDisturbed, // the cartridge stopped answering as it did at Gate 3
+        FileError,          // could not create or write the destination
         OutOfMemory,
-        Cancelled,         // the caller's ProgressSink asked to stop
-        ReadFailed         // a guard refused the bytes; see the log
+        Cancelled, // the caller's ProgressSink asked to stop
+        ReadFailed // a guard refused the bytes; see the log
     };
 
     struct DumpOutcome {
@@ -102,8 +102,8 @@ namespace DSCardNand {
     };
 
     struct RestoreOutcome {
-        RestoreStatus status     = RestoreStatus::NotAvailable;
-        bool requiresPowerCycle  = false;
+        RestoreStatus status    = RestoreStatus::NotAvailable;
+        bool requiresPowerCycle = false;
         // True once any page has been committed. From this point the cartridge
         // is a mixture of its old contents and the source image, and only
         // finishing the restore or replaying a backup makes it one thing again.

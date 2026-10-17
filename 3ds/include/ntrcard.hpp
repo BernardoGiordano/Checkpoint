@@ -220,13 +220,13 @@ namespace NtrCard {
     // the page is being programmed and there is no undo.
     enum class NandWriteStage {
         Preflight,
-        SelectWindow,   // 0xB2
-        WriteEnable,    // 0x85
-        WriteBuffer,    // four 0x81 transfers filling the volatile page buffer
-        CommitBuffer,   // 0x82 -- the point of no return
-        AwaitReady,     // 0xD6 until bit 5
-        DiscardBuffer,  // 0x84
-        ReturnToRom,    // 0x8B
+        SelectWindow,  // 0xB2
+        WriteEnable,   // 0x85
+        WriteBuffer,   // four 0x81 transfers filling the volatile page buffer
+        CommitBuffer,  // 0x82 -- the point of no return
+        AwaitReady,    // 0xD6 until bit 5
+        DiscardBuffer, // 0x84
+        ReturnToRom,   // 0x8B
         Complete,
     };
 
@@ -242,18 +242,18 @@ namespace NtrCard {
         // or not this module saw the command finish. A failure with this set
         // means the page may be partially programmed and must be read back
         // before it is trusted; a failure without it means NAND is untouched.
-        bool committed             = false;
-        bool discardAttempted      = false;
-        std::uint32_t pageOffset   = 0;
-        std::size_t wordsWritten   = 0;
+        bool committed           = false;
+        bool discardAttempted    = false;
+        std::uint32_t pageOffset = 0;
+        std::size_t wordsWritten = 0;
         // Words pushed into an abandoned write transfer purely so BUSY could
         // clear. They land in the page buffer, never in NAND, because the
         // sequence discards the buffer instead of committing it.
-        std::size_t flushedWords         = 0;
-        std::size_t statusPolls          = 0;
-        std::uint32_t statusRegister     = 0;
-        bool commandReadbackAvailable    = false;
-        bool commandIdentityChanged      = false;
+        std::size_t flushedWords          = 0;
+        std::size_t statusPolls           = 0;
+        std::uint32_t statusRegister      = 0;
+        bool commandReadbackAvailable     = false;
+        bool commandIdentityChanged       = false;
         std::uint32_t expectedCommandHigh = 0;
         std::uint32_t expectedCommandLow  = 0;
         std::uint32_t observedCommandHigh = 0;

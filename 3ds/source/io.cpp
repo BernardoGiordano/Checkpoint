@@ -44,12 +44,20 @@ static const Result RES_SHORT_WRITE = MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_F
 // FSFILE_GetSize reports. See copyFile's shrink-and-stop handling.
 static const u32 RES_FS_PAST_DATA = 0xD900458B;
 
+// FS returns this when another process holds the file open — HOME Menu keeps the
+// icon cache in its own extdata (/CacheD.dat) open for as long as it runs, so no
+// open of it from an application can succeed (#592). See io::dropInUse.
+static const u32 RES_FS_IN_USE = 0xC92044E6;
+
 static const Result RES_PATH_TOO_LONG = 0xE0E046C8;
 
 // Synthetic: no FS call failed, but a second walk still found files under the
 // archive after an erase. Reported so a partial erase never looks like a clean
 // one. See io::wipe.
 static const Result RES_ERASE_INCOMPLETE = MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, RD_INVALID_RESULT_VALUE);
+
+// FS returns this when the directory being created is already there.
+static const u32 RES_FS_DIR_EXISTS = 0xC82044B9;
 
 static std::u16string rawBackupFile(const std::u16string& folder)
 {
@@ -189,6 +197,34 @@ size_t io::dropHostMetadata(std::vector<TreeEntry>& entries)
     return before - entries.size();
 }
 
+std::vector<std::string> io::dropInUse(FS_Archive arch, const std::u16string& root, std::vector<TreeEntry>& entries)
+{
+    // A file that does not exist on the console side (a restore bringing back
+    // something that was since deleted) fails the probe with a different result
+    // and stays in the plan; only the in-use answer drops an entry.
+    std::vector<std::string> dropped;
+    entries.erase(std::remove_if(entries.begin(), entries.end(),
+                      [&](const TreeEntry& entry) {
+                          if (entry.folder) {
+                              return false;
+                          }
+                          FSStream probe(arch, root + entry.rel, FS_OPEN_READ);
+                          if (probe.good()) {
+                              probe.close();
+                              return false;
+                          }
+                          if ((u32)probe.result() != RES_FS_IN_USE) {
+                              return false;
+                          }
+                          const std::string rel = StringUtils::UTF16toUTF8(entry.rel);
+                          Logging::warning("Leaving out {}: another process holds it open.", rel);
+                          dropped.push_back(rel);
+                          return true;
+                      }),
+        entries.end());
+    return dropped;
+}
+
 Result io::copyFile(
     FS_Archive srcArch, FS_Archive dstArch, const std::u16string& srcPath, const std::u16string& dstPath, ProgressSink& sink, u8* buffer)
 {
@@ -278,8 +314,8 @@ Result io::copyTree(FS_Archive srcArch, FS_Archive dstArch, const std::u16string
         std::u16string dst = dstRoot + entry.rel;
         if (entry.folder) {
             res = io::createDirectory(dstArch, dst);
-            // 0xC82044B9 == directory already exists; treat as success.
-            if (R_FAILED(res) && (u32)res != 0xC82044B9) {
+            // An existing directory is as good as a new one.
+            if (R_FAILED(res) && (u32)res != RES_FS_DIR_EXISTS) {
                 return res;
             }
             res = 0;
@@ -383,8 +419,7 @@ static io::IoOutcome backupCardNandSave(
     const BackupTarget& target, Title& title, const DSCard::NandSave& nand, const std::u16string& dstPath, ProgressSink& sink)
 {
     if (!DSCardNand::available()) {
-        Logging::error("Refusing to back up {}: its save is in on-cart NAND and this build has no NAND read path.",
-            title.shortDescription().c_str());
+        Logging::error("Refusing to back up {}: its save is in on-cart NAND and this build has no NAND read path.", title.shortDescription().c_str());
         return {false, 0, io::BackupStage::CardNandSave};
     }
 
@@ -460,8 +495,7 @@ static io::IoOutcome restoreCardNandSave(
     const BackupTarget& target, Title& title, const DSCard::NandSave& nand, const std::u16string& srcPath, ProgressSink& sink)
 {
     if (!DSCardNand::available()) {
-        Logging::error("Refusing to restore {}: its save is in on-cart NAND and this build has no NAND card path.",
-            title.shortDescription().c_str());
+        Logging::error("Refusing to restore {}: its save is in on-cart NAND and this build has no NAND card path.", title.shortDescription().c_str());
         return {false, 0, io::BackupStage::CardNandSave};
     }
 
@@ -509,9 +543,62 @@ static io::IoOutcome restoreCardNandSave(
         return {false, 0, io::BackupStage::CardNandSave};
     }
 
-    Logging::info("Card NAND restore of {} completed: {} page(s) written, {} already matched, source sha256={}.",
-        title.shortDescription().c_str(), restored.pagesWritten, restored.pagesSkipped, restored.sourceSha256);
+    Logging::info("Card NAND restore of {} completed: {} page(s) written, {} already matched, source sha256={}.", title.shortDescription().c_str(),
+        restored.pagesWritten, restored.pagesSkipped, restored.sourceSha256);
     return {true, 0, io::BackupStage::Copy};
+}
+
+// Writes a DS cart save, already read into memory, as a new file in the backup
+// folder the caller has just created.
+//
+// Creating that file has been seen to fail with FS NotFound (0xC8804478) right
+// after the folder was made, and a plain retry by hand worked (#584). So the
+// open is retried a few times, first putting the folder back if FS no longer
+// has it. Each failed open is logged together with whether the folder was still
+// there, which is the part the #584 log could not tell.
+static Result writeCardSave(const std::u16string& folder, const std::u16string& path, const u8* data, u32 size)
+{
+    static constexpr int attempts = 4;
+
+    for (int attempt = 1;; attempt++) {
+        FSStream stream(Archive::sdmc(), path, FS_OPEN_WRITE, size);
+        if (stream.good()) {
+            const u32 wt          = stream.write(data, size);
+            const Result writeRes = stream.result();
+            const Result closeRes = stream.close();
+            if (R_FAILED(writeRes)) {
+                Logging::error("Write failure on {} with result 0x{:08X}.", StringUtils::UTF16toUTF8(path), (u32)writeRes);
+                return writeRes;
+            }
+            if (wt != size) {
+                Logging::error("Short write on {}: wrote {} of {} bytes.", StringUtils::UTF16toUTF8(path), wt, size);
+                return RES_SHORT_WRITE;
+            }
+            if (R_FAILED(closeRes)) {
+                Logging::error("Failed to close {} with result 0x{:08X}.", StringUtils::UTF16toUTF8(path), (u32)closeRes);
+                return closeRes;
+            }
+            if (attempt > 1) {
+                Logging::info("Created {} on attempt {} of {}.", StringUtils::UTF16toUTF8(path), attempt, attempts);
+            }
+            return 0;
+        }
+
+        const Result openRes     = stream.result();
+        const bool folderPresent = io::directoryExists(Archive::sdmc(), folder);
+        Logging::warning("Failed to create {} with result 0x{:08X} (attempt {} of {}, backup folder {}).", StringUtils::UTF16toUTF8(path),
+            (u32)openRes, attempt, attempts, folderPresent ? "present" : "missing");
+        if (attempt == attempts) {
+            return openRes;
+        }
+        if (!folderPresent) {
+            const Result dirRes = io::createDirectory(Archive::sdmc(), folder);
+            if (R_FAILED(dirRes) && (u32)dirRes != RES_FS_DIR_EXISTS) {
+                Logging::warning("Failed to recreate the backup folder with result 0x{:08X}.", (u32)dirRes);
+            }
+        }
+        svcSleepThread(250'000'000);
+    }
 }
 
 io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPath, ProgressSink& sink)
@@ -520,6 +607,8 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
     Result res   = 0;
 
     Logging::info("Started backup of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
+
+    std::vector<std::string> skippedInUse;
 
     if (title.cardType() == CARD_CTR || title.isDSiWare()) {
         ArchiveHandle handle = target.open(res);
@@ -576,6 +665,14 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
                 return {false, res, (u32)res == RES_PATH_TOO_LONG ? BackupStage::PathTooLong : BackupStage::Copy};
             }
 
+            // Extdata can share an archive with a running system process; a file it
+            // holds open can't be read at all, and failing the whole backup over
+            // HOME Menu's icon cache left users with no backup of the rest (#592).
+            // A save is never filtered: it is copied whole or not at all.
+            if (target.kind() == BackupKind::Extdata) {
+                skippedInUse = io::dropInUse(handle.fs(), archiveRoot, entries);
+            }
+
             // The console-side tree is short; it is the SD destination — root plus
             // title folder plus the backup name the user just typed — that can push
             // a deep save over the limit. Say so now, not half a copy in.
@@ -627,10 +724,38 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
         }
         u32 sectorSize = (saveSize < 0x10000) ? saveSize : 0x10000;
 
+        std::u16string fileName = StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
+        std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/") + fileName;
+
+        sink.begin("Backup", 1);
+        sink.startFile(fileName, saveSize);
+
+        // The whole save comes off the cart before the SD card is touched. A read
+        // failure or a cancel then leaves the backup being overwritten as it was,
+        // and the destination folder is created right before its file instead of
+        // a whole cart read earlier (#584).
+        std::unique_ptr<u8[]> saveFile(new u8[saveSize]);
+        const u32 sectors = saveSize / sectorSize;
+        for (u32 i = 0; i < sectors; ++i) {
+            if (sink.cancelled()) {
+                sink.end();
+                Logging::info("Backup of {} cancelled by user.", title.shortDescription().c_str());
+                return {false, 0, BackupStage::Copy, true};
+            }
+            res = SPIReadSaveData(cardType, sectorSize * i, saveFile.get() + sectorSize * i, sectorSize);
+            if (R_FAILED(res)) {
+                sink.end();
+                Logging::error("Failed to read save data from SPI with result 0x{:08X}.", (u32)res);
+                return {false, res, BackupStage::ReadSpi};
+            }
+            sink.advanceBytes(sectorSize * (i + 1));
+        }
+
         // Start from a clean destination folder.
         if (io::directoryExists(Archive::sdmc(), dstPath)) {
             res = FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
             if (R_FAILED(res)) {
+                sink.end();
                 Logging::error("Failed to delete the existing backup directory recursively with result 0x{:08X}.", (u32)res);
                 return {false, res, BackupStage::DeleteDst};
             }
@@ -638,60 +763,31 @@ io::IoOutcome io::backup(const BackupTarget& target, const std::u16string& dstPa
 
         res = io::createDirectory(Archive::sdmc(), dstPath);
         if (R_FAILED(res)) {
+            sink.end();
             Logging::error("Failed to create destination directory with result 0x{:08X}.", (u32)res);
             return {false, res, BackupStage::CreateDst};
         }
 
-        std::u16string fileName = StringUtils::UTF8toUTF16(title.shortDescription().c_str()) + StringUtils::UTF8toUTF16(".sav");
-        std::u16string copyPath = dstPath + StringUtils::UTF8toUTF16("/") + fileName;
-
-        sink.begin("Backup", 1);
-        sink.startFile(fileName, saveSize);
-
-        u8* saveFile      = new u8[saveSize];
-        const u32 sectors = saveSize / sectorSize;
-        for (u32 i = 0; i < sectors; ++i) {
-            if (sink.cancelled()) {
-                delete[] saveFile;
-                sink.end();
-                FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-                Logging::info("Backup of {} cancelled by user.", title.shortDescription().c_str());
-                return {false, 0, BackupStage::Copy, true};
-            }
-            res = SPIReadSaveData(cardType, sectorSize * i, saveFile + sectorSize * i, sectorSize);
-            if (R_FAILED(res)) {
-                delete[] saveFile;
-                sink.end();
-                FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-                Logging::error("Failed to read save data from SPI with result 0x{:08X}.", (u32)res);
-                return {false, res, BackupStage::ReadSpi};
-            }
-            sink.advanceBytes(sectorSize * (i + 1));
-        }
-
-        FSStream stream(Archive::sdmc(), copyPath, FS_OPEN_WRITE, saveSize);
-        if (stream.good()) {
-            stream.write(saveFile, saveSize);
-        }
-        else {
-            Result streamRes = stream.result();
-            delete[] saveFile;
-            stream.close();
+        res = writeCardSave(dstPath, copyPath, saveFile.get(), saveSize);
+        if (R_FAILED(res)) {
             sink.end();
             FSUSER_DeleteDirectoryRecursively(Archive::sdmc(), fsMakePath(PATH_UTF16, dstPath.data()));
-            Logging::error("Failed to write save to the sd card with result 0x{:08X}.", (u32)streamRes);
-            return {false, streamRes, BackupStage::WriteFile};
+            Logging::error("Failed to write save to the sd card with result 0x{:08X}.", (u32)res);
+            return {false, res, BackupStage::WriteFile};
         }
 
-        delete[] saveFile;
-        stream.close();
         sink.finishFile();
         sink.end();
         TitleCatalog::get().refreshDirectories(title.id());
     }
 
-    Logging::info("Backup succeeded.");
-    return {true, 0, BackupStage::Copy};
+    if (!skippedInUse.empty()) {
+        Logging::info("Backup succeeded, leaving out {} file(s) held open by another process.", skippedInUse.size());
+    }
+    else {
+        Logging::info("Backup succeeded.");
+    }
+    return {true, 0, BackupStage::Copy, false, std::move(skippedInUse)};
 }
 
 io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcPath, ProgressSink& sink)
@@ -700,6 +796,8 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
     Result res   = 0;
 
     Logging::info("Started restore of {}. Title id: 0x{:08X}.", title.shortDescription().c_str(), title.lowId());
+
+    std::vector<std::string> skippedInUse;
 
     if (title.cardType() == CARD_CTR || title.isDSiWare()) {
         ArchiveHandle handle = target.open(res);
@@ -743,6 +841,14 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
             const size_t dropped = io::dropHostMetadata(entries);
             if (dropped > 0) {
                 Logging::info("Skipped {} host metadata entries in the backup; they are not part of the save.", dropped);
+            }
+
+            // The console-side twin of the backup filter. It has to run before the
+            // clear below: a file another process holds open survives the clear,
+            // and its copy would then fail with everything else already deleted —
+            // half of HOME Menu's extdata gone for a backup taken before #592.
+            if (target.kind() == BackupKind::Extdata) {
+                skippedInUse = io::dropInUse(handle.fs(), dstPath, entries);
             }
 
             res = io::checkPathLengths(entries, fullSrc, dstPath);
@@ -869,8 +975,13 @@ io::IoOutcome io::restore(const BackupTarget& target, const std::u16string& srcP
         delete[] saveFile;
     }
 
-    Logging::info("Restore succeeded.");
-    return {true, 0, BackupStage::Copy};
+    if (!skippedInUse.empty()) {
+        Logging::info("Restore succeeded, leaving out {} file(s) held open by another process.", skippedInUse.size());
+    }
+    else {
+        Logging::info("Restore succeeded.");
+    }
+    return {true, 0, BackupStage::Copy, false, std::move(skippedInUse)};
 }
 
 io::IoOutcome io::wipe(const BackupTarget& target, ProgressSink& sink)

@@ -39,15 +39,15 @@ namespace {
     constexpr std::uint8_t nandRwModeCommand     = 0xB2;
     // The write half of the NAND protocol, named here so the read paths' "no
     // command outside {B2, B7, 8B}" claim can be checked against one list.
-    constexpr std::uint8_t nandWriteEnableCommand  = 0x85;
-    constexpr std::uint8_t nandWriteBufferCommand  = 0x81;
-    constexpr std::uint8_t nandCommitBufferCommand = 0x82;
+    constexpr std::uint8_t nandWriteEnableCommand   = 0x85;
+    constexpr std::uint8_t nandWriteBufferCommand   = 0x81;
+    constexpr std::uint8_t nandCommitBufferCommand  = 0x82;
     constexpr std::uint8_t nandDiscardBufferCommand = 0x84;
-    constexpr std::uint8_t nandReadStatusCommand   = 0xD6;
+    constexpr std::uint8_t nandReadStatusCommand    = 0xD6;
     // The cartridge reports its programming cycle finished in bit 5 of the
     // status word 0xD6 returns.
     constexpr std::uint32_t nandStatusReady = 1u << 5;
-    constexpr std::uint32_t mainDataMinimum      = 0x8000;
+    constexpr std::uint32_t mainDataMinimum = 0x8000;
     // The largest block ROMCTRL can describe is 0x100 << 6 words of 4 bytes;
     // one extra guards against a field this module did not write.
     constexpr std::size_t maxDrainWords = (0x100u << 6) / sizeof(std::uint32_t);
@@ -484,8 +484,7 @@ namespace {
     // that steals a write is worse than one that steals a read: the bytes it
     // takes are ours and the buffer it fills is the cartridge's.
     CommandResult runPolledWriteCommand(NtrCard::CardBus& bus, std::uint8_t command, std::uint32_t parameter, std::uint32_t normalRomControl,
-        std::uint32_t blockSize, std::uint16_t expectedMCardControl, const std::uint32_t* input, std::size_t inputWords,
-        std::uint64_t timeoutTicks)
+        std::uint32_t blockSize, std::uint16_t expectedMCardControl, const std::uint32_t* input, std::size_t inputWords, std::uint64_t timeoutTicks)
     {
         CommandResult result;
         const auto commandBytes     = commandWithParameter(command, parameter);
@@ -632,7 +631,7 @@ namespace {
         // through MCNT, and a theft that starts a transfer is caught by the
         // ROMCNT guard instead.
         std::uint16_t polledMCardControl = result.initialMCardControl;
-        const auto returnToRom = [&]() {
+        const auto returnToRom           = [&]() {
             result.returnToRomAttempted = true;
 
             // 8B is cleanup, not a read. It matters more that the cartridge
@@ -823,8 +822,8 @@ namespace {
     // is free. After 0x82 the page is being programmed and no cleanup here can
     // put back what was there. That is why the commit is the last thing this
     // function decides to do and why everything before it is checked.
-    NtrCard::NandPageWriteResult writeNandPage(NtrCard::CardBus& bus, std::uint32_t rwStart, std::uint32_t pageOffset,
-        std::uint32_t normalRomControl, std::uint64_t timeoutTicks, const std::uint32_t* page, std::size_t pageWords)
+    NtrCard::NandPageWriteResult writeNandPage(NtrCard::CardBus& bus, std::uint32_t rwStart, std::uint32_t pageOffset, std::uint32_t normalRomControl,
+        std::uint64_t timeoutTicks, const std::uint32_t* page, std::size_t pageWords)
     {
         using NtrCard::NandWriteStage;
         using NtrCard::RegisterOffset;
@@ -842,7 +841,7 @@ namespace {
         const std::uint32_t windowBase = rwStart + ((pageOffset - rwStart) / NtrCard::nandWindowSize) * (std::uint32_t)NtrCard::nandWindowSize;
 
         bool idleConfigDiffers = false;
-        result.status = preflightController(bus, normalRomControl, result.initialMCardControl, result.initialRomControl, idleConfigDiffers);
+        result.status          = preflightController(bus, normalRomControl, result.initialMCardControl, result.initialRomControl, idleConfigDiffers);
         if (result.status != SectorReadStatus::Ok) {
             if (result.status == SectorReadStatus::ControllerReset) {
                 result.cartridgeWasReset  = true;
@@ -924,7 +923,7 @@ namespace {
             return result;
         };
 
-        result.stage                = NandWriteStage::SelectWindow;
+        result.stage = NandWriteStage::SelectWindow;
         const CommandResult selected =
             runPolledCommand(bus, nandRwModeCommand, windowBase, normalRomControl, 0, polledMCardControl, nullptr, 0, timeoutTicks);
         result.commandReadbackAvailable = selected.commandReadbackAvailable;
@@ -970,7 +969,7 @@ namespace {
         // watch it finish changes nothing about the page. Reporting `committed`
         // only on success would tell the caller its data is intact in exactly
         // the case where that is least certain.
-        result.committed              = true;
+        result.committed = true;
         const CommandResult committed =
             runPolledCommand(bus, nandCommitBufferCommand, 0, normalRomControl, 0, polledMCardControl, nullptr, 0, timeoutTicks);
         if (committed.status != SectorReadStatus::Ok) {
@@ -985,9 +984,9 @@ namespace {
         const std::uint64_t readyStarted = bus.ticks();
         const std::uint64_t readyTimeout = timeoutTicks * cleanupTimeoutMultiplier;
         for (;;) {
-            std::uint32_t status        = 0;
-            const CommandResult polled  = runPolledCommand(
-                bus, nandReadStatusCommand, 0, normalRomControl, romBlockSizeMask, polledMCardControl, &status, 1, timeoutTicks);
+            std::uint32_t status = 0;
+            const CommandResult polled =
+                runPolledCommand(bus, nandReadStatusCommand, 0, normalRomControl, romBlockSizeMask, polledMCardControl, &status, 1, timeoutTicks);
             result.statusPolls++;
             if (polled.status != SectorReadStatus::Ok) {
                 return fail(NandWriteStage::AwaitReady, polled);
@@ -1104,8 +1103,8 @@ NtrCard::CardPollResult NtrCard::waitForCardPoll(CardBus& bus, std::uint64_t qui
     }
 }
 
-NtrCard::NandPageWriteResult NtrCard::writeNandSavePage(CardBus& bus, std::uint32_t rwStart, std::uint32_t pageOffset,
-    std::uint32_t normalRomControl, std::uint64_t timeoutTicks, const std::uint32_t* page, std::size_t pageWords)
+NtrCard::NandPageWriteResult NtrCard::writeNandSavePage(CardBus& bus, std::uint32_t rwStart, std::uint32_t pageOffset, std::uint32_t normalRomControl,
+    std::uint64_t timeoutTicks, const std::uint32_t* page, std::size_t pageWords)
 {
     return writeNandPage(bus, rwStart, pageOffset, normalRomControl, timeoutTicks, page, pageWords);
 }
@@ -1180,7 +1179,7 @@ NtrCard::SectorReadResult NtrCard::readMainModeSector(CardBus& bus, std::uint32_
 
     // The completion IRQ belongs to Process9 and is never masked here.
     std::uint16_t polledMCardControl = result.initialMCardControl;
-    const CommandResult transfer = runPolledCommand(
+    const CommandResult transfer     = runPolledCommand(
         bus, mainReadCommand, offset, normalRomControl, romSectorBlockSize, polledMCardControl, result.data.data(), result.data.size(), timeoutTicks);
     result.status                   = transfer.status;
     result.wordsRead                = transfer.wordsRead;

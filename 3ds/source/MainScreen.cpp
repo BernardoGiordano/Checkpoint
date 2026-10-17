@@ -533,7 +533,15 @@ void MainScreen::update(const InputState& input)
             currentOverlay = std::make_shared<InfoOverlay>(*this, i18n::t("transfer.cancelled"));
         }
         else if (result->ok) {
-            currentOverlay = std::make_shared<InfoOverlay>(*this, result->successMsg);
+            std::string message = result->successMsg;
+            if (!result->skippedInUse.empty()) {
+                std::string names;
+                for (const auto& rel : result->skippedInUse) {
+                    names += (names.empty() ? "" : ", ") + rel;
+                }
+                message += "\n\n" + i18n::t("outcome.skipped_in_use", {names});
+            }
+            currentOverlay = std::make_shared<InfoOverlay>(*this, message);
         }
         else if (result->send) {
             if (result->send->stage == Transfer::SendStage::EmptyBackup) {

@@ -34,6 +34,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <vector>
 
 // The single owner of "a backup/restore is running on a worker thread". It keeps
 // io::backup / io::restore off the main loop so the UI keeps rendering during the
@@ -63,6 +64,9 @@ public:
         // Set only for network sends; when present the screen maps
         // SendOutcome::stage to a message instead of the io fields above.
         std::optional<Transfer::SendOutcome> send;
+        // Extdata files held open by another process that the batch left out,
+        // without duplicates; a success with entries here was not a full copy.
+        std::vector<std::string> skippedInUse;
         // Batch aggregate: `failed` items out of `total`. On a batch with any
         // failure this JobResult carries the *first* failing item's outcome; the
         // batch counts as success only when failed == 0.
